@@ -2009,4 +2009,39 @@ class AppLocalizationsTr extends AppLocalizations {
 
   @override
   String get agentRestartsWindow => 'son 24 saat';
+
+  @override
+  String get claudeLoadOlder => 'Daha eski mesajları yükle';
+
+  @override
+  String get awayTitle => 'Sen yokken';
+
+  @override
+  String awayTurns(int count) {
+    return '$count tur';
+  }
+
+  @override
+  String awayCommands(int count) {
+    return '$count komut';
+  }
+
+  @override
+  String awayFiles(int count) {
+    return '$count dosya değişti';
+  }
+
+  @override
+  String get sessionChanges => 'Değişiklikler';
+
+  @override
+  String get sessionOpenGit => 'Git\'te aç (commit)';
+
+  @override
+  String get sessionNoChanges => 'Bu oturum henüz dosya düzenlemedi.';
+
+  @override
+  String sessionEditCount(int count) {
+    return '$count düzenleme';
+  }
 }

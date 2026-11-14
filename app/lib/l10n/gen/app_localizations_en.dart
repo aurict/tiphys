@@ -2024,4 +2024,39 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get agentRestartsWindow => 'last 24 hours';
+
+  @override
+  String get claudeLoadOlder => 'Load earlier messages';
+
+  @override
+  String get awayTitle => 'While you were away';
+
+  @override
+  String awayTurns(int count) {
+    return '$count turns';
+  }
+
+  @override
+  String awayCommands(int count) {
+    return '$count commands';
+  }
+
+  @override
+  String awayFiles(int count) {
+    return '$count files changed';
+  }
+
+  @override
+  String get sessionChanges => 'Changes';
+
+  @override
+  String get sessionOpenGit => 'Open in Git (commit)';
+
+  @override
+  String get sessionNoChanges => 'This session has not edited any files.';
+
+  @override
+  String sessionEditCount(int count) {
+    return '$count edits';
+  }
 }

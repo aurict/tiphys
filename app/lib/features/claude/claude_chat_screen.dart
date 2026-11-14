@@ -11,6 +11,7 @@ import 'package:intl/intl.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../../l10n/gen/app_localizations.dart';
+import '../../core/util/refresh.dart';
 import '../../state/providers.dart';
 import '../../theme/tokens.dart';
 import '../../widgets/forms.dart';
@@ -18,6 +19,7 @@ import '../../widgets/surfaces.dart';
 import '../system/agent_providers.dart';
 import 'attachments.dart';
 import 'chat_markdown.dart';
+import 'session_insights.dart';
 import 'claude_controller.dart';
 import 'claude_screen.dart';
 
@@ -59,10 +61,30 @@ class _ClaudeChatScreenState extends ConsumerState<ClaudeChatScreen> {
         _transcribing = false;
       });
 
+  /// Ekran açılırken alınır: dispose() içinde ref kullanılamaz.
+  late final ClaudeSeen _seen;
+
+  /// "Sen yokken" özeti (oturuma dönünce bir kez gösterilir).
+  AwayDigest? _away;
+
   @override
   void initState() {
     super.initState();
+    _seen = ref.read(claudeSeenProvider.notifier);
+    appVisible.addListener(_onVisibility);
     _open();
+  }
+
+  /// Bu oturumda en son hangi olaya kadar bakıldı (ekrandan çıkınca / uygulama arka plana gidince).
+  void _markSeen() {
+    final c = _c;
+    final epoch = c?.summary?['epoch'] as String?;
+    if (c == null || !c.isLive || epoch == null) return;
+    unawaited(_seen.mark(c.sessionId, c.lastSeq, epoch));
+  }
+
+  void _onVisibility() {
+    if (!appVisible.value) _markSeen();
   }
 
   Future<void> _open() async {
@@ -71,9 +93,11 @@ class _ClaudeChatScreenState extends ConsumerState<ClaudeChatScreen> {
     try {
       final client = await ref.read(agentClientFactoryProvider)(host);
       List<ClaudeEvent>? history;
+      var more = false;
       if (widget.historyId != null) {
         final j = await client.get('/v1/claude/history/${widget.historyId}');
         history = [for (final e in (j['events'] as List)) ClaudeEvent(Map<String, dynamic>.from(e as Map))];
+        more = j['more'] == true;
       }
       final c = ClaudeSessionController(
         client: client,
@@ -81,6 +105,7 @@ class _ClaudeChatScreenState extends ConsumerState<ClaudeChatScreen> {
         readOnlyEvents: history,
         stream: ref.read(claudeStreamEnabledProvider),
         outboxDir: history == null ? await ref.read(outboxDirProvider)() : null,
+        olderAvailable: more,
       );
       if (!mounted) {
         c.dispose(); // açılış bitmeden ekrandan çıkıldı
@@ -89,6 +114,11 @@ class _ClaudeChatScreenState extends ConsumerState<ClaudeChatScreen> {
       c.addListener(_onUpdate);
       setState(() => _c = c);
       await c.start();
+      // Oturuma geri dönüldüyse: en son bakılan yerden sonra olanların özeti.
+      final seen = ref.read(claudeSeenProvider)[c.sessionId];
+      if (mounted && c.isLive && seen != null && seen.$2 == c.summary?['epoch']) {
+        setState(() => _away = awayDigest(c.events, seen.$1));
+      }
     } catch (e) {
       if (mounted) setState(() => _error = e);
     }
@@ -123,6 +153,10 @@ class _ClaudeChatScreenState extends ConsumerState<ClaudeChatScreen> {
     }
   }
 
+  void _openChanges(ClaudeSessionController c) => Navigator.of(context).push(MaterialPageRoute<void>(
+        builder: (_) => SessionChangesScreen(events: List.of(c.events), cwd: c.summary?['cwd'] as String? ?? widget.historyCwd),
+      ));
+
   /// Terminaldeki oturum ilerledikçe kaydı yeniden okur.
   Future<void> _reload() async {
     _c?.removeListener(_onUpdate);
@@ -142,6 +176,8 @@ class _ClaudeChatScreenState extends ConsumerState<ClaudeChatScreen> {
 
   @override
   void dispose() {
+    appVisible.removeListener(_onVisibility);
+    _markSeen();
     _c?.removeListener(_onUpdate);
     _c?.dispose();
     _input.dispose();
@@ -305,6 +341,15 @@ class _ClaudeChatScreenState extends ConsumerState<ClaudeChatScreen> {
                       ]),
                   ]),
                 ),
+                if (c != null && sessionChanges(c.events).isNotEmpty)
+                  IconButton(
+                    tooltip: l.sessionChanges,
+                    icon: Badge(
+                      label: Text('${sessionChanges(c.events).length}'),
+                      child: const Icon(LucideIcons.fileDiff),
+                    ),
+                    onPressed: () => _openChanges(c),
+                  ),
                 if (c != null && c.isLive)
                   PopupMenuButton<String>(
                     tooltip: l.filesMore,
@@ -378,6 +423,8 @@ class _ClaudeChatScreenState extends ConsumerState<ClaudeChatScreen> {
                 ),
               ),
             ),
+          if (c != null && _away != null)
+            AwayCard(digest: _away!, onClose: () => setState(() => _away = null), onChanges: () => _openChanges(c)),
           if (c != null && c.isLive)
             _Composer(
               controller: c,
@@ -439,6 +486,8 @@ class _Messages extends StatelessWidget {
       items.add(_UserBubble(text: o.text, images: o.images.length, pending: o.sending ? 'sending' : 'waiting', onDiscard: o.sending ? null : () => c.discard(o)));
     }
     if (c.busy && c.live.isEmpty) items.add(const _Typing());
+    // En üstte: daha eski mesajlar (Claude'un kaydından).
+    if (c.olderAvailable) items.insert(0, _OlderButton(controller: c));
     // Ters liste: açılışta (geçmiş ya da devam edilen oturum) en son mesajdan başlar, yalnız görünenler çizilir.
     return ListView.builder(
       controller: scroll,
@@ -589,7 +638,7 @@ class _ToolCardState extends State<_ToolCard> {
           ]),
           if (diff.isNotEmpty && (_open || diff.length <= 12)) ...[
             const SizedBox(height: 8),
-            _Diff(lines: _open ? diff : diff.take(12).toList()),
+            ToolDiffView(lines: _open ? diff : diff.take(12).toList()),
           ],
           if (_open && res != null && res.text.isNotEmpty) ...[
             const SizedBox(height: 8),
@@ -609,8 +658,9 @@ class _ToolCardState extends State<_ToolCard> {
   }
 }
 
-class _Diff extends StatelessWidget {
-  const _Diff({required this.lines});
+/// Araç çağrısının (Edit/Write/MultiEdit) satır farkı: - eski, + yeni.
+class ToolDiffView extends StatelessWidget {
+  const ToolDiffView({super.key, required this.lines});
   final List<(String, String)> lines;
   @override
   Widget build(BuildContext context) {
@@ -678,7 +728,7 @@ class _PermissionCardState extends State<_PermissionCard> {
             ]),
             const SizedBox(height: 6),
             Text(toolSummary(tool, input), style: const TextStyle(fontFamily: 'JetBrainsMono', fontSize: 12)),
-            if (toolDiff(tool, input).isNotEmpty) ...[const SizedBox(height: 6), _Diff(lines: toolDiff(tool, input).take(20).toList())],
+            if (toolDiff(tool, input).isNotEmpty) ...[const SizedBox(height: 6), ToolDiffView(lines: toolDiff(tool, input).take(20).toList())],
             if (reason != null) Padding(padding: const EdgeInsets.only(top: 6), child: Text(reason, style: Theme.of(context).textTheme.bodySmall)),
             const SizedBox(height: 10),
             if (decided == null)
@@ -697,6 +747,33 @@ class _PermissionCardState extends State<_PermissionCard> {
               Text(decided ? l.claudeAllowed : l.claudeDenied, style: TextStyle(color: decided ? t.success : t.danger, fontWeight: FontWeight.w700)),
           ]),
         ),
+      ),
+    );
+  }
+}
+
+class _OlderButton extends StatelessWidget {
+  const _OlderButton({required this.controller});
+  final ClaudeSessionController controller;
+  @override
+  Widget build(BuildContext context) {
+    final l = AppLocalizations.of(context);
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 8),
+        child: controller.loadingOlder
+            ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2))
+            : TextButton.icon(
+                onPressed: () async {
+                  try {
+                    await controller.loadOlder();
+                  } catch (e) {
+                    if (context.mounted) toast(context, agentErrorText(l, e));
+                  }
+                },
+                icon: const Icon(LucideIcons.chevronsUp, size: 18),
+                label: Text(l.claudeLoadOlder),
+              ),
       ),
     );
   }

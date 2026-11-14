@@ -9,7 +9,7 @@ import { AppError } from "../errors.ts";
 import type { Ctx } from "../server.ts";
 import { ClaudeManager, type ClaudeEvent, type QueryFn } from "./manager.ts";
 import { stopTerminalSession, terminalSessions } from "./terminal.ts";
-import { findTranscript, transcriptEvents } from "./transcript.ts";
+import { findTranscript, transcriptPage } from "./transcript.ts";
 
 const startSchema = z.strictObject({
   cwd: z.string().min(1),
@@ -197,7 +197,10 @@ export function claudeRoutes(queryFn: QueryFn, opts: { persist?: boolean } = {})
       const dir = mgr.profileEnv(profileId).CLAUDE_CONFIG_DIR ?? expandHome("~/.claude");
       const file = await findTranscript(dir, id);
       if (!file) throw new AppError("agent.claude.historyNotFound", 404, { id });
-      return { events: await transcriptEvents(file, 400) };
+      const q = req.query as { skip?: string; limit?: string };
+      const skip = Math.max(0, Number(q.skip ?? 0) || 0);
+      const limit = Math.min(1000, Math.max(1, Number(q.limit ?? 400) || 400));
+      return await transcriptPage(file, limit, skip);
     });
 
     // Slash komutları: o klasör ve profil için Claude'un gerçekten tanıdığı komutlar (API çağrısı yapmadan).

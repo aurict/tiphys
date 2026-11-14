@@ -35,7 +35,14 @@ class OutboxItem {
 }
 
 class ClaudeSessionController extends ChangeNotifier {
-  ClaudeSessionController({required this.client, required this.sessionId, this.readOnlyEvents, this.stream = true, this.outboxDir}) {
+  ClaudeSessionController({
+    required this.client,
+    required this.sessionId,
+    this.readOnlyEvents,
+    this.stream = true,
+    this.outboxDir,
+    this.olderAvailable = false,
+  }) {
     if (isLive && stream) appVisible.addListener(_onVisibility);
   }
 
@@ -44,6 +51,31 @@ class ClaudeSessionController extends ChangeNotifier {
 
   /// Henüz ajana ulaşmamış mesajlar (sırayla gönderilir).
   final outbox = <OutboxItem>[];
+
+  /// Claude'un kaydında gösterilenlerden daha eski mesaj var mı (yukarıda "daha eski" düğmesi).
+  bool olderAvailable;
+  bool loadingOlder = false;
+
+  /// Kayıttan gelen olay türleri (atlama sayısı bunlarla hesaplanır).
+  static const _transcriptKinds = {'user', 'text', 'tool_use', 'tool_result', 'compacted'};
+
+  /// Daha eski mesajları Claude'un kaydından yükleyip başa ekler.
+  Future<void> loadOlder() async {
+    final String? sdkId = isLive ? (summary?['sdkSessionId'] as String?) : sessionId;
+    if (sdkId == null || loadingOlder) return;
+    loadingOlder = true;
+    notifyListeners();
+    try {
+      final skip = events.where((e) => _transcriptKinds.contains(e.kind)).length;
+      final j = await client.get('/v1/claude/history/$sdkId', query: {'skip': '$skip', 'limit': '200'});
+      final older = [for (final e in (j['events'] as List)) ClaudeEvent({...Map<String, dynamic>.from(e as Map), 'seq': 0})];
+      events.insertAll(0, older);
+      olderAvailable = j['more'] == true && older.isNotEmpty;
+    } finally {
+      loadingOlder = false;
+      if (!_disposed) notifyListeners();
+    }
+  }
 
   /// Testlerde canlı akış kapatılır.
   final bool stream;
@@ -95,6 +127,8 @@ class ClaudeSessionController extends ChangeNotifier {
       if (_disposed || gen != _gen) return;
       summary = Map<String, dynamic>.from(j['session'] as Map);
       status = summary!['status'] as String;
+      // Geçmişi diskten gelen (geri yüklenen) oturumda daha eskisi olabilir.
+      olderAvailable = summary!['sdkSessionId'] != null && (j['events'] as List).any((e) => (e as Map)['kind'] == 'restored');
       events.clear();
       live = '';
       for (final e in (j['events'] as List)) {

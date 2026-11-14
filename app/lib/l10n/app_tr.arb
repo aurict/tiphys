@@ -589,5 +589,14 @@
   "agentRestarts": "Beklenmedik yeniden başlama",
   "notifAgentRestartedTitle": "{host}: ajan beklenmedik şekilde yeniden başladı",
   "notifAgentRestartedBody": "Çöktü ya da belleği bitti. Canlı Claude oturumları geri yüklendi.",
-  "agentRestartsWindow": "son 24 saat"
+  "agentRestartsWindow": "son 24 saat",
+  "claudeLoadOlder": "Daha eski mesajları yükle",
+  "awayTitle": "Sen yokken",
+  "awayTurns": "{count} tur",
+  "awayCommands": "{count} komut",
+  "awayFiles": "{count} dosya değişti",
+  "sessionChanges": "Değişiklikler",
+  "sessionOpenGit": "Git'te aç (commit)",
+  "sessionNoChanges": "Bu oturum henüz dosya düzenlemedi.",
+  "sessionEditCount": "{count} düzenleme"
 }

@@ -85,6 +85,14 @@ async function rowsOf(file: string): Promise<Row[]> {
 
 /** Kaydın son `limit` olayı (kronolojik). Sıkıştırma noktalarına {kind:"compacted"} işareti konur. */
 export async function transcriptEvents(file: string, limit = 400): Promise<HistoryEvent[]> {
+  return (await transcriptPage(file, limit, 0)).events;
+}
+
+/**
+ * Sondan `skip` olay atlanarak, ondan önceki `limit` olay (kronolojik). `more`: daha eskisi var mı.
+ * Telefon yukarı kaydırdıkça skip = elindeki olay sayısı ile eski mesajları ister.
+ */
+export async function transcriptPage(file: string, limit: number, skip: number): Promise<{ events: HistoryEvent[]; more: boolean }> {
   const rows = await rowsOf(file);
   const byUuid = new Map<string, Row>();
   for (const r of rows) if (r.uuid) byUuid.set(r.uuid, r);
@@ -99,7 +107,8 @@ export async function transcriptEvents(file: string, limit = 400): Promise<Histo
   // Sondan başa: her satırın olayları ters sırada toplanır, sonunda tümü çevrilir.
   const rev: HistoryEvent[] = [];
   const seen = new Set<string>();
-  while (cur && rev.length < limit) {
+  const want = limit + skip;
+  while (cur && rev.length < want) {
     if (cur.uuid) {
       if (seen.has(cur.uuid)) break; // döngüye karşı
       seen.add(cur.uuid);
@@ -109,5 +118,7 @@ export async function transcriptEvents(file: string, limit = 400): Promise<Histo
     const next: string | null | undefined = cur.parentUuid ?? cur.logicalParentUuid;
     cur = next ? byUuid.get(next) : undefined;
   }
-  return rev.slice(0, limit).reverse().map((e, i) => ({ ...e, seq: i + 1 }));
+  const more = cur !== undefined || rev.length > want;
+  const page = rev.slice(skip, want).reverse();
+  return { events: page.map((e, i) => ({ ...e, seq: i + 1 })), more };
 }

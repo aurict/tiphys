@@ -3,6 +3,8 @@ import 'dart:ui' as ui;
 
 import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:tiphys/features/claude/session_insights.dart';
+import 'package:tiphys/features/claude/claude_controller.dart';
 import 'package:tiphys/core/agent/agent_client.dart';
 import 'package:tiphys/core/profile/model.dart';
 import 'package:tiphys/core/push/push_service.dart';
@@ -70,5 +72,34 @@ void main() {
     expect(agentOutdated('1.0.0'), isFalse);
     expect(agentOutdated(null), isFalse);
     expect(agentOutdated('geliştirme'), isFalse);
+  });
+
+  group('oturum özetleri', () {
+    ClaudeEvent e(int seq, String kind, [Map<String, dynamic> x = const {}]) => ClaudeEvent({'seq': seq, 'kind': kind, ...x});
+    final events = [
+      e(1, 'user', {'text': 'başla'}),
+      e(2, 'result', {'costUsd': 0.40}),
+      e(3, 'tool_use', {'name': 'Bash', 'input': {'command': 'ls'}}),
+      e(4, 'tool_use', {'name': 'Edit', 'input': {'file_path': '/p/a.dart', 'old_string': 'x', 'new_string': 'y'}}),
+      e(5, 'tool_use', {'name': 'Write', 'input': {'file_path': '/p/b.dart', 'content': 'z'}}),
+      e(6, 'tool_use', {'name': 'Edit', 'input': {'file_path': '/p/a.dart', 'old_string': 'y', 'new_string': 'w'}}),
+      e(7, 'text', {'text': 'Bitti, iki dosya değişti.'}),
+      e(8, 'result', {'costUsd': 0.65}),
+    ];
+    test('sen yokken: tur, komut, dosya ve maliyet farkı', () {
+      final d = awayDigest(events, 2)!;
+      expect(d.turns, 1);
+      expect(d.commands, 1);
+      expect(d.files, ['/p/a.dart', '/p/b.dart']);
+      expect(d.costUsd, closeTo(0.25, 1e-9));
+      expect(d.lastText, 'Bitti, iki dosya değişti.');
+      expect(awayDigest(events, 8), isNull); // yeni bir şey yok
+    });
+    test('değişiklikler: dosya başına düzenlemeler', () {
+      final c = sessionChanges(events);
+      expect(c.keys, ['/p/a.dart', '/p/b.dart']);
+      expect(c['/p/a.dart'], hasLength(2));
+      expect(c['/p/b.dart']!.single, [('+', 'z')]);
+    });
   });
 }

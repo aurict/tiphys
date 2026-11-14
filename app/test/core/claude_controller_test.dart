@@ -14,6 +14,7 @@ class _Client extends AgentClient {
   int gets = 0;
   bool offline = false;
   final posts = <Map<String, dynamic>>[];
+  final queries = <Map<String, String>?>[];
   @override
   Future<dynamic> request(String method, String path, {Object? body, Map<String, String>? query, Duration? timeout}) async {
     if (method == 'POST') {
@@ -21,6 +22,7 @@ class _Client extends AgentClient {
       posts.add(Map<String, dynamic>.from(body! as Map));
       return {'ok': true};
     }
+    queries.add(query);
     return responses[(gets++).clamp(0, responses.length - 1)];
   }
 }
@@ -146,5 +148,25 @@ void main() {
     expect(c2.outbox, isEmpty);
     expect(File('$dir/claude-outbox-s.json').existsSync(), isFalse);
     c2.dispose();
+  });
+
+  test('daha eski mesajlar kayıttan yüklenip başa eklenir; kalmayınca düğme kaybolur', () async {
+    final client = _Client('http://127.0.0.1:9')
+      ..responses.add({
+        'events': [ev(1, 'user', {'text': 'en eski'}), ev(2, 'text', {'text': 'eski cevap'})],
+        'more': false,
+      });
+    final c = ClaudeSessionController(
+      client: client,
+      sessionId: 'sdk-1',
+      readOnlyEvents: [ClaudeEvent(ev(1, 'user', {'text': 'yeni'})), ClaudeEvent(ev(2, 'status', {'status': 'idle'})), ClaudeEvent(ev(3, 'text', {'text': 'yeni cevap'}))],
+      olderAvailable: true,
+    );
+    await c.start();
+    await c.loadOlder();
+    expect(client.queries.single, {'skip': '2', 'limit': '200'}); // status kayıttan gelmez, sayılmaz
+    expect(c.events.map((e) => e.text).where((t) => t.isNotEmpty), ['en eski', 'eski cevap', 'yeni', 'yeni cevap']);
+    expect(c.olderAvailable, isFalse);
+    c.dispose();
   });
 }

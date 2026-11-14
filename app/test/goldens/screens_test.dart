@@ -5,6 +5,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:tiphys/app.dart';
 import 'package:tiphys/core/profile/model.dart';
 
+import 'package:tiphys/features/claude/session_insights.dart';
+
 import '../helpers/harness.dart';
 
 void main() {
@@ -85,6 +87,20 @@ void main() {
     expect(post.$2, '/v1/claude/terminal/$id/takeover');
     expect((post.$3 as Map)['confirm'], true);
     expect(container.read(routerProvider).routerDelegate.currentConfiguration.last.matchedLocation, '/claude/session/md1');
+    await tester.pumpWidget(const SizedBox());
+    await tester.pump(const Duration(seconds: 30));
+  });
+
+  testWidgets('oturuma dönünce "sen yokken" özeti ve değişiklikler ekranı', (tester) async {
+    // a1 oturumunda 2. olaya kadar bakılmıştı; sonra Claude komut çalıştırıp bir dosya düzenledi.
+    await Harness(extra: [claudeSeenProvider.overrideWith(() => PresetSeen({'a1': (2, 'E1')}))]).pump(tester, route: '/claude/session/a1');
+    await settle(tester);
+    expect(find.text('Sen yokken'), findsOneWidget);
+    await golden('png/claude_away_light_tr.png');
+    await tester.tap(find.byTooltip('Değişiklikler'));
+    await settle(tester);
+    expect(find.textContaining('runner.py'), findsWidgets);
+    await golden('png/claude_changes_light_tr.png');
     await tester.pumpWidget(const SizedBox());
     await tester.pump(const Duration(seconds: 30));
   });
