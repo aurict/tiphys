@@ -80,6 +80,7 @@ class _ClaudeChatScreenState extends ConsumerState<ClaudeChatScreen> {
         sessionId: widget.sessionId ?? widget.historyId!,
         readOnlyEvents: history,
         stream: ref.read(claudeStreamEnabledProvider),
+        outboxDir: history == null ? await ref.read(outboxDirProvider)() : null,
       );
       if (!mounted) {
         c.dispose(); // açılış bitmeden ekrandan çıkıldı
@@ -153,13 +154,17 @@ class _ClaudeChatScreenState extends ConsumerState<ClaudeChatScreen> {
     final text = _input.text.trim();
     final c = _c;
     if ((text.isEmpty && _images.isEmpty) || c == null) return;
-    setState(() => _sending = true);
-    try {
-      await c.send(text, images: [for (final i in _images) i.toJson()]);
+    // Mesaj önce gönderim kutusuna girer: ağ yoksa "bekliyor" olarak görünür, bağlantı gelince gider.
+    final images = [for (final i in _images) i.toJson()];
+    setState(() {
+      _sending = true;
       _input.clear();
       _images.clear();
-      // Yukarıda eski mesajları okurken gönderildiyse en alta dön.
-      if (_scroll.hasClients) _scroll.jumpTo(0);
+    });
+    // Yukarıda eski mesajları okurken gönderildiyse en alta dön.
+    if (_scroll.hasClients) _scroll.jumpTo(0);
+    try {
+      await c.send(text, images: images);
     } catch (e) {
       if (mounted) toast(context, agentErrorText(AppLocalizations.of(context), e));
     } finally {
@@ -430,6 +435,9 @@ class _Messages extends StatelessWidget {
       }
     }
     if (c.live.isNotEmpty) items.add(_AssistantText(text: c.live, streaming: true));
+    for (final o in c.outbox) {
+      items.add(_UserBubble(text: o.text, images: o.images.length, pending: o.sending ? 'sending' : 'waiting', onDiscard: o.sending ? null : () => c.discard(o)));
+    }
     if (c.busy && c.live.isEmpty) items.add(const _Typing());
     // Ters liste: açılışta (geçmiş ya da devam edilen oturum) en son mesajdan başlar, yalnız görünenler çizilir.
     return ListView.builder(
@@ -443,9 +451,13 @@ class _Messages extends StatelessWidget {
 }
 
 class _UserBubble extends StatelessWidget {
-  const _UserBubble({required this.text, required this.images});
+  const _UserBubble({required this.text, required this.images, this.pending, this.onDiscard});
   final String text;
   final int images;
+
+  /// Henüz ajana ulaşmadıysa: 'sending' | 'waiting'.
+  final String? pending;
+  final VoidCallback? onDiscard;
   @override
   Widget build(BuildContext context) {
     final t = context.tokens;
@@ -458,6 +470,27 @@ class _UserBubble extends StatelessWidget {
         child: Column(crossAxisAlignment: CrossAxisAlignment.end, children: [
           SelectableText(text, style: TextStyle(color: t.claudeTileText, fontSize: 15, height: 1.35)),
           if (images > 0) Padding(padding: const EdgeInsets.only(top: 4), child: Icon(LucideIcons.image, size: 14, color: t.claudeTileSubtext)),
+          if (pending != null)
+            Padding(
+              padding: const EdgeInsets.only(top: 4),
+              child: Row(mainAxisSize: MainAxisSize.min, children: [
+                Icon(pending == 'sending' ? LucideIcons.loaderCircle : LucideIcons.clock, size: 13, color: t.claudeTileSubtext),
+                const SizedBox(width: 4),
+                Text(pending == 'sending' ? AppLocalizations.of(context).claudeOutboxSending : AppLocalizations.of(context).claudeOutboxWaiting,
+                    style: TextStyle(fontSize: 11.5, color: t.claudeTileSubtext)),
+                if (onDiscard != null) ...[
+                  const SizedBox(width: 6),
+                  InkWell(
+                    onTap: onDiscard,
+                    child: Semantics(
+                      button: true,
+                      label: AppLocalizations.of(context).commonCancel,
+                      child: Icon(LucideIcons.x, size: 14, color: t.claudeTileSubtext),
+                    ),
+                  ),
+                ],
+              ]),
+            ),
         ]),
       ),
     );

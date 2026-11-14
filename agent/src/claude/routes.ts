@@ -36,6 +36,8 @@ const takeoverSchema = z.strictObject({
 const messageSchema = z.strictObject({
   text: z.string().min(1).max(200_000),
   images: startSchema.shape.images,
+  /** Telefonun mesaja verdiği kimlik: aynı mesaj (zaman aşımı sonrası yeniden gönderim) iki kez işlenmez. */
+  clientId: z.string().min(8).max(64).optional(),
 });
 
 /** Profilin yapılandırma klasörüyle (CLAUDE_CONFIG_DIR) geçmiş okuma. */
@@ -129,8 +131,8 @@ export function claudeRoutes(queryFn: QueryFn, opts: { persist?: boolean } = {})
     app.post("/v1/claude/sessions/:id/messages", async (req) => {
       const s = mgr.get((req.params as { id: string }).id);
       const body = messageSchema.parse(req.body);
-      mgr.send(s, body.text, body.images);
-      return { ok: true };
+      const accepted = mgr.send(s, body.text, body.images, body.clientId);
+      return { ok: true, duplicate: !accepted };
     });
 
     app.post("/v1/claude/sessions/:id/interrupt", async (req) => {

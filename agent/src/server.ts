@@ -13,19 +13,23 @@ import { serviceRoutes } from "./routes/services.ts";
 import { systemRoutes } from "./routes/system.ts";
 import { wakeRoutes } from "./routes/wake.ts";
 import { auditRoutes } from "./audit.ts";
+import { agentStatusRoutes, type RunLog } from "./runs.ts";
 import { desktopRoutes } from "./routes/desktop.ts";
 import { gitRoutes } from "./routes/git.ts";
 import { portRoutes } from "./routes/ports.ts";
 import { processRoutes } from "./routes/processes.ts";
 import { transcribeRoutes } from "./routes/transcribe.ts";
 
-export const VERSION = "0.2.0";
+export { VERSION } from "./version.ts";
+import { VERSION } from "./version.ts";
 
 export interface Ctx {
   store: ConfigStore;
   notifier: Notifier;
   /** İsteğe özel ek modüller (Claude, Uptime Kuma) server.ts'e bağımlı olmadan kaydolur. */
   extraRoutes?: Array<(app: FastifyInstance, ctx: Ctx) => void | Promise<void>>;
+  /** Çalışma kayıtları (beklenmedik yeniden başlamalar); yoksa durum ucu yalnız anlık bilgi verir. */
+  runs?: RunLog;
 }
 
 declare module "fastify" {
@@ -76,6 +80,7 @@ export async function buildApp(ctx: Ctx, opts: { logger?: boolean } = {}): Promi
   });
 
   auditRoutes(app, ctx);
+  agentStatusRoutes(ctx.runs ?? null)(app);
   configRoutes(app, ctx);
   const f = ctx.store.get().features;
   if (f.system) {

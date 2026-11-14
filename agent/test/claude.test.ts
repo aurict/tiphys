@@ -205,6 +205,18 @@ describe("Claude oturumları", () => {
     expect(fq.calls[1]).toMatchObject({ resume: "11111111-1111-4111-8111-111111111111" });
   });
 
+  it("aynı clientId ile tekrar gönderilen mesaj ikinci kez işlenmez", async () => {
+    const { app, auth, root } = await setup(async function* (text) {
+      yield result(`Tamam: ${text}`);
+    });
+    const id = (await app.inject({ method: "POST", url: "/v1/claude/sessions", headers: auth, payload: { cwd: join(root, "proje") } })).json().id as string;
+    const send = () => app.inject({ method: "POST", url: `/v1/claude/sessions/${id}/messages`, headers: auth, payload: { text: "bir kez", clientId: "abcdef0123456789" } });
+    expect((await send()).json()).toEqual({ ok: true, duplicate: false });
+    expect((await send()).json()).toEqual({ ok: true, duplicate: true }); // zaman aşımı sonrası yeniden deneme
+    const r = (await app.inject({ url: `/v1/claude/sessions/${id}`, headers: auth })).json();
+    expect(r.events.filter((e: { kind: string }) => e.kind === "user")).toHaveLength(1);
+  });
+
   it("izin sorulur, telefon onaylayınca devam eder; reddedince araç çalışmaz", async () => {
     const decisions: string[] = [];
     const { app, auth, root, fq, sent } = await setup(async function* (_text, opts) {
@@ -219,7 +231,7 @@ describe("Claude oturumları", () => {
       return r.events.find((e: { kind: string }) => e.kind === "permission");
     });
     expect(perm).toMatchObject({ toolName: "Bash", input: { command: "rm -rf build" }, reason: "yıkıcı komut" });
-    expect(sent).toContainEqual(expect.objectContaining({ key: "claude.waiting" }));
+    expect(sent).toContainEqual(expect.objectContaining({ key: "claude.waiting", data: expect.objectContaining({ requestId: expect.any(String) }) }));
     const summary = (await app.inject({ url: "/v1/claude/sessions", headers: auth })).json();
     expect(summary.live[0]).toMatchObject({ status: "waiting", pendingPermissions: 1 });
 

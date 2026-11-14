@@ -11,10 +11,12 @@ export interface Notice {
   /** Uygulamada açılacak ekran, ör. "tiphys://claude/abc" */
   link?: string;
   priority?: "low" | "default" | "high";
+  /** Bildirim düğmeleri için ek bilgi (ör. claude.waiting: oturum ve izin isteği kimliği). */
+  data?: Record<string, string>;
 }
 
 export function payloadOf(n: Notice) {
-  return JSON.stringify({ v: 1, key: n.key, params: n.params ?? {}, link: n.link ?? null, at: new Date().toISOString() });
+  return JSON.stringify({ v: 1, key: n.key, params: n.params ?? {}, link: n.link ?? null, ...(n.data ? { data: n.data } : {}), at: new Date().toISOString() });
 }
 
 export class Notifier {

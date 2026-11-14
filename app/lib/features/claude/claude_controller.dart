@@ -2,6 +2,7 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
+import 'dart:math';
 
 import 'package:flutter/foundation.dart';
 
@@ -17,10 +18,32 @@ class ClaudeEvent {
   T? get<T>(String k) => json[k] as T?;
 }
 
+/// Gönderilmeyi bekleyen mesaj (ağ yokken yazılan ya da cevabı gelmeden bağlantısı kopan).
+class OutboxItem {
+  OutboxItem({required this.id, required this.text, this.images = const []});
+  final String id; // ajan bu kimliği ikinci kez görürse mesajı tekrar işlemez
+  final String text;
+  final List<Map<String, String>> images;
+  bool sending = false;
+
+  Map<String, dynamic> toJson() => {'id': id, 'text': text, 'images': images};
+  factory OutboxItem.fromJson(Map<String, dynamic> j) => OutboxItem(
+        id: j['id'] as String,
+        text: j['text'] as String,
+        images: [for (final i in (j['images'] as List? ?? const [])) Map<String, String>.from(i as Map)],
+      );
+}
+
 class ClaudeSessionController extends ChangeNotifier {
-  ClaudeSessionController({required this.client, required this.sessionId, this.readOnlyEvents, this.stream = true}) {
+  ClaudeSessionController({required this.client, required this.sessionId, this.readOnlyEvents, this.stream = true, this.outboxDir}) {
     if (isLive && stream) appVisible.addListener(_onVisibility);
   }
+
+  /// Gönderim kutusunun diskteki klasörü (uygulama kapansa da bekleyen mesajlar kalsın). null: yalnız bellekte.
+  final String? outboxDir;
+
+  /// Henüz ajana ulaşmamış mesajlar (sırayla gönderilir).
+  final outbox = <OutboxItem>[];
 
   /// Testlerde canlı akış kapatılır.
   final bool stream;
@@ -66,6 +89,7 @@ class ClaudeSessionController extends ChangeNotifier {
       return;
     }
     final gen = ++_gen;
+    await _loadOutbox();
     try {
       final j = await client.get('/v1/claude/sessions/$sessionId');
       if (_disposed || gen != _gen) return;
@@ -120,6 +144,7 @@ class ClaudeSessionController extends ChangeNotifier {
       error = null;
       live = ''; // kopukken kaçan parçalar; tam metin "text" olayıyla gelir
       notifyListeners();
+      unawaited(_flush()); // bağlantı yokken bekleyen mesajlar
       ws.listen(
         (data) {
           if (gen != _gen) return;
@@ -184,6 +209,7 @@ class ClaudeSessionController extends ChangeNotifier {
     if (!appVisible.value || _disposed || gone) return;
     _retry?.cancel();
     _attempt = 0;
+    unawaited(_flush());
     if (summary == null) {
       unawaited(start());
     } else {
@@ -212,8 +238,80 @@ class ClaudeSessionController extends ChangeNotifier {
     events.add(e);
   }
 
-  Future<void> send(String text, {List<Map<String, String>> images = const []}) =>
-      client.post('/v1/claude/sessions/$sessionId/messages', {'text': text, if (images.isNotEmpty) 'images': images});
+  /// Mesajı gönderim kutusuna koyar ve göndermeyi dener. Ağ yoksa hata vermez: mesaj "bekliyor" olarak
+  /// kalır, bağlantı gelince kendiliğinden gider. Ajan mesajı reddederse (ör. oturum kapalı) hata fırlatır.
+  Future<void> send(String text, {List<Map<String, String>> images = const []}) async {
+    outbox.add(OutboxItem(id: _newId(), text: text, images: images));
+    await _saveOutbox();
+    notifyListeners();
+    await _flush(throwOnReject: true);
+  }
+
+  /// Bekleyen mesajı vazgeçip siler.
+  Future<void> discard(OutboxItem item) async {
+    outbox.remove(item);
+    await _saveOutbox();
+    notifyListeners();
+  }
+
+  bool _flushing = false;
+
+  Future<void> _flush({bool throwOnReject = false}) async {
+    if (_flushing || _disposed) return;
+    _flushing = true;
+    Object? rejected;
+    try {
+      while (outbox.isNotEmpty && !_disposed) {
+        final item = outbox.first;
+        item.sending = true;
+        notifyListeners();
+        try {
+          await client.post('/v1/claude/sessions/$sessionId/messages', {
+            'text': item.text,
+            if (item.images.isNotEmpty) 'images': item.images,
+            'clientId': item.id,
+          });
+          outbox.remove(item); // ulaştı (ya da daha önce ulaşmıştı: duplicate)
+        } on AgentError catch (e) {
+          item.sending = false;
+          if (e.code.startsWith('net.')) break; // ağ yok: sonra tekrar denenecek
+          outbox.remove(item); // ajan reddetti: bekletmenin anlamı yok
+          rejected = e;
+        }
+        await _saveOutbox();
+      }
+    } finally {
+      _flushing = false;
+      if (!_disposed) notifyListeners();
+    }
+    if (rejected != null && throwOnReject) throw rejected;
+  }
+
+  static final _rand = Random.secure();
+  static String _newId() => List.generate(16, (_) => _rand.nextInt(256).toRadixString(16).padLeft(2, '0')).join();
+
+  File? get _outboxFile => outboxDir == null ? null : File('$outboxDir/claude-outbox-$sessionId.json');
+
+  Future<void> _loadOutbox() async {
+    final f = _outboxFile;
+    if (f == null || outbox.isNotEmpty || !await f.exists()) return;
+    try {
+      outbox.addAll([for (final j in jsonDecode(await f.readAsString()) as List) OutboxItem.fromJson(Map<String, dynamic>.from(j as Map))]);
+    } catch (_) {
+      // bozuk dosya: yok say
+    }
+  }
+
+  Future<void> _saveOutbox() async {
+    final f = _outboxFile;
+    if (f == null) return;
+    if (outbox.isEmpty) {
+      if (await f.exists()) await f.delete();
+      return;
+    }
+    await f.parent.create(recursive: true);
+    await f.writeAsString(jsonEncode([for (final i in outbox) i.toJson()]));
+  }
 
   Future<void> interrupt() => client.post('/v1/claude/sessions/$sessionId/interrupt');
 

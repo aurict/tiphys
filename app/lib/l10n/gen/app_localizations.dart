@@ -3529,6 +3529,114 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Connection lost, reconnecting…'**
   String get claudeReconnecting;
+
+  /// No description provided for @claudeOutboxWaiting.
+  ///
+  /// In en, this message translates to:
+  /// **'waiting for connection'**
+  String get claudeOutboxWaiting;
+
+  /// No description provided for @claudeOutboxSending.
+  ///
+  /// In en, this message translates to:
+  /// **'sending…'**
+  String get claudeOutboxSending;
+
+  /// No description provided for @claudeDecisionFailedTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not send your decision'**
+  String get claudeDecisionFailedTitle;
+
+  /// No description provided for @claudeDecisionFailedBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Open Tiphys to answer the permission request.'**
+  String get claudeDecisionFailedBody;
+
+  /// No description provided for @agentSection.
+  ///
+  /// In en, this message translates to:
+  /// **'Agent'**
+  String get agentSection;
+
+  /// No description provided for @agentVersion.
+  ///
+  /// In en, this message translates to:
+  /// **'Version'**
+  String get agentVersion;
+
+  /// No description provided for @agentOutdated.
+  ///
+  /// In en, this message translates to:
+  /// **'{version} · outdated'**
+  String agentOutdated(String version);
+
+  /// No description provided for @agentOutdatedHint.
+  ///
+  /// In en, this message translates to:
+  /// **'This app expects agent {version}. Update it on the PC with tools/deploy-agent.sh (remote) or by rebuilding the agent (local).'**
+  String agentOutdatedHint(String version);
+
+  /// No description provided for @agentUptime.
+  ///
+  /// In en, this message translates to:
+  /// **'Running for'**
+  String get agentUptime;
+
+  /// No description provided for @agentUptimeDays.
+  ///
+  /// In en, this message translates to:
+  /// **'{days} d {hours} h'**
+  String agentUptimeDays(int days, int hours);
+
+  /// No description provided for @agentUptimeHours.
+  ///
+  /// In en, this message translates to:
+  /// **'{hours} h {minutes} min'**
+  String agentUptimeHours(int hours, int minutes);
+
+  /// No description provided for @agentUptimeMinutes.
+  ///
+  /// In en, this message translates to:
+  /// **'{minutes} min'**
+  String agentUptimeMinutes(int minutes);
+
+  /// No description provided for @agentMemory.
+  ///
+  /// In en, this message translates to:
+  /// **'Memory'**
+  String get agentMemory;
+
+  /// No description provided for @agentMemoryValue.
+  ///
+  /// In en, this message translates to:
+  /// **'agent {agent} · Claude/commands {children}'**
+  String agentMemoryValue(String agent, String children);
+
+  /// No description provided for @agentRestarts.
+  ///
+  /// In en, this message translates to:
+  /// **'Unexpected restarts'**
+  String get agentRestarts;
+
+  /// No description provided for @notifAgentRestartedTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'{host}: agent restarted unexpectedly'**
+  String notifAgentRestartedTitle(String host);
+
+  /// No description provided for @notifAgentRestartedBody.
+  ///
+  /// In en, this message translates to:
+  /// **'It crashed or ran out of memory. Live Claude sessions were restored.'**
+  String get notifAgentRestartedBody;
+
+  /// No description provided for @agentRestartsWindow.
+  ///
+  /// In en, this message translates to:
+  /// **'last 24 hours'**
+  String get agentRestartsWindow;
 }
 
 class _AppLocalizationsDelegate

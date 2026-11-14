@@ -1,8 +1,8 @@
 {
   "name": "tiphys-agent",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "private": true,
-  "description": "Tiphys Ajanı: telefondaki Tiphys uygulamasına Claude, sistem, servis ve izleme API'si sunar.",
+  "description": "Tiphys Ajan\u0131: telefondaki Tiphys uygulamas\u0131na Claude, sistem, servis ve izleme API'si sunar.",
   "type": "module",
   "engines": {
     "node": ">=22"

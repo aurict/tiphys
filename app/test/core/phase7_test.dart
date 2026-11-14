@@ -62,4 +62,13 @@ void main() {
     expect((f.image.width, f.image.height), (1568, 784));
     expect(a.toJson()['data'], isNotEmpty);
   });
+
+  test('ajan sürümü karşılaştırması', () {
+    expect(agentOutdated('0.2.0'), isTrue);
+    expect(agentOutdated(kExpectedAgentVersion), isFalse);
+    expect(agentOutdated('0.10.0'), isFalse);
+    expect(agentOutdated('1.0.0'), isFalse);
+    expect(agentOutdated(null), isFalse);
+    expect(agentOutdated('geliştirme'), isFalse);
+  });
 }

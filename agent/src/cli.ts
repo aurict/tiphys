@@ -116,14 +116,22 @@ async function main() {
       process.on("unhandledRejection", (e) => console.error("yakalanmamış hata (ajan çalışmaya devam ediyor):", e));
       const store = await ConfigStore.load(configPath);
       const notifier = new Notifier(() => store.get(), (m, e) => console.error(m, e ?? ""));
-      const ctx: Ctx = { store, notifier, extraRoutes: [] };
+      const { RunLog, runLogPath } = await import("./runs.ts");
+      const runs = new RunLog(runLogPath({ store } as Ctx));
+      await runs.begin();
+      const ctx: Ctx = { store, notifier, extraRoutes: [], runs };
       const { extraModules } = await import("./modules.ts");
       ctx.extraRoutes!.push(...(await extraModules(ctx)));
       const app = await buildApp(ctx, { logger: true });
       const { host, port } = store.get().listen;
       await app.listen({ host, port });
+      // Önceki çalışma düzgün kapanmadıysa (çökme, bellek yetersizliği): telefona haber ver.
+      if (runs.previousCrashed) {
+        void notifier.send({ key: "agent.restarted", params: { host: store.get().name }, link: "tiphys://system", priority: "high" });
+      }
       const stop = async () => {
         await app.close();
+        await runs.end().catch(() => {});
         process.exit(0);
       };
       process.on("SIGTERM", stop);

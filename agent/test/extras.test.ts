@@ -203,3 +203,31 @@ describe("ses → yazı", () => {
     expect(await say({})).toEqual({ text: "-m small" });
   });
 });
+
+describe("ajanın kendi sağlığı", () => {
+  it("düzgün kapanış sayılmaz; çökme (kapanış işareti yok) beklenmedik yeniden başlama sayılır", async () => {
+    const { RunLog } = await import("../src/runs.ts");
+    const file = join(await mkdtemp(join(tmpdir(), "tiphys-runs-")), "agent-runs.json");
+    const a = new RunLog(file);
+    await a.begin();
+    expect(a.previousCrashed).toBeNull();
+    await a.end(); // güncelleme/yeniden başlatma: düzgün
+
+    const b = new RunLog(file);
+    await b.begin();
+    expect(b.previousCrashed).toBeNull();
+    // b kapanmadan süreç öldü (OOM / çökme) → c açılışta bunu görür
+    const c = new RunLog(file);
+    await c.begin();
+    expect(c.previousCrashed?.start).toBe(b.startedAt.toISOString());
+    expect(c.unexpectedSince()).toHaveLength(1);
+  });
+
+  it("durum ucu sürüm, açık kalma süresi ve bellek bilgisi verir", async () => {
+    const { app, auth } = await testApp();
+    const s = (await app.inject({ url: "/v1/agent/status", headers: auth })).json();
+    expect(s).toMatchObject({ version: "0.3.0", unexpectedRestarts24h: 0, lastUnexpectedAt: null });
+    expect(s.memory.agentBytes).toBeGreaterThan(1024 * 1024);
+    expect(s.uptimeSeconds).toBeGreaterThanOrEqual(0);
+  });
+});

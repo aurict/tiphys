@@ -12,9 +12,17 @@ class _Client extends AgentClient {
   _Client(String base) : super(baseUrl: base, token: 't');
   final responses = <Map<String, dynamic>>[];
   int gets = 0;
+  bool offline = false;
+  final posts = <Map<String, dynamic>>[];
   @override
-  Future<dynamic> request(String method, String path, {Object? body, Map<String, String>? query, Duration? timeout}) async =>
-      responses[(gets++).clamp(0, responses.length - 1)];
+  Future<dynamic> request(String method, String path, {Object? body, Map<String, String>? query, Duration? timeout}) async {
+    if (method == 'POST') {
+      if (offline) throw const AgentError('net.unreachable');
+      posts.add(Map<String, dynamic>.from(body! as Map));
+      return {'ok': true};
+    }
+    return responses[(gets++).clamp(0, responses.length - 1)];
+  }
 }
 
 Map<String, dynamic> ev(int seq, String kind, [Map<String, dynamic> extra = const {}]) => {'seq': seq, 'at': '', 'kind': kind, ...extra};
@@ -113,5 +121,30 @@ void main() {
     expect(c.events.where((e) => e.seq == 5), hasLength(1)); // yinelenen eklenmez
     c.dispose();
     await server.http.close(force: true);
+  });
+
+  test('ağ yokken gönderilen mesaj kaybolmaz: diskte bekler, bağlantı gelince aynı kimlikle gider', () async {
+    final dir = Directory.systemTemp.createTempSync('tiphys-outbox-test').path;
+    final client = _Client('http://127.0.0.1:9')..responses.add({'session': {'id': 's', 'epoch': 'A', 'status': 'idle'}, 'events': []});
+    client.offline = true;
+    final c = ClaudeSessionController(client: client, sessionId: 's', stream: false, outboxDir: dir);
+    await c.start();
+    await c.send('ağ yokken yazdım'); // hata fırlatmaz
+    expect(c.outbox.single.text, 'ağ yokken yazdım');
+    expect(File('$dir/claude-outbox-s.json').existsSync(), isTrue);
+    final id = c.outbox.single.id;
+    c.dispose();
+
+    // Uygulama kapanıp açıldı: kutu diskten gelir; ağ geri geldi.
+    final client2 = _Client('http://127.0.0.1:9')..responses.add({'session': {'id': 's', 'epoch': 'A', 'status': 'idle'}, 'events': []});
+    final c2 = ClaudeSessionController(client: client2, sessionId: 's', stream: false, outboxDir: dir);
+    await c2.start();
+    expect(c2.outbox.single.id, id);
+    await c2.send('ikinci');
+    expect(client2.posts.map((p) => p['text']), ['ağ yokken yazdım', 'ikinci']); // sırayla
+    expect(client2.posts.first['clientId'], id); // aynı kimlik: ajan tekrar işlemez
+    expect(c2.outbox, isEmpty);
+    expect(File('$dir/claude-outbox-s.json').existsSync(), isFalse);
+    c2.dispose();
   });
 }

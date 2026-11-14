@@ -1131,5 +1131,81 @@
     }
   },
   "claudeSessionGone": "This session no longer exists. Open it from History to continue.",
-  "claudeReconnecting": "Connection lost, reconnecting…"
+  "claudeReconnecting": "Connection lost, reconnecting…",
+  "claudeOutboxWaiting": "waiting for connection",
+  "claudeOutboxSending": "sending…",
+  "claudeDecisionFailedTitle": "Could not send your decision",
+  "claudeDecisionFailedBody": "Open Tiphys to answer the permission request.",
+  "agentSection": "Agent",
+  "agentVersion": "Version",
+  "agentOutdated": "{version} · outdated",
+  "agentOutdatedHint": "This app expects agent {version}. Update it on the PC with tools/deploy-agent.sh (remote) or by rebuilding the agent (local).",
+  "agentUptime": "Running for",
+  "agentUptimeDays": "{days} d {hours} h",
+  "agentUptimeHours": "{hours} h {minutes} min",
+  "agentUptimeMinutes": "{minutes} min",
+  "agentMemory": "Memory",
+  "agentMemoryValue": "agent {agent} · Claude/commands {children}",
+  "agentRestarts": "Unexpected restarts",
+  "notifAgentRestartedTitle": "{host}: agent restarted unexpectedly",
+  "notifAgentRestartedBody": "It crashed or ran out of memory. Live Claude sessions were restored.",
+  "@agentOutdated": {
+    "placeholders": {
+      "version": {
+        "type": "String"
+      }
+    }
+  },
+  "@agentOutdatedHint": {
+    "placeholders": {
+      "version": {
+        "type": "String"
+      }
+    }
+  },
+  "@agentUptimeDays": {
+    "placeholders": {
+      "days": {
+        "type": "int"
+      },
+      "hours": {
+        "type": "int"
+      }
+    }
+  },
+  "@agentUptimeHours": {
+    "placeholders": {
+      "hours": {
+        "type": "int"
+      },
+      "minutes": {
+        "type": "int"
+      }
+    }
+  },
+  "@agentUptimeMinutes": {
+    "placeholders": {
+      "minutes": {
+        "type": "int"
+      }
+    }
+  },
+  "@agentMemoryValue": {
+    "placeholders": {
+      "agent": {
+        "type": "String"
+      },
+      "children": {
+        "type": "String"
+      }
+    }
+  },
+  "@notifAgentRestartedTitle": {
+    "placeholders": {
+      "host": {
+        "type": "String"
+      }
+    }
+  },
+  "agentRestartsWindow": "last 24 hours"
 }
