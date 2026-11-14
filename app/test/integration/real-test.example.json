@@ -1,0 +1,12 @@
+{
+  "tailnet": "example.ts.net",
+  "pc": "argo",
+  "server": "atlas",
+  "server2": "orion",
+  "sshUser": "user",
+  "sshKey": "~/.ssh/id_ed25519",
+  "pcTokenFile": "~/.config/tiphys/test-token",
+  "serverTokenFile": "~/.config/tiphys/test-token-server",
+  "grafanaTokenFile": "~/.config/tiphys/test-grafana-token",
+  "uptimeSite": "example.com"
+}

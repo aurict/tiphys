@@ -1,0 +1,9 @@
+{
+  "name": "tiphys-uptime-kuma-tools",
+  "private": true,
+  "type": "module",
+  "description": "Uptime Kuma kurulum ve tohumlama betiği (Socket.IO).",
+  "dependencies": {
+    "socket.io-client": "^4.8.1"
+  }
+}

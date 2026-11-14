@@ -1,0 +1,280 @@
+{
+  "$schema": "./schema/tiphys.schema.json",
+  "format": "tiphys-profile",
+  "schemaVersion": 1,
+  "exportedAt": "2026-11-14T12:00:00Z",
+  "exportedFrom": "Phone",
+  "app": {
+    "theme": "system",
+    "language": "system",
+    "lock": {
+      "biometric": true,
+      "pin": true,
+      "autoLockSeconds": 60
+    },
+    "home": {
+      "cards": [
+        "infra",
+        "claude",
+        "system",
+        "grafana",
+        "dozzle",
+        "quickAccess"
+      ],
+      "tabs": [
+        "home",
+        "claude",
+        "terminal",
+        "files",
+        "system"
+      ]
+    }
+  },
+  "hosts": [
+    {
+      "id": "argo",
+      "name": "argo (PC)",
+      "color": "#8F88EE",
+      "address": "argo.example.ts.net",
+      "ssh": {
+        "port": 22,
+        "user": "user",
+        "auth": {
+          "type": "key",
+          "keyRef": "secret:ssh-phone"
+        },
+        "tmuxSession": "tiphys"
+      },
+      "agent": {
+        "url": "https://argo.example.ts.net:7443",
+        "tokenRef": "secret:agent-argo"
+      },
+      "wake": {
+        "mac": "02:00:00:00:00:01",
+        "viaHostId": null
+      },
+      "tags": [
+        "pc"
+      ]
+    },
+    {
+      "id": "atlas",
+      "name": "atlas",
+      "color": "#6CCB9F",
+      "address": "atlas.example.ts.net",
+      "ssh": {
+        "port": 22,
+        "user": "user",
+        "auth": {
+          "type": "key",
+          "keyRef": "secret:ssh-phone"
+        },
+        "tmuxSession": "tiphys"
+      },
+      "agent": {
+        "url": "https://atlas.example.ts.net:7443",
+        "tokenRef": "secret:agent-atlas"
+      },
+      "tags": [
+        "oracle"
+      ]
+    },
+    {
+      "id": "orion",
+      "name": "orion",
+      "color": "#EE9C77",
+      "address": "orion.example.ts.net",
+      "ssh": {
+        "port": 22,
+        "user": "user",
+        "auth": {
+          "type": "key",
+          "keyRef": "secret:ssh-phone"
+        },
+        "tmuxSession": "tiphys"
+      },
+      "agent": null,
+      "tags": [
+        "oracle"
+      ]
+    }
+  ],
+  "keys": [
+    {
+      "id": "ssh-phone",
+      "label": "Telefon anahtarı",
+      "type": "ssh-ed25519",
+      "publicKey": "ssh-ed25519 AAAA... tiphys@redmi"
+    }
+  ],
+  "claude": {
+    "agentHostId": "argo",
+    "defaults": {
+      "model": "claude-opus-5-5",
+      "effort": "high",
+      "permissionMode": "bypassPermissions",
+      "profileId": "personal"
+    },
+    "profiles": [
+      {
+        "id": "personal",
+        "name": "Kişisel",
+        "configDir": "~/.claude"
+      },
+      {
+        "id": "work",
+        "name": "İş",
+        "configDir": "~/.claude-work"
+      }
+    ],
+    "favoriteFolders": [
+      "~/Desktop/website",
+      "~/Desktop/video",
+      "~/homepage"
+    ],
+    "pinnedCommands": [
+      "/review",
+      "/init",
+      "/security-review",
+      "/simplify"
+    ],
+    "notify": {
+      "done": true,
+      "waiting": true,
+      "error": true
+    }
+  },
+  "integrations": {
+    "grafana": [
+      {
+        "id": "grafana-atlas",
+        "name": "Grafana",
+        "url": "https://atlas.example.ts.net:3030",
+        "auth": {
+          "type": "token",
+          "tokenRef": "secret:grafana-atlas"
+        },
+        "defaultDashboardUid": "systems-overview",
+        "favorites": [
+          "systems-overview",
+          "web"
+        ],
+        "refreshSeconds": 30,
+        "defaultRange": "now-1h"
+      }
+    ],
+    "dozzle": [
+      {
+        "id": "dozzle-orion",
+        "name": "Dozzle (orion)",
+        "url": "https://atlas.example.ts.net:8888",
+        "auth": {
+          "type": "none"
+        }
+      }
+    ],
+    "homepage": {
+      "browserUrl": "https://argo.example.ts.net:8443",
+      "source": {
+        "type": "agentFile",
+        "hostId": "argo",
+        "path": "~/homepage/homepage/services.yaml"
+      },
+      "openIn": "external"
+    },
+    "ntfy": {
+      "url": "https://atlas.example.ts.net:2586",
+      "topics": [
+        "siteler"
+      ]
+    },
+    "scriberr": {
+      "language": "tr",
+      "model": "small"
+    },
+    "uptimeKuma": {
+      "viaHostId": "atlas",
+      "url": "https://atlas.example.ts.net:3001",
+      "defaults": {
+        "intervalSeconds": 60,
+        "alertAfterSeconds": 120,
+        "certExpiryDays": 14
+      },
+      "notifyOnRecovery": true
+    }
+  },
+  "terminal": {
+    "fontSize": 13,
+    "theme": "tiphys-dark",
+    "extraKeys": [
+      "esc",
+      "tab",
+      "ctrl",
+      "alt",
+      "up",
+      "down",
+      "left",
+      "right",
+      "|",
+      "~",
+      "/"
+    ],
+    "snippets": [
+      {
+        "name": "Docker durumu",
+        "command": "docker ps --format 'table {{.Names}}\\t{{.Status}}'",
+        "hostId": "atlas"
+      }
+    ]
+  },
+  "files": {
+    "bookmarks": [
+      {
+        "hostId": "argo",
+        "path": "~/Desktop"
+      },
+      {
+        "hostId": "atlas",
+        "path": "~/stack"
+      }
+    ],
+    "showHidden": false
+  },
+  "quickActions": [
+    {
+      "id": "restart-homepage",
+      "name": "Homepage'i yeniden başlat",
+      "icon": "refresh",
+      "hostId": "argo",
+      "command": "cd ~/homepage && docker compose restart homepage",
+      "confirm": true
+    }
+  ],
+  "notifications": {
+    "longCommandSeconds": 60,
+    "serviceDown": true,
+    "diskFullPercent": 90,
+    "pcOffline": true,
+    "grafanaAlerts": true,
+    "siteDown": true
+  },
+  "agentConfigs": {
+    "argo": {
+      "allowedRoots": [
+        "~"
+      ],
+      "claude": {
+        "profiles": {
+          "personal": "~/.claude",
+          "work": "~/.claude-work"
+        },
+        "defaultProfile": "personal"
+      },
+      "homepage": {
+        "servicesPath": "~/homepage/homepage/services.yaml",
+        "checkTimeoutMs": 5000
+      }
+    }
+  },
+  "encryptedSecrets": null
+}

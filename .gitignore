@@ -1,0 +1,28 @@
+# Kişisel / yerel — repoya girmez
+PLAN.md
+telefon/
+tools/eslestir.sh
+tools/uptime-kuma/sites.json
+*.local.json
+.devral-testi/
+.kalicilik-testi/
+
+# İmza anahtarları ve gizli bilgiler
+*.jks
+*.keystore
+key.properties
+*.env
+
+# Derleme çıktıları
+app/build/
+app/.dart_tool/
+app/.flutter-plugins
+app/.flutter-plugins-dependencies
+app/test/goldens/failures/
+agent/node_modules/
+agent/dist/
+tools/uptime-kuma/node_modules/
+tools/logo/out/
+.idea/
+.vscode/
+*.iml

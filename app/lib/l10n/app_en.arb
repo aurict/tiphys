@@ -1,0 +1,1135 @@
+{
+  "@@locale": "en",
+  "appName": "Tiphys",
+  "tabHome": "Home",
+  "tabClaude": "Claude",
+  "tabTerminal": "Terminal",
+  "tabFiles": "Files",
+  "tabSystem": "System",
+  "homeInfra": "Infrastructure",
+  "homeOnlineCount": "{online}/{total} online",
+  "@homeOnlineCount": {
+    "placeholders": {
+      "online": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "homeNoHosts": "No hosts yet",
+  "homeAddHost": "Add a host in Settings",
+  "homeClaudeSessions": "{count, plural, =0{no sessions} =1{session} other{sessions}}",
+  "@homeClaudeSessions": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "homeClaudeWaiting": "{count} waiting",
+  "@homeClaudeWaiting": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "homeNewClaudeSession": "New Claude session",
+  "homeCpu": "CPU {percent}",
+  "@homeCpu": {
+    "placeholders": {
+      "percent": {
+        "type": "String"
+      }
+    }
+  },
+  "homeRam": "RAM {percent}",
+  "@homeRam": {
+    "placeholders": {
+      "percent": {
+        "type": "String"
+      }
+    }
+  },
+  "homeQuickAccess": "Quick access",
+  "homeOpenInBrowser": "in browser",
+  "homeTabsCount": "{count, plural, =1{1 tab} other{{count} tabs}}",
+  "@homeTabsCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "homeLive": "live",
+  "homeLastHour": "CPU · 1 h",
+  "homeNotConnected": "not connected",
+  "homeSearch": "Search",
+  "commonLoading": "Loading…",
+  "commonRetry": "Try again",
+  "commonSave": "Save",
+  "commonCancel": "Cancel",
+  "commonDelete": "Delete",
+  "commonAdd": "Add",
+  "commonEdit": "Edit",
+  "commonDone": "Done",
+  "commonClose": "Close",
+  "commonCopy": "Copy",
+  "commonCopied": "Copied",
+  "commonShare": "Share",
+  "commonConfirm": "Confirm",
+  "commonContinue": "Continue",
+  "commonTest": "Test connection",
+  "commonTesting": "Testing…",
+  "commonTestOk": "Connection works",
+  "commonTestFailed": "Connection failed: {reason}",
+  "@commonTestFailed": {
+    "placeholders": {
+      "reason": {
+        "type": "String"
+      }
+    }
+  },
+  "commonOptional": "optional",
+  "commonRequired": "Required",
+  "commonNone": "None",
+  "commonEmpty": "Nothing here yet",
+  "commonError": "Something went wrong",
+  "commonUnsaved": "You have unsaved changes",
+  "commonDiscard": "Discard",
+  "commonOn": "On",
+  "commonOff": "Off",
+  "settingsTitle": "Settings",
+  "settingsHosts": "Hosts",
+  "settingsHostsHint": "Servers and the PC: address, SSH, agent, wake",
+  "settingsKeys": "Keys & secrets",
+  "settingsKeysHint": "SSH keys, API tokens, passwords",
+  "settingsClaude": "Claude",
+  "settingsClaudeHint": "Agent, defaults, profiles, favourite folders",
+  "settingsIntegrations": "Integrations",
+  "settingsIntegrationsHint": "Grafana, Dozzle, Homepage, Uptime Kuma, ntfy, Scriberr",
+  "settingsTerminal": "Terminal",
+  "settingsTerminalHint": "Font, keys bar, snippets",
+  "settingsFiles": "Files",
+  "settingsFilesHint": "Bookmarks, hidden files",
+  "settingsQuickActions": "Quick actions",
+  "settingsQuickActionsHint": "Your own one-tap commands",
+  "settingsHome": "Home screen",
+  "settingsHomeHint": "Cards and their order",
+  "settingsAppearance": "Appearance",
+  "settingsAppearanceHint": "Theme and language",
+  "settingsSecurity": "Security",
+  "settingsSecurityHint": "Biometrics, PIN, auto-lock",
+  "settingsProfile": "Profile file",
+  "settingsProfileHint": "Import, export, reset",
+  "settingsNotifications": "Notifications",
+  "settingsNotificationsHint": "What to be told about",
+  "appearanceTheme": "Theme",
+  "appearanceThemeSystem": "System",
+  "appearanceThemeLight": "Light",
+  "appearanceThemeDark": "Dark",
+  "appearanceLanguage": "Language",
+  "appearanceLanguageSystem": "System language",
+  "appearanceLanguageTr": "Türkçe",
+  "appearanceLanguageEn": "English",
+  "hostsEmpty": "No hosts. Add your PC and servers.",
+  "hostAdd": "Add host",
+  "hostEdit": "Edit host",
+  "hostId": "ID",
+  "hostIdHint": "lowercase, e.g. atlas",
+  "hostName": "Name",
+  "hostColor": "Colour",
+  "hostAddress": "Address",
+  "hostAddressHint": "Tailscale name or IP",
+  "hostSsh": "SSH",
+  "hostSshPort": "Port",
+  "hostSshUser": "User",
+  "hostSshAuth": "Sign-in",
+  "hostSshAuthKey": "SSH key",
+  "hostSshAuthPassword": "Password",
+  "hostSshKey": "Key",
+  "hostSshPassword": "Password",
+  "hostTmux": "tmux session",
+  "hostAgent": "Tiphys agent",
+  "hostAgentUrl": "Agent address",
+  "hostAgentToken": "Agent token",
+  "hostAgentNone": "No agent on this host",
+  "hostWake": "Wake-on-LAN",
+  "hostWakeMac": "MAC address",
+  "hostWakeVia": "Send from",
+  "hostTags": "Tags",
+  "hostDeleteConfirm": "Delete {name}? Things that use this host will lose it.",
+  "@hostDeleteConfirm": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "keysEmpty": "No keys or secrets yet.",
+  "keysSshKeys": "SSH keys",
+  "keysTokens": "Tokens and passwords",
+  "keyImportFile": "Import from file",
+  "keyPaste": "Paste a key",
+  "keyGenerate": "Generate on this phone",
+  "keyLabel": "Label",
+  "keyPrivate": "Private key",
+  "keyPassphrase": "Passphrase",
+  "keyPublic": "Public key",
+  "keyCopyPublic": "Copy public key",
+  "keyInstallOnHost": "Add to a host's authorized_keys",
+  "keyInvalid": "This doesn't look like an SSH private key",
+  "keyGenerated": "Key generated",
+  "secretAdd": "Add secret",
+  "secretValue": "Value",
+  "secretStoredSafely": "Stored in the Android Keystore. Never written to the profile file in plain text.",
+  "secretMissing": "Missing secret: {id}",
+  "@secretMissing": {
+    "placeholders": {
+      "id": {
+        "type": "String"
+      }
+    }
+  },
+  "profileExport": "Export",
+  "profileExportPlain": "Without secrets",
+  "profileExportPlainHint": "Safe to share. Keys and tokens are left out.",
+  "profileExportEncrypted": "Encrypted backup",
+  "profileExportEncryptedHint": "Keys and tokens included, encrypted with a passphrase.",
+  "profileImport": "Import",
+  "profileImportHint": "Choose a .tiphys.json file",
+  "profileReset": "Reset everything",
+  "profileResetConfirm": "Delete all settings and secrets on this phone?",
+  "profilePassphrase": "Passphrase",
+  "profilePassphraseRepeat": "Repeat passphrase",
+  "profilePassphraseMismatch": "Passphrases don't match",
+  "profilePassphraseShort": "At least 10 characters",
+  "profilePassphraseWrong": "Wrong passphrase or damaged file",
+  "profileExported": "Profile exported",
+  "profileImported": "Profile imported",
+  "profilePreviewTitle": "Review changes",
+  "profilePreviewAdded": "Will be added",
+  "profilePreviewChanged": "Will change",
+  "profilePreviewRemoved": "Will be removed",
+  "profilePreviewUnchanged": "No changes",
+  "profileModeMerge": "Merge",
+  "profileModeMergeHint": "Same IDs are overwritten, new ones are added, nothing is removed.",
+  "profileModeReplace": "Replace all",
+  "profileModeReplaceHint": "Everything becomes exactly what is in the file.",
+  "profileMissingSecrets": "Secrets you need to enter again",
+  "profileErrorFormat": "This is not a Tiphys profile",
+  "profileErrorNewer": "This file was made by a newer Tiphys (schema {version})",
+  "@profileErrorNewer": {
+    "placeholders": {
+      "version": {
+        "type": "int"
+      }
+    }
+  },
+  "profileErrorInvalid": "The file has errors: {details}",
+  "@profileErrorInvalid": {
+    "placeholders": {
+      "details": {
+        "type": "String"
+      }
+    }
+  },
+  "profileErrorJson": "The file is not valid JSON",
+  "securityBiometric": "Unlock with fingerprint",
+  "securityPin": "PIN",
+  "securityPinSet": "Set PIN",
+  "securityPinChange": "Change PIN",
+  "securityPinEnter": "Enter PIN",
+  "securityPinNew": "New PIN",
+  "securityPinRepeat": "Repeat PIN",
+  "securityPinWrong": "Wrong PIN",
+  "securityPinShort": "At least 6 digits",
+  "securityAutoLock": "Auto-lock",
+  "securityAutoLockSeconds": "{seconds, plural, =0{Immediately} other{After {seconds} s}}",
+  "@securityAutoLockSeconds": {
+    "placeholders": {
+      "seconds": {
+        "type": "int"
+      }
+    }
+  },
+  "lockTitle": "Tiphys is locked",
+  "lockUnlock": "Unlock",
+  "lockBiometricReason": "Unlock Tiphys",
+  "homeCardsInfra": "Infrastructure",
+  "homeCardsClaude": "Claude",
+  "homeCardsSystem": "PC status",
+  "homeCardsGrafana": "Grafana",
+  "homeCardsDozzle": "Dozzle",
+  "homeCardsQuickAccess": "Quick access",
+  "comingInPhase": "Coming in phase {phase}",
+  "@comingInPhase": {
+    "placeholders": {
+      "phase": {
+        "type": "int"
+      }
+    }
+  },
+  "relativeNow": "just now",
+  "relativeMinutes": "{count} min ago",
+  "@relativeMinutes": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "relativeHours": "{count} h ago",
+  "@relativeHours": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "relativeDays": "{count, plural, =1{yesterday} other{{count} days ago}}",
+  "@relativeDays": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "claudeAgentHost": "Agent that runs Claude",
+  "claudeModel": "Model",
+  "claudeEffort": "Thinking effort",
+  "claudePermissionMode": "Permission mode",
+  "claudeModeBypass": "Don't ask (bypass permissions)",
+  "claudeModeAcceptEdits": "Accept edits, ask for commands",
+  "claudeModeDefault": "Ask every time",
+  "claudeModePlan": "Plan first",
+  "claudeProfiles": "Profiles",
+  "claudeProfilesHint": "One per line: id = config folder",
+  "claudeFavoriteFolders": "Favourite folders",
+  "claudePinnedCommands": "Pinned slash commands",
+  "durationSeconds": "{seconds} s",
+  "@durationSeconds": {
+    "placeholders": {
+      "seconds": {
+        "type": "int"
+      }
+    }
+  },
+  "filesBookmarks": "Bookmarks",
+  "filesBookmarksHint": "One per line: host:path",
+  "filesShowHidden": "Show hidden files",
+  "hostWakeViaHint": "The wake packet must be sent from the PC's own local network. \"This phone\" works only while the phone is on that Wi-Fi.",
+  "hostWakeViaPhone": "This phone (same Wi-Fi)",
+  "integrationAdd": "Add {name}",
+  "@integrationAdd": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "integrationOthers": "Others",
+  "integrationNotSet": "not set up",
+  "integrationToken": "Use a token",
+  "integrationServiceAccountToken": "Service account token",
+  "integrationAccessToken": "Access token",
+  "integrationApiKey": "API key",
+  "integrationLogin": "Sign-in required",
+  "integrationDefaults": "Defaults",
+  "integrationDefaultDashboard": "Default dashboard UID",
+  "integrationRefreshSeconds": "Refresh (s)",
+  "integrationRange": "Time range",
+  "integrationBrowserUrl": "Address for the browser",
+  "integrationReadVia": "Read through agent on",
+  "integrationServicesFile": "services.yaml path",
+  "integrationOpenInApp": "Open services inside the app",
+  "integrationNeedsAgentHost": "Add a host with a Tiphys agent first",
+  "integrationDeleteConfirm": "Remove this integration?",
+  "notifyClaudeDone": "When a session finishes",
+  "notifyClaudeWaiting": "When it needs my approval",
+  "notifyClaudeError": "When it fails",
+  "notifySiteDown": "Site outages",
+  "notifyPcOffline": "PC goes offline",
+  "notifyServiceDown": "A service crashes",
+  "notifyGrafana": "Grafana alerts",
+  "notifyDiskFull": "Disk almost full warning at",
+  "notifyLongCommand": "Tell me when a long command finishes",
+  "ntfyTopics": "Topics to follow",
+  "ntfyTopicsHint": "Comma separated. e.g. siteler for Uptime Kuma alerts",
+  "quickActionCommand": "Command",
+  "quickActionConfirm": "Ask before running",
+  "scriberrAutoDetect": "Detect automatically",
+  "scriberrModel": "Model",
+  "scriberrModelSmall": "small (fast)",
+  "scriberrModelLarge": "large-v3 (accurate)",
+  "secretNeedsValue": "missing",
+  "secretUnused": "not used by any setting",
+  "terminalFontSize": "Font size",
+  "terminalExtraKeys": "Extra keys bar",
+  "terminalExtraKeysHint": "Space separated: esc tab ctrl alt up down left right | ~ /",
+  "terminalSnippets": "Snippets",
+  "terminalSnippetsHint": "One per line: name | command | host (optional)",
+  "terminalThemeNote": "Terminal colours follow the app theme.",
+  "uptimeInterval": "Check interval (s)",
+  "uptimeAlertAfter": "Alert after down for (s)",
+  "uptimeCertDays": "Warn days before SSL expiry",
+  "uptimeCredentialsOnAgent": "The Uptime Kuma login stays on the agent; the phone never stores it.",
+  "uptimeNotifyRecovery": "Tell me when a site is back",
+  "sshNoSsh": "SSH is not set up for this host",
+  "sshUnreachable": "Host unreachable (is Tailscale on?)",
+  "sshAuthFailed": "Sign-in rejected: check the key or password",
+  "sshTimeout": "Connection timed out",
+  "sshHostKeyChanged": "The server key changed! Connection stopped for safety.",
+  "sshConnecting": "Connecting to {name}…",
+  "@sshConnecting": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "sshDisconnected": "Disconnected. The tmux session keeps running on the server.",
+  "sshReconnect": "Reconnect",
+  "terminalOpenOn": "New terminal on {name}",
+  "@terminalOpenOn": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "terminalPickHost": "Pick a host above to open a terminal.",
+  "terminalNoSshHosts": "No host with SSH yet. Add one in Settings › Hosts.",
+  "filesUpload": "Upload here",
+  "filesUploaded": "Uploaded {name}",
+  "@filesUploaded": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "filesUp": "Parent folder",
+  "filesTerminalHere": "Terminal here",
+  "filesClaudeHere": "Claude here",
+  "filesNewFolder": "New folder",
+  "filesPasteHere": "Paste here",
+  "filesEmptyFolder": "This folder is empty",
+  "filesPreview": "Preview",
+  "filesDownload": "Download / share",
+  "filesRename": "Rename",
+  "filesCopy": "Copy",
+  "filesMove": "Move",
+  "filesTrash": "Move to trash",
+  "filesTrashConfirm": "Move {name} to the trash? You can restore it from the desktop trash.",
+  "@filesTrashConfirm": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "filesTrashed": "Moved to trash",
+  "filesMore": "More",
+  "filesBinary": "Binary file: use download to open it",
+  "keyNeedsPassphrase": "This key is protected; enter its passphrase",
+  "keyInstalled": "Key added to {name}",
+  "@keyInstalled": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "keyDeleteConfirm": "Delete the key {name} from this phone?",
+  "@keyDeleteConfirm": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "systemMonitoring": "Monitoring",
+  "systemSites": "Sites (Uptime Kuma)",
+  "systemUptime": "up {days} d {hours} h",
+  "@systemUptime": {
+    "placeholders": {
+      "days": {
+        "type": "int"
+      },
+      "hours": {
+        "type": "int"
+      }
+    }
+  },
+  "systemDisk": "Disk",
+  "systemPower": "Power",
+  "systemWake": "Wake up (Wake-on-LAN)",
+  "systemWakeSent": "Wake packet sent to {name}",
+  "@systemWakeSent": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "systemSuspend": "Sleep",
+  "systemReboot": "Restart",
+  "systemPowerOff": "Shut down",
+  "systemPowerConfirm": "{action} {host}?",
+  "@systemPowerConfirm": {
+    "placeholders": {
+      "action": {
+        "type": "String"
+      },
+      "host": {
+        "type": "String"
+      }
+    }
+  },
+  "systemPowerSent": "Sent: {action}",
+  "@systemPowerSent": {
+    "placeholders": {
+      "action": {
+        "type": "String"
+      }
+    }
+  },
+  "systemServices": "Services",
+  "systemScopeUser": "User",
+  "systemScopeSystem": "System",
+  "systemLogs": "Logs",
+  "systemRestart": "Restart",
+  "systemStart": "Start",
+  "systemStop": "Stop",
+  "systemDone": "Done",
+  "systemShowAll": "Show all ({count})",
+  "@systemShowAll": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "agentUnreachable": "Agent unreachable (is the PC on and Tailscale connected?)",
+  "agentTls": "Secure connection failed",
+  "agentBadToken": "The agent rejected this phone; pair again",
+  "agentWrongTailnetUser": "This Tailscale account is not allowed on the agent",
+  "agentPermissionDenied": "Not permitted (system services need root)",
+  "agentFeatureOff": "This feature is turned off on the agent",
+  "pairScanTitle": "Pair with agent",
+  "pairScanHint": "On the server run: tiphys-agent pair --name \"Phone\" and scan the QR code",
+  "pairNotTiphys": "This is not a Tiphys pairing code",
+  "pairWithQr": "Pair with QR code",
+  "agentSettings": "Agent settings",
+  "agentFeatures": "Features",
+  "agentRestartHint": "Feature changes apply after the agent restarts.",
+  "agentRestartRequired": "Saved. Restart the agent to apply feature changes.",
+  "agentAllowedRoots": "Allowed folders",
+  "agentAllowedRootsHint": "One per line. Claude and file actions stay inside these.",
+  "agentDevices": "Paired devices",
+  "agentRevoke": "Revoke",
+  "agentRevokeConfirm": "Revoke access for {name}?",
+  "@agentRevokeConfirm": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "agentLockAll": "Lock everything",
+  "agentLockAllHint": "Revokes every paired device, including this phone. Pair again on the server to get back in.",
+  "agentLockAllConfirm": "Revoke all devices on this agent, including this phone?",
+  "agentFeatSystem": "System metrics",
+  "agentFeatServices": "systemd services",
+  "agentFeatWatch": "Watch hosts (offline alerts)",
+  "claudeLive": "Open sessions",
+  "claudeHistory": "History",
+  "claudeContinue": "Continue",
+  "claudeStart": "Start",
+  "claudeFolder": "Folder",
+  "claudeChooseFolder": "Choose",
+  "claudePromptHint": "What should Claude do?",
+  "claudeQueueHint": "Add a message to the queue…",
+  "claudeModeBypassShort": "Don't ask",
+  "claudeModeAcceptShort": "Accept edits",
+  "claudeModeDefaultShort": "Ask",
+  "claudeStatusRunning": "working",
+  "claudeStatusWaiting": "waiting for you",
+  "claudeStatusIdle": "done",
+  "claudeStatusError": "error",
+  "claudeStatusStopped": "closed",
+  "claudeThinking": "Thinking",
+  "claudePermissionTitle": "Claude wants to use {tool}",
+  "@claudePermissionTitle": {
+    "placeholders": {
+      "tool": {
+        "type": "String"
+      }
+    }
+  },
+  "claudeAllow": "Allow",
+  "claudeDeny": "Deny",
+  "claudeAllowed": "Allowed",
+  "claudeDenied": "Denied",
+  "claudeResultLine": "{turns} turns · {seconds} s",
+  "@claudeResultLine": {
+    "placeholders": {
+      "turns": {
+        "type": "int"
+      },
+      "seconds": {
+        "type": "int"
+      }
+    }
+  },
+  "claudeWorking": "Claude is working…",
+  "claudeSlashCommands": "Slash commands",
+  "claudeStop": "Stop",
+  "claudeSend": "Send",
+  "claudeEndSession": "End session",
+  "integrationAuthFailed": "Sign-in rejected (check the token)",
+  "siteUp": "Up",
+  "siteDown": "Down",
+  "siteMaintenance": "Maintenance",
+  "sitePaused": "Paused",
+  "sitePending": "Pending",
+  "sitesAllUp": "All {count} sites are up",
+  "@sitesAllUp": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "sitesSomeDown": "{count} down",
+  "@sitesSomeDown": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "siteAdd": "Add site",
+  "siteDeleteConfirm": "Stop monitoring {name}? Its history is deleted too.",
+  "@siteDeleteConfirm": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "sitePause": "Pause",
+  "siteResume": "Resume",
+  "sitePing": "Response",
+  "sitePingChart": "Response time chart",
+  "siteIncidents": "Outages and recoveries",
+  "siteNoIncidents": "No outages recorded",
+  "siteType": "Check type",
+  "siteKeyword": "Keyword",
+  "siteNotifyNote": "Down and back-up alerts go to your phone through ntfy (topic: siteler).",
+  "daysShort": "d",
+  "hoursShort": "h",
+  "dozzlePause": "Pause",
+  "dozzleResume": "Resume",
+  "dozzleBuffered": "{count} new lines waiting",
+  "@dozzleBuffered": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "dozzleNoLogs": "No log lines",
+  "homepageOpenReal": "Open Homepage in the browser",
+  "homepageDown": "Not responding: {names}",
+  "@homepageDown": {
+    "placeholders": {
+      "names": {
+        "type": "String"
+      }
+    }
+  },
+  "grafanaAll": "All",
+  "grafanaOpenPanel": "{type} panel: open in browser",
+  "@grafanaOpenPanel": {
+    "placeholders": {
+      "type": {
+        "type": "String"
+      }
+    }
+  },
+  "dozzleRunning": "running",
+  "dozzleStopped": "stopped or unhealthy",
+  "notifClaudeDoneTitle": "Claude finished",
+  "notifClaudeWaitingTitle": "Claude needs your approval",
+  "notifClaudeWaitingBody": "{title} · wants to use {tool}",
+  "@notifClaudeWaitingBody": {
+    "placeholders": {
+      "title": {
+        "type": "String"
+      },
+      "tool": {
+        "type": "String"
+      }
+    }
+  },
+  "notifClaudeErrorTitle": "Claude stopped with an error",
+  "notifHostOfflineTitle": "{host} is offline",
+  "@notifHostOfflineTitle": {
+    "placeholders": {
+      "host": {
+        "type": "String"
+      }
+    }
+  },
+  "notifHostOfflineBody": "No answer for {minutes} min",
+  "@notifHostOfflineBody": {
+    "placeholders": {
+      "minutes": {
+        "type": "int"
+      }
+    }
+  },
+  "notifHostOnlineTitle": "{host} is back online",
+  "@notifHostOnlineTitle": {
+    "placeholders": {
+      "host": {
+        "type": "String"
+      }
+    }
+  },
+  "notifTestTitle": "Tiphys test notification",
+  "pushThisPhone": "This phone",
+  "pushEnable": "Turn on notifications",
+  "pushEnabled": "Notifications are on",
+  "pushNoDistributor": "Install the ntfy app first, set its default server to your own ntfy server (e.g. :2586) and sign in. Tiphys then receives notifications through it, without Google.",
+  "pushChooseDistributor": "Deliver through",
+  "pushRegistered": "Registered with: {hosts}",
+  "@pushRegistered": {
+    "placeholders": {
+      "hosts": {
+        "type": "String"
+      }
+    }
+  },
+  "pushSendTest": "Send a test notification",
+  "pushDisable": "Turn off",
+  "pushSitesTopic": "Site alerts (Uptime Kuma) come to the ntfy app directly: subscribe to the siteler topic there.",
+  "pushOpenNtfy": "Subscribe in ntfy",
+  "grafanaNoAlerts": "No active alerts",
+  "grafanaFiring": "Firing",
+  "grafanaPending": "Pending",
+  "grafanaNoData": "No data",
+  "grafanaNormal": "Normal",
+  "agentPathNotAllowed": "This folder is outside the agent's allowed roots",
+  "auditEmpty": "No actions recorded yet",
+  "claudeAttachImage": "Attach photo",
+  "claudeRemoveImage": "Remove photo",
+  "claudeUsageSemantics": "Usage: {usage}",
+  "@claudeUsageSemantics": {
+    "placeholders": {
+      "usage": {
+        "type": "String"
+      }
+    }
+  },
+  "clipboardCopiedPhone": "Copied to phone clipboard",
+  "clipboardCopyPhone": "Copy to phone",
+  "clipboardFromPc": "Get from PC",
+  "clipboardPastePhone": "Paste from phone",
+  "clipboardPcContent": "PC clipboard",
+  "clipboardSent": "Sent to PC clipboard",
+  "clipboardToPc": "Send to PC",
+  "commonCreate": "Create",
+  "commonNothingFound": "Nothing found",
+  "durationHours": "{n} h",
+  "@durationHours": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "durationMinutes": "{n} min",
+  "@durationMinutes": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "editorChangedOnDisk": "The file changed on the computer since you opened it. Overwrite it with your version?",
+  "editorDiscard": "Discard",
+  "editorDiscardChanges": "Discard unsaved changes?",
+  "editorNotText": "This file is not text (or is larger than 1 MB), so it can't be edited here.",
+  "editorOverwrite": "Overwrite",
+  "editorSaved": "Saved",
+  "editorWrap": "Wrap lines",
+  "filesEdit": "Edit",
+  "gitBranches": "Branches",
+  "gitChanges": "Changes ({n})",
+  "@gitChanges": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "gitClean": "No changes, working tree is clean",
+  "gitCommitAll": "Commit all changes",
+  "gitCommitMessage": "Commit message",
+  "gitCommitStaged": "Commit {n} staged",
+  "@gitCommitStaged": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "gitCommitted": "Committed",
+  "gitDetached": "(detached HEAD)",
+  "gitDiffTruncated": "Diff is too long; only the first 512 KB is shown.",
+  "gitDiscard": "Discard changes",
+  "gitDiscardConfirm": "Discard all changes in {file}? This can't be undone.",
+  "@gitDiscardConfirm": {
+    "placeholders": {
+      "file": {
+        "type": "String"
+      }
+    }
+  },
+  "gitFetch": "Fetch",
+  "gitHistory": "History",
+  "gitMessageRequired": "Write a commit message",
+  "gitNewBranch": "New branch",
+  "gitNoCommits": "No commits yet",
+  "gitNoDiff": "No differences",
+  "gitNothingToCommit": "Nothing to commit",
+  "gitNotRepo": "This folder is not a Git repository",
+  "gitPull": "Pull",
+  "gitPullFailed": "Couldn't fetch from the remote",
+  "gitPush": "Push",
+  "gitPushFailed": "Push failed",
+  "gitRemoteBranches": "Remote branches",
+  "gitStage": "Stage",
+  "gitStageAll": "Stage all",
+  "gitStaged": "Staged",
+  "gitSwitched": "Switched to {branch}",
+  "@gitSwitched": {
+    "placeholders": {
+      "branch": {
+        "type": "String"
+      }
+    }
+  },
+  "gitUnstage": "Unstage",
+  "gitUnstaged": "Not staged",
+  "maintenanceActive": "In maintenance",
+  "maintenanceAdd": "New maintenance window",
+  "maintenanceDeleteConfirm": "Delete maintenance window \"{name}\"?",
+  "@maintenanceDeleteConfirm": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "maintenanceDuration": "Duration (starts now)",
+  "maintenanceEmpty": "No maintenance windows",
+  "maintenanceEnded": "Ended",
+  "maintenanceExplain": "During a maintenance window, downtime of the selected sites is not alerted.",
+  "maintenanceInactive": "Inactive",
+  "maintenanceName": "Name",
+  "maintenanceNeedsSites": "Enter a name and pick at least one site",
+  "maintenanceScheduled": "Scheduled",
+  "maintenanceTitle": "Maintenance windows",
+  "portsExplain": "Ports listening only on localhost can be shared to your tailnet (not the internet) and opened on the phone.",
+  "portsLocalOnly": "Local only ({address})",
+  "@portsLocalOnly": {
+    "placeholders": {
+      "address": {
+        "type": "String"
+      }
+    }
+  },
+  "portsOpen": "Reachable over tailnet ({address})",
+  "@portsOpen": {
+    "placeholders": {
+      "address": {
+        "type": "String"
+      }
+    }
+  },
+  "portsShare": "Share",
+  "portsShareConfirm": "Share port {port} to your tailnet over HTTPS?",
+  "@portsShareConfirm": {
+    "placeholders": {
+      "port": {
+        "type": "int"
+      }
+    }
+  },
+  "portsShared": "Shared to tailnet (HTTPS)",
+  "portsUnshare": "Stop sharing",
+  "processesByCpu": "CPU",
+  "processesByMemory": "Memory",
+  "processesConfirm": "{action}: {name} ({pid})?",
+  "@processesConfirm": {
+    "placeholders": {
+      "action": {
+        "type": "String"
+      },
+      "name": {
+        "type": "String"
+      },
+      "pid": {
+        "type": "int"
+      }
+    }
+  },
+  "processesKill": "Force kill",
+  "processesTerminate": "Terminate",
+  "quickActionNoOutput": "(no output)",
+  "quickActionRun": "Run",
+  "quickActionRunConfirm": "Run \"{name}\" on {host}?",
+  "@quickActionRunConfirm": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      },
+      "host": {
+        "type": "String"
+      }
+    }
+  },
+  "quickActionRunning": "Running…",
+  "quickActionsTitle": "Quick actions",
+  "siteAddToHomepage": "Also add to Homepage",
+  "siteCertExpiry": "SSL expiry warning",
+  "siteCertExpiryHint": "Notify before the certificate expires",
+  "siteHomepageFailed": "Site added, but Homepage couldn't be updated",
+  "siteHomepageGroup": "Homepage group",
+  "toolsAudit": "Activity log",
+  "toolsClipboard": "Clipboard",
+  "toolsPorts": "Ports",
+  "toolsPortsHint": "Open dev servers on the phone",
+  "toolsProcesses": "Processes",
+  "toolsScreenshot": "Screenshot",
+  "toolsScreenshotRetake": "Take again",
+  "toolsTitle": "Tools",
+  "voiceEmpty": "No speech recognized",
+  "voiceNoPermission": "Microphone permission is required",
+  "voiceRecord": "Voice message",
+  "voiceRecording": "Recording {time}",
+  "@voiceRecording": {
+    "placeholders": {
+      "time": {
+        "type": "String"
+      }
+    }
+  },
+  "voiceStop": "Stop and transcribe",
+  "voiceTranscribing": "Transcribing…",
+  "notifDiskFullTitle": "{host}: disk almost full",
+  "@notifDiskFullTitle": {
+    "placeholders": {
+      "host": {
+        "type": "String"
+      }
+    }
+  },
+  "notifDiskFullBody": "{mount} is {percent}% full",
+  "@notifDiskFullBody": {
+    "placeholders": {
+      "mount": {
+        "type": "String"
+      },
+      "percent": {
+        "type": "int"
+      }
+    }
+  },
+  "notifDiskOkTitle": "{host}: disk space OK again",
+  "@notifDiskOkTitle": {
+    "placeholders": {
+      "host": {
+        "type": "String"
+      }
+    }
+  },
+  "notifServiceFailedTitle": "{host}: service failed",
+  "@notifServiceFailedTitle": {
+    "placeholders": {
+      "host": {
+        "type": "String"
+      }
+    }
+  },
+  "notifServiceRecoveredTitle": "{host}: service recovered",
+  "@notifServiceRecoveredTitle": {
+    "placeholders": {
+      "host": {
+        "type": "String"
+      }
+    }
+  },
+  "notifGrafanaAlertTitle": "Alert: {name}",
+  "@notifGrafanaAlertTitle": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "notifGrafanaResolvedTitle": "Resolved: {name}",
+  "@notifGrafanaResolvedTitle": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "notifCommandDoneTitle": "{host}: command finished",
+  "@notifCommandDoneTitle": {
+    "placeholders": {
+      "host": {
+        "type": "String"
+      }
+    }
+  },
+  "notifCommandFailedTitle": "{host}: command failed (exit {code})",
+  "@notifCommandFailedTitle": {
+    "placeholders": {
+      "host": {
+        "type": "String"
+      },
+      "code": {
+        "type": "int"
+      }
+    }
+  },
+  "notifCommandBody": "{command} · {seconds} s",
+  "@notifCommandBody": {
+    "placeholders": {
+      "command": {
+        "type": "String"
+      },
+      "seconds": {
+        "type": "int"
+      }
+    }
+  },
+  "agentAlerts": "Alerts (disk, services, Grafana)",
+  "agentAlertsDiskPercent": "Disk full threshold (%)",
+  "agentAlertsInterval": "Check every (seconds)",
+  "agentAlertsFailedServices": "Notify when a systemd service fails",
+  "agentAlertsGrafana": "Grafana alerts",
+  "agentAlertsDatasources": "Prometheus datasource UIDs",
+  "agentAlertsDatasourcesHint": "Comma separated; Grafana-managed alerts are always included",
+  "agentAlertsUseProfileGrafana": "Use Grafana from my profile",
+  "agentFeatDesktop": "Desktop (clipboard, screenshot)",
+  "agentFeatTranscribe": "Voice transcription",
+  "grafanaAlerts": "Alerts",
+  "grafanaActiveOnly": "Active",
+  "grafanaAllRules": "All rules",
+  "grafanaAllNormal": "All {n} rules are normal",
+  "@grafanaAllNormal": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "grafanaActiveAlerts": "{active} of {total} rules active",
+  "@grafanaActiveAlerts": {
+    "placeholders": {
+      "active": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "grafanaAlertsNote": "Phone notifications for these alerts come from the agent (Agent settings › Alerts).",
+  "dozzleShareLog": "Share log file",
+  "shareTitle": "Send to computer",
+  "shareItems": "{n, plural, =1{1 item} other{{n} items}}",
+  "@shareItems": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "shareText": "Text",
+  "shareToHost": "Computer",
+  "shareFolder": "Folder",
+  "shareSend": "Send",
+  "shareSent": "{n} item(s) sent to {host}",
+  "@shareSent": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      },
+      "host": {
+        "type": "String"
+      }
+    }
+  },
+  "claudeWorktree": "Separate git worktree",
+  "claudeWorktreeHint": "New branch in a sibling folder; your working copy stays untouched",
+  "agentNoDisplay": "No desktop session on the computer (nobody logged in?)",
+  "agentPortPublic": "This port is already reachable over the tailnet",
+  "grafanaExplore": "Quick query",
+  "grafanaExploreHint": "PromQL / LogQL, like Explore",
+  "grafanaExploreEmpty": "Write a query and run it",
+  "grafanaNoDatasources": "No Prometheus or Loki datasource",
+  "grafanaRun": "Run",
+  "filesShowAll": "Show {count} more",
+  "@filesShowAll": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "ntfyExplain": "Notifications arrive in the ntfy app on this phone; sign in to the server there (Settings › Manage users). The topics below become \"Open in ntfy\" shortcuts.",
+  "scriberrExplain": "Voice messages are transcribed on the PC through the Tiphys agent, which holds the Scriberr key. Choose the language and model here.",
+  "commonRefresh": "Refresh",
+  "claudeInTerminalNote": "This session is open in a terminal on the PC. Read it here or take it over on the phone.",
+  "claudeTerminalSessions": "Open in terminal",
+  "claudeTerminalSessionsHint": "Claude Code sessions running on the PC outside Tiphys. Read-only here.",
+  "claudePromptOptional": "First message (optional)",
+  "claudeUntitled": "New session",
+  "claudeTakeover": "Take over on phone",
+  "claudeTakeoverConfirm": "Claude in the PC terminal will be closed and this session continues here with its full history. To go back to the terminal later run:\nclaude --resume {id}",
+  "claudeTerminalBusy": "Claude is working in the terminal right now. Try again when it finishes.",
+  "claudeTerminalGone": "This session is no longer open in the terminal.",
+  "claudeTerminalStuck": "The terminal session did not close. Close it on the PC and try again.",
+  "@claudeTakeoverConfirm": {
+    "placeholders": {
+      "id": {
+        "type": "String"
+      }
+    }
+  },
+  "voiceTranscribingProgress": "Transcribing on the server · {secs} s / ~{estimate} s",
+  "claudeRestored": "Agent restarted · continue where you left off",
+  "claudeCompacted": "Earlier part was summarized",
+  "@voiceTranscribingProgress": {
+    "placeholders": {
+      "secs": {
+        "type": "int"
+      },
+      "estimate": {
+        "type": "int"
+      }
+    }
+  },
+  "claudeSessionGone": "This session no longer exists. Open it from History to continue.",
+  "claudeReconnecting": "Connection lost, reconnecting…"
+}
