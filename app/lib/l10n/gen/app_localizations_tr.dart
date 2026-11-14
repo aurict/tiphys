@@ -1939,4 +1939,74 @@ class AppLocalizationsTr extends AppLocalizations {
 
   @override
   String get claudeReconnecting => 'Bağlantı koptu, yeniden bağlanılıyor…';
+
+  @override
+  String get claudeOutboxWaiting => 'bağlantı bekleniyor';
+
+  @override
+  String get claudeOutboxSending => 'gönderiliyor…';
+
+  @override
+  String get claudeDecisionFailedTitle => 'Karar gönderilemedi';
+
+  @override
+  String get claudeDecisionFailedBody =>
+      'İzin isteğini yanıtlamak için Tiphys’i aç.';
+
+  @override
+  String get agentSection => 'Ajan';
+
+  @override
+  String get agentVersion => 'Sürüm';
+
+  @override
+  String agentOutdated(String version) {
+    return '$version · güncel değil';
+  }
+
+  @override
+  String agentOutdatedHint(String version) {
+    return 'Bu uygulama $version sürümlü ajan bekliyor. PC\'de tools/deploy-agent.sh ile (uzak sunucu) ya da ajanı yeniden derleyerek (yerel) güncelle.';
+  }
+
+  @override
+  String get agentUptime => 'Açık kalma süresi';
+
+  @override
+  String agentUptimeDays(int days, int hours) {
+    return '$days g $hours sa';
+  }
+
+  @override
+  String agentUptimeHours(int hours, int minutes) {
+    return '$hours sa $minutes dk';
+  }
+
+  @override
+  String agentUptimeMinutes(int minutes) {
+    return '$minutes dk';
+  }
+
+  @override
+  String get agentMemory => 'Bellek';
+
+  @override
+  String agentMemoryValue(String agent, String children) {
+    return 'ajan $agent · Claude/komutlar $children';
+  }
+
+  @override
+  String get agentRestarts => 'Beklenmedik yeniden başlama';
+
+  @override
+  String notifAgentRestartedTitle(String host) {
+    return '$host: ajan beklenmedik şekilde yeniden başladı';
+  }
+
+  @override
+  String get notifAgentRestartedBody =>
+      'Çöktü ya da belleği bitti. Canlı Claude oturumları geri yüklendi.';
+
+  @override
+  String get agentRestartsWindow => 'son 24 saat';
 }

@@ -3,6 +3,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:path_provider/path_provider.dart';
 import 'package:go_router/go_router.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
@@ -20,6 +21,9 @@ final claudeHostProvider = Provider<Host?>((ref) {
   final p = ref.watch(profileProvider);
   return p.host(p.claude.agentHostId) ?? p.hosts.where((h) => h.agent != null).firstOrNull;
 });
+
+/// Gönderim kutusu klasörü (widget testlerinde null: kutu yalnız bellekte, gerçek disk G/Ç yok).
+final outboxDirProvider = Provider<Future<String?> Function()>((ref) => () async => (await getApplicationDocumentsDirectory()).path);
 
 final claudeSessionsProvider = FutureProvider.autoDispose<Map<String, dynamic>>((ref) async {
   final host = ref.watch(claudeHostProvider);

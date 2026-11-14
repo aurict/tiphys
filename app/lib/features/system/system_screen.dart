@@ -15,6 +15,7 @@ import '../../widgets/forms.dart';
 import '../../widgets/surfaces.dart';
 import '../files/files_screen.dart' show formatSize;
 import 'agent_providers.dart';
+import 'agent_section.dart';
 import 'tools.dart';
 import 'wake.dart';
 
@@ -68,6 +69,7 @@ class _SystemScreenState extends ConsumerState<SystemScreen> {
           if (host != null) ...[
             if (host.agent != null) _Metrics(host: host),
             _Power(host: host),
+            if (host.agent != null) AgentSection(host: host),
             ToolsSection(host: host),
             if (host.agent != null) ...[
               _Services(host: host),

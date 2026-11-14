@@ -8,6 +8,25 @@ import 'dart:typed_data';
 import '../profile/model.dart';
 import '../secrets/secret_store.dart';
 
+/// Bu uygulama sürümünün beklediği ajan sürümü; daha eski ajan için "güncel değil" uyarısı gösterilir.
+const kExpectedAgentVersion = '0.3.0';
+
+/// "0.2.0" < "0.3.0" ? (yalnız sayısal x.y.z; anlaşılmayan sürüm eski sayılmaz)
+bool agentOutdated(String? version) {
+  if (version == null) return false;
+  List<int>? p(String v) {
+    final m = RegExp(r'^(\d+)\.(\d+)\.(\d+)').firstMatch(v);
+    return m == null ? null : [for (var i = 1; i <= 3; i++) int.parse(m.group(i)!)];
+  }
+
+  final a = p(version), b = p(kExpectedAgentVersion);
+  if (a == null || b == null) return false;
+  for (var i = 0; i < 3; i++) {
+    if (a[i] != b[i]) return a[i] < b[i];
+  }
+  return false;
+}
+
 class AgentError implements Exception {
   const AgentError(this.code, [this.params = const {}, this.status]);
 

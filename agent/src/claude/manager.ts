@@ -140,6 +140,8 @@ export class LiveSession {
   options: Options | null = null;
   readonly pending = new Map<string, (r: PermissionResult) => void>();
   readonly listeners = new Set<(e: ClaudeEvent) => void>();
+  /** Son alınan mesaj kimlikleri (tekrar gönderimi ayıklamak için; en fazla 200). */
+  readonly seenClientIds = new Set<string>();
 
   constructor(cwd: string, profileId: string, model: string, permissionMode: PermissionMode, title: string, id?: string) {
     this.id = id ?? randomUUID();
@@ -387,6 +389,8 @@ export class ClaudeManager {
           params: { title: s.title, tool: toolName },
           link: `tiphys://claude/${s.id}`,
           priority: "high",
+          // Telefon bildirimdeki "İzin ver / Reddet" düğmeleriyle uygulamayı açmadan karar verebilsin.
+          data: { sessionId: s.id, requestId },
         });
       });
     s.options = {
@@ -502,8 +506,14 @@ export class ClaudeManager {
     }
   }
 
-  send(s: LiveSession, text: string, images: Array<{ mediaType: string; data: string }> = []) {
+  /** Mesajı kuyruğa koyar. Aynı `clientId` daha önce geldiyse hiçbir şey yapmaz ve false döner. */
+  send(s: LiveSession, text: string, images: Array<{ mediaType: string; data: string }> = [], clientId?: string): boolean {
     if (s.status === "stopped") throw new AppError("agent.claude.sessionStopped", 409, { id: s.id });
+    if (clientId) {
+      if (s.seenClientIds.has(clientId)) return false;
+      s.seenClientIds.add(clientId);
+      if (s.seenClientIds.size > 200) s.seenClientIds.delete(s.seenClientIds.values().next().value!);
+    }
     const content = [
       ...images.map((i) => ({ type: "image" as const, source: { type: "base64" as const, media_type: i.mediaType as "image/png", data: i.data } })),
       { type: "text" as const, text },
@@ -516,6 +526,7 @@ export class ClaudeManager {
     s.emit({ kind: "user", text, images: images.length });
     if (s.status === "idle" || s.status === "error") s.setStatus("running");
     this.#launch(s);
+    return true;
   }
 
   async interrupt(s: LiveSession) {

@@ -12,6 +12,7 @@ import 'package:tiphys/core/profile/model.dart';
 import 'package:tiphys/core/profile/repository.dart';
 import 'package:tiphys/core/secrets/secret_store.dart';
 import 'package:tiphys/core/security/app_lock.dart';
+import 'package:tiphys/features/claude/claude_screen.dart';
 import 'package:tiphys/features/home/home_data.dart';
 import 'package:tiphys/features/lock/lock_gate.dart';
 import 'package:tiphys/state/providers.dart';
@@ -76,10 +77,11 @@ class Harness {
         tcpProbeProvider.overrideWithValue((host, port) async => true),
         agentHealthFnProvider.overrideWithValue((url) async => {
               'name': 'argo',
-              'version': '0.2.0',
+              'version': '0.3.0',
               'features': {for (final f in ['system', 'services', 'docker', 'power', 'git', 'desktop', 'ports', 'transcribe', 'claude', 'homepage']) f: true},
             }),
         claudeStreamEnabledProvider.overrideWithValue(false),
+        outboxDirProvider.overrideWithValue(() async => null),
         grafanaFactoryProvider.overrideWithValue((g) async => FakeGrafana()),
         dozzleFactoryProvider.overrideWithValue((d) async => FakeDozzle()),
       ];
@@ -156,6 +158,16 @@ class FakeAgent extends AgentClient {
     }
     if (method == 'POST' && path == '/v1/claude/sessions') {
       return {'id': 'md1', 'status': 'idle', 'title': ''};
+    }
+    if (path == '/v1/agent/status') {
+      return {
+        'version': '0.3.0',
+        'startedAt': '2026-11-14T08:00:00Z',
+        'uptimeSeconds': 3 * 3600 + 25 * 60,
+        'memory': {'agentBytes': 96 * 1024 * 1024, 'childrenBytes': 1300 * 1024 * 1024},
+        'unexpectedRestarts24h': 1,
+        'lastUnexpectedAt': '2026-11-14T07:59:00Z',
+      };
     }
     if (path == '/v1/system') {
       return {

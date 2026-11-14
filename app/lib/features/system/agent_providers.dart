@@ -55,6 +55,12 @@ final containersProvider = FutureProvider.autoDispose.family<List<Map<String, dy
   return (j['containers'] as List).cast<Map<String, dynamic>>();
 });
 
+/// Ajanın kendi durumu: sürüm, açık kalma süresi, bellek, beklenmedik yeniden başlamalar (0.3.0+).
+final agentStatusProvider = FutureProvider.autoDispose.family<Map<String, dynamic>, String>((ref, hostId) async {
+  autoRefresh(ref, const Duration(seconds: 30));
+  return withAgent(ref, hostId, (c) => c.get('/v1/agent/status'));
+});
+
 /// Token'sız sağlık kontrolü (testlerde değiştirilir).
 final agentHealthFnProvider = Provider<Future<Map<String, dynamic>> Function(String url)>((ref) => AgentClient.health);
 

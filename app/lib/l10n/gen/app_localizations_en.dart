@@ -1954,4 +1954,74 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get claudeReconnecting => 'Connection lost, reconnecting…';
+
+  @override
+  String get claudeOutboxWaiting => 'waiting for connection';
+
+  @override
+  String get claudeOutboxSending => 'sending…';
+
+  @override
+  String get claudeDecisionFailedTitle => 'Could not send your decision';
+
+  @override
+  String get claudeDecisionFailedBody =>
+      'Open Tiphys to answer the permission request.';
+
+  @override
+  String get agentSection => 'Agent';
+
+  @override
+  String get agentVersion => 'Version';
+
+  @override
+  String agentOutdated(String version) {
+    return '$version · outdated';
+  }
+
+  @override
+  String agentOutdatedHint(String version) {
+    return 'This app expects agent $version. Update it on the PC with tools/deploy-agent.sh (remote) or by rebuilding the agent (local).';
+  }
+
+  @override
+  String get agentUptime => 'Running for';
+
+  @override
+  String agentUptimeDays(int days, int hours) {
+    return '$days d $hours h';
+  }
+
+  @override
+  String agentUptimeHours(int hours, int minutes) {
+    return '$hours h $minutes min';
+  }
+
+  @override
+  String agentUptimeMinutes(int minutes) {
+    return '$minutes min';
+  }
+
+  @override
+  String get agentMemory => 'Memory';
+
+  @override
+  String agentMemoryValue(String agent, String children) {
+    return 'agent $agent · Claude/commands $children';
+  }
+
+  @override
+  String get agentRestarts => 'Unexpected restarts';
+
+  @override
+  String notifAgentRestartedTitle(String host) {
+    return '$host: agent restarted unexpectedly';
+  }
+
+  @override
+  String get notifAgentRestartedBody =>
+      'It crashed or ran out of memory. Live Claude sessions were restored.';
+
+  @override
+  String get agentRestartsWindow => 'last 24 hours';
 }
