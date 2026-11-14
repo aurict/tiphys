@@ -3637,6 +3637,60 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'last 24 hours'**
   String get agentRestartsWindow;
+
+  /// No description provided for @claudeLoadOlder.
+  ///
+  /// In en, this message translates to:
+  /// **'Load earlier messages'**
+  String get claudeLoadOlder;
+
+  /// No description provided for @awayTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'While you were away'**
+  String get awayTitle;
+
+  /// No description provided for @awayTurns.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} turns'**
+  String awayTurns(int count);
+
+  /// No description provided for @awayCommands.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} commands'**
+  String awayCommands(int count);
+
+  /// No description provided for @awayFiles.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} files changed'**
+  String awayFiles(int count);
+
+  /// No description provided for @sessionChanges.
+  ///
+  /// In en, this message translates to:
+  /// **'Changes'**
+  String get sessionChanges;
+
+  /// No description provided for @sessionOpenGit.
+  ///
+  /// In en, this message translates to:
+  /// **'Open in Git (commit)'**
+  String get sessionOpenGit;
+
+  /// No description provided for @sessionNoChanges.
+  ///
+  /// In en, this message translates to:
+  /// **'This session has not edited any files.'**
+  String get sessionNoChanges;
+
+  /// No description provided for @sessionEditCount.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} edits'**
+  String sessionEditCount(int count);
 }
 
 class _AppLocalizationsDelegate

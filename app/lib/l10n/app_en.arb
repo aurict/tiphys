@@ -1207,5 +1207,42 @@
       }
     }
   },
-  "agentRestartsWindow": "last 24 hours"
+  "agentRestartsWindow": "last 24 hours",
+  "claudeLoadOlder": "Load earlier messages",
+  "awayTitle": "While you were away",
+  "awayTurns": "{count} turns",
+  "awayCommands": "{count} commands",
+  "awayFiles": "{count} files changed",
+  "sessionChanges": "Changes",
+  "sessionOpenGit": "Open in Git (commit)",
+  "sessionNoChanges": "This session has not edited any files.",
+  "sessionEditCount": "{count} edits",
+  "@awayTurns": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "@awayCommands": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "@awayFiles": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "@sessionEditCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  }
 }

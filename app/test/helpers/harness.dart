@@ -13,6 +13,7 @@ import 'package:tiphys/core/profile/repository.dart';
 import 'package:tiphys/core/secrets/secret_store.dart';
 import 'package:tiphys/core/security/app_lock.dart';
 import 'package:tiphys/features/claude/claude_screen.dart';
+import 'package:tiphys/features/claude/session_insights.dart';
 import 'package:tiphys/features/home/home_data.dart';
 import 'package:tiphys/features/lock/lock_gate.dart';
 import 'package:tiphys/state/providers.dart';
@@ -49,13 +50,16 @@ class NoBiometrics implements Biometrics {
 }
 
 class Harness {
-  Harness({Profile? profile, Map<String, String>? secrets, this.homeData = sampleHomeData, this.pin})
+  Harness({Profile? profile, Map<String, String>? secrets, this.homeData = sampleHomeData, this.pin, this.extra = const []})
       : profile = profile ?? exampleProfile(),
         secrets = MemorySecretStore(secrets ?? {'ssh-phone': 'x', 'agent-argo': 'x', 'grafana-atlas': 'x'});
   final Profile profile;
   final MemorySecretStore secrets;
   final HomeData homeData;
   final String? pin;
+
+  /// Teste özel ek sağlayıcı değişiklikleri.
+  final List<Override> extra;
   final vault = MemoryVault();
 
   late final repo = ProfileRepository(
@@ -84,6 +88,7 @@ class Harness {
         outboxDirProvider.overrideWithValue(() async => null),
         grafanaFactoryProvider.overrideWithValue((g) async => FakeGrafana()),
         dozzleFactoryProvider.overrideWithValue((d) async => FakeDozzle()),
+        ...extra,
       ];
 
   /// Uygulamayı belirli bir rotada, tema ve dilde açar.
@@ -289,7 +294,7 @@ class FakeAgent extends AgentClient {
         };
       }
       return {
-        'session': {'id': 'a1', 'cwd': '/home/user/Desktop/website', 'title': 'Testleri düzelt ve raporla', 'status': 'waiting', 'model': 'claude-opus-5-5', 'costUsd': 0.84},
+        'session': {'id': 'a1', 'epoch': 'E1', 'cwd': '/home/user/Desktop/website', 'title': 'Testleri düzelt ve raporla', 'status': 'waiting', 'model': 'claude-opus-5-5', 'costUsd': 0.84},
         'events': [
           e({'kind': 'user', 'text': 'runner.py testlerini düzelt, sonra kısaca raporla', 'images': 0}),
           e({'kind': 'init', 'model': 'claude-opus-5-5', 'cwd': '/home/user/Desktop/website', 'permissionMode': 'default', 'slashCommands': []}),
@@ -481,4 +486,12 @@ if (a != b) return x >= 0 ? a : b;
 
 ---
 Ayrıntı: ~~eski yol~~ yeni yol.''';
+
+/// "Sen yokken" testi için: oturuma daha önce belli bir olaya kadar bakılmış gibi.
+class PresetSeen extends ClaudeSeen {
+  PresetSeen(this.preset);
+  final Map<String, (int, String)> preset;
+  @override
+  Map<String, (int, String)> build() => preset;
+}
 
