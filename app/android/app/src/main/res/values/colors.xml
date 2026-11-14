@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Açılış ekranı zemini: uygulamanın açık tema arka planı -->
+    <color name="splash_bg">#F2F2F7</color>
+</resources>
