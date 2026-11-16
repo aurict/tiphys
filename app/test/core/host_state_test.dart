@@ -11,7 +11,7 @@ import 'package:tiphys/widgets/painters.dart';
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
   final codec = ProfileCodec(File('assets/profile/tiphys.schema.json').readAsStringSync());
-  // örnek profil: argo + atlas ajanlı, orion yalnız SSH
+  // example profile: argo + atlas with agent, orion SSH only
   final profile = codec.decode(File('assets/profile/example.json').readAsStringSync()).toProfile();
 
   ProviderContainer make({required Set<String> healthyAgents, required Set<String> openSsh}) {

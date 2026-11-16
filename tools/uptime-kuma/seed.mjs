@@ -1,8 +1,8 @@
-// Uptime Kuma'yı ilk kez kurar ve yayındaki siteleri izlemeye alır. Tekrar çalıştırmak güvenlidir:
-// var olan kullanıcı, bildirim, monitör ve durum sayfası yeniden oluşturulmaz.
+// Sets up Uptime Kuma for the first time and starts monitoring the live sites. Safe to re-run:
+// an existing user, notification, monitor and status page are not recreated.
 //
-// Ortam değişkenleri: UK_URL, UK_USER, UK_PASS, NTFY_TOKEN
-// Kullanım: UK_URL=... UK_USER=... UK_PASS=... NTFY_TOKEN=... node seed.mjs
+// Environment variables: UK_URL, UK_USER, UK_PASS, NTFY_TOKEN
+// Usage: UK_URL=... UK_USER=... UK_PASS=... NTFY_TOKEN=... node seed.mjs
 import { readFileSync } from "node:fs";
 import { io } from "socket.io-client";
 
@@ -11,8 +11,8 @@ for (const [k, v] of Object.entries({ UK_URL, UK_USER, UK_PASS, NTFY_TOKEN })) {
   if (!v) throw new Error(`${k} eksik`);
 }
 
-// İzlenecek siteler: UK_SITES (JSON dosyası yolu), yoksa bu klasördeki sites.json (repoda değil;
-// biçim için bkz. sites.example.json): [{ "name": "...", "url": "https://..." }]
+// Sites to monitor: UK_SITES (path to a JSON file), otherwise sites.json in this folder (not in the repo;
+// see sites.example.json for the format): [{ "name": "...", "url": "https://..." }]
 const SITES = JSON.parse(
   readFileSync(process.env.UK_SITES ?? new URL("./sites.json", import.meta.url), "utf8"),
 );const NOTIFICATION_NAME = "ntfy · siteler";
@@ -50,18 +50,18 @@ await new Promise((resolve, reject) => {
   socket.once("connect_error", reject);
 });
 
-// 1) İlk kurulum (yönetici zaten varsa sunucu reddeder; sorun değil)
+// 1) Initial setup (the server refuses if an admin already exists; that's fine)
 const setup = await emit("setup", UK_USER, UK_PASS);
 console.log(setup.ok ? "Yönetici oluşturuldu." : "Yönetici zaten var.");
 
-// 2) Giriş. Giriş sonrası sunucu monitör ve bildirim listelerini kendisi gönderir.
+// 2) Login. After login the server sends the monitor and notification lists by itself.
 const monitorListP = nextEvent("monitorList");
 const notificationListP = nextEvent("notificationList");
 must(await emit("login", { username: UK_USER, password: UK_PASS, token: "" }), "giriş");
 const monitors = Object.values(await monitorListP);
 const notifications = await notificationListP;
 
-// 3) ntfy bildirimi (varsayılan; yeni monitörlere de otomatik eklenir)
+// 3) ntfy notification (default; also added automatically to new monitors)
 let notification = notifications.find((n) => n.name === NOTIFICATION_NAME);
 let notificationId = notification?.id;
 if (!notificationId) {
@@ -91,7 +91,7 @@ if (!notificationId) {
   console.log(`Bildirim zaten var (#${notificationId}).`);
 }
 
-// 4) Monitörler: 60 sn aralık, 1 tekrar → yaklaşık 2 dk kesintide bildirim
+// 4) Monitors: 60 s interval, 1 retry → notification after roughly 2 min of downtime
 const ids = [];
 for (const site of SITES) {
   const existing = monitors.find((m) => m.url === site.url);
@@ -129,7 +129,7 @@ for (const site of SITES) {
   console.log(`Eklendi: ${site.name} (#${res.monitorID})`);
 }
 
-// 5) Durum sayfası (Homepage kartı ve telefon için özet)
+// 5) Status page (summary for the Homepage card and the phone)
 const sp = await emit("getStatusPage", STATUS_SLUG);
 if (!sp?.ok) {
   must(await emit("addStatusPage", "Siteler", STATUS_SLUG), "durum sayfası ekleme");

@@ -1,5 +1,5 @@
-// Wake-on-LAN: sihirli paket. "Gönderen" bir ajan ise ona istek atılır; değilse telefon aynı yerel
-// ağdaysa paketi kendisi yayınlar.
+// Wake-on-LAN: magic packet. If the "sender" is an agent, the request goes to it; otherwise, if the phone is on
+// the same local network, it broadcasts the packet itself.
 import 'dart:io';
 import 'dart:typed_data';
 

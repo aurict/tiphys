@@ -1,4 +1,4 @@
-// Tasarımın yüzeyleri: açık temada beyaz kart + yumuşak gölge, koyu temada buzlu cam.
+// The design's surfaces: white card + soft shadow in the light theme, frosted glass in the dark theme.
 
 import 'package:flutter/material.dart';
 
@@ -21,7 +21,7 @@ class TCard extends StatelessWidget {
   final EdgeInsetsGeometry padding;
   final double radius;
 
-  /// Özel dolgu (ör. Claude kutusu). Verilmezse temanın kart rengi.
+  /// Custom fill (e.g. the Claude box). Defaults to the theme's card color.
   final Color? color;
   final Color? borderColor;
   final VoidCallback? onTap;
@@ -53,9 +53,9 @@ class TCard extends StatelessWidget {
     );
     body = Container(height: height, decoration: decoration, child: body);
     if (t.glass) {
-      // Koyu cam: yarı saydam dolgu + kenar + üstte ince ışık çizgisi. Arkada yalnız yumuşak renk lekeleri
-      // olduğundan BackdropFilter bulanıklığı görüntüyü neredeyse değiştirmiyor ama her karede kart başına
-      // katman + bulanıklaştırma maliyeti getiriyordu (koyu temadaki takılmanın kaynağı). Bu yüzden yok.
+      // Dark glass: translucent fill + border + thin light line on top. Since only soft color blobs sit behind it,
+      // BackdropFilter blur barely changed the image but added a layer + blur cost per card on every frame
+      // (the source of the jank in the dark theme). So it's not used.
       body = Stack(fit: StackFit.passthrough, children: [
         body,
         Positioned(
@@ -72,7 +72,7 @@ class TCard extends StatelessWidget {
   }
 }
 
-/// Koyu temada camın arkasında görünen hafif renk lekeleri (host renkleri).
+/// Faint color blobs visible behind the glass in the dark theme (host colors).
 class AmbientBackground extends StatelessWidget {
   const AmbientBackground({super.key, required this.child, this.colors = const []});
   final Widget child;
@@ -96,7 +96,7 @@ class AmbientBackground extends StatelessWidget {
     return ColoredBox(
       color: t.background,
       child: Stack(children: [
-        // Lekeler değişmez: kaydırma sırasında yeniden boyanmasın.
+        // The blobs don't change: don't repaint them while scrolling.
         Positioned.fill(
           child: RepaintBoundary(
             child: Stack(children: [
@@ -112,7 +112,7 @@ class AmbientBackground extends StatelessWidget {
   }
 }
 
-/// iOS tarzı gruplu liste bölümü.
+/// iOS-style grouped list section.
 class GroupedSection extends StatelessWidget {
   const GroupedSection({super.key, this.title, required this.children, this.footer});
   final String? title;
@@ -163,7 +163,7 @@ class SectionLabel extends StatelessWidget {
   }
 }
 
-/// Türkçe büyük harf dönüşümü: i → İ (Dart'ın toUpperCase'i dile duyarlı değildir).
+/// Turkish uppercase conversion: i → İ (Dart's toUpperCase is not locale-aware).
 String upper(String s, String languageCode) =>
     languageCode == 'tr' ? s.replaceAll('i', 'İ').toUpperCase() : s.toUpperCase();
 
@@ -186,7 +186,7 @@ class GroupedRow extends StatelessWidget {
     this.badge,
   });
 
-  /// Turuncu uyarı rozeti (ör. eksik gizli bilgi sayısı).
+  /// Orange warning badge (e.g. number of missing secrets).
   final String? badge;
   final String title;
   final IconData? icon;
@@ -258,7 +258,7 @@ class GroupedRow extends StatelessWidget {
   }
 }
 
-/// Büyük başlıklı sayfa: tarih/üst etiket + 34 px başlık + sağda yuvarlak buton.
+/// Page with a large title: date/top label + 34 px title + round button on the right.
 class LargeTitleHeader extends StatelessWidget {
   const LargeTitleHeader({super.key, this.overline, required this.title, this.action});
   final String? overline;

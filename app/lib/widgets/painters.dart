@@ -1,4 +1,4 @@
-// Tasarımın çizimleri: izometrik sunucu yığını, çift halka gösterge, mini grafik.
+// The design's drawings: isometric server stack, double-ring gauge, mini chart.
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
@@ -13,7 +13,7 @@ class StackSlab {
   final HostState state;
 }
 
-/// Üst üste duran izometrik sunucu blokları (en üstte ilk host). Hafifçe süzülür, üstteki LED yanıp söner.
+/// Stacked isometric server blocks (first host on top). Floats gently; the LED on top blinks.
 class IsoStack extends StatefulWidget {
   const IsoStack({super.key, required this.slabs, this.width = 150});
   final List<StackSlab> slabs;
@@ -50,7 +50,7 @@ class _IsoStackState extends State<IsoStack> with SingleTickerProviderStateMixin
     return AnimatedBuilder(
       animation: _c,
       builder: (context, _) {
-        // 5 sn'de bir aşağı yukarı süzülme; LED 1,6 sn'de bir yanıp söner.
+        // Floats up and down every 5 s; the LED blinks every 1.6 s.
         final now = DateTime.now().millisecondsSinceEpoch;
         final float = MediaQuery.disableAnimationsOf(context) ? 0.0 : -2.5 + 2.5 * math.cos(2 * math.pi * (now % 5000) / 5000);
         final led = 0.65 + 0.35 * math.cos(2 * math.pi * _c.value);
@@ -71,7 +71,7 @@ class _IsoPainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
-    // Tasarımdaki SVG koordinatları (viewBox 26 28 120 140) ölçeklenir.
+    // The design's SVG coordinates (viewBox 26 28 120 140) are scaled.
     canvas.save();
     canvas.scale(size.width / 120, size.height / 140);
     canvas.translate(-26, -28);
@@ -93,7 +93,7 @@ class _IsoPainter extends CustomPainter {
     final items = slabs.isEmpty
         ? List.generate(3, (_) => StackSlab(color: t.isDark ? const Color(0xFF48484A) : const Color(0xFFD1D1D6), state: HostState.unknown))
         : slabs.take(3).toList();
-    // Alttan üste çizilir; liste üstten alta sıralıdır.
+    // Drawn bottom to top; the list is ordered top to bottom.
     for (var i = items.length - 1; i >= 0; i--) {
       final top = 43.0 + 26 * i + (3 - items.length) * 26;
       _slab(canvas, top, items[i], isTop: i == 0);
@@ -132,10 +132,10 @@ class _IsoPainter extends CustomPainter {
   bool shouldRepaint(_IsoPainter old) => old.led != led || old.slabs != slabs || old.t != t;
 }
 
-/// İç içe iki halka (dış: CPU, iç: RAM).
+/// Two nested rings (outer: CPU, inner: RAM).
 class RingGauge extends StatelessWidget {
   const RingGauge({super.key, required this.outer, required this.inner, required this.outerColor, required this.innerColor, this.size = 70});
-  final double? outer; // 0..1, null = bilinmiyor
+  final double? outer; // 0..1, null = unknown
   final double? inner;
   final Color outerColor;
   final Color innerColor;
@@ -176,7 +176,7 @@ class _RingPainter extends CustomPainter {
   bool shouldRepaint(_RingPainter o) => o.outer != outer || o.inner != inner || o.oc != oc || o.ic != ic || o.track != track;
 }
 
-/// Alanı dolu mini çizgi grafik.
+/// Mini line chart with a filled area.
 class Sparkline extends StatelessWidget {
   const Sparkline({super.key, required this.values, required this.color, this.height = 32});
   final List<double> values;

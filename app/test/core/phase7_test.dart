@@ -93,7 +93,7 @@ void main() {
       expect(d.files, ['/p/a.dart', '/p/b.dart']);
       expect(d.costUsd, closeTo(0.25, 1e-9));
       expect(d.lastText, 'Bitti, iki dosya değişti.');
-      expect(awayDigest(events, 8), isNull); // yeni bir şey yok
+      expect(awayDigest(events, 8), isNull); // nothing new
     });
     test('değişiklikler: dosya başına düzenlemeler', () {
       final c = sessionChanges(events);

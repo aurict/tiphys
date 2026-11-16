@@ -1,4 +1,4 @@
-// İzleme entegrasyonları için istemci fabrikaları ve sağlayıcılar.
+// Client factories and providers for monitoring integrations.
 import 'dart:async';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -26,7 +26,7 @@ final dozzleFactoryProvider = Provider<Future<DozzleClient> Function(DozzleConfi
       );
 });
 
-/// Uptime Kuma köprüsü (ajan üzerinden) — monitör listesi, 30 sn'de bir yenilenir.
+/// Uptime Kuma bridge (via the agent) — monitor list, refreshed every 30 s.
 final uptimeProvider = FutureProvider.autoDispose<Map<String, dynamic>>((ref) async {
   final u = ref.watch(profileProvider.select((p) => p.integrations.uptimeKuma));
   if (u == null) throw const IntegrationError('notConfigured');
@@ -34,14 +34,14 @@ final uptimeProvider = FutureProvider.autoDispose<Map<String, dynamic>>((ref) as
   return withAgent(ref, u.viaHostId, (c) => c.get('/v1/uptime/monitors'));
 });
 
-/// Homepage servisleri (ajan üzerinden).
+/// Homepage services (via the agent).
 final homepageProvider = FutureProvider.autoDispose<Map<String, dynamic>>((ref) async {
   final h = ref.watch(profileProvider.select((p) => p.integrations.homepage));
   if (h == null) throw const IntegrationError('notConfigured');
   return withAgent(ref, h.hostId, (c) => c.get('/v1/homepage'));
 });
 
-/// Ana ekrandaki Grafana mini grafiği: varsayılan dashboard'un ilk zaman serisi panelinin ilk serisi.
+/// Grafana mini chart on the home screen: first series of the default dashboard's first time series panel.
 final grafanaSparkProvider = FutureProvider.autoDispose<List<double>?>((ref) async {
   final g = ref.watch(profileProvider.select((p) => p.integrations.grafana.firstOrNull));
   if (g == null || g.defaultDashboardUid == null) return null;
@@ -63,7 +63,7 @@ final grafanaSparkProvider = FutureProvider.autoDispose<List<double>?>((ref) asy
   }
 });
 
-/// Ana ekrandaki Dozzle kartı: container sayıları.
+/// Dozzle card on the home screen: container counts.
 final dozzleSummaryProvider = FutureProvider.autoDispose<(int, int)?>((ref) async {
   final d = ref.watch(profileProvider.select((p) => p.integrations.dozzle.firstOrNull));
   if (d == null) return null;

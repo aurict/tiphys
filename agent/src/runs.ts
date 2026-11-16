@@ -1,6 +1,6 @@
-// Ajanın kendi sağlığı: çalışma kayıtları (agent-runs.json) ile beklenmedik yeniden başlamaları yakalar.
-// Her açılışta bir kayıt eklenir; düzgün kapanışta (SIGTERM/SIGINT: güncelleme, yeniden başlatma) işaretlenir.
-// Önceki kayıt işaretsizse ajan çökmüş ya da bellek yetersizliğinden öldürülmüştür → telefona bildirim.
+// The agent's own health: catches unexpected restarts via run records (agent-runs.json).
+// A record is added on every start; it's marked on clean shutdown (SIGTERM/SIGINT: update, restart).
+// If the previous record is unmarked, the agent crashed or was killed for running out of memory → notify the phone.
 import { readFile, rename, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import type { FastifyInstance } from "fastify";
@@ -10,7 +10,7 @@ import { VERSION } from "./version.ts";
 
 export interface RunRecord {
   start: string;
-  stop?: string; // düzgün kapanış zamanı
+  stop?: string; // clean shutdown time
   version: string;
 }
 
@@ -20,7 +20,7 @@ export class RunLog {
   readonly startedAt = new Date();
   #file: string;
   #runs: RunRecord[] = [];
-  /** Bu açılıştan önceki çalışma düzgün kapanmadıysa onun başlangıcı. */
+  /** Start of the run before this one, if it didn't shut down cleanly. */
   previousCrashed: RunRecord | null = null;
 
   constructor(file: string) {
@@ -46,7 +46,7 @@ export class RunLog {
     await this.#save();
   }
 
-  /** Son 24 saatte düzgün kapanmadan biten (beklenmedik) çalışmalar; şu anki hariç. */
+  /** Runs in the last 24 hours that ended without a clean shutdown (unexpected); excluding the current one. */
   unexpectedSince(ms = 24 * 3600_000): RunRecord[] {
     const cutoff = Date.now() - ms;
     return this.#runs.slice(0, -1).filter((r) => !r.stop && Date.parse(r.start) >= cutoff);
@@ -59,7 +59,7 @@ export class RunLog {
   }
 }
 
-/** Bu süreç ve tüm alt süreçlerinin (Claude oturumları, komutlar) bellek toplamı, bayt. */
+/** Total memory of this process and all its children (Claude sessions, commands), in bytes. */
 export async function treeRss(rootPid = process.pid): Promise<{ selfBytes: number; childrenBytes: number }> {
   const ps = await run("ps", ["-eo", "pid=,ppid=,rss="], { allowFail: true });
   const kids = new Map<number, number[]>();
@@ -84,7 +84,7 @@ export function runLogPath(ctx: Ctx) {
   return join(dirname(ctx.store.path), "agent-runs.json");
 }
 
-/** GET /v1/agent/status: sürüm, açık kalma süresi, bellek, beklenmedik yeniden başlamalar. */
+/** GET /v1/agent/status: version, uptime, memory, unexpected restarts. */
 export function agentStatusRoutes(runs: RunLog | null) {
   return (app: FastifyInstance) => {
     app.get("/v1/agent/status", async () => {

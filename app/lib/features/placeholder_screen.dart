@@ -1,4 +1,4 @@
-// Henüz yapılmamış sekmeler için geçici ekran (her faz kendi ekranıyla değiştirir).
+// Temporary screen for tabs not built yet (each phase replaces it with its own screen).
 import 'package:flutter/material.dart';
 
 import '../l10n/gen/app_localizations.dart';

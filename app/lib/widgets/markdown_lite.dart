@@ -1,5 +1,5 @@
-// Küçük markdown gösterici (Grafana metin panelleri için): başlıklar, listeler, **kalın**, *italik*,
-// `kod` ve [bağlantı](adres). HTML etiketleri ayıklanır.
+// Small markdown renderer (for Grafana text panels): headings, lists, **bold**, *italic*,
+// `code` and [link](url). HTML tags are stripped.
 import 'package:flutter/material.dart';
 
 import '../theme/tokens.dart';

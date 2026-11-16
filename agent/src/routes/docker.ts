@@ -1,4 +1,4 @@
-// Docker container'ları: liste, istatistik, başlat/durdur/yeniden başlat, loglar (docker CLI üzerinden).
+// Docker containers: list, stats, start/stop/restart, logs (via the docker CLI).
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 import { run } from "../exec.ts";
@@ -51,7 +51,7 @@ export function dockerRoutes(app: FastifyInstance, _ctx: Ctx) {
     const id = containerId.parse((req.params as Record<string, string>).id);
     const tail = z.coerce.number().int().min(1).max(5000).default(300).parse((req.query as Record<string, unknown>).tail);
     const res = await run("docker", ["logs", "--tail", String(tail), "--timestamps", id], { timeoutMs: 30000 });
-    // docker logs stdout ve stderr'i ayrı akışlarda verir; ikisi zaman damgasına göre birleştirilir.
+    // docker logs emits stdout and stderr on separate streams; the two are merged by timestamp.
     const lines = [
       ...res.stdout.split("\n").map((l) => ({ stream: "stdout", l })),
       ...res.stderr.split("\n").map((l) => ({ stream: "stderr", l })),

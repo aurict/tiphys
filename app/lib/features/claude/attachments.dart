@@ -1,4 +1,4 @@
-// Claude'a ek: galeriden fotoğraf (gerekirse küçültülür) ve sesli mesaj (kayıt → ajan → Whisper → metin).
+// Attachments for Claude: gallery photo (downscaled if needed) and voice message (recording → agent → Whisper → text).
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
@@ -18,7 +18,7 @@ class ImageAttachment {
   Map<String, String> toJson() => {'mediaType': mediaType, 'data': base64Encode(bytes)};
 }
 
-/// Claude API'nin kabul ettiği boyuta göre üst sınır (uzun kenar ve bayt).
+/// Upper limit (long edge and bytes) based on the size the Claude API accepts.
 const _maxSide = 1568;
 const _maxBytes = 4 * 1024 * 1024;
 
@@ -31,7 +31,7 @@ Future<List<ImageAttachment>> pickImages() async {
   return out;
 }
 
-/// Desteklenen biçim ve boyuttaysa olduğu gibi; değilse uzun kenarı 1568 px olacak şekilde PNG'ye çevrilir.
+/// Kept as is if the format and size are supported; otherwise converted to PNG with a 1568 px long edge.
 Future<ImageAttachment> prepareImage(String name, Uint8List data) async {
   final ext = name.contains('.') ? name.split('.').last.toLowerCase() : '';
   final type = switch (ext) {
@@ -58,9 +58,9 @@ Future<ImageAttachment> prepareImage(String name, Uint8List data) async {
   return ImageAttachment(name: name, mediaType: 'image/png', bytes: png!.buffer.asUint8List());
 }
 
-/// Sesli mesaj kaydı (AAC/M4A, 16 kHz mono: konuşma için yeterli ve küçük).
+/// Voice message recording (AAC/M4A, 16 kHz mono: enough for speech and small).
 class VoiceRecorder extends ChangeNotifier {
-  /// Mikrofon eklentisi ilk kayıtta oluşturulur (sohbet açılınca değil).
+  /// The microphone plugin is created on the first recording (not when the chat opens).
   AudioRecorder? _rec;
   DateTime? startedAt;
   String? _path;
@@ -69,7 +69,7 @@ class VoiceRecorder extends ChangeNotifier {
   bool get recording => startedAt != null;
   Duration get elapsed => startedAt == null ? Duration.zero : DateTime.now().difference(startedAt!);
 
-  /// İzin yoksa false döner.
+  /// Returns false if there is no permission.
   Future<bool> start() async {
     final rec = _rec ??= AudioRecorder();
     if (!await rec.hasPermission()) return false;
@@ -82,7 +82,7 @@ class VoiceRecorder extends ChangeNotifier {
     return true;
   }
 
-  /// Kaydı bitirir ve dosyanın baytlarını döner (dosya silinir).
+  /// Stops the recording and returns the file's bytes (the file is deleted).
   Future<Uint8List?> stop() async {
     _tick?.cancel();
     final path = await _rec?.stop() ?? _path;

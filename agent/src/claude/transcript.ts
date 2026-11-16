@@ -1,7 +1,8 @@
-// Claude Code oturum kaydını (<config>/projects/<klasör>/<oturum>.jsonl) okuyup telefon olaylarına çevirir.
-// SDK'nın getSessionMessages'ı baştan ilk N mesajı veriyor ve sıkıştırma (compact) sınırında duruyordu: uzun
-// oturumlar telefonda eski bir noktada, yarım kalmış bir komutla "takılmış" görünüyordu. Burada en son
-// mesajdan geriye doğru zincir izlenir, sıkıştırma sınırları logicalParentUuid ile geçilir ve SON olaylar döner.
+// Reads the Claude Code session transcript (<config>/projects/<folder>/<session>.jsonl) and turns it into phone events.
+// The SDK's getSessionMessages returned the first N messages from the start and stopped at the compaction (compact)
+// boundary: long sessions looked "stuck" on the phone at an old point, with a half-finished command. Here the
+// chain is followed back from the latest message, compaction boundaries are crossed via logicalParentUuid,
+// and the LAST events are returned.
 import { readdir, readFile, stat } from "node:fs/promises";
 import { join } from "node:path";
 
@@ -19,7 +20,7 @@ type Row = {
   message?: { role?: string; content?: unknown };
 };
 
-/** Oturum kaydının yolu: projects altındaki klasörlerden hangisinde olduğu bilinmez, aranır. */
+/** Path of the session transcript: which folder under projects it lives in is unknown, so it is searched. */
 export async function findTranscript(configDir: string, sessionId: string): Promise<string | null> {
   const projects = join(configDir, "projects");
   let dirs: string[];
@@ -35,7 +36,7 @@ export async function findTranscript(configDir: string, sessionId: string): Prom
   return null;
 }
 
-/** Komut sarmalayıcılarını sadeleştirir: "<command-name>/review</command-name>…" → "/review". Gizlenecekse null. */
+/** Simplifies command wrappers: "<command-name>/review</command-name>…" → "/review". null if it should be hidden. */
 function userText(t: string): string | null {
   const cmd = /<command-name>([^<]*)<\/command-name>/.exec(t);
   if (cmd) {
@@ -76,21 +77,21 @@ async function rowsOf(file: string): Promise<Row[]> {
     try {
       rows.push(JSON.parse(line) as Row);
     } catch {
-      // yazılmakta olan son satır yarım olabilir
+      // the last line being written may be incomplete
     }
   }
   cache = { file, key, rows };
   return rows;
 }
 
-/** Kaydın son `limit` olayı (kronolojik). Sıkıştırma noktalarına {kind:"compacted"} işareti konur. */
+/** The transcript's last `limit` events (chronological). Compaction points get a {kind:"compacted"} marker. */
 export async function transcriptEvents(file: string, limit = 400): Promise<HistoryEvent[]> {
   return (await transcriptPage(file, limit, 0)).events;
 }
 
 /**
- * Sondan `skip` olay atlanarak, ondan önceki `limit` olay (kronolojik). `more`: daha eskisi var mı.
- * Telefon yukarı kaydırdıkça skip = elindeki olay sayısı ile eski mesajları ister.
+ * Skipping `skip` events from the end, the `limit` events before them (chronological). `more`: whether older ones exist.
+ * As the phone scrolls up it requests older messages with skip = the number of events it has.
  */
 export async function transcriptPage(file: string, limit: number, skip: number): Promise<{ events: HistoryEvent[]; more: boolean }> {
   const rows = await rowsOf(file);
@@ -104,13 +105,13 @@ export async function transcriptPage(file: string, limit: number, skip: number):
       break;
     }
   }
-  // Sondan başa: her satırın olayları ters sırada toplanır, sonunda tümü çevrilir.
+  // From end to start: each line's events are collected in reverse order, and all are converted at the end.
   const rev: HistoryEvent[] = [];
   const seen = new Set<string>();
   const want = limit + skip;
   while (cur && rev.length < want) {
     if (cur.uuid) {
-      if (seen.has(cur.uuid)) break; // döngüye karşı
+      if (seen.has(cur.uuid)) break; // guard against cycles
       seen.add(cur.uuid);
     }
     if (cur.type === "system" && cur.subtype === "compact_boundary") rev.push({ kind: "compacted" });

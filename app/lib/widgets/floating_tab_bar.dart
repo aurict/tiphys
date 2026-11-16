@@ -1,4 +1,4 @@
-// Ortada yüzen hap biçimli alt bar (Grafit Cam tasarımındaki gibi). Koyu temada buzlu cam.
+// Pill-shaped bottom bar floating in the middle (as in the Graphite Glass design). Frosted glass in the dark theme.
 import 'dart:ui';
 
 import 'package:flutter/material.dart';

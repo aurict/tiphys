@@ -1,5 +1,5 @@
-// Testlerde gerçek yazı tiplerini yükler (varsayılan "Ahem" kutuları yerine), böylece
-// ekran görüntüleri (golden) tasarımla karşılaştırılabilir.
+// Loads real fonts in tests (instead of the default "Ahem" boxes), so that
+// screenshots (goldens) can be compared against the design.
 import 'dart:async';
 import 'dart:convert';
 

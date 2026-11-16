@@ -1,5 +1,5 @@
-// Grafana › Alarmlar: tüm alarm kuralları (Grafana + Prometheus veri kaynakları), duruma göre sıralı.
-// Etkin olanlar üstte; kurala dokununca özet, sorgu ve etkin olduğu zaman görünür.
+// Grafana › Alerts: all alert rules (Grafana + Prometheus data sources), sorted by state.
+// Firing ones on top; tapping a rule shows its summary, query and when it became active.
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
@@ -104,7 +104,7 @@ class _RuleRow extends StatelessWidget {
       icon: rule.state == 'normal' ? LucideIcons.check : LucideIcons.bell,
       iconBackground: ruleColor(t, rule.state),
       onTap: () => showModalBottomSheet<void>(
-      useRootNavigator: true, // alt sekme barının üstünde açılsın; yoksa bar sayfanın altını örter
+      useRootNavigator: true, // open above the bottom tab bar; otherwise the bar covers the bottom of the page
         context: context,
         isScrollControlled: true,
         builder: (c) => SafeArea(

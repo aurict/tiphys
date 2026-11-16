@@ -1,11 +1,11 @@
-// Terminalde açık Claude Code oturumlarının tespiti (sahte /proc ve sahte sessions klasörüyle).
+// Detecting Claude Code sessions open in a terminal (with a fake /proc and a fake sessions folder).
 import { mkdir, mkdtemp, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { terminalSessions } from "../src/claude/terminal.ts";
 
-/** /proc/<pid>/stat: 22. alan başlangıç zamanı. Komut adında boşluk ve parantez olabilir. */
+/** /proc/<pid>/stat: field 22 is the start time. The command name may contain spaces and parentheses. */
 const stat = (pid: number, start: number) =>
   `${pid} (claude (code) x) S 1 ${Array.from({ length: 17 }, (_, i) => i + 5).join(" ")} ${start} 0 0\n`;
 
@@ -21,11 +21,11 @@ describe("terminal oturumları", () => {
       await mkdir(join(proc, String(pid)), { recursive: true });
       await writeFile(join(proc, String(pid), "stat"), stat(pid, start));
     }
-    await session(1, { procStart: "500" }); // canlı
-    await session(2, { procStart: "999" }); // pid başka sürece geçmiş
-    await session(3, { procStart: "1" }); // süreç yok
-    await writeFile(join(cfg, "sessions", "4.json"), "{bozuk"); // yarım yazılmış
-    await writeFile(join(cfg, "sessions", "1.abc.key"), "x"); // ilgisiz dosya
+    await session(1, { procStart: "500" }); // alive
+    await session(2, { procStart: "999" }); // the pid now belongs to another process
+    await session(3, { procStart: "1" }); // no process
+    await writeFile(join(cfg, "sessions", "4.json"), "{bozuk"); // half-written
+    await writeFile(join(cfg, "sessions", "1.abc.key"), "x"); // unrelated file
 
     const list = await terminalSessions(cfg, proc);
     expect(list).toEqual([

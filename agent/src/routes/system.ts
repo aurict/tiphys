@@ -1,4 +1,4 @@
-// Sistem metrikleri: işlemci, bellek, disk, GPU, sıcaklık, çalışma süresi.
+// System metrics: CPU, memory, disk, GPU, temperature, uptime.
 import si from "systeminformation";
 import type { FastifyInstance } from "fastify";
 import { run } from "../exec.ts";
@@ -29,7 +29,7 @@ async function nvidiaGpus(): Promise<Gpu[]> {
         return { name, temperatureC: num(t), utilizationPercent: num(u), memoryUsedMiB: num(mu), memoryTotalMiB: num(mt) };
       });
   } catch {
-    return []; // NVIDIA yoksa GPU bölümü boş kalır
+    return []; // without NVIDIA the GPU section stays empty
   }
 }
 

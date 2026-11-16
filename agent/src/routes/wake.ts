@@ -1,5 +1,5 @@
-// Wake-on-LAN: hedefin MAC adresine "sihirli paket" gönderir.
-// Not: Paket yerel ağ yayınıdır; ajan, uyandırılacak cihazla AYNI yerel ağda çalışmalıdır.
+// Wake-on-LAN: sends a "magic packet" to the target's MAC address.
+// Note: the packet is a local network broadcast; the agent must run on the SAME local network as the device to wake.
 import { createSocket } from "node:dgram";
 import type { FastifyInstance } from "fastify";
 import { notFound } from "../errors.ts";

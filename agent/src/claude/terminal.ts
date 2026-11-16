@@ -1,7 +1,7 @@
-// Terminalde (Tiphys dışında) çalışan Claude Code oturumları.
-// Claude Code her canlı oturum için <yapılandırma klasörü>/sessions/<pid>.json yazar. Dosya kapanışta
-// silinmeyebilir; bu yüzden süreç hâlâ yaşıyor mu ve aynı süreç mi (pid yeniden kullanılmış olabilir)
-// /proc/<pid>/stat içindeki başlangıç zamanıyla (procStart) doğrulanır.
+// Claude Code sessions running in a terminal (outside Tiphys).
+// Claude Code writes <config folder>/sessions/<pid>.json for each live session. The file may not be deleted on
+// exit; so whether the process is still alive and is the same process (the pid may have been reused) is verified
+// with the start time in /proc/<pid>/stat (procStart).
 import { readdir, readFile } from "node:fs/promises";
 import { join } from "node:path";
 
@@ -10,17 +10,17 @@ export interface TerminalSession {
   sdkSessionId: string;
   cwd: string | null;
   name: string | null;
-  /** Claude Code'un bildirdiği durum: busy | idle | … */
+  /** Status reported by Claude Code: busy | idle | … */
   status: string | null;
   startedAt: string | null;
   updatedAt: string | null;
 }
 
-/** /proc/<pid>/stat → başlangıç zamanı (22. alan). Süreç yoksa null. */
+/** /proc/<pid>/stat → start time (field 22). null if there is no process. */
 export async function procStart(procRoot: string, pid: number): Promise<string | null> {
   try {
     const stat = await readFile(join(procRoot, String(pid), "stat"), "utf8");
-    // 2. alan (komut adı) boşluk/parantez içerebilir: son ')' sonrasından say.
+    // Field 2 (command name) may contain spaces/parentheses: count from after the last ')'.
     const rest = stat.slice(stat.lastIndexOf(")") + 2).split(" ");
     return rest[19] ?? null; // rest[0] = 3. alan → 22. alan = rest[19]
   } catch {
@@ -45,14 +45,14 @@ export async function terminalSessions(configDir: string, procRoot = "/proc"): P
     try {
       j = JSON.parse(await readFile(join(dir, n), "utf8")) as Record<string, unknown>;
     } catch {
-      continue; // yazılırken okunmuş ya da bozuk: bu tur atla
+      continue; // read while being written, or corrupt: skip this round
     }
     const pid = Number(j.pid);
     const sessionId = str(j.sessionId);
     if (!Number.isInteger(pid) || pid <= 0 || !sessionId) continue;
     const started = await procStart(procRoot, pid);
-    if (started === null) continue; // süreç yok
-    if (j.procStart !== undefined && String(j.procStart) !== started) continue; // pid başka sürece geçmiş
+    if (started === null) continue; // no process
+    if (j.procStart !== undefined && String(j.procStart) !== started) continue; // pid moved to another process
     out.push({
       pid,
       sdkSessionId: sessionId,
@@ -67,8 +67,8 @@ export async function terminalSessions(configDir: string, procRoot = "/proc"): P
 }
 
 /**
- * Terminaldeki oturumu kapatır (SIGTERM: Claude Code kaydı zaten her mesajda diske yazar) ve sürecin
- * gerçekten bittiğini bekler. Süre dolarsa false döner; SIGKILL kullanılmaz.
+ * Closes the terminal session (SIGTERM: Claude Code already writes the transcript to disk on every message) and waits
+ * for the process to really exit. Returns false if the timeout expires; SIGKILL is not used.
  */
 export async function stopTerminalSession(pid: number, procRoot = "/proc", timeoutMs = 8000): Promise<boolean> {
   const start = await procStart(procRoot, pid);

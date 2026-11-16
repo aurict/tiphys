@@ -1,5 +1,5 @@
-// Host izleme: başka hostların ajanını (/v1/health) düzenli yoklar. Belirlenen süreden uzun yanıt
-// gelmezse "host.offline", geri gelince "host.online" bildirimi gönderir (ör. sunucu → PC).
+// Host watch: regularly polls other hosts' agents (/v1/health). If no response comes for longer than the set time
+// it sends a "host.offline" notification, and "host.online" when it comes back (e.g. server → PC).
 import type { FastifyInstance } from "fastify";
 import type { Ctx } from "./server.ts";
 

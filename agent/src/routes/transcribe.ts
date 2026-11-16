@@ -1,4 +1,4 @@
-// Sesli mesaj: telefon kaydı (base64) → Scriberr/Whisper (yapılandırılan transcribe komutu) → metin.
+// Voice message: phone recording (base64) → Scriberr/Whisper (the configured transcribe command) → text.
 import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -13,7 +13,7 @@ const body = z.object({
   data: z.base64().max(30 * 1024 * 1024),
   ext: z.enum(["m4a", "aac", "mp3", "wav", "ogg", "opus", "webm"]),
   language: z.enum(["tr", "en"]).optional(),
-  /** Telefondaki Scriberr ayarı; verilmezse ajanın varsayılanı. */
+  /** The Scriberr setting on the phone; if not given, the agent's default. */
   model: z.enum(["small", "large-v3"]).optional(),
 });
 

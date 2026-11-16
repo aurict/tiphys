@@ -1,4 +1,4 @@
-// Claude, Terminal, Dosyalar ve Hızlı işlemler ayarları.
+// Claude, Terminal, Files and Quick actions settings.
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -11,7 +11,7 @@ import '../../theme/tokens.dart';
 import '../../widgets/forms.dart';
 import '../../widgets/surfaces.dart';
 
-/// Virgül ya da satırla ayrılmış liste düzenleyici (favori klasörler, komutlar, tuşlar…)
+/// Editor for a comma- or newline-separated list (favorite folders, commands, keys…)
 class _ListField extends StatelessWidget {
   const _ListField({required this.controller, required this.label, this.hint, this.helper});
   final TextEditingController controller;

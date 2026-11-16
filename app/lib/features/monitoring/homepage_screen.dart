@@ -1,4 +1,4 @@
-// Homepage servisleri uygulama içinde: gruplar, durum, tarayıcıda açma; üstte gerçek Homepage butonu.
+// Homepage services inside the app: groups, status, open in browser; the real Homepage button on top.
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';

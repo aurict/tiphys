@@ -1,4 +1,4 @@
-// İki dil dosyasında aynı anahtarlar olmalı; eksik çeviri varsa test (ve derleme betiği) durur.
+// Both language files must have the same keys; a missing translation stops the test (and the build script).
 import 'dart:convert';
 import 'dart:io';
 

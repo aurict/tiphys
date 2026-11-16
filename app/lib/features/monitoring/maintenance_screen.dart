@@ -1,5 +1,5 @@
-// Siteler › Bakım pencereleri (Uptime Kuma): bu sürede seçili sitelerin kesintisi bildirilmez.
-// Yeni pencere şimdi başlar; süre hazır seçeneklerden seçilir.
+// Sites › Maintenance windows (Uptime Kuma): outages of the selected sites aren't reported during this time.
+// A new window starts now; the duration is picked from preset options.
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';

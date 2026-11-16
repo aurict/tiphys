@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
-# Telefonu bir Tiphys ajanıyla eşler: QR basar, sonra ajanı yeniden başlatır (yeni cihazı tanısın diye).
-# Kullanım:
-#   tools/pair.sh local  <ajan-adresi> [cihaz-adı]                 # bu makinedeki ajan
-#   tools/pair.sh <ssh-hedefi> <ajan-adresi> [cihaz-adı] [ssh-anahtarı]   # uzak sunucudaki ajan (~/tiphys-agent)
-#   ör. tools/pair.sh local https://argo.example.ts.net:7443 Phone
+# Pairs the phone with a Tiphys agent: prints a QR, then restarts the agent (so it recognizes the new device).
+# Usage:
+#   tools/pair.sh local  <agent-address> [device-name]                 # agent on this machine
+#   tools/pair.sh <ssh-target> <agent-address> [device-name] [ssh-key]   # agent on a remote server (~/tiphys-agent)
+#   e.g. tools/pair.sh local https://argo.example.ts.net:7443 Phone
 #       tools/pair.sh user@100.64.0.2 https://atlas.example.ts.net:7443 Phone ~/.ssh/id_ed25519
 set -euo pipefail
 target=${1:?kullanım: tools/pair.sh local|<ssh-hedefi> <ajan-adresi> [cihaz-adı] [ssh-anahtarı]}

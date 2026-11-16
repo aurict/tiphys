@@ -1,4 +1,4 @@
-// Sistem › Ajan: ajanın sürümü (geride kaldıysa uyarı), açık kalma süresi, bellek ve beklenmedik yeniden başlamalar.
+// System › Agent: agent version (warning if it lags behind), uptime, memory and unexpected restarts.
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';

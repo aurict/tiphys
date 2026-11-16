@@ -1,5 +1,5 @@
-// SSH anahtarları (Ayarlar › Anahtarlar): içe aktar (dosya/yapıştır), telefonda üret, açık anahtarı
-// kopyala/paylaş, bir hostun authorized_keys dosyasına ekle, sil.
+// SSH keys (Settings › Keys): import (file/paste), generate on the phone, copy/share the public key,
+// add it to a host's authorized_keys file, delete.
 import 'dart:convert';
 
 import 'package:file_picker/file_picker.dart';
@@ -105,7 +105,7 @@ class SshKeysSection extends ConsumerWidget {
   Future<void> _details(BuildContext context, WidgetRef ref, KeyInfo k) async {
     final l = AppLocalizations.of(context);
     await showModalBottomSheet<void>(
-      useRootNavigator: true, // alt sekme barının üstünde açılsın; yoksa bar sayfanın altını örter
+      useRootNavigator: true, // open above the bottom tab bar; otherwise the bar covers the bottom of the page
       context: context,
       isScrollControlled: true,
       builder: (c) => SafeArea(
@@ -164,7 +164,7 @@ class SshKeysSection extends ConsumerWidget {
     );
   }
 
-  /// Bir hosta (şu anki giriş yöntemiyle bağlanıp) açık anahtarı ekler.
+  /// Adds the public key to a host (connecting with the current login method).
   Future<void> _install(BuildContext context, WidgetRef ref, KeyInfo k) async {
     final l = AppLocalizations.of(context);
     final hosts = ref.read(profileProvider).hosts.where((h) => h.ssh != null).toList();

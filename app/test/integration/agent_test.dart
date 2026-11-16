@@ -1,5 +1,5 @@
-// Gerçek Tiphys ajanlarına karşı istemci testi (Tailscale üzerinden HTTPS).
-// Hedefler ve token dosyaları: real_env.dart (~/.config/tiphys/real-test.json).
+// Client test against real Tiphys agents (HTTPS over Tailscale).
+// Targets and token files: real_env.dart (~/.config/tiphys/real-test.json).
 @Tags(['real'])
 library;
 
@@ -11,7 +11,7 @@ import 'package:tiphys/core/agent/agent_client.dart';
 import 'real_env.dart';
 
 void main() {
-  // flutter_test HTTP'yi sahte bir istemciyle değiştirir; bu testler gerçek ağa çıkar.
+  // flutter_test replaces HTTP with a fake client; these tests hit the real network.
   setUpAll(() => HttpOverrides.global = null);
 
   for (final (name, url, tokenFile) in [
@@ -76,7 +76,7 @@ void main() {
   test('sunucu: bakım penceresi ekle, listele, sil; uyarılar, süreçler ve işlem kaydı', () async {
     final c = AgentClient(baseUrl: real.agent(real.server), token: File(real.serverToken).readAsStringSync().trim());
     final ms = ((await c.get('/v1/uptime/monitors'))['monitors'] as List).cast<Map>();
-    // Gerçek uyarıları bastırmamak için pencere iki gün sonrasına, 30 dakikalık.
+    // Window two days from now, 30 minutes long, so real alerts aren't suppressed.
     final start = DateTime.now().toUtc().add(const Duration(days: 2));
     final added = await c.post('/v1/uptime/maintenance', {
       'title': 'tiphys-test',

@@ -1,5 +1,5 @@
-// 7. faz ekranları: araçlar (süreçler, portlar, pano, işlem kaydı), git, Grafana alarmları, bakım pencereleri,
-// "bilgisayara gönder". Güncellemek için: flutter test test/goldens/phase7_test.dart --update-goldens
+// Phase 7 screens: tools (processes, ports, clipboard, action log), git, Grafana alerts, maintenance windows,
+// "send to computer". To update: flutter test test/goldens/phase7_test.dart --update-goldens
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';

@@ -1,5 +1,5 @@
-// Grafana istemcisi: dashboard JSON'u, değişkenler, /api/ds/query ile veri, birim biçimlendirme.
-// Panel türleri: stat, timeseries, table, logs uygulamada çizilir; diğerleri tarayıcıda açılır.
+// Grafana client: dashboard JSON, variables, data via /api/ds/query, unit formatting.
+// Panel types: stat, timeseries, table, logs are drawn in the app; others open in the browser.
 import 'dart:math' as math;
 
 import 'http_json.dart';
@@ -32,7 +32,7 @@ class GrafanaVariable {
   final bool includeAll;
   final String? allValue;
   List<String> options;
-  List<String> current; // '$__all' = Hepsi
+  List<String> current; // '$__all' = All
   final String? datasourceUid;
   final String? datasourceType;
   final String? query;
@@ -159,7 +159,7 @@ class GrafanaClient {
   Future<Map<String, dynamic>> dashboard(String uid) async =>
       Map<String, dynamic>.from(((await _h.json('GET', '/api/dashboards/uid/$uid')) as Map)['dashboard'] as Map);
 
-  /// Satırlar düzleştirilir; daraltılmış satırların panelleri de dahil edilir.
+  /// Rows are flattened; panels of collapsed rows are included too.
   static List<GrafanaPanel> panels(Map<String, dynamic> d) {
     final out = <GrafanaPanel>[];
     String? row;
@@ -201,7 +201,7 @@ class GrafanaClient {
     return out;
   }
 
-  /// Seçenekleri sunucudan yükler (label_values ve sabit listeler).
+  /// Loads options from the server (label_values and constant lists).
   Future<void> loadOptions(GrafanaVariable v) async {
     if (v.type == 'custom' && v.query != null) {
       v.options = v.query!.split(RegExp(r'\s*,\s*')).where((s) => s.isNotEmpty).toList();
@@ -220,7 +220,7 @@ class GrafanaClient {
     }
   }
 
-  /// $değişken / ${değişken} / [[değişken]] yerleştirme. Çoklu değer ve "Hepsi" düzenli ifadeye çevrilir.
+  /// $variable / ${variable} / [[variable]] substitution. Multiple values and "All" are converted to a regex.
   static String interpolate(String expr, List<GrafanaVariable> vars) {
     var out = expr;
     for (final v in vars) {
@@ -243,7 +243,7 @@ class GrafanaClient {
 
   static String _re(String s) => s.replaceAllMapped(RegExp(r'[.*+?^${}()|\[\]\\]'), (m) => '\\${m[0]}');
 
-  /// Dashboard'daki ilk Prometheus veri kaynağının kimliği (alarm listesi için).
+  /// Id of the dashboard's first Prometheus data source (for the alert list).
   static String? prometheusUid(Map<String, dynamic> d) {
     for (final p in panels(d)) {
       final ds = p.j['datasource'] as Map?;
@@ -255,13 +255,13 @@ class GrafanaClient {
     return null;
   }
 
-  /// Veri kaynakları (uid, tür, ad).
+  /// Data sources (uid, type, name).
   Future<List<({String uid, String type, String name})>> datasources() async {
     final list = await _h.json('GET', '/api/datasources') as List;
     return [for (final d in list.cast<Map>()) (uid: '${d['uid']}', type: '${d['type']}', name: '${d['name']}')];
   }
 
-  /// Tüm alarm kuralları ve durumları: Grafana'nın kendi kuralları + her Prometheus veri kaynağının kuralları.
+  /// All alert rules and states: Grafana's own rules + the rules of each Prometheus data source.
   Future<List<GrafanaRule>> rules(List<String> prometheusUids) async {
     final out = <GrafanaRule>[];
     Future<void> load(String path, String source) async {
@@ -292,7 +292,7 @@ class GrafanaClient {
           }
         }
       } on IntegrationError {
-        // Bu kaynak erişilemiyorsa diğerleri yine gösterilir.
+        // If this source is unreachable, the others are still shown.
       }
     }
 
@@ -308,7 +308,7 @@ class GrafanaClient {
     return out;
   }
 
-  /// Grafana'nın kendi alarmları + (varsa) Prometheus/Alertmanager alarmları.
+  /// Grafana's own alerts + Prometheus/Alertmanager alerts (if any).
   Future<List<GrafanaAlert>> alerts({String? prometheusUid}) async {
     final out = <GrafanaAlert>[];
     Future<void> load(String path) async {
@@ -329,7 +329,7 @@ class GrafanaClient {
           ));
         }
       } on IntegrationError {
-        // Bu kaynak erişilemiyorsa diğerleri yine gösterilir.
+        // If this source is unreachable, the others are still shown.
       }
     }
 
@@ -436,7 +436,7 @@ class GrafanaClient {
   void close() => _h.close();
 }
 
-/// Grafana birimleriyle değer biçimlendirme (yaygın birimler).
+/// Value formatting with Grafana units (common units).
 String formatValue(double? v, String? unit, {int? decimals}) {
   if (v == null || v.isNaN) return '–';
   String n(double x, [int d = 1]) => x.toStringAsFixed(decimals ?? (x.abs() >= 100 ? 0 : d));
@@ -481,7 +481,7 @@ String formatValue(double? v, String? unit, {int? decimals}) {
   }
 }
 
-/// Eşik rengine göre (Grafana adlı renkleri yaklaşık karşılıklarıyla).
+/// By threshold color (Grafana named colors with approximate equivalents).
 int thresholdColor(List<(double?, String)> steps, double? v) {
   var color = steps.isEmpty ? 'green' : steps.first.$2;
   if (v != null) {
@@ -501,7 +501,7 @@ int thresholdColor(List<(double?, String)> steps, double? v) {
   };
 }
 
-/// Eksen için yuvarlak adım.
+/// Round step for the axis.
 double niceStep(double range, int ticks) {
   if (range <= 0) return 1;
   final raw = range / ticks;

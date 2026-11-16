@@ -1,4 +1,4 @@
-// Dış komutları kabuk olmadan, zaman aşımı ve çıktı sınırıyla çalıştırır.
+// Runs external commands without a shell, with a timeout and an output limit.
 import { execFile } from "node:child_process";
 import { AppError } from "./errors.ts";
 

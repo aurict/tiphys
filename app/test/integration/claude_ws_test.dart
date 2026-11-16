@@ -1,4 +1,4 @@
-// Uygulamanın Claude canlı akışı gerçek ajana karşı (API çağrısı yapmayan "devam" oturumu ile).
+// The app's Claude live stream against the real agent (with a "continue" session that makes no API calls).
 @Tags(['real'])
 library;
 

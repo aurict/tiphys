@@ -1,4 +1,4 @@
-// Adresi telefonun varsayılan tarayıcısında açar.
+// Opens the address in the phone's default browser.
 import 'package:url_launcher/url_launcher.dart';
 
 Future<bool> openExternal(String url) async {

@@ -1,4 +1,4 @@
-// SSH anahtarları: içe aktarma (OpenSSH/PEM, parolalı da olur), ed25519 üretme, açık anahtar satırı.
+// SSH keys: import (OpenSSH/PEM, passphrase-protected too), ed25519 generation, public key line.
 import 'dart:convert';
 import 'dart:typed_data';
 
@@ -18,10 +18,10 @@ class ParsedKey {
   const ParsedKey({required this.type, required this.publicLine, required this.unencryptedPem});
   final String type;
 
-  /// authorized_keys satırı: "ssh-ed25519 AAAA… etiket"
+  /// authorized_keys line: "ssh-ed25519 AAAA… label"
   final String publicLine;
 
-  /// Kasada saklanacak parolasız PEM (kasa zaten şifreli).
+  /// Passphrase-less PEM to store in the vault (the vault is already encrypted).
   final String unencryptedPem;
 }
 
@@ -30,7 +30,7 @@ String publicLineOf(SSHKeyPair pair, String comment) {
   return '${pair.type} ${base64.encode(pub.encode())}${comment.isEmpty ? '' : ' $comment'}';
 }
 
-/// Özel anahtarı okur. Parolalıysa ve parola verilmediyse [NeedsPassphrase] fırlatır.
+/// Reads a private key. Throws [NeedsPassphrase] if it is passphrase-protected and no passphrase was given.
 ParsedKey parsePrivateKey(String text, {String? passphrase, String comment = ''}) {
   final pem = text.trim();
   if (!pem.startsWith('-----BEGIN')) throw const InvalidKey('pem');
@@ -51,23 +51,23 @@ ParsedKey parsePrivateKey(String text, {String? passphrase, String comment = ''}
 }
 
 String _unencrypted(SSHKeyPair pair, String original) {
-  // Parolasız OpenSSH anahtarları olduğu gibi saklanır; diğerleri OpenSSH biçimine çevrilir.
+  // Passphrase-less OpenSSH keys are stored as-is; others are converted to OpenSSH format.
   if (!SSHKeyPair.isEncryptedPem(original)) return original.endsWith('\n') ? original : '$original\n';
   return pair.toPem();
 }
 
-/// Telefonda yeni ed25519 anahtarı üretir.
+/// Generates a new ed25519 key on the phone.
 Future<ParsedKey> generateEd25519(String comment) async {
   final algo = c.Ed25519();
   final kp = await algo.newKeyPair();
   final seed = await kp.extractPrivateKeyBytes();
   final pub = (await kp.extractPublicKey()).bytes;
-  // OpenSSH ed25519 özel anahtarı = 32 bayt tohum + 32 bayt açık anahtar.
+  // OpenSSH ed25519 private key = 32-byte seed + 32-byte public key.
   final pair = OpenSSHEd25519KeyPair(Uint8List.fromList(pub), Uint8List.fromList([...seed, ...pub]), comment);
   return ParsedKey(type: pair.type, publicLine: publicLineOf(pair, comment), unencryptedPem: pair.toPem());
 }
 
-/// authorized_keys'e (yinelemeden) eklemek için kabuk komutu. Anahtar tek tırnak içinde güvenle kaçırılır.
+/// Shell command to append to authorized_keys (without duplicates). The key is safely escaped in single quotes.
 String installKeyCommand(String publicLine) {
   final q = "'${publicLine.replaceAll("'", "'\\''")}'";
   return 'umask 077; mkdir -p ~/.ssh && touch ~/.ssh/authorized_keys && '

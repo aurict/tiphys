@@ -1,4 +1,4 @@
-// Siteler (Uptime Kuma): liste, detay (yanıt süresi grafiği, kesintiler), ekle/düzenle/duraklat/sil.
+// Sites (Uptime Kuma): list, detail (response time chart, outages), add/edit/pause/delete.
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -93,7 +93,7 @@ class SitesScreen extends ConsumerWidget {
   }
 }
 
-/// Son atışlar: küçük dikey çubuklar (yeşil açık, kırmızı kapalı).
+/// Recent heartbeats: small vertical bars (green up, red down).
 class _Beats extends StatelessWidget {
   const _Beats({required this.beats});
   final List<num> beats;
@@ -369,7 +369,7 @@ class _SiteEditState extends ConsumerState<SiteEditScreen> {
             });
             ref.invalidate(homepageProvider);
           } catch (e) {
-            // Site eklendi; Homepage adımı başarısızsa ayrıca bildirilir.
+            // Site added; if the Homepage step failed, that is reported separately.
             if (mounted) toast(context, '${l.siteHomepageFailed}: ${agentErrorText(l, e)}');
           }
         }

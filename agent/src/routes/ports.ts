@@ -1,5 +1,5 @@
-// Port önizleme: dinlenen TCP portları ve süreçleri. Sadece localhost'u dinleyen bir portu telefondan açmak
-// için tailscale serve ile tailnet'e paylaşır (https://<pc>.ts.net:<port>); herkese açık değildir.
+// Port preview: listening TCP ports and their processes. To open a port that only listens on localhost from the
+// phone, it's shared to the tailnet with tailscale serve (https://<pc>.ts.net:<port>); it's not public.
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 import { run } from "../exec.ts";
@@ -27,7 +27,7 @@ export function parseSs(out: string): Listen[] {
     const m = /users:\(\("([^"]+)",pid=(\d+)/.exec(line);
     const loopback = address === "127.0.0.1" || address === "::1" || address.startsWith("127.");
     const prev = byPort.get(port);
-    // Aynı port hem IPv4 hem IPv6'da dinlenebilir: biri herkese açıksa port herkese açık sayılır.
+    // The same port may listen on both IPv4 and IPv6: if either is public, the port counts as public.
     if (prev) {
       prev.localOnly &&= loopback;
       prev.process ??= m?.[1] ?? null;
@@ -38,7 +38,7 @@ export function parseSs(out: string): Listen[] {
   return [...byPort.values()].sort((a, b) => a.port - b.port);
 }
 
-/** tailscale serve status --json → paylaşılan https portları (port → hedef). */
+/** tailscale serve status --json → shared https ports (port → target). */
 export function parseServe(json: string): Map<number, string> {
   const out = new Map<number, string>();
   try {
@@ -49,7 +49,7 @@ export function parseServe(json: string): Map<number, string> {
       if (proxy) out.set(port, proxy);
     }
   } catch {
-    /* boş */
+    /* empty */
   }
   return out;
 }
