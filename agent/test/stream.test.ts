@@ -190,7 +190,7 @@ async function streamApp(f: ReturnType<typeof fakeIo>, opts: StreamOpts = {}, co
     },
     [
       (a, ctx) => {
-        hyprRoutes(a, ctx, f.io, { indicator, now: opts.now });
+        hyprRoutes(a, ctx, f.io, { indicator, now: opts.now, appDirs: [] }); // hermetic: no .desktop files from the host
         streamRoutes(a, ctx, f.io, { killGraceMs: 50, statsMs: 60_000, ...opts });
       },
     ],
