@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Android 12+ bulut yedeği ve cihazdan cihaza aktarım kapalı: Keystore'daki anahtarlar başka cihazda
-     açılamaz, yarım taşınan veri uygulamayı bozar. Taşıma için Ayarlar › Profil › şifreli yedek kullanılır. -->
+<!-- Android 12+ cloud backup and device-to-device transfer are off: Keystore keys cannot be opened on another
+     device, and half-migrated data breaks the app. To migrate, use Settings › Profile › encrypted backup. -->
 <data-extraction-rules>
     <cloud-backup>
         <exclude domain="root" />

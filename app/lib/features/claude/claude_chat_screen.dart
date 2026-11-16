@@ -1,5 +1,5 @@
-// Claude sohbet ekranı: canlı akış, araç kartları, diff, izin kartları, slash komutları, durdurma,
-// fotoğraf ekleme, sesli mesaj, maliyet ve bağlam doluluğu.
+// Claude chat screen: live stream, tool cards, diff, permission cards, slash commands, stopping,
+// adding photos, voice messages, cost and context usage.
 import 'dart:async';
 import 'dart:convert';
 
@@ -16,14 +16,16 @@ import '../../state/providers.dart';
 import '../../theme/tokens.dart';
 import '../../widgets/forms.dart';
 import '../../widgets/surfaces.dart';
+import '../notes/obsidian.dart';
 import '../system/agent_providers.dart';
 import 'attachments.dart';
 import 'chat_markdown.dart';
 import 'session_insights.dart';
 import 'claude_controller.dart';
 import 'claude_screen.dart';
+import 'pc_panel.dart';
 
-/// Testlerde false yapılır (WebSocket açılmaz).
+/// Set to false in tests (no WebSocket is opened).
 final claudeStreamEnabledProvider = Provider<bool>((ref) => true);
 
 class ClaudeChatScreen extends ConsumerStatefulWidget {
@@ -32,7 +34,7 @@ class ClaudeChatScreen extends ConsumerStatefulWidget {
   final String? historyId;
   final String? historyCwd;
 
-  /// Oturum PC'de terminalde hâlâ açık: yalnız okunur, buradan devam ettirilmez (iki yazar oturumu bozar).
+  /// Session still open in a terminal on the PC: read-only, can't be continued here (two writers corrupt the session).
   final bool inTerminal;
   @override
   ConsumerState<ClaudeChatScreen> createState() => _ClaudeChatScreenState();
@@ -49,11 +51,11 @@ class _ClaudeChatScreenState extends ConsumerState<ClaudeChatScreen> {
   final _voice = VoiceRecorder();
   bool _transcribing = false;
 
-  /// Yazıya çevirme başlangıcı ve tahmini süresi (sunucudaki Scriberr CPU'da ≈ ses süresinin 3 katı).
+  /// Transcription start and estimated duration (Scriberr on the server, on CPU ≈ 3x the audio length).
   DateTime? _transcribeStart;
   Duration _transcribeEstimate = Duration.zero;
 
-  /// İptal edilen çevirinin sonucu sonradan gelirse yok sayılsın diye her çeviriye bir numara.
+  /// A number per transcription so a cancelled one's result is ignored if it arrives later.
   int _transcribeRun = 0;
 
   void _cancelTranscribe() => setState(() {
@@ -61,10 +63,10 @@ class _ClaudeChatScreenState extends ConsumerState<ClaudeChatScreen> {
         _transcribing = false;
       });
 
-  /// Ekran açılırken alınır: dispose() içinde ref kullanılamaz.
+  /// Taken when the screen opens: ref can't be used inside dispose().
   late final ClaudeSeen _seen;
 
-  /// "Sen yokken" özeti (oturuma dönünce bir kez gösterilir).
+  /// "While you were away" summary (shown once on returning to the session).
   AwayDigest? _away;
 
   @override
@@ -75,12 +77,14 @@ class _ClaudeChatScreenState extends ConsumerState<ClaudeChatScreen> {
     _open();
   }
 
-  /// Bu oturumda en son hangi olaya kadar bakıldı (ekrandan çıkınca / uygulama arka plana gidince).
+  /// Up to which event this session was last viewed (on leaving the screen / when the app goes to the background).
   void _markSeen() {
     final c = _c;
     final epoch = c?.summary?['epoch'] as String?;
     if (c == null || !c.isLive || epoch == null) return;
-    unawaited(_seen.mark(c.sessionId, c.lastSeq, epoch));
+    final id = c.sessionId, seq = c.lastSeq;
+    // Also called from dispose(): on the next tick so the provider isn't modified while the tree is building.
+    unawaited(Future(() => _seen.mark(id, seq, epoch)));
   }
 
   void _onVisibility() {
@@ -108,13 +112,13 @@ class _ClaudeChatScreenState extends ConsumerState<ClaudeChatScreen> {
         olderAvailable: more,
       );
       if (!mounted) {
-        c.dispose(); // açılış bitmeden ekrandan çıkıldı
+        c.dispose(); // left the screen before opening finished
         return;
       }
       c.addListener(_onUpdate);
       setState(() => _c = c);
       await c.start();
-      // Oturuma geri dönüldüyse: en son bakılan yerden sonra olanların özeti.
+      // If returning to the session: a summary of what happened since the last viewed point.
       final seen = ref.read(claudeSeenProvider)[c.sessionId];
       if (mounted && c.isLive && seen != null && seen.$2 == c.summary?['epoch']) {
         setState(() => _away = awayDigest(c.events, seen.$1));
@@ -126,7 +130,7 @@ class _ClaudeChatScreenState extends ConsumerState<ClaudeChatScreen> {
 
   bool _takingOver = false;
 
-  /// Terminaldeki oturumu telefona al: ajan terminaldeki Claude'u kapatır, aynı oturumu burada sürdürür.
+  /// Take over the terminal session on the phone: the agent closes Claude in the terminal and continues it here.
   Future<void> _takeover() async {
     final l = AppLocalizations.of(context);
     final id = widget.historyId!;
@@ -154,10 +158,10 @@ class _ClaudeChatScreenState extends ConsumerState<ClaudeChatScreen> {
   }
 
   void _openChanges(ClaudeSessionController c) => Navigator.of(context).push(MaterialPageRoute<void>(
-        builder: (_) => SessionChangesScreen(events: List.of(c.events), cwd: c.summary?['cwd'] as String? ?? widget.historyCwd),
+        builder: (_) => SessionChangesScreen(events: List.of(c.events), cwd: c.summary?['cwd'] as String? ?? widget.historyCwd, title: c.summary?['title'] as String?),
       ));
 
-  /// Terminaldeki oturum ilerledikçe kaydı yeniden okur.
+  /// Re-reads the transcript as the terminal session progresses.
   Future<void> _reload() async {
     _c?.removeListener(_onUpdate);
     _c?.dispose();
@@ -170,7 +174,7 @@ class _ClaudeChatScreenState extends ConsumerState<ClaudeChatScreen> {
 
   void _onUpdate() {
     if (!mounted) return;
-    // Liste ters (en yeni altta, konum 0 = en alt): yeni içerik kendiliğinden görünür kalır.
+    // The list is reversed (newest at the bottom, position 0 = bottom): new content stays visible by itself.
     setState(() {});
   }
 
@@ -190,14 +194,14 @@ class _ClaudeChatScreenState extends ConsumerState<ClaudeChatScreen> {
     final text = _input.text.trim();
     final c = _c;
     if ((text.isEmpty && _images.isEmpty) || c == null) return;
-    // Mesaj önce gönderim kutusuna girer: ağ yoksa "bekliyor" olarak görünür, bağlantı gelince gider.
+    // The message goes into the outbox first: shown as "waiting" if offline, sent when the connection returns.
     final images = [for (final i in _images) i.toJson()];
     setState(() {
       _sending = true;
       _input.clear();
       _images.clear();
     });
-    // Yukarıda eski mesajları okurken gönderildiyse en alta dön.
+    // If sent while reading older messages above, jump back to the bottom.
     if (_scroll.hasClients) _scroll.jumpTo(0);
     try {
       await c.send(text, images: images);
@@ -218,7 +222,7 @@ class _ClaudeChatScreenState extends ConsumerState<ClaudeChatScreen> {
     }
   }
 
-  /// Mikrofon: ilk dokunuş kaydı başlatır, ikincisi bitirip yazıya çevirir; metin kutuya eklenir.
+  /// Microphone: the first tap starts recording, the second stops and transcribes; the text is added to the box.
   Future<void> _mic() async {
     final l = AppLocalizations.of(context);
     if (!_voice.recording) {
@@ -231,7 +235,7 @@ class _ClaudeChatScreenState extends ConsumerState<ClaudeChatScreen> {
       return;
     }
     final host = ref.read(claudeHostProvider);
-    // Ayarlar › Entegrasyonlar › Scriberr: dil (tr/en/otomatik) ve model. Ayar yoksa arayüz dili.
+    // Settings › Integrations › Scriberr: language (tr/en/auto) and model. Without a setting, the UI language.
     final stt = ref.read(profileProvider).integrations.scriberr;
     final lang = stt?.language ?? Localizations.localeOf(context).languageCode;
     final recorded = _voice.elapsed;
@@ -254,7 +258,7 @@ class _ClaudeChatScreenState extends ConsumerState<ClaudeChatScreen> {
               if (stt != null) 'model': stt.model,
             },
             timeout: const Duration(minutes: 10)) as Map;
-        if (run != _transcribeRun) return; // kullanıcı iptal etti
+        if (run != _transcribeRun) return; // user cancelled
         final text = '${j['text'] ?? ''}'.trim();
         if (text.isEmpty) {
           if (mounted) toast(context, l.voiceEmpty);
@@ -291,7 +295,7 @@ class _ClaudeChatScreenState extends ConsumerState<ClaudeChatScreen> {
     }
     if (!mounted) return;
     final picked = await showModalBottomSheet<String>(
-      useRootNavigator: true, // alt sekme barının üstünde açılsın; yoksa bar sayfanın altını örter
+      useRootNavigator: true, // open above the bottom tab bar; otherwise the bar covers the bottom of the page
       context: context,
       isScrollControlled: true,
       builder: (ctx) => _CommandSheet(commands: _commands!, pinned: pinned),
@@ -350,7 +354,20 @@ class _ClaudeChatScreenState extends ConsumerState<ClaudeChatScreen> {
                     ),
                     onPressed: () => _openChanges(c),
                   ),
-                if (c != null && c.isLive)
+                if (c != null && c.isLive && c.isPc)
+                  IconButton(
+                    tooltip: l.claudeEndSession,
+                    icon: const Icon(LucideIcons.x),
+                    onPressed: () async {
+                      try {
+                        await c.close();
+                        if (context.mounted) context.pop();
+                      } catch (e) {
+                        if (context.mounted) toast(context, agentErrorText(l, e));
+                      }
+                    },
+                  ),
+                if (c != null && c.isLive && !c.isPc)
                   PopupMenuButton<String>(
                     tooltip: l.filesMore,
                     icon: const Icon(LucideIcons.ellipsisVertical),
@@ -379,6 +396,9 @@ class _ClaudeChatScreenState extends ConsumerState<ClaudeChatScreen> {
           ),
           if (c != null && c.isLive && (c.gone || (!c.connected && c.error != null)))
             _ConnectionBanner(text: c.gone ? l.claudeSessionGone : l.claudeReconnecting, danger: c.gone),
+          // "Use the PC": live screen strip, time, Stop; a reopen card when control ends.
+          if (c != null && c.isLive && c.isPc && !c.gone && ref.watch(claudeHostProvider) != null)
+            PcPanel(controller: c, hostId: ref.watch(claudeHostProvider)!.id),
           Expanded(
             child: _error != null
                 ? Center(child: Padding(padding: const EdgeInsets.all(24), child: Text(agentErrorText(l, _error!))))
@@ -424,14 +444,19 @@ class _ClaudeChatScreenState extends ConsumerState<ClaudeChatScreen> {
               ),
             ),
           if (c != null && _away != null)
-            AwayCard(digest: _away!, onClose: () => setState(() => _away = null), onChanges: () => _openChanges(c)),
+            AwayCard(
+              digest: _away!,
+              onClose: () => setState(() => _away = null),
+              onChanges: () => _openChanges(c),
+              onSaveNote: () => openQuickNote(context, text: awayNoteText(l, _away!), title: _noteTitle(c)),
+            ),
           if (c != null && c.isLive)
             _Composer(
               controller: c,
               input: _input,
               sending: _sending,
               onSend: _send,
-              onSlash: _slash,
+              onSlash: c.isPc ? null : _slash,
               onAttach: _attach,
               onMic: _transcribing ? null : _mic,
               voice: _voice,
@@ -446,6 +471,12 @@ class _ClaudeChatScreenState extends ConsumerState<ClaudeChatScreen> {
       ),
     );
   }
+}
+
+/// Suggested title of a note saved from Claude: "Claude · session title".
+String _noteTitle(ClaudeSessionController c) {
+  final t = c.summary?['title'] as String?;
+  return t == null || t.trim().isEmpty ? 'Claude' : 'Claude · $t';
 }
 
 class _Messages extends StatelessWidget {
@@ -464,7 +495,7 @@ class _Messages extends StatelessWidget {
         case 'user':
           items.add(_UserBubble(text: e.text, images: e.get<int>('images') ?? 0));
         case 'text':
-          items.add(_AssistantText(text: e.text));
+          items.add(_AssistantText(text: e.text, noteTitleFor: _noteTitle(c)));
         case 'thinking':
           items.add(_Thinking(text: e.text));
         case 'tool_use':
@@ -479,6 +510,12 @@ class _Messages extends StatelessWidget {
           items.add(_NoticeLine(text: AppLocalizations.of(context).claudeRestored));
         case 'compacted':
           items.add(_NoticeLine(text: AppLocalizations.of(context).claudeCompacted));
+        case 'control':
+          // The PC session's control binding broke (stopped / expired): a divider in the chat.
+          if (e.get<bool>('active') == false) {
+            final l = AppLocalizations.of(context);
+            items.add(_NoticeLine(text: e.get<String>('reason') == 'expired' ? l.claudePcExpired : l.claudePcEnded));
+          }
       }
     }
     if (c.live.isNotEmpty) items.add(_AssistantText(text: c.live, streaming: true));
@@ -486,9 +523,9 @@ class _Messages extends StatelessWidget {
       items.add(_UserBubble(text: o.text, images: o.images.length, pending: o.sending ? 'sending' : 'waiting', onDiscard: o.sending ? null : () => c.discard(o)));
     }
     if (c.busy && c.live.isEmpty) items.add(const _Typing());
-    // En üstte: daha eski mesajlar (Claude'un kaydından).
+    // At the top: older messages (from Claude's transcript).
     if (c.olderAvailable) items.insert(0, _OlderButton(controller: c));
-    // Ters liste: açılışta (geçmiş ya da devam edilen oturum) en son mesajdan başlar, yalnız görünenler çizilir.
+    // Reversed list: on open (history or resumed session) starts from the latest message; only visible ones are drawn.
     return ListView.builder(
       controller: scroll,
       reverse: true,
@@ -504,7 +541,7 @@ class _UserBubble extends StatelessWidget {
   final String text;
   final int images;
 
-  /// Henüz ajana ulaşmadıysa: 'sending' | 'waiting'.
+  /// If it hasn't reached the agent yet: 'sending' | 'waiting'.
   final String? pending;
   final VoidCallback? onDiscard;
   @override
@@ -546,18 +583,22 @@ class _UserBubble extends StatelessWidget {
   }
 }
 
-/// Basit biçim: ``` kod blokları monospace kutuda, gerisi seçilebilir metin.
+/// Simple formatting: ``` code blocks in a monospace box, the rest as selectable text.
 class _AssistantText extends StatelessWidget {
-  const _AssistantText({required this.text, this.streaming = false});
+  const _AssistantText({required this.text, this.streaming = false, this.noteTitleFor});
   final String text;
   final bool streaming;
+
+  /// Suggested title of the Obsidian note (session title).
+  final String? noteTitleFor;
   @override
   Widget build(BuildContext context) {
     final t = context.tokens;
     return Padding(
       padding: const EdgeInsets.only(top: 8, bottom: 4, right: 16),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        ChatMarkdown(text),
+        // On long press, "Save to Obsidian" in the selection menu (whole reply, editable on the quick note screen).
+        ChatMarkdown(text, onSaveNote: streaming ? null : () => openQuickNote(context, text: text, title: noteTitleFor)),
         if (streaming) Padding(padding: const EdgeInsets.only(top: 2), child: Container(width: 8, height: 14, color: t.accent)),
       ]),
     );
@@ -598,12 +639,15 @@ class _ToolCardState extends State<_ToolCard> {
   @override
   Widget build(BuildContext context) {
     final t = context.tokens;
-    final name = widget.event.get<String>('name') ?? '?';
+    final rawName = widget.event.get<String>('name') ?? '?';
+    final pc = pcToolName(rawName);
+    final name = (pc == null ? null : pcToolLabel(AppLocalizations.of(context), pc)) ?? pc ?? rawName;
     final input = Map<String, dynamic>.from((widget.event.get<Map>('input')) ?? {});
-    final diff = toolDiff(name, input);
+    final diff = toolDiff(rawName, input);
     final res = widget.result;
     final isError = res?.get<bool>('isError') ?? false;
-    final icon = switch (name) {
+    final shot = res?.get<String>('shot');
+    final icon = pc != null ? _pcIcon(pc) : switch (name) {
       'Bash' => LucideIcons.terminal,
       'Read' => LucideIcons.fileText,
       'Write' || 'Edit' || 'MultiEdit' => LucideIcons.filePen,
@@ -626,7 +670,7 @@ class _ToolCardState extends State<_ToolCard> {
             Text(name, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13)),
             const SizedBox(width: 8),
             Expanded(
-              child: Text(toolSummary(name, input),
+              child: Text(toolSummary(rawName, input, result: res?.text),
                   maxLines: _open ? 6 : 1,
                   overflow: TextOverflow.ellipsis,
                   style: TextStyle(fontFamily: 'JetBrainsMono', fontSize: 11.5, color: t.textSecondary)),
@@ -636,6 +680,10 @@ class _ToolCardState extends State<_ToolCard> {
             else
               Icon(isError ? LucideIcons.x : LucideIcons.check, size: 15, color: isError ? t.danger : t.success),
           ]),
+          if (shot != null) ...[
+            const SizedBox(height: 8),
+            PcShotThumb(shotId: shot),
+          ],
           if (diff.isNotEmpty && (_open || diff.length <= 12)) ...[
             const SizedBox(height: 8),
             ToolDiffView(lines: _open ? diff : diff.take(12).toList()),
@@ -658,7 +706,44 @@ class _ToolCardState extends State<_ToolCard> {
   }
 }
 
-/// Araç çağrısının (Edit/Write/MultiEdit) satır farkı: - eski, + yeni.
+IconData _pcIcon(String tool) => switch (tool) {
+      'screenshot' => LucideIcons.camera,
+      'click' || 'double_click' => LucideIcons.mousePointerClick,
+      'move' || 'drag' => LucideIcons.mousePointer2,
+      'scroll' => LucideIcons.scrollText,
+      'type' => LucideIcons.keyboard,
+      'key' => LucideIcons.command,
+      'windows' || 'focus_window' => LucideIcons.appWindow,
+      'launch_app' => LucideIcons.rocket,
+      'wait' => LucideIcons.hourglass,
+      'confirm' => LucideIcons.shieldQuestion,
+      'browser_tabs' => LucideIcons.layers,
+      'browser_open' => LucideIcons.squarePlus,
+      'browser_activate' => LucideIcons.panelTop,
+      'browser_close' => LucideIcons.squareX,
+      'page_text' => LucideIcons.bookOpen,
+      'ui_tree' => LucideIcons.layoutList,
+      'ui_press' => LucideIcons.pointer,
+      'ui_set_text' => LucideIcons.textCursorInput,
+      'ui_set_value' => LucideIcons.slidersHorizontal,
+      _ => LucideIcons.monitor,
+    };
+
+/// Short human text for 11.5 tools ("Opened a tab", "Pressed a button"); null for other PC tools (name is shown).
+String? pcToolLabel(AppLocalizations l, String tool) => switch (tool) {
+      'browser_tabs' => l.claudePcBrowserTabs,
+      'browser_open' => l.claudePcBrowserOpen,
+      'browser_activate' => l.claudePcBrowserActivate,
+      'browser_close' => l.claudePcBrowserClose,
+      'page_text' => l.claudePcPageText,
+      'ui_tree' => l.claudePcUiTree,
+      'ui_press' => l.claudePcUiPress,
+      'ui_set_text' => l.claudePcUiSetText,
+      'ui_set_value' => l.claudePcUiSetValue,
+      _ => null,
+    };
+
+/// Line diff of a tool call (Edit/Write/MultiEdit): - old, + new.
 class ToolDiffView extends StatelessWidget {
   const ToolDiffView({super.key, required this.lines});
   final List<(String, String)> lines;
@@ -712,6 +797,8 @@ class _PermissionCardState extends State<_PermissionCard> {
     final tool = widget.event.get<String>('toolName') ?? '?';
     final input = Map<String, dynamic>.from(widget.event.get<Map>('input') ?? {});
     final reason = widget.event.get<String>('reason');
+    // PC session: Claude's confirm tool or a window-closing shortcut; the reason is the card's main text.
+    final pc = pcToolName(tool) != null;
     final decided = widget.decided;
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 6),
@@ -724,12 +811,16 @@ class _PermissionCardState extends State<_PermissionCard> {
             Row(children: [
               Icon(LucideIcons.shieldQuestion, color: t.warning, size: 20),
               const SizedBox(width: 8),
-              Expanded(child: Text(l.claudePermissionTitle(tool), style: const TextStyle(fontWeight: FontWeight.w700))),
+              Expanded(child: Text(pc ? l.claudePcConfirmTitle : l.claudePermissionTitle(tool), style: const TextStyle(fontWeight: FontWeight.w700))),
             ]),
             const SizedBox(height: 6),
-            Text(toolSummary(tool, input), style: const TextStyle(fontFamily: 'JetBrainsMono', fontSize: 12)),
-            if (toolDiff(tool, input).isNotEmpty) ...[const SizedBox(height: 6), ToolDiffView(lines: toolDiff(tool, input).take(20).toList())],
-            if (reason != null) Padding(padding: const EdgeInsets.only(top: 6), child: Text(reason, style: Theme.of(context).textTheme.bodySmall)),
+            if (pc)
+              Text(reason ?? toolSummary(tool, input), style: const TextStyle(fontSize: 15, height: 1.35))
+            else ...[
+              Text(toolSummary(tool, input), style: const TextStyle(fontFamily: 'JetBrainsMono', fontSize: 12)),
+              if (toolDiff(tool, input).isNotEmpty) ...[const SizedBox(height: 6), ToolDiffView(lines: toolDiff(tool, input).take(20).toList())],
+              if (reason != null) Padding(padding: const EdgeInsets.only(top: 6), child: Text(reason, style: Theme.of(context).textTheme.bodySmall)),
+            ],
             const SizedBox(height: 10),
             if (decided == null)
               Row(children: [
@@ -779,7 +870,7 @@ class _OlderButton extends StatelessWidget {
   }
 }
 
-/// Bağlantı koptuğunda / oturum ajanda yoksa üstte ince şerit.
+/// Thin strip on top when the connection drops / the session doesn't exist on the agent.
 class _ConnectionBanner extends StatelessWidget {
   const _ConnectionBanner({required this.text, this.danger = false});
   final String text;
@@ -800,7 +891,7 @@ class _ConnectionBanner extends StatelessWidget {
   }
 }
 
-/// Sohbet içinde ince ayraç + kısa bilgi (ajan yeniden başladı, önceki kısım özetlendi).
+/// Thin divider + short info in the chat (agent restarted, earlier part was summarized).
 class _NoticeLine extends StatelessWidget {
   const _NoticeLine({required this.text});
   final String text;
@@ -874,7 +965,7 @@ class _Typing extends StatelessWidget {
       );
 }
 
-/// Başlıktaki maliyet ve bağlam doluluğu (ör. "$0,42 · %38").
+/// Cost and context usage in the header (e.g. "$0,42 · %38").
 class _UsageChip extends StatelessWidget {
   const _UsageChip({required this.summary});
   final Map<String, dynamic> summary;
@@ -923,7 +1014,9 @@ class _Composer extends StatelessWidget {
   final TextEditingController input;
   final bool sending;
   final VoidCallback onSend;
-  final VoidCallback onSlash;
+
+  /// null: no slash commands (PC session).
+  final VoidCallback? onSlash;
   final VoidCallback onAttach;
   final VoidCallback? onMic;
   final VoiceRecorder voice;
@@ -999,7 +1092,7 @@ class _Composer extends StatelessWidget {
               ]),
             ),
            Row(crossAxisAlignment: CrossAxisAlignment.end, children: [
-            IconButton(tooltip: l.claudeSlashCommands, icon: Icon(LucideIcons.slash, color: t.accent), onPressed: onSlash),
+            if (onSlash != null) IconButton(tooltip: l.claudeSlashCommands, icon: Icon(LucideIcons.slash, color: t.accent), onPressed: onSlash),
             IconButton(tooltip: l.claudeAttachImage, icon: Icon(LucideIcons.imagePlus, color: t.textSecondary), onPressed: images.length >= 5 ? null : onAttach),
             Expanded(
               child: TextField(
@@ -1008,7 +1101,7 @@ class _Composer extends StatelessWidget {
                 maxLines: 6,
                 textInputAction: TextInputAction.newline,
                 onChanged: (v) {
-                  if (v == '/') onSlash();
+                  if (v == '/') onSlash?.call();
                 },
                 decoration: InputDecoration(
                   hintText: busy ? l.claudeQueueHint : l.claudePromptHint,
@@ -1117,7 +1210,7 @@ class _CommandSheetState extends State<_CommandSheet> {
   }
 }
 
-/// "Yazıya çevriliyor · 12 sn / ~35 sn": yalnız bu metin saniyede bir yenilenir (sohbet yeniden çizilmez).
+/// "Transcribing · 12 s / ~35 s": only this text refreshes every second (the chat isn't redrawn).
 class _TranscribeProgress extends StatefulWidget {
   const _TranscribeProgress({required this.start, required this.estimate});
   final DateTime start;

@@ -6,6 +6,8 @@ import 'package:receive_sharing_intent/receive_sharing_intent.dart' show SharedM
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import 'features/files/share_to_pc.dart';
+import 'features/notes/obsidian.dart';
+import 'features/notes/quick_note_screen.dart';
 import 'features/git/git_screen.dart';
 import 'features/claude/claude_chat_screen.dart';
 import 'features/claude/claude_screen.dart';
@@ -15,9 +17,19 @@ import 'features/monitoring/dozzle_screen.dart';
 import 'features/monitoring/grafana_screen.dart';
 import 'features/monitoring/homepage_screen.dart';
 import 'features/monitoring/sites_screen.dart';
+import 'features/claude/schedules.dart';
+import 'features/system/backups.dart';
+import 'features/system/clipboard_sync.dart';
+import 'features/system/compose.dart';
+import 'features/system/events.dart';
+import 'features/system/log_search.dart';
+import 'features/system/media.dart';
+import 'features/desktop/desktop_screen.dart';
+import 'features/desktop/live_screen.dart';
 import 'features/system/system_screen.dart';
 import 'features/terminal/terminal_screen.dart';
 import 'features/lock/lock_gate.dart';
+import 'features/vault/vault_screen.dart';
 import 'features/settings/settings_routes.dart';
 import 'l10n/gen/app_localizations.dart';
 import 'state/providers.dart';
@@ -26,7 +38,7 @@ import 'theme/tokens.dart';
 import 'widgets/floating_tab_bar.dart';
 import 'widgets/surfaces.dart';
 
-/// Sekme kimliği → (rota, simge, etiket)
+/// Tab id → (route, icon, label)
 const tabRoutes = {
   'home': '/',
   'claude': '/claude',
@@ -82,6 +94,19 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(path: '/monitor/dozzle', builder: (c, s) => const DozzleScreen()),
       GoRoute(path: '/monitor/sites', builder: (c, s) => const SitesScreen()),
       GoRoute(path: '/monitor/homepage', builder: (c, s) => const HomepageScreen()),
+      GoRoute(path: '/system/events', builder: (c, s) => const EventsScreen()),
+      GoRoute(path: '/system/backups', builder: (c, s) => const BackupsScreen()),
+      GoRoute(path: '/system/compose', builder: (c, s) => const ComposeScreen()),
+      GoRoute(path: '/system/logs', builder: (c, s) => LogSearchScreen(initialPattern: s.uri.queryParameters['q'])),
+      GoRoute(path: '/vault', builder: (c, s) => const VaultScreen()),
+      GoRoute(path: '/system/media', builder: (c, s) => MediaScreen(hostId: s.uri.queryParameters['host'] ?? '')),
+      GoRoute(path: '/system/desktop', builder: (c, s) => DesktopScreen(hostId: s.uri.queryParameters['host'] ?? '')),
+      GoRoute(
+        path: '/system/desktop/live',
+        builder: (c, s) => LiveScreen(hostId: s.uri.queryParameters['host'] ?? '', window: s.uri.queryParameters['window']),
+      ),
+      GoRoute(path: '/note', builder: (c, s) => QuickNoteScreen(args: s.extra is QuickNoteArgs ? s.extra as QuickNoteArgs : const QuickNoteArgs())),
+      GoRoute(path: '/claude/schedules', builder: (c, s) => const ClaudeSchedulesScreen()),
       GoRoute(path: '/share', builder: (c, s) => ShareToPcScreen(items: (s.extra as List?)?.cast<SharedMediaFile>() ?? const [])),
       GoRoute(path: '/git', builder: (c, s) => GitScreen(hostId: s.uri.queryParameters['host'] ?? '', path: s.uri.queryParameters['path'] ?? '~')),
       GoRoute(path: '/claude/session/:id', builder: (c, s) => ClaudeChatScreen(sessionId: s.pathParameters['id'])),
@@ -118,17 +143,17 @@ class TiphysApp extends ConsumerWidget {
         GlobalCupertinoLocalizations.delegate,
       ],
       localeResolutionCallback: (device, supported) {
-        // Sistem dili Türkçe değilse İngilizce.
+        // English unless the system language is Turkish.
         if (device?.languageCode == 'tr') return const Locale('tr');
         return const Locale('en');
       },
       routerConfig: ref.watch(routerProvider),
-      builder: (context, child) => LockGate(child: child!),
+      builder: (context, child) => LockGate(child: ClipboardSyncGate(child: child!)),
     );
   }
 }
 
-/// Sekmeler + yüzen alt bar. Koyu temada arka planda renk lekeleri.
+/// Tabs + floating bottom bar. Color blobs in the background in the dark theme.
 class AppShell extends ConsumerWidget {
   const AppShell({super.key, required this.location, required this.child});
   final String location;

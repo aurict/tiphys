@@ -1,10 +1,12 @@
-// Sistem › Araçlar (ajanlı host): süreçler, portlar (önizleme), pano, ekran görüntüsü, işlem kaydı;
-// ve bu host için tanımlı hızlı işlemler (SSH ile çalışır, ajan gerekmez).
+// System › Tools (agent host): processes, ports (preview), desktop panel, clipboard, open clipboard link on PC, media,
+// screenshot, action log;
+// and the quick actions defined for this host (run over SSH, no agent needed).
 import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:share_plus/share_plus.dart';
@@ -19,8 +21,10 @@ import '../../widgets/forms.dart';
 import '../../widgets/surfaces.dart';
 import '../files/files_screen.dart' show fileBrowsersProvider, formatSize;
 import 'agent_providers.dart';
+import 'media.dart';
+import 'open_on_pc.dart';
 
-/// Ajanın açık özellikleri (sağlık yanıtından). Bilinmiyorsa boş.
+/// The agent's enabled features (from the health response). Empty if unknown.
 Map<String, dynamic> _features(WidgetRef ref, Host host) =>
     ((ref.watch(healthProvider(host.id)).value?['features'] as Map?) ?? const {}).cast<String, dynamic>();
 
@@ -41,7 +45,22 @@ class ToolsSection extends ConsumerWidget {
       if (f['ports'] == true)
         GroupedRow(title: l.toolsPorts, subtitle: l.toolsPortsHint, icon: LucideIcons.plug, iconBackground: const Color(0xFF0A84FF), onTap: () => open(PortsScreen(host: host))),
       if (f['desktop'] == true) ...[
+        GroupedRow(
+          title: l.desktopTitle,
+          icon: LucideIcons.appWindow,
+          iconBackground: const Color(0xFF5856D6),
+          onTap: () => context.push('/system/desktop?host=${Uri.encodeQueryComponent(host.id)}'),
+        ),
         GroupedRow(title: l.toolsClipboard, icon: LucideIcons.clipboard, iconBackground: const Color(0xFFBF5AF2), onTap: () => open(ClipboardScreen(host: host))),
+        GroupedRow(
+          title: l.openOnPc,
+          subtitle: l.openOnPcClipboardHint,
+          icon: LucideIcons.squareArrowOutUpRight,
+          iconBackground: const Color(0xFF0A84FF),
+          showChevron: false,
+          onTap: () => openClipboardUrlOnPc(context, ref, host),
+        ),
+        GroupedRow(title: l.mediaTitle, icon: LucideIcons.music, iconBackground: const Color(0xFFFF375F), onTap: () => open(MediaScreen(hostId: host.id))),
         GroupedRow(title: l.toolsScreenshot, icon: LucideIcons.monitor, iconBackground: const Color(0xFF30B0C7), onTap: () => open(ScreenshotScreen(host: host))),
       ],
       if (host.agent != null)
@@ -65,7 +84,7 @@ class ToolsSection extends ConsumerWidget {
   }
 }
 
-/// Hızlı işlemi SSH ile çalıştırır (gerekirse önce onay ister), sonucu alt sayfada gösterir.
+/// Runs a quick action over SSH (asks for confirmation first if needed) and shows the result in a subpage.
 Future<void> runQuickAction(BuildContext context, WidgetRef ref, QuickAction a) async {
   final l = AppLocalizations.of(context);
   final host = ref.read(profileProvider).host(a.hostId);
@@ -77,7 +96,7 @@ Future<void> runQuickAction(BuildContext context, WidgetRef ref, QuickAction a) 
     return f.conn.exec(a.command, timeout: const Duration(minutes: 10));
   })();
   await showModalBottomSheet<void>(
-      useRootNavigator: true, // alt sekme barının üstünde açılsın; yoksa bar sayfanın altını örter
+      useRootNavigator: true, // open above the bottom tab bar; otherwise the bar covers the bottom of the page
     context: context,
     isScrollControlled: true,
     builder: (c) => _RunSheet(title: a.name, command: a.command, result: result),
@@ -154,7 +173,7 @@ class _CodeChip extends StatelessWidget {
   }
 }
 
-/// Basit "yükleniyor / hata / veri" iskeleti olan araç sayfası.
+/// Tool page with a simple "loading / error / data" scaffold.
 class _AsyncPage<T> extends StatelessWidget {
   const _AsyncPage({required this.title, required this.value, required this.onRetry, required this.builder, this.actions});
   final String title;
@@ -188,7 +207,7 @@ class _AsyncPage<T> extends StatelessWidget {
   }
 }
 
-// ── Süreçler ────────────────────────────────────────────────────────────────
+// ── Processes ───────────────────────────────────────────────────────────────
 
 final processesProvider = FutureProvider.autoDispose.family<List<Map<String, dynamic>>, (String, String)>((ref, key) async {
   final (hostId, sort) = key;
@@ -279,7 +298,7 @@ class _ProcessesScreenState extends ConsumerState<ProcessesScreen> {
   }
 }
 
-// ── Portlar ─────────────────────────────────────────────────────────────────
+// ── Ports ───────────────────────────────────────────────────────────────────
 
 final portsProvider = FutureProvider.autoDispose.family<Map<String, dynamic>, String>((ref, hostId) async {
   return withAgent(ref, hostId, (c) => c.get('/v1/ports'));
@@ -339,7 +358,7 @@ class PortsScreen extends ConsumerWidget {
   }
 }
 
-// ── Pano ────────────────────────────────────────────────────────────────────
+// ── Clipboard ───────────────────────────────────────────────────────────────
 
 class ClipboardScreen extends ConsumerStatefulWidget {
   const ClipboardScreen({super.key, required this.host});
@@ -433,7 +452,7 @@ class _ClipboardScreenState extends ConsumerState<ClipboardScreen> {
   }
 }
 
-// ── Ekran görüntüsü ─────────────────────────────────────────────────────────
+// ── Screenshot ──────────────────────────────────────────────────────────────
 
 class ScreenshotScreen extends ConsumerStatefulWidget {
   const ScreenshotScreen({super.key, required this.host});
@@ -514,7 +533,7 @@ class _ScreenshotScreenState extends ConsumerState<ScreenshotScreen> {
   }
 }
 
-// ── İşlem kaydı ─────────────────────────────────────────────────────────────
+// ── Action log ──────────────────────────────────────────────────────────────
 
 final auditProvider = FutureProvider.autoDispose.family<List<Map<String, dynamic>>, String>((ref, hostId) async {
   final j = await withAgent(ref, hostId, (c) => c.get('/v1/audit', query: {'limit': '300'}));

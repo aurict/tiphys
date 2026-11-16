@@ -1,4 +1,4 @@
-// Ekran görüntüleri: her ekran açık/koyu × TR/EN, 390×844 (2x). Güncellemek için:
+// Screenshots: every screen light/dark × TR/EN, 390×844 (2x). To update:
 //   flutter test test/goldens --update-goldens
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -37,6 +37,7 @@ void main() {
     ('secrets', '/settings/secrets'),
     ('profile', '/settings/profile'),
     ('security', '/settings/security'),
+    ('notifications', '/settings/notifications'),
   ]) {
     testWidgets('$name koyu tr', (tester) async {
       await Harness().pump(tester, route: route, dark: true);
@@ -66,7 +67,7 @@ void main() {
       await tester.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 100)));
       await settle(tester);
       await golden('png/$name.png');
-      // Otomatik yenileme zamanlayıcıları test bitmeden temizlensin.
+      // Clear the auto-refresh timers before the test ends.
       await tester.pumpWidget(const SizedBox());
       await tester.pump(const Duration(seconds: 30));
     });
@@ -77,11 +78,11 @@ void main() {
     const id = '5e55a0c1-0000-4000-8000-000000000003';
     final container = await Harness().pump(tester, route: '/claude/history/$id?terminal=1&cwd=%2Fhome%2Fuser');
     await settle(tester);
-    expect(find.text('Devam et'), findsNothing); // terminalde açık oturum buradan sürdürülmez
+    expect(find.text('Devam et'), findsNothing); // a session open in the terminal isn't resumed from here
     await golden('png/claude_terminal_readonly_light_tr.png');
     await tester.tap(find.text('Telefona devral'));
     await settle(tester);
-    await tester.tap(find.text('Telefona devral').last); // onay penceresindeki düğme
+    await tester.tap(find.text('Telefona devral').last); // button in the confirmation dialog
     await settle(tester);
     final post = FakeAgent.calls.lastWhere((c) => c.$1 == 'POST');
     expect(post.$2, '/v1/claude/terminal/$id/takeover');
@@ -92,7 +93,7 @@ void main() {
   });
 
   testWidgets('oturuma dönünce "sen yokken" özeti ve değişiklikler ekranı', (tester) async {
-    // a1 oturumunda 2. olaya kadar bakılmıştı; sonra Claude komut çalıştırıp bir dosya düzenledi.
+    // Session a1 had been viewed up to event 2; then Claude ran a command and edited a file.
     await Harness(extra: [claudeSeenProvider.overrideWith(() => PresetSeen({'a1': (2, 'E1')}))]).pump(tester, route: '/claude/session/a1');
     await settle(tester);
     expect(find.text('Sen yokken'), findsOneWidget);
@@ -110,7 +111,7 @@ void main() {
     await settle(tester);
     expect(find.text('Mesaj 59'), findsOneWidget);
     expect(find.text('Mesaj 0'), findsNothing);
-    debugDisableShadows = true; // harness değiştirdi; ekran görüntüsü almayan test kendisi geri alır
+    debugDisableShadows = true; // changed by the harness; a test that takes no screenshot reverts it itself
     await tester.pumpWidget(const SizedBox());
     await tester.pump(const Duration(seconds: 30));
   });
@@ -121,13 +122,13 @@ void main() {
     await tester.tap(find.byTooltip('Yeni Claude oturumu'));
     await settle(tester);
     await golden('png/claude_new_session_light_tr.png');
-    // Alt sekme barı sayfanın üstünde olsaydı dokunuş butona ulaşmazdı.
+    // If the bottom tab bar were above the page, the tap would not reach the button.
     await tester.tap(find.text('Başlat'));
     await settle(tester);
     final post = FakeAgent.calls.lastWhere((c) => c.$1 == 'POST' && c.$2 == '/v1/claude/sessions');
     expect((post.$3 as Map)['prompt'], '');
     expect(container.read(routerProvider).routerDelegate.currentConfiguration.last.matchedLocation, '/claude/session/md1');
-    expect(find.text('Durum raporu'), findsWidgets); // sohbet ekranı açıldı
+    expect(find.text('Durum raporu'), findsWidgets); // chat screen opened
     await tester.pumpWidget(const SizedBox());
     await tester.pump(const Duration(seconds: 30));
   });

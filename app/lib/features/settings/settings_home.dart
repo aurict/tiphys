@@ -43,6 +43,10 @@ class SettingsHome extends ConsumerWidget {
             trailing: '${p.quickActions.length}'),
         row(l.settingsNotifications, l.settingsNotificationsHint, LucideIcons.bell, const Color(0xFFC62828), 'notifications'),
       ]),
+      GroupedSection(title: l.settingsDesktop, children: [
+        row(l.settingsRemotes, l.settingsRemotesHint, LucideIcons.squareMousePointer, const Color(0xFF0A84FF), 'remotes',
+            trailing: p.desktopRemotes.isEmpty ? null : '${p.desktopRemotes.length}'),
+      ]),
       const SizedBox(height: 14),
       GroupedSection(children: [
         row(l.settingsHome, l.settingsHomeHint, LucideIcons.layoutGrid, const Color(0xFF6C6C70), 'home'),

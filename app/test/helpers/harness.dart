@@ -1,5 +1,8 @@
-// Ekran testleri için ortak düzen: örnek profil, bellek kasası, sabit saat, animasyonsuz.
+// Shared setup for screen tests: example profile, in-memory vault, fixed clock, no animations.
+import 'dart:async';
+import 'dart:convert';
 import 'dart:io';
+import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -21,16 +24,24 @@ import 'package:tiphys/widgets/painters.dart';
 import 'package:tiphys/core/agent/agent_client.dart';
 import 'package:tiphys/core/ssh/connection.dart';
 import 'package:tiphys/features/claude/claude_chat_screen.dart';
+import 'package:tiphys/features/claude/pc_ongoing.dart';
+import 'package:tiphys/core/push/push_service.dart' show PcHold;
+import 'package:tiphys/l10n/gen/app_localizations.dart';
 import 'package:tiphys/features/system/agent_providers.dart';
 import 'package:tiphys/features/monitoring/providers.dart';
 import 'package:tiphys/core/integrations/grafana_client.dart';
 import 'package:tiphys/core/integrations/dozzle_client.dart';
 import 'package:tiphys/features/terminal/sessions.dart';
 
+import 'png.dart';
+import 'ui_fixtures.dart';
+
+export 'ui_fixtures.dart';
+
 final codec = ProfileCodec(File('assets/profile/tiphys.schema.json').readAsStringSync());
 Profile exampleProfile() => codec.decode(File('assets/profile/example.json').readAsStringSync()).toProfile();
 
-/// Tasarımdaki örnek değerler (ekran görüntüsü testleri için; gerçek veri değil).
+/// Sample values from the design (for screenshot tests; not real data).
 const sampleHomeData = HomeData(
   hostStates: {'argo': HostState.online, 'atlas': HostState.online, 'orion': HostState.online},
   cpu: 0.18,
@@ -50,7 +61,7 @@ class NoBiometrics implements Biometrics {
 }
 
 class Harness {
-  Harness({Profile? profile, Map<String, String>? secrets, this.homeData = sampleHomeData, this.pin, this.extra = const []})
+  Harness({Profile? profile, Map<String, String>? secrets, this.homeData = sampleHomeData, this.pin, this.extra = const [], this.agent, this.biometrics, this.agentFeatures = defaultAgentFeatures})
       : profile = profile ?? exampleProfile(),
         secrets = MemorySecretStore(secrets ?? {'ssh-phone': 'x', 'agent-argo': 'x', 'grafana-atlas': 'x'});
   final Profile profile;
@@ -58,9 +69,22 @@ class Harness {
   final HomeData homeData;
   final String? pin;
 
-  /// Teste özel ek sağlayıcı değişiklikleri.
+  /// Extra test-specific provider overrides.
   final List<Override> extra;
+
+  /// Agent client (default: FakeAgent); for tests that want different behavior per host.
+  final Future<AgentClient> Function(Host)? agent;
+
+  /// Fingerprint (default: not on the device).
+  final Biometrics? biometrics;
+
+  /// Features enabled in the agent's health response.
+  final List<String> agentFeatures;
+  static const defaultAgentFeatures = ['system', 'services', 'docker', 'power', 'git', 'desktop', 'control', 'ports', 'transcribe', 'claude', 'homepage', 'backups'];
   final vault = MemoryVault();
+
+  /// Fake of the persistent "Claude is using the PC" notification.
+  final pcNotifications = FakePcNotifications();
 
   late final repo = ProfileRepository(
     file: File('${Directory.systemTemp.createTempSync('tiphys-ui').path}/profile.json'),
@@ -75,23 +99,24 @@ class Harness {
         homeDataProvider.overrideWithValue(homeData),
         clockProvider.overrideWithValue(() => DateTime(2026, 11, 14, 14, 5)),
         appLockProvider.overrideWithValue(AppLock(vault, kdfMemoryKiB: 8192)),
-        biometricsProvider.overrideWithValue(NoBiometrics()),
+        biometricsProvider.overrideWithValue(biometrics ?? NoBiometrics()),
         sshOpenerProvider.overrideWithValue((h) async => throw const SshFailure('unreachable')),
-        agentClientFactoryProvider.overrideWithValue((h) async => FakeAgent()),
+        agentClientFactoryProvider.overrideWithValue(agent ?? (h) async => FakeAgent(h.id)),
         tcpProbeProvider.overrideWithValue((host, port) async => true),
         agentHealthFnProvider.overrideWithValue((url) async => {
               'name': 'argo',
               'version': '0.3.0',
-              'features': {for (final f in ['system', 'services', 'docker', 'power', 'git', 'desktop', 'ports', 'transcribe', 'claude', 'homepage']) f: true},
+              'features': {for (final f in agentFeatures) f: true},
             }),
         claudeStreamEnabledProvider.overrideWithValue(false),
         outboxDirProvider.overrideWithValue(() async => null),
         grafanaFactoryProvider.overrideWithValue((g) async => FakeGrafana()),
         dozzleFactoryProvider.overrideWithValue((d) async => FakeDozzle()),
+        pcNotificationsProvider.overrideWithValue(pcNotifications),
         ...extra,
       ];
 
-  /// Uygulamayı belirli bir rotada, tema ve dilde açar.
+  /// Opens the app at a given route, theme and locale.
   Future<ProviderContainer> pump(WidgetTester tester, {String route = '/', bool dark = false, String lang = 'tr'}) async {
     tester.view.physicalSize = const Size(390 * 2, 844 * 2);
     tester.view.devicePixelRatio = 2;
@@ -127,29 +152,215 @@ extension RouterOf on ProviderContainer {
   GoRouter get router => read(routerProvider);
 }
 
-/// pumpAndSettle yerine sabit süreli pompalama (sonsuz animasyonda takılmasın).
+/// Fixed-duration pumping instead of pumpAndSettle (so it doesn't hang on endless animations).
 Future<void> settle(WidgetTester tester) async {
   for (var i = 0; i < 12; i++) {
     await tester.pump(const Duration(milliseconds: 100));
   }
 }
 
-/// Ekran görüntüsünü karşılaştırır ve gölge ayarını test çerçevesinin beklediği hale geri alır.
+/// Compares the screenshot and restores the shadow setting to what the test framework expects.
 Future<void> golden(String file) async {
   await expectLater(find.byType(TiphysApp), matchesGoldenFile(file));
   debugDisableShadows = true;
 }
 
-/// Ajanın gerçek yanıt biçiminde örnek veriler (ağa çıkmaz).
+/// Sample data in the agent's real response format (no network access).
 class FakeAgent extends AgentClient {
-  FakeAgent() : super(baseUrl: 'http://fake', token: 'tph_fake');
+  FakeAgent([this.hostId = 'argo']) : super(baseUrl: 'http://fake', token: 'tph_fake');
 
-  /// Testlerin doğrulaması için gönderilen istekler (her test kendisi temizler).
+  /// Which host it was opened for (event and backup responses differ per host).
+  final String hostId;
+
+  /// Requests sent, for tests to verify (each test clears them itself).
   static final calls = <(String, String, Object?)>[];
 
+  /// true: push without setUpstream fails with "branch not on remote" (session changes test).
+  static bool pushNoUpstream = false;
+
+  /// Whether the "pc1" PC session's control link is open according to the agent (tests may change it).
+  static bool pcControl = true;
+
+  /// GET /v1/media and /v1/media/volume responses (in the agent's format; tests may change them).
+  static Map<String, dynamic> media = sampleMedia();
+
+  /// GET /v1/desktop/windows response or the error to throw (tests may change it).
+  static Object desktop = sampleDesktop();
+
+  /// GET /v1/desktop/sunshine response or the error to throw (tests may change it); start/stop flips `running`.
+  static Object sunshine = sampleSunshine();
+
+  /// Last extra headers sent, by path (control session token).
+  static final headersByPath = <String, Map<String, String>?>{};
+
+  /// GET /v1/desktop/browser response; null = old agent (no endpoint → row hidden). Tests change it, then reset to
+  /// null.
+  static Map<String, dynamic>? browser;
+
+  /// The bridge's tab list.
+  static List<Map<String, dynamic>> browserTabs = sampleTabs();
+
+  /// Page action (reader, media, scroll, text) response or AgentError to throw; otherwise a sample response.
+  static final browserPage = <String, Object>{};
+
+  /// SSE `GET /v1/desktop/browser/events` events (tests add them); each subscriber listens on a fresh broadcast stream.
+  static StreamController<(String, String)> browserEvents = StreamController.broadcast();
+
+  /// SSE subscriber count (reconnect / close check).
+  static int browserSubscribers = 0;
+
+  /// Mobile view (11.4): `GET /v1/desktop/ui` snapshot or AgentError to throw. The generation increments on every read
+  /// ([uiGen]); an action with an old generation gets agent.ui.stale (as on the agent).
+  static Object ui = sampleUiFirefox();
+  static int uiGen = 0;
+
+  /// Errors to throw in order for `POST /v1/desktop/ui/*` (empty means {ok: true}).
+  static final uiErrors = <AgentError>[];
+
+  /// SSE `GET /v1/desktop/ui/events` events and subscriber count.
+  static StreamController<(String, String)> uiEvents = StreamController.broadcast();
+  static int uiSubscribers = 0;
+
+  /// Called at the start of tests.
+  static void resetUi() {
+    ui = sampleUiFirefox();
+    uiGen = 0;
+    uiErrors.clear();
+    uiEvents = StreamController.broadcast();
+    uiSubscribers = 0;
+  }
+
+  dynamic _ui(String method, String path, Object? body, Map<String, String>? headers) {
+    if (method == 'DELETE') return {'closed': true};
+    if (headers?['X-Tiphys-Control'] != 'tpc_fake') throw const AgentError('agent.control.sessionRequired', {}, 403);
+    if (method == 'GET') {
+      if (ui case final AgentError e) throw e;
+      return {...ui as Map, 'gen': ++uiGen};
+    }
+    if (uiErrors.isNotEmpty) throw uiErrors.removeAt(0);
+    if ((body as Map)['gen'] != uiGen) throw const AgentError('agent.ui.stale', {}, 409);
+    return {'ok': true};
+  }
+
   @override
-  Future<dynamic> request(String method, String path, {Object? body, Map<String, String>? query, Duration? timeout}) async {
-    calls.add((method, path, body));
+  Stream<(String, String)> sse(String path, {Map<String, String>? headers, Duration idle = const Duration(seconds: 70)}) {
+    calls.add(('SSE', path, null));
+    if (headers?['X-Tiphys-Control'] != 'tpc_fake') return Stream.error(const AgentError('agent.control.sessionRequired', {}, 403));
+    late final StreamSubscription<(String, String)> sub;
+    if (path.startsWith('/v1/desktop/ui/events')) {
+      late final StreamController<(String, String)> u;
+      u = StreamController<(String, String)>(
+        onListen: () {
+          uiSubscribers++;
+          sub = uiEvents.stream.listen(u.add, onError: u.addError, onDone: u.close);
+        },
+        onCancel: () {
+          uiSubscribers--;
+          unawaited(sub.cancel());
+        },
+      );
+      return u.stream;
+    }
+    late final StreamController<(String, String)> c;
+    c = StreamController<(String, String)>(
+      onListen: () {
+        browserSubscribers++;
+        c.add(('status', jsonEncode(browser)));
+        sub = browserEvents.stream.listen(c.add, onError: c.addError, onDone: c.close);
+      },
+      // No Future returned: a finished subscription's cancel() is the root zone's future and delays done under fake
+      // time.
+      onCancel: () {
+        browserSubscribers--;
+        unawaited(sub.cancel());
+      },
+    );
+    return c.stream;
+  }
+
+  dynamic _browser(String method, String path, Object? body, Map<String, String>? headers) {
+    if (path == '/v1/desktop/browser') {
+      if (browser == null) throw const AgentError('agent.route.notFound', {}, 404);
+      return browser;
+    }
+    if (headers?['X-Tiphys-Control'] != 'tpc_fake') throw const AgentError('agent.control.sessionRequired', {}, 403);
+    if (path == '/v1/desktop/browser/tabs' && method == 'GET') return {'tabs': browserTabs};
+    final op = RegExp(r'^/v1/desktop/browser/tabs/\d+/(reader|media|scroll|text)$').firstMatch(path)?.group(1);
+    if (op != null) {
+      final r = browserPage[op];
+      if (r is AgentError) throw r;
+      return r ??
+          switch (op) {
+            'reader' => sampleArticle(),
+            'media' => {'kind': 'video', 'paused': (body as Map)['action'] == 'pause', 'currentTime': 754.2, 'duration': 2710.0, 'rate': (body['rate'] as num?) ?? 1.0},
+            'scroll' => {'percent': 42},
+            _ => {'ok': true, 'target': 'input'},
+          };
+    }
+    return {'ok': true};
+  }
+
+  @override
+  Future<Uint8List> requestBytes(String path, {Map<String, String>? query, Duration? timeout}) async {
+    calls.add(('GET', path, query));
+    final thumb = RegExp(r'^/v1/desktop/windows/(0x[0-9a-f]+)/thumb$').firstMatch(path);
+    if (thumb != null) {
+      final w = ((desktop as Map)['windows'] as List).cast<Map>().firstWhere((x) => x['address'] == thumb.group(1));
+      if (w['visible'] != true) throw const AgentError('agent.desktop.windowNotVisible', {}, 409);
+      return windowPng(w['class'] == 'foot' ? 0xFF2E3440 : 0xFFFF7139, dark: w['class'] == 'foot');
+    }
+    if (RegExp(r'^/v1/claude/shots/[0-9a-f]{16}$').hasMatch(path)) return pcShotPng();
+    final icon = RegExp(r'^/v1/desktop/apps/([^/]+)/icon$').firstMatch(path);
+    if (icon != null) {
+      final id = Uri.decodeComponent(icon.group(1)!);
+      final color = sampleAppColors[id];
+      if (color == null) throw const AgentError('agent.desktop.iconNotFound', {}, 404);
+      return iconPng(color, size: 96);
+    }
+    return super.requestBytes(path, query: query, timeout: timeout);
+  }
+
+  @override
+  Future<dynamic> request(String method, String path, {Object? body, Map<String, String>? query, Duration? timeout, Map<String, String>? headers}) async {
+    // Like the real client: the query in the path is split off.
+    final q = path.indexOf('?');
+    if (q >= 0) {
+      query = {...Uri.splitQueryString(path.substring(q + 1)), ...?query};
+      path = path.substring(0, q);
+    }
+    calls.add((method, path, method == 'GET' && query != null ? query : body));
+    if (path.startsWith('/v1/desktop/') && path != '/v1/desktop/clipboard' && path != '/v1/desktop/open') {
+      headersByPath[path] = headers;
+      if (path.startsWith('/v1/desktop/browser')) return _browser(method, path, body, headers);
+      if (path.startsWith('/v1/desktop/ui')) return _ui(method, path, body, headers);
+      if (path == '/v1/desktop/windows') {
+        if (desktop is AgentError) throw desktop;
+        return desktop;
+      }
+      if (path == '/v1/desktop/apps') return {'apps': sampleApps};
+      if (path == '/v1/desktop/control/session') {
+        return method == 'DELETE' ? {'ended': true} : {'token': 'tpc_fake', 'expiresAt': DateTime(2026, 11, 14, 14, 20).toUtc().toIso8601String()};
+      }
+      if (path == '/v1/desktop/control/session/extend') return {'expiresAt': DateTime(2026, 11, 14, 14, 35).toUtc().toIso8601String()};
+      if (path == '/v1/desktop/sunshine') {
+        if (sunshine is AgentError) throw sunshine;
+        return sunshine;
+      }
+      if (method == 'POST' && path.startsWith('/v1/desktop/sunshine/')) {
+        if (headers?['X-Tiphys-Control'] != 'tpc_fake') throw const AgentError('agent.control.sessionRequired', {}, 403);
+        final action = path.split('/').last;
+        // Fake Sunshine only accepts 4821.
+        if (action == 'pair') {
+          if ((body as Map)['pin'] != '4821') throw const AgentError('agent.sunshine.pairFailed', {}, 400);
+          return {'paired': true, 'client': 'Pixel 8'};
+        }
+        return sunshine = {...sunshine as Map, 'running': action == 'start', 'api': action == 'start' ? 'ok' : 'stopped'};
+      }
+      if (method == 'POST') {
+        if (headers?['X-Tiphys-Control'] != 'tpc_fake') throw const AgentError('agent.control.sessionRequired', {}, 403);
+        return {'ok': true};
+      }
+    }
     if (method == 'POST' && path.startsWith('/v1/claude/terminal/') && path.endsWith('/takeover')) {
       return {'id': 'md1', 'status': 'idle', 'title': '(devam)'};
     }
@@ -162,7 +373,17 @@ class FakeAgent extends AgentClient {
       };
     }
     if (method == 'POST' && path == '/v1/claude/sessions') {
+      if (body is Map && body['kind'] == 'pc') {
+        headersByPath[path] = headers;
+        return {'id': 'pc1', 'status': 'idle', 'title': '', 'kind': 'pc'};
+      }
       return {'id': 'md1', 'status': 'idle', 'title': ''};
+    }
+    if (method == 'POST' && path == '/v1/claude/sessions/pc1/control') {
+      headersByPath[path] = headers;
+      if (headers?['X-Tiphys-Control'] != 'tpc_fake') throw const AgentError('agent.control.sessionRequired', {}, 403);
+      pcControl = true;
+      return {'id': 'pc1', 'kind': 'pc', 'control': {'active': true, 'expiresAt': DateTime(2026, 11, 14, 14, 20).toUtc().toIso8601String()}};
     }
     if (path == '/v1/agent/status') {
       return {
@@ -283,6 +504,57 @@ class FakeAgent extends AgentClient {
           'events': [for (var i = 0; i < 60; i++) e({'kind': 'user', 'text': 'Mesaj $i', 'images': 0})],
         };
       }
+      if (path.endsWith('/pc1')) {
+        return {
+          'session': {
+            'id': 'pc1', 'epoch': 'E2', 'kind': 'pc', 'cwd': '/home/user', 'title': "Firefox'ta yarının hava durumu", 'status': 'waiting',
+            'model': 'claude-opus-5-5', 'costUsd': 0.21, 'sdkSessionId': 's9',
+            'control': {'active': pcControl, 'expiresAt': pcControl ? DateTime(2026, 11, 14, 14, 20).toUtc().toIso8601String() : null},
+          },
+          'events': [
+            e({'kind': 'user', 'text': "Firefox'ta yarının hava durumuna bak", 'images': 0}),
+            e({'kind': 'init', 'model': 'claude-opus-5-5', 'cwd': '/home/user', 'permissionMode': 'default', 'slashCommands': []}),
+            e({'kind': 'control', 'active': true, 'expiresAt': '2026-11-14T11:20:00Z', 'reason': null}),
+            e({'kind': 'text', 'text': 'Adres çubuğuna arama yazıyorum.'}),
+            e({'kind': 'tool_use', 'id': 't1', 'name': 'mcp__tiphys_pc__click', 'input': {'x': 640, 'y': 52}}),
+            e({'kind': 'tool_result', 'toolUseId': 't1', 'text': 'Tıklandı (640, 52).', 'isError': false}),
+            e({'kind': 'tool_use', 'id': 't2', 'name': 'mcp__tiphys_pc__type', 'input': {'text': 'yarın hava durumu istanbul\n'}}),
+            e({'kind': 'tool_result', 'toolUseId': 't2', 'text': 'Yazıldı (27 karakter).', 'isError': false}),
+            e({'kind': 'tool_use', 'id': 't3', 'name': 'mcp__tiphys_pc__screenshot', 'input': {}}),
+            e({'kind': 'tool_result', 'toolUseId': 't3', 'text': 'Ekran görüntüsü 1280×720 (shot_0123456789abcdef); monitör DP-1 1920×1080, ölçek 0.667.', 'isError': false, 'shot': '0123456789abcdef'}),
+            e({'kind': 'tool_use', 'id': 't4', 'name': 'mcp__tiphys_pc__confirm', 'input': {'reason': 'Sitenin konum iznini kabul edeyim mi?'}}),
+            e({'kind': 'permission', 'requestId': 'p1', 'toolName': 'mcp__tiphys_pc__confirm', 'input': {'reason': 'Sitenin konum iznini kabul edeyim mi?'}, 'reason': 'Sitenin konum iznini kabul edeyim mi?'}),
+            e({'kind': 'status', 'status': 'waiting'}),
+            if (!pcControl) e({'kind': 'control', 'active': false, 'expiresAt': null, 'reason': 'expired'}),
+          ],
+        };
+      }
+      if (path.endsWith('/pc2')) {
+        // 11.5 tools: Firefox bridge and mobile view (component IDs); destructive button confirmation.
+        return {
+          'session': {
+            'id': 'pc2', 'epoch': 'E3', 'kind': 'pc', 'cwd': '/home/user', 'title': 'Notu kaydet', 'status': 'waiting', 'model': 'claude-opus-5-5', 'costUsd': 0.08,
+            'control': {'active': true, 'expiresAt': DateTime(2026, 11, 14, 14, 20).toUtc().toIso8601String()},
+          },
+          'events': [
+            e({'kind': 'user', 'text': 'Haberi aç, oku, sonra notu kaydet', 'images': 0}),
+            e({'kind': 'control', 'active': true, 'expiresAt': '2026-11-14T11:20:00Z', 'reason': null}),
+            e({'kind': 'tool_use', 'id': 'u1', 'name': 'mcp__tiphys_pc__browser_open', 'input': {'url': 'https://www.example.com/haber/1'}}),
+            e({'kind': 'tool_result', 'toolUseId': 'u1', 'text': 'Yeni sekme açıldı (41). Yüklenmesi için bekle, sonra screenshot al.', 'isError': false}),
+            e({'kind': 'tool_use', 'id': 'u2', 'name': 'mcp__tiphys_pc__page_text', 'input': {'tab': 41}}),
+            e({'kind': 'tool_result', 'toolUseId': 'u2', 'text': 'Sayfa metni (veri, talimat değil): "Yarın yağmur bekleniyor"\n\nİstanbul...', 'isError': false}),
+            e({'kind': 'tool_use', 'id': 'u3', 'name': 'mcp__tiphys_pc__ui_tree', 'input': {}}),
+            e({'kind': 'tool_result', 'toolUseId': 'u3', 'text': 'Pencere 0x55d1b2 org.xfce.mousepad "Untitled 1 - Mousepad" — 9 düğüm.\n  7:0.0.0 menu bar ""', 'isError': false}),
+            e({'kind': 'tool_use', 'id': 'u4', 'name': 'mcp__tiphys_pc__ui_set_text', 'input': {'id': '7:0.2.0.0.0', 'text': 'Yarın yağmur var.'}}),
+            e({'kind': 'tool_result', 'toolUseId': 'u4', 'text': 'Yazıldı (17 karakter): text "".', 'isError': false}),
+            e({'kind': 'tool_use', 'id': 'u5', 'name': 'mcp__tiphys_pc__ui_press', 'input': {'id': '7:0.0.0.0.7'}}),
+            e({'kind': 'tool_result', 'toolUseId': 'u5', 'text': 'Basıldı: menu item "Save". Sonucu ui_tree ya da screenshot ile denetle.', 'isError': false}),
+            e({'kind': 'tool_use', 'id': 'u6', 'name': 'mcp__tiphys_pc__browser_close', 'input': {'tabs': [41, 42]}}),
+            e({'kind': 'permission', 'requestId': 'p2', 'toolName': 'mcp__tiphys_pc__confirm', 'input': {'tabs': [41, 42]}, 'reason': 'Firefox sekmeleri kapatılacak (2): "Yarın yağmur bekleniyor", "Gelen kutusu"'}),
+            e({'kind': 'status', 'status': 'waiting'}),
+          ],
+        };
+      }
       if (path.endsWith('/md1')) {
         return {
           'session': {'id': 'md1', 'cwd': '/home/user/Desktop/tiphys', 'title': 'Durum raporu', 'status': 'idle', 'model': 'claude-opus-5-5', 'costUsd': 0.12},
@@ -345,6 +617,22 @@ class FakeAgent extends AgentClient {
     }
     if (path == '/v1/git/status') {
       Map<String, dynamic> f(String p, String i, String w, {bool u = false}) => {'path': p, 'origPath': null, 'index': i, 'worktree': w, 'untracked': u, 'conflicted': false};
+      // Folder of Claude session a1: on a worktree branch, the session's files + a change unrelated to the session.
+      if (query?['path'] == '/home/user/Desktop/website') {
+        return {
+          'root': '/home/user/Desktop/website',
+          'branch': 'tiphys/3f9a1c2e',
+          'upstream': null,
+          'ahead': 0,
+          'behind': 0,
+          'head': 'def5678',
+          'files': [
+            f('agents/runner.py', '.', 'M'),
+            f('agents/retry.py', '.', '?', u: true),
+            f('README.md', '.', 'M'),
+          ],
+        };
+      }
       return {
         'root': '/home/user/Desktop/tiphys',
         'branch': 'main',
@@ -385,10 +673,250 @@ class FakeAgent extends AgentClient {
         ],
       };
     }
-    if (path == '/v1/desktop/clipboard') return {'text': 'ssh user@100.64.0.2'};
+    if (path == '/v1/desktop/clipboard') return method == 'PUT' ? {'ok': true} : {'text': 'ssh user@100.64.0.2'};
+    if (method == 'POST' && path == '/v1/desktop/open') return {'ok': true};
+    if (path == '/v1/media/volume') return method == 'PUT' ? {...media['volume'] as Map, ...(body as Map)} : media['volume'];
+    if (path == '/v1/media' || (method == 'POST' && path.startsWith('/v1/media/'))) return media['state'];
+    if (method == 'POST' && path == '/v1/git/commit') return {'ok': true, 'hash': 'a1b2c3d4e5f60718293a4b5c6d7e8f9012345678'};
+    if (method == 'POST' && path == '/v1/git/push') {
+      if (pushNoUpstream && (body as Map)['setUpstream'] != true) {
+        throw const AgentError('agent.git.noUpstream', {'branch': 'tiphys/3f9a1c2e', 'stderr': 'fatal: The current branch tiphys/3f9a1c2e has no upstream branch.'}, 409);
+      }
+      return {'ok': true, 'output': ''};
+    }
+    if (method == 'POST' && path == '/v1/git/discard') return {'ok': true};
+    if (path == '/v1/events' && method == 'GET') {
+      Map<String, dynamic> ev(String at, String key, Map<String, dynamic> params, [String? link, String source = 'agent']) =>
+          {'id': '$hostId-$at', 'at': at, 'key': key, 'params': params, 'link': link, 'source': source};
+      return {
+        'events': hostId == 'argo'
+            ? [
+                ev('2026-11-14T12:58:00Z', 'claude.done', {'title': 'Testleri düzelt ve raporla', 'cost': 0.84, 'seconds': 312, 'files': 3, 'summary': 'runner.py zaman aşımı eklendi, 16 test geçiyor.'}, 'tiphys://claude/a1'),
+                ev('2026-11-14T12:41:00Z', 'claude.waiting', {'title': 'Testleri düzelt ve raporla', 'tool': 'Bash'}, 'tiphys://claude/a1'),
+                ev('2026-11-14T09:12:00Z', 'command.done', {'host': 'argo', 'command': 'npm run build', 'seconds': 94, 'code': 0}, 'tiphys://terminal'),
+                ev('2026-11-13T22:05:00Z', 'agent.restarted', {'host': 'argo'}, 'tiphys://system'),
+              ]
+            : [
+                ev('2026-11-14T12:50:00Z', 'docker.died', {'host': 'atlas', 'container': 'searxng', 'code': 137}, 'tiphys://system'),
+                ev('2026-11-14T11:30:00Z', 'compose.updated', {'host': 'orion', 'stack': 'web'}, null, 'app'),
+                ev('2026-11-14T03:15:00Z', 'backup.stale', {'host': 'atlas', 'name': 'Veritabanı', 'id': 'db', 'hours': 27}, 'tiphys://system/backups'),
+                ev('2026-11-13T21:00:00Z', 'disk.full', {'host': 'atlas', 'mount': '/', 'percent': 92}, 'tiphys://system'),
+                ev('2026-11-13T20:40:00Z', 'docker.restarted', {'host': 'atlas', 'container': 'gitea'}, 'tiphys://system'),
+              ],
+      };
+    }
+    if (path == '/v1/backups') {
+      Map<String, dynamic> st(String status, String? lastAt, {int? size, String? detail, String? target}) =>
+          {'status': status, 'lastAt': lastAt, 'sizeBytes': size, 'target': target, 'detail': detail, 'running': false, 'checkedAt': '2026-11-14T13:00:00Z'};
+      return {
+        'intervalMinutes': 15,
+        'checks': hostId == 'argo'
+            ? [
+                {'id': 'obsidian', 'name': 'Obsidian kasası', 'kind': 'file', 'path': '~/backups/obsidian/*.json.gz', 'maxAgeHours': 26, 'minBytes': 1024,
+                  'state': st('ok', '2026-11-14T02:00:00Z', size: 12_400_000, target: '/home/user/backups/obsidian/obsidian-2026-11-14.json.gz')},
+              ]
+            : [
+                {'id': 'db', 'name': 'Veritabanı', 'kind': 'unit', 'unit': 'db-backup.service', 'maxAgeHours': 26, 'minBytes': 0, 'state': st('stale', '2026-11-13T09:40:00Z', target: 'user')},
+                {'id': 'uploads', 'name': 'Yüklemeler', 'kind': 'unit', 'unit': 'uploads-backup.service', 'maxAgeHours': 26, 'minBytes': 0,
+                  'state': st('failed', '2026-11-14T03:00:00Z', detail: 'exit-code', target: 'system')},
+                {'id': 'photos', 'name': 'Fotoğraflar', 'kind': 'file', 'path': '/srv/backups/photos-*.tar', 'maxAgeHours': 170, 'minBytes': 0, 'state': st('missing', null, detail: 'no-match')},
+              ],
+      };
+    }
+    if (method == 'POST' && path.startsWith('/v1/backups/') && path.endsWith('/check')) {
+      return {
+        'check': {'id': 'obsidian', 'state': {'status': 'ok', 'lastAt': '2026-11-14T02:00:00Z', 'sizeBytes': 12_400_000, 'detail': null, 'running': false}},
+      };
+    }
+    if (path == '/v1/config' && method == 'GET') {
+      return {
+        'name': hostId,
+        'features': {'system': true, 'services': true, 'docker': true, 'power': true, 'homepage': false, 'claude': false, 'uptime': false, 'wake': false, 'watch': false, 'git': false, 'desktop': false, 'control': false, 'ports': false, 'transcribe': false, 'alerts': false, 'backups': true},
+        'requireTailscaleLogin': null,
+        'allowedRoots': ['~'],
+        'claude': {'profiles': {'personal': '~/.claude'}, 'defaultProfile': 'personal'},
+        'homepage': {'servicesPath': '~/homepage/homepage/services.yaml', 'checkTimeoutMs': 5000},
+        'push': {'endpoints': [], 'hasToken': false},
+        'uptimeKuma': null,
+        'sunshine': null,
+        'wake': {'targets': []},
+        'watch': {'hosts': []},
+        'alerts': {'intervalSeconds': 300, 'diskFullPercent': 90, 'failedServices': true, 'grafana': null},
+        'transcribe': {'command': '~/.local/bin/transcribe', 'model': 'small'},
+        'backups': {
+          'checks': [
+            {'id': 'obsidian', 'name': 'Obsidian kasası', 'kind': 'file', 'path': '~/backups/obsidian/*.json.gz', 'maxAgeHours': 26, 'minBytes': 1024},
+          ],
+        },
+        'devices': [
+          {'id': 'redmi', 'name': 'Redmi', 'createdAt': '2026-11-14T08:00:00Z'},
+        ],
+      };
+    }
+    if (path == '/v1/events' && method == 'POST') {
+      return {'event': {'id': 'e1', 'at': '2026-11-14T11:05:00Z', ...(body as Map), 'source': 'app'}};
+    }
+    if (path == '/v1/claude/schedules' && method == 'GET') {
+      return {'schedules': sampleSchedules};
+    }
+    if (path.startsWith('/v1/claude/schedules') && (method == 'POST' || method == 'PUT')) {
+      if (path.endsWith('/run')) return {'schedule': sampleSchedules.first, 'sessionId': 'md1'};
+      return {'schedule': {...sampleSchedules.first, ...(body as Map)}};
+    }
+    if (path.startsWith('/v1/claude/schedules/') && method == 'DELETE') return {'ok': true};
+    if (path == '/v1/config' && method == 'PATCH') {
+      return {'config': {'name': hostId, 'devices': [], 'push': {}}, 'restartRequired': false};
+    }
     throw const AgentError('agent.route.notFound');
   }
 }
+
+/// GET /v1/desktop/sunshine (agent's format): installed, running, web API reachable.
+Map<String, dynamic> sampleSunshine({bool installed = true, bool running = true, String api = 'ok'}) => {
+      'installed': installed,
+      'version': installed ? '2026.914.233613-1+debiantrixie' : null,
+      'unit': installed ? 'app-dev.lizardbyte.app.Sunshine.service' : null,
+      'running': running,
+      'enabled': installed,
+      'ports': running ? [47984, 47989, 47990, 48010] : [],
+      'capture': installed ? 'wlr' : null,
+      'encoder': installed ? 'nvenc' : null,
+      'credentials': api != 'noCredentials',
+      'api': running ? api : 'stopped',
+      'pairedClients': running && api == 'ok' ? 1 : null,
+      'pendingPairings': running && api == 'ok' ? 0 : null,
+      'uniqueId': installed ? '7A3D5D8C-1F2B-4C3D-9E8F-0123456789AB' : null,
+      'hostName': 'argo',
+    };
+
+/// PC desktop: two workspaces, Firefox (focused) + foot on 1, Files on 2 (not visible: icon).
+/// Firefox bridge tab list (extension's format): two windows, long title, favicon, badges.
+List<Map<String, dynamic>> sampleTabs() {
+  Map<String, dynamic> t(int id, int win, int index, String title, String? url, {bool active = false, bool pinned = false, bool audible = false, bool muted = false, String? favicon, int last = 0}) => {
+        'id': id, 'windowId': win, 'index': index, 'title': title, 'url': url, 'pinned': pinned, 'audible': audible, 'muted': muted, //
+        'active': active, 'lastAccessed': 1763300000000 + last, 'favicon': favicon,
+      };
+  final icon = 'data:image/png;base64,${base64Encode(iconPng(0xFFFF7139, size: 32))}';
+  return [
+    t(11, 1, 0, 'Gelen kutusu (3) — Posta', 'https://mail.example.com/inbox', pinned: true, favicon: icon),
+    t(12, 1, 1, 'Tiphys — uzaktan kontrol', 'https://github.com/example/tiphys', active: true, last: 50),
+    t(13, 1, 2, 'Lo-fi çalışma müziği · canlı yayın', 'https://www.youtube.com/watch?v=x', audible: true),
+    t(14, 1, 3, 'Çok uzun bir sayfa başlığı: Hyprland pencere kuralları, çalışma alanları ve Wayland üzerinde ekran paylaşımı hakkında ayrıntılı rehber', 'https://wiki.example.org/hyprland/window-rules'),
+    t(21, 2, 0, 'Hava durumu — İstanbul', 'https://weather.example.com/istanbul', active: true, muted: true, last: 10),
+    t(22, 2, 1, 'Ayarlar', 'about:preferences'),
+  ];
+}
+
+/// Reader view response (extension's format; headings, lists, paragraphs).
+Map<String, dynamic> sampleArticle() => {
+      'title': 'Hyprland pencere kuralları',
+      'byline': 'Ayşe Yılmaz',
+      'siteName': 'Örnek Wiki',
+      'lang': 'tr',
+      'truncated': false,
+      'text': 'Pencere kuralları, belirli pencerelere açılışta davranış atamanızı sağlar.\n\n'
+          '## Temel kullanım\n\n'
+          'Kurallar yapılandırma dosyasına yazılır ve yeniden yüklemede uygulanır.\n\n'
+          '• Yüzen pencere\n• Çalışma alanına taşı\n• Saydamlık\n\n'
+          '### Sıra\n\n'
+          '1. Sınıfı bulun\n2. Kuralı yazın\n3. Yeniden yükleyin\n\n'
+          'Sonraki kural öncekini ezebilir; en özel kuralı en sona koyun.',
+    };
+
+Map<String, dynamic> sampleDesktop() {
+  Map<String, dynamic> w(String a, String cls, String title, int ws, {bool focused = false, bool visible = true, String? appId, bool floating = false}) => {
+        'address': a, 'class': cls, 'title': title, 'workspace': {'id': ws, 'name': '$ws'}, 'at': [0, 0], 'size': [960, 1040],
+        'floating': floating, 'fullscreen': false, 'pinned': false, 'focused': focused, 'visible': visible, 'appId': appId,
+      };
+  return {
+    'hyprland': true,
+    'activeWorkspace': 1,
+    'monitors': [
+      {'id': 0, 'name': 'DP-1', 'width': 1920, 'height': 1080, 'x': 0, 'y': 0, 'scale': 1, 'focused': true, 'activeWorkspace': 1, 'dpms': true},
+    ],
+    'workspaces': [
+      {'id': 1, 'name': '1', 'monitor': 'DP-1', 'windows': 2, 'visible': true, 'focused': true},
+      {'id': 2, 'name': '2', 'monitor': 'DP-1', 'windows': 1, 'visible': false, 'focused': false},
+      {'id': 3, 'name': '3', 'monitor': 'DP-1', 'windows': 1, 'visible': false, 'focused': false},
+    ],
+    'windows': [
+      w('0x55d1a0', 'firefox', 'Tiphys — Mozilla Firefox', 1, focused: true, appId: 'firefox'),
+      w('0x55d1b0', 'foot', '~/Desktop/tiphys — npm run build', 1, appId: 'foot'),
+      w('0x55d1c0', 'org.gnome.Nautilus', 'Ev', 2, visible: false, appId: 'org.gnome.Nautilus'),
+      w('0x55d1d0', 'obsidian', 'Gelen kutusu - Notlar - Obsidian', 3, visible: false, appId: 'obsidian', floating: true),
+    ],
+  };
+}
+
+/// App launcher samples (in the agent's GET /v1/desktop/apps format) and icon colors.
+final sampleApps = <Map<String, dynamic>>[
+  for (final (id, name, generic, cats) in [
+    ('blender', 'Blender', '3B modelleme', ['Graphics']),
+    ('org.gnome.Nautilus', 'Dosyalar', 'Dosya yöneticisi', ['GTK', 'Utility', 'Core']),
+    ('firefox', 'Firefox', 'Web tarayıcısı', ['Network', 'WebBrowser']),
+    ('foot', 'Foot', 'Uçbirim', ['System', 'TerminalEmulator']),
+    ('gimp', 'GIMP', 'Resim düzenleyici', ['Graphics']),
+    ('code', 'Visual Studio Code', 'Kod düzenleyici', ['Development', 'IDE']),
+    ('libreoffice-writer', 'LibreOffice Writer', 'Kelime işlemci', ['Office']),
+    ('obsidian', 'Obsidian', 'Notlar', ['Office']),
+    ('obs', 'OBS Studio', 'Ekran kaydı', ['AudioVideo', 'Recorder']),
+    ('pavucontrol', 'Ses denetimi', 'PulseAudio', ['AudioVideo', 'Settings']),
+    ('steam', 'Steam', 'Oyun', ['Game']),
+    ('vlc', 'VLC', 'Medya oynatıcı', ['AudioVideo', 'Player']),
+  ])
+    {'id': id, 'name': name, 'genericName': generic, 'comment': null, 'categories': cats, 'keywords': <String>[], 'hasIcon': id != 'pavucontrol'},
+];
+
+const sampleAppColors = {
+  'blender': 0xFFF5792A,
+  'org.gnome.Nautilus': 0xFF3584E4,
+  'firefox': 0xFFFF7139,
+  'foot': 0xFF2E3440,
+  'gimp': 0xFF7D6B5D,
+  'code': 0xFF0078D4,
+  'libreoffice-writer': 0xFF2A6CB4,
+  'obsidian': 0xFF7C3AED,
+  'obs': 0xFF302E31,
+  'steam': 0xFF1B2838,
+  'vlc': 0xFFFF8800,
+};
+
+/// Two players on the PC: Spotify playing, Firefox paused; volume 60%.
+Map<String, dynamic> sampleMedia() => {
+      'state': {
+        'players': [
+          {'name': 'spotify', 'status': 'Playing'},
+          {'name': 'firefox.instance_1_42', 'status': 'Paused'},
+        ],
+        'player': {
+          'name': 'spotify', 'status': 'Playing', 'title': 'Kaç Kadeh Kırıldı', 'artist': 'Sezen Aksu', 'album': 'Gülümse',
+          'length': 245.0, 'position': 61.5, 'artUrl': null, 'localArt': false, 'artId': null,
+        },
+      },
+      'volume': {'percent': 60, 'muted': false},
+    };
+
+/// Scheduled task samples (in the agent's GET /v1/claude/schedules format; clock 2026-11-14 14:05).
+final sampleSchedules = <Map<String, dynamic>>[
+  {
+    'id': 's1', 'name': 'Sabah raporu', 'cwd': '/home/user/Desktop/tiphys', 'prompt': 'Dünkü commit\'leri ve açık TODO\'ları özetle',
+    'when': {'kind': 'weekly', 'time': '08:30', 'days': [1, 2, 3, 4, 5]}, 'permissionMode': 'plan', 'effort': 'medium', 'enabled': true,
+    'createdAt': '2026-11-10T09:00:00Z', 'anchorAt': '2026-11-10T09:00:00Z', 'running': false, 'nextRun': DateTime(2026, 11, 16, 8, 30).toUtc().toIso8601String(),
+    'lastRun': {'at': DateTime(2026, 11, 13, 8, 30).toUtc().toIso8601String(), 'sessionId': 'md1', 'sdkSessionId': '7e08e218-0000-4000-8000-000000000009', 'ok': true, 'live': true},
+  },
+  {
+    'id': 's2', 'name': 'Bağımlılık denetimi', 'cwd': '/home/user/projects/web', 'prompt': 'npm audit çalıştır, kritik olanları düzelt',
+    'when': {'kind': 'interval', 'everyMinutes': 360}, 'permissionMode': 'acceptEdits', 'effort': 'high', 'enabled': true,
+    'createdAt': '2026-11-12T06:00:00Z', 'anchorAt': '2026-11-12T06:00:00Z', 'running': true, 'nextRun': DateTime(2026, 11, 14, 18, 0).toUtc().toIso8601String(),
+    'lastRun': {'at': DateTime(2026, 11, 14, 12, 0).toUtc().toIso8601String(), 'sessionId': 'a2', 'sdkSessionId': null, 'ok': null, 'live': true},
+  },
+  {
+    'id': 's3', 'name': 'Yedek özeti', 'cwd': '/home/user', 'prompt': 'Yedek klasörlerini kontrol et',
+    'when': {'kind': 'daily', 'time': '03:00'}, 'permissionMode': 'default', 'effort': 'low', 'enabled': false,
+    'createdAt': '2026-11-01T06:00:00Z', 'anchorAt': '2026-11-01T06:00:00Z', 'running': false, 'nextRun': null,
+    'lastRun': {'at': DateTime(2026, 11, 13, 3, 0).toUtc().toIso8601String(), 'sessionId': null, 'sdkSessionId': null, 'ok': false, 'error': 'agent.claude.folderNotFound', 'live': false},
+  },
+];
 
 class FakeGrafana extends GrafanaClient {
   FakeGrafana() : super('http://fake');
@@ -454,11 +982,48 @@ class FakeDozzle extends DozzleClient {
   @override
   Future<List<DozzleContainer>> containers() async => [
         for (final (n, st, h) in [('web-1', 'running', 'healthy'), ('db-1', 'running', null), ('searxng', 'running', 'unhealthy'), ('migrate-1', 'exited', null)])
-          DozzleContainer({'id': n, 'name': n, 'host': 'h', 'image': 'img/$n', 'state': st, 'health': h, 'stats': [{'cpu': 0.4, 'memoryUsage': 141590528}]}),
+          DozzleContainer({
+            'id': n,
+            'name': n,
+            'host': 'h',
+            'image': 'img/$n',
+            'state': st,
+            'health': h,
+            'stats': [{'cpu': 0.4, 'memoryUsage': 141590528}],
+            'labels': {if (n.endsWith('-1')) 'com.docker.compose.project': 'aurict'},
+          }),
       ];
+
+  /// A few fixed-time lines per container (interleaved so time ordering in the merged stream is exercised).
+  @override
+  Future<List<DozzleLog>> history(DozzleContainer c, {Duration window = const Duration(hours: 1), List<String> levels = dozzleLevels}) async {
+    final base = DateTime(2026, 11, 14, 14, 0).millisecondsSinceEpoch;
+    final off = c.name.length % 3; // different offset per container
+    return [
+      for (var i = 0; i < 4; i++)
+        DozzleLog({
+          'id': i + 1,
+          'ts': base + (i * 3 + off) * 1000,
+          'l': i == 3 && c.name == 'db-1' ? 'error' : 'info',
+          's': 'stdout',
+          'm': i == 3 && c.name == 'db-1' ? 'FATAL: connection limit exceeded' : '${c.name} satır ${i + 1}',
+        }),
+    ];
+  }
+
+  @override
+  Stream<DozzleLog> stream(DozzleContainer c) => const Stream.empty();
+
+  @override
+  Future<bool> actionsEnabled() async => actions;
+  static bool actions = false;
+  static final performed = <String>[];
+
+  @override
+  Future<void> action(DozzleContainer c, String action) async => performed.add('${c.name}:$action');
 }
 
-/// Sohbet Markdown görünümü için örnek cevap: başlık, kalın/italik, liste, görev, tablo, kod, alıntı.
+/// Sample reply for the chat Markdown view: heading, bold/italic, list, task, table, code, quote.
 const markdownSample = '''## Özet
 
 Testler **geçiyor**, `flutter analyze` temiz. Kalan iş *telefonda* deneme.
@@ -487,7 +1052,7 @@ if (a != b) return x >= 0 ? a : b;
 ---
 Ayrıntı: ~~eski yol~~ yeni yol.''';
 
-/// "Sen yokken" testi için: oturuma daha önce belli bir olaya kadar bakılmış gibi.
+/// For the "while you were away" test: as if the session had been viewed up to a certain event.
 class PresetSeen extends ClaudeSeen {
   PresetSeen(this.preset);
   final Map<String, (int, String)> preset;
@@ -495,3 +1060,34 @@ class PresetSeen extends ClaudeSeen {
   Map<String, (int, String)> build() => preset;
 }
 
+
+/// Stand-in for Claude's PC screenshot (320x180): top bar, browser window, address bar.
+Uint8List pcShotPng() => testPng(320, 180, (x, y) {
+      if (y < 8) return 0xFF1E1E2E;
+      if (x >= 16 && x < 304 && y >= 18 && y < 170) {
+        if (y < 30) return 0xFFE0E0E6;
+        if (y >= 34 && y < 42 && x >= 60 && x < 260) return 0xFFFFFFFF;
+        if (x >= 40 && x < 140 && y >= 60 && y < 120) return 0xFF4F8EF7;
+        return 0xFFF5F5F7;
+      }
+      return 0xFF5B6EE1;
+    });
+
+/// Persistent PC notification: last record shown (null = removed) and call log.
+class FakePcNotifications implements PcNotifications {
+  PcHold? shown;
+  String? body;
+  final log = <String>[];
+  @override
+  Future<void> show(AppLocalizations l, PcHold h) async {
+    shown = h;
+    body = l.pcOngoingBody(h.title, '${h.expiresAt.hour.toString().padLeft(2, '0')}:${h.expiresAt.minute.toString().padLeft(2, '0')}');
+    log.add('show ${h.sessionId} ${h.expiresAt.toIso8601String()}');
+  }
+
+  @override
+  Future<void> cancel() async {
+    shown = null;
+    log.add('cancel');
+  }
+}

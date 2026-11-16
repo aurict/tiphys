@@ -1,5 +1,5 @@
-// Sistem sekmesi: ajanlı host seçimi, metrikler, güç, araçlar, hızlı işlemler, systemd servisleri, Docker;
-// izleme bağlantıları.
+// System tab: agent host selection, metrics, power, tools, quick actions, systemd services, Docker;
+// monitoring links.
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -78,6 +78,10 @@ class _SystemScreenState extends ConsumerState<SystemScreen> {
           ],
         ],
         GroupedSection(title: l.systemMonitoring, children: [
+          GroupedRow(title: l.eventsTitle, icon: LucideIcons.history, iconBackground: const Color(0xFF5E5CE6), onTap: () => context.push('/system/events')),
+          GroupedRow(title: l.backupsTitle, icon: LucideIcons.archive, iconBackground: const Color(0xFF0A84FF), onTap: () => context.push('/system/backups')),
+          GroupedRow(title: l.composeTitle, icon: LucideIcons.layers, iconBackground: const Color(0xFF1D63ED), onTap: () => context.push('/system/compose')),
+          GroupedRow(title: l.logSearchTitle, icon: LucideIcons.textSearch, iconBackground: const Color(0xFF30B0C7), onTap: () => context.push('/system/logs')),
           GroupedRow(title: l.systemSites, icon: LucideIcons.activity, iconBackground: t.success, onTap: () => context.push('/monitor/sites')),
           GroupedRow(title: 'Grafana', icon: LucideIcons.chartLine, iconBackground: const Color(0xFFE5795A), onTap: () => context.push('/monitor/grafana')),
           GroupedRow(title: 'Dozzle', icon: LucideIcons.scrollText, iconBackground: const Color(0xFF2F9E6A), onTap: () => context.push('/monitor/dozzle')),
@@ -358,7 +362,7 @@ class _LogsPage extends ConsumerStatefulWidget {
 }
 
 class _LogsPageState extends ConsumerState<_LogsPage> {
-  List<(String, String, int)>? _lines; // (zaman, metin, seviye)
+  List<(String, String, int)>? _lines; // (time, text, level)
   Object? _error;
 
   @override

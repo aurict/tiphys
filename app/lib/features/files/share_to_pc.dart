@@ -1,5 +1,6 @@
-// Android "Paylaş" menüsünden Tiphys'e gelen dosya ve metinler: host + klasör seçilir, SFTP ile gönderilir.
-// Metin paylaşımları PC panosuna da gönderilebilir (ajan "desktop" özelliği açıksa).
+// Files and text shared to Tiphys from the Android "Share" menu: pick host + folder, sent via SFTP.
+// Text shares can also be sent to the PC clipboard; if the text contains a link, "Open on PC" opens it in the
+// PC's browser (if the agent's "desktop" feature is enabled).
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
@@ -11,6 +12,7 @@ import 'package:go_router/go_router.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:receive_sharing_intent/receive_sharing_intent.dart';
 
+import '../../core/profile/model.dart';
 import '../../core/ssh/connection.dart' show shellQuote;
 import '../../core/ssh/remote_files.dart';
 import '../../l10n/gen/app_localizations.dart';
@@ -18,10 +20,12 @@ import '../../state/providers.dart';
 import '../../theme/tokens.dart';
 import '../../widgets/forms.dart';
 import '../../widgets/surfaces.dart';
+import '../claude/claude_screen.dart' show claudeHostProvider;
 import '../system/agent_providers.dart';
+import '../system/open_on_pc.dart';
 import 'files_screen.dart' show fileBrowsersProvider, formatSize;
 
-/// Paylaşım akışını dinler; gelen öğeler için "PC'ye gönder" ekranını açar.
+/// Listens to the share stream; opens the "Send to PC" screen for incoming items.
 class ShareIntake {
   StreamSubscription<List<SharedMediaFile>>? _sub;
 
@@ -102,6 +106,14 @@ class _ShareToPcScreenState extends ConsumerState<ShareToPcScreen> {
     }
   }
 
+  Future<void> _openOnPc(Host host, String url) async {
+    setState(() => _progress = 0);
+    final ok = await openOnPc(context, ref, host, url);
+    if (!mounted) return;
+    setState(() => _progress = null);
+    if (ok) context.canPop() ? context.pop() : context.go('/');
+  }
+
   Future<void> _toClipboard() async {
     final l = AppLocalizations.of(context);
     final text = widget.items.where(_isText).map((t) => t.path).join('\n');
@@ -124,6 +136,9 @@ class _ShareToPcScreenState extends ConsumerState<ShareToPcScreen> {
     final locale = Localizations.localeOf(context).toLanguageTag();
     final onlyText = widget.items.every(_isText);
     final host = p.host(_hostId);
+    // Link in the shared text: opened on the selected host if it has an agent, otherwise on the PC (Claude host).
+    final url = findUrl(widget.items.where(_isText).map((t) => t.path).join('\n'));
+    final pcHost = host?.agent != null ? host : ref.watch(claudeHostProvider);
     return SettingsPage(
       title: l.shareTitle,
       children: [
@@ -142,6 +157,25 @@ class _ShareToPcScreenState extends ConsumerState<ShareToPcScreen> {
               showChevron: false,
             ),
         ]),
+        if (url != null && pcHost != null) ...[
+          const SizedBox(height: 12),
+          TCard(
+            child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+              Row(children: [
+                Icon(LucideIcons.link, size: 18, color: t.accent),
+                const SizedBox(width: 10),
+                Expanded(child: Text(url, maxLines: 2, overflow: TextOverflow.ellipsis, style: const TextStyle(fontFamily: 'JetBrainsMono', fontSize: 12.5))),
+              ]),
+              const SizedBox(height: 10),
+              FilledButton.icon(
+                onPressed: _progress != null ? null : () => _openOnPc(pcHost, url),
+                icon: const Icon(LucideIcons.squareArrowOutUpRight, size: 18),
+                label: Text(l.openOnPcOn(pcHost.name)),
+              ),
+            ]),
+          ),
+          const SizedBox(height: 12),
+        ],
         if (hosts.isEmpty)
           TCard(child: Text(l.terminalNoSshHosts))
         else ...[

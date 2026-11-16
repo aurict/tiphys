@@ -1,5 +1,5 @@
-// Tiphys Ajanı istemcisi: JSON üzerinden REST. Hata yanıtları { error: { code, params } } biçimindedir;
-// kod uygulamada seçili dile çevrilir.
+// Tiphys Agent client: REST over JSON. Error responses have the form { error: { code, params } };
+// the code is translated into the app's selected language.
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
@@ -8,10 +8,10 @@ import 'dart:typed_data';
 import '../profile/model.dart';
 import '../secrets/secret_store.dart';
 
-/// Bu uygulama sürümünün beklediği ajan sürümü; daha eski ajan için "güncel değil" uyarısı gösterilir.
+/// Agent version this app version expects; an "out of date" warning is shown for an older agent.
 const kExpectedAgentVersion = '0.3.0';
 
-/// "0.2.0" < "0.3.0" ? (yalnız sayısal x.y.z; anlaşılmayan sürüm eski sayılmaz)
+/// "0.2.0" < "0.3.0" ? (numeric x.y.z only; an unparseable version isn't considered old)
 bool agentOutdated(String? version) {
   if (version == null) return false;
   List<int>? p(String v) {
@@ -30,7 +30,7 @@ bool agentOutdated(String? version) {
 class AgentError implements Exception {
   const AgentError(this.code, [this.params = const {}, this.status]);
 
-  /// ör. agent.auth.invalidToken, agent.services.permissionDenied, net.unreachable, net.timeout
+  /// e.g. agent.auth.invalidToken, agent.services.permissionDenied, net.unreachable, net.timeout
   final String code;
   final Map<String, dynamic> params;
   final int? status;
@@ -57,11 +57,19 @@ class AgentClient {
 
   Uri _uri(String path, [Map<String, String>? query]) {
     final base = Uri.parse(baseUrl.endsWith('/') ? baseUrl.substring(0, baseUrl.length - 1) : baseUrl);
+    // If a query is given inside the path ("/v1/git/diff?path=…"), split it off; otherwise "?" would be encoded into
+    // the path (%3F) and give a 404.
+    final q = path.indexOf('?');
+    if (q >= 0) {
+      query = {...Uri.splitQueryString(path.substring(q + 1)), ...?query};
+      path = path.substring(0, q);
+    }
     return base.replace(path: '${base.path}$path', queryParameters: query);
   }
 
-  Future<dynamic> request(String method, String path, {Object? body, Map<String, String>? query, Duration? timeout}) async {
-    final bytes = await _send(method, path, body: body, query: query, timeout: timeout, accept: 'application/json');
+  /// [headers]: extra headers (e.g. the desktop control session token X-Tiphys-Control).
+  Future<dynamic> request(String method, String path, {Object? body, Map<String, String>? query, Duration? timeout, Map<String, String>? headers}) async {
+    final bytes = await _send(method, path, body: body, query: query, timeout: timeout, accept: 'application/json', headers: headers);
     try {
       return bytes.isEmpty ? null : jsonDecode(utf8.decode(bytes));
     } on FormatException {
@@ -69,16 +77,17 @@ class AgentClient {
     }
   }
 
-  /// İkili yanıt (ör. ekran görüntüsü). Hata yanıtları yine JSON koduyla gelir.
+  /// Binary response (e.g. a screenshot). Error responses still come as a JSON code.
   Future<Uint8List> requestBytes(String path, {Map<String, String>? query, Duration? timeout}) =>
       _send('GET', path, query: query, timeout: timeout ?? const Duration(seconds: 40), accept: '*/*');
 
-  Future<Uint8List> _send(String method, String path, {Object? body, Map<String, String>? query, Duration? timeout, required String accept}) async {
+  Future<Uint8List> _send(String method, String path, {Object? body, Map<String, String>? query, Duration? timeout, required String accept, Map<String, String>? headers}) async {
     final t = timeout ?? this.timeout;
     try {
       final req = await _http.openUrl(method, _uri(path, query)).timeout(t);
       req.headers.set(HttpHeaders.authorizationHeader, 'Bearer $token');
       req.headers.set(HttpHeaders.acceptHeader, accept);
+      headers?.forEach(req.headers.set);
       if (body != null) {
         req.headers.contentType = ContentType.json;
         req.add(utf8.encode(jsonEncode(body)));
@@ -87,17 +96,7 @@ class AgentClient {
       final builder = BytesBuilder(copy: false);
       await res.forEach(builder.add).timeout(t);
       final bytes = builder.takeBytes();
-      if (res.statusCode >= 400) {
-        Object? json;
-        try {
-          json = jsonDecode(utf8.decode(bytes));
-        } catch (_) {}
-        final err = json is Map ? json['error'] : null;
-        if (err is Map) {
-          throw AgentError(err['code'] as String? ?? 'agent.unknown', Map<String, dynamic>.from((err['params'] as Map?) ?? {}), res.statusCode);
-        }
-        throw AgentError('net.http', {'status': res.statusCode}, res.statusCode);
-      }
+      if (res.statusCode >= 400) throw _errorOf(res.statusCode, bytes);
       return bytes;
     } on AgentError {
       rethrow;
@@ -110,6 +109,91 @@ class AgentClient {
     }
   }
 
+  static AgentError _errorOf(int status, List<int> bytes) {
+    Object? json;
+    try {
+      json = jsonDecode(utf8.decode(bytes));
+    } catch (_) {}
+    final err = json is Map ? json['error'] : null;
+    if (err is Map) {
+      return AgentError(err['code'] as String? ?? 'agent.unknown', Map<String, dynamic>.from((err['params'] as Map?) ?? {}), status);
+    }
+    return AgentError('net.http', {'status': status}, status);
+  }
+
+  /// SSE (text/event-stream): (event name, data) pairs; the stream ends when the connection closes. Opening error:
+  /// AgentError; no bytes at all for [idle] (the agent sends a ping every 25 s): net.timeout. When the listener
+  /// cancels, the connection closes immediately (same pattern as sse in integrations/http_json.dart).
+  Stream<(String, String)> sse(String path, {Map<String, String>? headers, Duration idle = const Duration(seconds: 70)}) {
+    StreamSubscription<String>? sub;
+    var cancelled = false;
+    late final StreamController<(String, String)> ctrl;
+    ctrl = StreamController<(String, String)>(
+      onListen: () async {
+        final HttpClientResponse res;
+        try {
+          final req = await _http.openUrl('GET', _uri(path)).timeout(timeout);
+          req.headers.set(HttpHeaders.authorizationHeader, 'Bearer $token');
+          req.headers.set(HttpHeaders.acceptHeader, 'text/event-stream');
+          headers?.forEach(req.headers.set);
+          res = await req.close().timeout(timeout);
+          if (res.statusCode >= 400) {
+            final b = BytesBuilder(copy: false);
+            await res.forEach(b.add).timeout(timeout);
+            throw _errorOf(res.statusCode, b.takeBytes());
+          }
+        } catch (e, st) {
+          if (!cancelled) {
+            ctrl.addError(switch (e) {
+              AgentError() => e,
+              TimeoutException() => const AgentError('net.timeout'),
+              SocketException() => AgentError('net.unreachable', {'detail': e.message}),
+              HandshakeException() => const AgentError('net.tls'),
+              _ => e,
+            }, st);
+            await ctrl.close();
+          }
+          return;
+        }
+        if (cancelled) {
+          await res.listen(null).cancel();
+          return;
+        }
+        var event = 'message';
+        final data = StringBuffer();
+        sub = res
+            .timeout(idle, onTimeout: (s) {
+              s.addError(const AgentError('net.timeout'));
+              s.close();
+            })
+            .cast<List<int>>()
+            .transform(utf8.decoder)
+            .transform(const LineSplitter())
+            .listen(
+              (line) {
+                if (line.isEmpty) {
+                  if (data.isNotEmpty) ctrl.add((event, data.toString()));
+                  event = 'message';
+                  data.clear();
+                } else if (line.startsWith('event:')) {
+                  event = line.substring(6).trim();
+                } else if (line.startsWith('data:')) {
+                  if (data.isNotEmpty) data.write('\n');
+                  data.write(line.substring(5).trimLeft());
+                }
+              },
+              onError: (Object e) => ctrl.addError(e is SocketException || e is HttpException ? const AgentError('net.unreachable') : e),
+              onDone: ctrl.close,
+            );
+      },
+      onCancel: () async {
+        cancelled = true;
+        await sub?.cancel();
+      },
+    );
+    return ctrl.stream;
+  }
+
   Future<Map<String, dynamic>> get(String path, {Map<String, String>? query}) async =>
       Map<String, dynamic>.from(await request('GET', path, query: query) as Map);
   Future<dynamic> post(String path, [Object? body]) => request('POST', path, body: body ?? const {});
@@ -117,7 +201,7 @@ class AgentClient {
   Future<dynamic> put(String path, Object body) => request('PUT', path, body: body);
   Future<dynamic> delete(String path) => request('DELETE', path);
 
-  /// Token gerektirmeyen sağlık kontrolü.
+  /// Health check that needs no token.
   static Future<Map<String, dynamic>> health(String baseUrl) async {
     final c = AgentClient(baseUrl: baseUrl, token: '');
     try {
@@ -130,7 +214,7 @@ class AgentClient {
   void close() => _http.close(force: true);
 }
 
-/// Eşleşme QR kodunun içeriği: {"v":1,"type":"tiphys-pair","agent":"argo","url":"…","token":"tph_…"}
+/// Contents of the pairing QR code: {"v":1,"type":"tiphys-pair","agent":"argo","url":"…","token":"tph_…"}
 class PairPayload {
   const PairPayload({required this.agent, required this.url, required this.token});
   final String agent;

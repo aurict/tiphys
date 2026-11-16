@@ -229,7 +229,7 @@ class AppLocalizationsTr extends AppLocalizations {
   String get settingsHome => 'Ana ekran';
 
   @override
-  String get settingsHomeHint => 'Kartlar ve sıraları';
+  String get settingsHomeHint => 'Düzen, kartlar ve kısayollar';
 
   @override
   String get settingsAppearance => 'Görünüm';
@@ -739,9 +739,6 @@ class AppLocalizationsTr extends AppLocalizations {
   String get notifyClaudeError => 'Hata verince';
 
   @override
-  String get notifySiteDown => 'Site kesintileri';
-
-  @override
   String get notifyPcOffline => 'PC çevrimdışı olunca';
 
   @override
@@ -749,9 +746,6 @@ class AppLocalizationsTr extends AppLocalizations {
 
   @override
   String get notifyGrafana => 'Grafana alarmları';
-
-  @override
-  String get notifyDiskFull => 'Disk doluluk uyarısı';
 
   @override
   String get notifyLongCommand => 'Uzun süren komut bitince haber ver';
@@ -866,11 +860,6 @@ class AppLocalizationsTr extends AppLocalizations {
 
   @override
   String get filesUpload => 'Buraya yükle';
-
-  @override
-  String filesUploaded(String name) {
-    return '$name yüklendi';
-  }
 
   @override
   String get filesUp => 'Üst klasör';
@@ -1287,9 +1276,6 @@ class AppLocalizationsTr extends AppLocalizations {
 
   @override
   String get dozzleStopped => 'durmuş ya da sorunlu';
-
-  @override
-  String get notifClaudeDoneTitle => 'Claude bitirdi';
 
   @override
   String get notifClaudeWaitingTitle => 'Claude onayını bekliyor';
@@ -2044,4 +2030,2600 @@ class AppLocalizationsTr extends AppLocalizations {
   String sessionEditCount(int count) {
     return '$count düzenleme';
   }
+
+  @override
+  String notifClaudeDoneTitleWith(String title) {
+    return 'Claude bitirdi: $title';
+  }
+
+  @override
+  String notifFilesChanged(int count) {
+    return '$count dosya değişti';
+  }
+
+  @override
+  String get notifyAgentSideHint =>
+      'Site kesintileri doğrudan ntfy uygulamasına gelir (siteler konusu). Disk doluluk eşiği her host için Ayarlar › Hostlar › Ajan ayarları\'ndan değişir.';
+
+  @override
+  String get pushSetupHint =>
+      'ntfy uygulamasında varsayılan sunucuyu kendi ntfy sunucun yap, telefon kullanıcısıyla giriş yap; sonra buradan bildirimleri aç.';
+
+  @override
+  String pushNotRegistered(String hosts) {
+    return 'Şu ajanlara kayıt gönderilemedi: $hosts. Ajan açık mı? Tekrar denemek için yukarıdaki satıra dokun.';
+  }
+
+  @override
+  String get pushBatteryHint =>
+      'Xiaomi/Redmi telefonlarda ntfy için pil tasarrufunu \"Kısıtlama yok\" yap ve otomatik başlatmaya izin ver; yoksa bildirimler gecikir.';
+
+  @override
+  String dozzleSelected(int count) {
+    return '$count seçili';
+  }
+
+  @override
+  String get dozzleMerge => 'Birkaçını birlikte izle';
+
+  @override
+  String dozzleMergeHint(int max) {
+    return 'Tek akışta izlenecek container\'ları seç (en fazla $max).';
+  }
+
+  @override
+  String dozzleSelectProject(String project) {
+    return '$project projesinin tümünü seç';
+  }
+
+  @override
+  String dozzleWatchTogether(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count container\'ı birlikte izle',
+      zero: 'Container seç',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String dozzleMergedTitle(int count) {
+    return '$count container';
+  }
+
+  @override
+  String get dozzleLevels => 'Log seviyeleri';
+
+  @override
+  String get dozzleActionsOffTitle => 'Container işlemleri kapalı';
+
+  @override
+  String get dozzleActionsOffBody =>
+      'Bu Dozzle sunucusunda başlat/durdur/yeniden başlat kapalı. Açmak için Dozzle\'ı DOZZLE_ENABLE_ACTIONS=true ile yeniden başlat.';
+
+  @override
+  String get dozzleActionsOffShort => 'Dozzle\'da kapalı';
+
+  @override
+  String dozzleActionConfirm(String action, String name) {
+    return '$name: $action?';
+  }
+
+  @override
+  String dozzleActionDone(String action) {
+    return '$action: tamam';
+  }
+
+  @override
+  String get dozzleStart => 'Başlat';
+
+  @override
+  String get dozzleStop => 'Durdur';
+
+  @override
+  String get dozzleRestart => 'Yeniden başlat';
+
+  @override
+  String get dozzleAskClaude => 'Claude\'a sor';
+
+  @override
+  String get dozzleAskClaudeHint =>
+      'Bu satır ve öncesindeki loglarla yeni oturum';
+
+  @override
+  String get dozzleNoClaudeHost =>
+      'Claude için ajanlı bir host seçilmemiş (Ayarlar › Claude).';
+
+  @override
+  String dozzleClaudeIntro(String name, String image) {
+    return 'Dozzle\'da \"$name\" container\'ının ($image) logunda aşağıdaki satırı gördüm. Ne anlama geliyor, olası sebebi ne ve nasıl düzeltirim?';
+  }
+
+  @override
+  String get dozzleClaudeBefore => 'Öncesindeki loglar:';
+
+  @override
+  String get terminalFullscreen => 'Tam ekran (yataya döner)';
+
+  @override
+  String get terminalExitFullscreen => 'Tam ekrandan çık';
+
+  @override
+  String get terminalInFullscreen => 'Bu oturum tam ekranda açık';
+
+  @override
+  String terminalFontSizeValue(String size) {
+    return '$size punto';
+  }
+
+  @override
+  String get transfersTitle => 'Aktarımlar';
+
+  @override
+  String transfersRunning(int count) {
+    return 'Aktarımlar ($count sürüyor)';
+  }
+
+  @override
+  String get transfersEmpty =>
+      'Henüz yükleme ya da indirme yok. Yarıda kalan aktarımlar kaldığı yerden devam eder.';
+
+  @override
+  String get transfersClear => 'Bitenleri temizle';
+
+  @override
+  String get transfersArchiving => 'Klasör sunucuda sıkıştırılıyor…';
+
+  @override
+  String get transfersPaused => 'duraklatıldı';
+
+  @override
+  String get transfersFailed =>
+      'Kesildi; kaldığı yerden sürdürmek için devam et';
+
+  @override
+  String get transfersUploaded => 'Yüklendi';
+
+  @override
+  String get transfersDownloaded => 'İndirildi';
+
+  @override
+  String get transfersPause => 'Duraklat';
+
+  @override
+  String get transfersResume => 'Devam et';
+
+  @override
+  String get transfersUnknownSize =>
+      'Dosyanın boyutu okunamadı; dosyayı yeniden seç.';
+
+  @override
+  String get filesDownloadFolder => 'Arşivleyip indir';
+
+  @override
+  String get eventsTitle => 'Olaylar';
+
+  @override
+  String get eventsEmpty => 'Henüz olay yok';
+
+  @override
+  String get eventsEmptyFiltered => 'Süzgece uyan olay yok';
+
+  @override
+  String get eventsNoAgents =>
+      'Olaylar Tiphys ajanı kurulu hostlardan gelir. Önce bir hosta ajan ekle.';
+
+  @override
+  String get eventsAllHosts => 'Tüm hostlar';
+
+  @override
+  String get eventsAllTypes => 'Tüm türler';
+
+  @override
+  String get eventsTypeSystem => 'Sistem';
+
+  @override
+  String get eventsTypeBackup => 'Yedek';
+
+  @override
+  String get eventsTypeCommand => 'Komut';
+
+  @override
+  String get eventsTypeOther => 'Diğer';
+
+  @override
+  String get eventsToday => 'Bugün';
+
+  @override
+  String get eventsYesterday => 'Dün';
+
+  @override
+  String get eventsFromPhone => 'telefondan';
+
+  @override
+  String eventsHostFailed(String host) {
+    return '$host: olaylar alınamadı';
+  }
+
+  @override
+  String get homeCardsEvents => 'Son olaylar';
+
+  @override
+  String get homeEventsAll => 'Tümü';
+
+  @override
+  String notifDockerDiedTitle(String host) {
+    return 'Container çöktü · $host';
+  }
+
+  @override
+  String notifDockerDiedBody(String container, int code) {
+    return '$container (çıkış kodu $code)';
+  }
+
+  @override
+  String notifDockerOomTitle(String host) {
+    return 'Container belleği yetmedi · $host';
+  }
+
+  @override
+  String notifDockerRestartedTitle(String host) {
+    return 'Container yeniden başladı · $host';
+  }
+
+  @override
+  String notifBackupStaleTitle(String name) {
+    return 'Yedek eskidi: $name';
+  }
+
+  @override
+  String notifBackupStaleBody(String host, int hours) {
+    return '$host · son yedek $hours saat önce';
+  }
+
+  @override
+  String notifBackupFailedTitle(String name) {
+    return 'Yedek başarısız: $name';
+  }
+
+  @override
+  String notifBackupOkTitle(String name) {
+    return 'Yedek düzeldi: $name';
+  }
+
+  @override
+  String get notifyBackups => 'Yedek uyarıları';
+
+  @override
+  String get backupsTitle => 'Yedekler';
+
+  @override
+  String get backupsCheckNow => 'Şimdi kontrol et';
+
+  @override
+  String backupsChecked(String status) {
+    return 'Kontrol edildi: $status';
+  }
+
+  @override
+  String get backupsStatusOk => 'Güncel';
+
+  @override
+  String get backupsStatusStale => 'Eski';
+
+  @override
+  String get backupsStatusFailed => 'Başarısız';
+
+  @override
+  String get backupsStatusMissing => 'Bulunamadı';
+
+  @override
+  String get backupsStatusUnknown => 'Henüz kontrol edilmedi';
+
+  @override
+  String backupsLast(String time) {
+    return 'Son yedek $time';
+  }
+
+  @override
+  String get backupsNever => 'Henüz yedek yok';
+
+  @override
+  String get backupsRunning => 'şu an çalışıyor';
+
+  @override
+  String backupsMaxAge(String hours) {
+    return 'en fazla $hours saat';
+  }
+
+  @override
+  String get backupsReasonTooSmall => 'dosya çok küçük';
+
+  @override
+  String get backupsReasonNoMatch => 'eşleşen dosya yok';
+
+  @override
+  String get backupsReasonNotFound => 'birim bulunamadı';
+
+  @override
+  String get backupsReasonNeverRan => 'hiç çalışmadı';
+
+  @override
+  String backupsReasonUnit(String result) {
+    return 'birim sonucu: $result';
+  }
+
+  @override
+  String get backupsEmpty =>
+      'Yedek denetimi yok. Bir hostun ajan ayarlarında «Yedekler» özelliğini açıp denetim ekle.';
+
+  @override
+  String get backupsHostNoChecks => 'Bu hostta denetim yok';
+
+  @override
+  String backupsEveryMinutes(int minutes) {
+    return '$minutes dakikada bir kontrol edilir; durum değişince bildirim gelir.';
+  }
+
+  @override
+  String get agentFeatBackups => 'Yedek durumu';
+
+  @override
+  String get agentBackupChecks => 'Yedek denetimleri';
+
+  @override
+  String get agentBackupChecksHint =>
+      'Değişiklikler Kaydet ile ajana yazılır; yeniden başlatma gerekmez.';
+
+  @override
+  String get agentBackupAdd => 'Denetim ekle';
+
+  @override
+  String get agentBackupName => 'Ad';
+
+  @override
+  String get agentBackupKindFile => 'En yeni dosya';
+
+  @override
+  String get agentBackupKindUnit => 'systemd birimi';
+
+  @override
+  String get agentBackupPath => 'Dosya deseni';
+
+  @override
+  String get agentBackupPathHint =>
+      '* ve ? yalnız son parçada, ör. ~/backups/obsidian/*.json.gz';
+
+  @override
+  String get agentBackupUnit => 'Birim';
+
+  @override
+  String get agentBackupUnitHint =>
+      'Önce kullanıcı birimi, yoksa sistem birimi';
+
+  @override
+  String get agentBackupMaxAge => 'En fazla yaş (saat)';
+
+  @override
+  String get agentBackupMinBytes => 'En küçük boyut (bayt)';
+
+  @override
+  String get agentBackupRemove => 'Denetimi sil';
+
+  @override
+  String agentBackupRemoveConfirm(String name) {
+    return '«$name» yedek denetimi silinsin mi?';
+  }
+
+  @override
+  String get agentBackupInvalidPath =>
+      'Joker karakter yalnız son parçada olabilir';
+
+  @override
+  String get claudeFolderNotFound => 'Klasör bulunamadı';
+
+  @override
+  String get claudeSchedules => 'Zamanlanmış görevler';
+
+  @override
+  String get claudeSchedulesEmpty =>
+      'Henüz zamanlanmış görev yok. Örneğin Claude her sabah bir deponun durumunu özetleyebilir.';
+
+  @override
+  String claudeSchedulesHint(String host) {
+    return 'Saatler $host saat dilimine göre. $host o dakikada kapalıysa görev sonradan çalıştırılmaz; önceki çalışma sürüyorsa yenisi atlanır.';
+  }
+
+  @override
+  String get claudeScheduleAdd => 'Görev ekle';
+
+  @override
+  String get claudeScheduleEdit => 'Görevi düzenle';
+
+  @override
+  String get claudeScheduleName => 'Ad';
+
+  @override
+  String get claudeScheduleNameHint => 'Sabah raporu';
+
+  @override
+  String get claudeSchedulePrompt => 'Claude ne yapsın?';
+
+  @override
+  String get claudeSchedulePromptHint =>
+      'Dünkü commit\'leri ve açık TODO\'ları özetle';
+
+  @override
+  String get claudeScheduleWhen => 'Zaman';
+
+  @override
+  String get claudeScheduleDaily => 'Her gün';
+
+  @override
+  String get claudeScheduleWeekly => 'Haftalık';
+
+  @override
+  String get claudeScheduleInterval => 'Aralıklı';
+
+  @override
+  String get claudeScheduleTime => 'Saat';
+
+  @override
+  String get claudeScheduleDays => 'Günler';
+
+  @override
+  String get claudeScheduleEveryLabel => 'Ne sıklıkla';
+
+  @override
+  String claudeScheduleDailyAt(String time) {
+    return 'Her gün $time';
+  }
+
+  @override
+  String claudeScheduleEveryMinutes(int minutes) {
+    return '$minutes dakikada bir';
+  }
+
+  @override
+  String claudeScheduleEveryHours(int hours) {
+    String _temp0 = intl.Intl.pluralLogic(
+      hours,
+      locale: localeName,
+      other: '$hours saatte bir',
+      one: 'Saatte bir',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String claudeScheduleToday(String time) {
+    return 'bugün $time';
+  }
+
+  @override
+  String claudeScheduleTomorrow(String time) {
+    return 'yarın $time';
+  }
+
+  @override
+  String claudeScheduleYesterday(String time) {
+    return 'dün $time';
+  }
+
+  @override
+  String claudeScheduleNext(String when) {
+    return 'sonraki: $when';
+  }
+
+  @override
+  String get claudeScheduleOff => 'kapalı';
+
+  @override
+  String get claudeScheduleEnabled => 'açık';
+
+  @override
+  String claudeScheduleLast(String when) {
+    return 'Son çalışma $when';
+  }
+
+  @override
+  String get claudeScheduleNever => 'Henüz çalışmadı';
+
+  @override
+  String get claudeScheduleRunning => 'çalışıyor';
+
+  @override
+  String get claudeScheduleOk => 'başarılı';
+
+  @override
+  String get claudeScheduleFailed => 'başarısız';
+
+  @override
+  String get claudeScheduleNoResult => 'sonuç yok';
+
+  @override
+  String get claudeScheduleRunNow => 'Şimdi çalıştır';
+
+  @override
+  String get claudeScheduleBusy => 'Önceki çalışma hâlâ sürüyor';
+
+  @override
+  String get claudeScheduleManual => 'Elle başlatıldı';
+
+  @override
+  String claudeScheduleDeleteConfirm(String name) {
+    return '\"$name\" silinsin mi?';
+  }
+
+  @override
+  String get claudeScheduleNeedsNameAndPrompt => 'Ad ve görev gerekli';
+
+  @override
+  String get claudeScheduleNeedsDays => 'En az bir gün seç';
+
+  @override
+  String get claudeScheduleAskHint =>
+      'Çalıştığında başında kimse olmayabilir: araç istekleri senin onayını bekler.';
+
+  @override
+  String get composeTitle => 'Compose yığınları';
+
+  @override
+  String get composeNoSshHosts =>
+      'SSH\'lı host yok. Ayarlar › Hostlar\'dan SSH ekle.';
+
+  @override
+  String composeEmpty(String roots) {
+    return '$roots altında compose dosyası bulunamadı.';
+  }
+
+  @override
+  String composeRootsFooter(String roots) {
+    return 'Aranan klasörler: $roots (Ayarlar › Hostlar\'dan değiştirilir).';
+  }
+
+  @override
+  String composeRunningCount(int running, int total) {
+    return '$running/$total çalışıyor';
+  }
+
+  @override
+  String get composeUnhealthy => 'sağlıksız';
+
+  @override
+  String get composeStopped => 'Durdu';
+
+  @override
+  String get composeNotCreated => 'Container yok';
+
+  @override
+  String get composeError => 'Okunamadı';
+
+  @override
+  String get composeStackGone => 'Bu yığın artık yok.';
+
+  @override
+  String get composeContainers => 'Container\'lar';
+
+  @override
+  String get composeActions => 'İşlemler';
+
+  @override
+  String get composeActionsHint =>
+      'Denetle imajları çeker ve çalışan container\'larla karşılaştırır; Güncelle ardından yalnız değişen servisleri yeniden oluşturur.';
+
+  @override
+  String get composeCheck => 'Güncellemeleri denetle';
+
+  @override
+  String get composeUpdate => 'Güncelle';
+
+  @override
+  String get composeRestart => 'Yeniden başlat';
+
+  @override
+  String get composeStop => 'Durdur';
+
+  @override
+  String get composeStart => 'Başlat';
+
+  @override
+  String get composeLogs => 'Loglar (son 200 satır)';
+
+  @override
+  String composeUpdateConfirm(String stack) {
+    return '$stack güncellensin mi? İmajlar çekilir; yeni imajı olan servisler yeniden oluşturulur.';
+  }
+
+  @override
+  String get composeForce => 'Değişiklik olmasa da yeniden oluştur';
+
+  @override
+  String composeRestartConfirm(String stack) {
+    return '$stack yeniden başlatılsın mı? Servisler kısa süre kesilir.';
+  }
+
+  @override
+  String composeStopConfirm(String stack) {
+    return '$stack durdurulsun mu? Container\'lar yeniden başlatılana dek kapalı kalır.';
+  }
+
+  @override
+  String get composeWorking => 'Çalışıyor…';
+
+  @override
+  String get composeOutput => 'Komut çıktısı';
+
+  @override
+  String get composeNoUpdates => 'Yeni imaj yok.';
+
+  @override
+  String composeUpdatesAvailable(int count, String services) {
+    return '$count serviste yeni imaj var: $services';
+  }
+
+  @override
+  String composeUpdated(int count, String services) {
+    return '$count servis güncellendi: $services';
+  }
+
+  @override
+  String get composeUpToDate =>
+      'Zaten güncel; hiçbir şey yeniden başlatılmadı.';
+
+  @override
+  String get composeRecreated => 'Yeniden oluşturuldu';
+
+  @override
+  String get composeDone => 'Tamamlandı.';
+
+  @override
+  String composeFailed(String step, String code) {
+    return 'Başarısız: $step (çıkış $code)';
+  }
+
+  @override
+  String get composeEventFailed => '(Olay kaydedilemedi.)';
+
+  @override
+  String get hostComposeRoots => 'Compose klasörleri';
+
+  @override
+  String get hostComposeRootsHint =>
+      'Virgülle ayrılır; her klasörün bir alt düzeyindeki compose dosyaları bulunur.';
+
+  @override
+  String eventsUnknownTitle(String type) {
+    return '$type olayı';
+  }
+
+  @override
+  String notifComposeUpdatedTitle(String stack) {
+    return '$stack güncellendi';
+  }
+
+  @override
+  String notifComposeFailedTitle(String stack) {
+    return '$stack güncellenemedi';
+  }
+
+  @override
+  String notifComposeFailedBody(String host, String step, String code) {
+    return '$host · $step başarısız (çıkış $code)';
+  }
+
+  @override
+  String notifClaudeScheduledTitle(String name) {
+    return 'Zamanlanmış görev başladı: $name';
+  }
+
+  @override
+  String notifClaudeScheduleSkippedTitle(String name) {
+    return 'Zamanlanmış görev atlandı: $name';
+  }
+
+  @override
+  String get notifClaudeScheduleSkippedBody => 'Önceki çalışma hâlâ sürüyor';
+
+  @override
+  String notifClaudeScheduleFailedTitle(String name) {
+    return 'Zamanlanmış görev başlatılamadı: $name';
+  }
+
+  @override
+  String get sessionViewDiff => 'Farkı göster';
+
+  @override
+  String get sessionCommitPush => 'Commit + push';
+
+  @override
+  String sessionCommitFiles(int count) {
+    return 'Yalnız bu oturumun değiştirdiği $count dosya commit\'lenir; başka değişiklikler dahil edilmez.';
+  }
+
+  @override
+  String sessionWorktreeWarning(String branch) {
+    return 'Bu oturum ayrı bir worktree dalında ($branch). Push bu dalı uzak depoya gönderir; ana dala birleştirmez.';
+  }
+
+  @override
+  String get sessionNoUpstream =>
+      'Uzak karşılığı yok (ilk push\'ta oluşturulur)';
+
+  @override
+  String get sessionFileUnchanged =>
+      'Şu an değişiklik yok (commit\'lenmiş ya da geri alınmış)';
+
+  @override
+  String get sessionFileOutside =>
+      'Depo dışında; commit ve geri almaya dahil değil';
+
+  @override
+  String get sessionPushed => 'Commit edildi ve gönderildi';
+
+  @override
+  String get sessionRevertTitle => 'Değişiklikler geri alınsın mı?';
+
+  @override
+  String sessionRevertBody(int count) {
+    return 'Bu oturumun değiştirdiği $count dosya son commit\'teki haline döner. Bu geri alınamaz.';
+  }
+
+  @override
+  String sessionRevertDeleteNew(int count) {
+    return 'Oturumun oluşturduğu $count yeni dosyayı da sil';
+  }
+
+  @override
+  String get sessionRevertNewTag => 'yeni';
+
+  @override
+  String get sessionReverted => 'Değişiklikler geri alındı';
+
+  @override
+  String gitNoUpstreamConfirm(String branch) {
+    return '$branch dalı uzak depoda yok. Gönderilip izlensin mi?';
+  }
+
+  @override
+  String get gitPublishBranch => 'Dalı gönder';
+
+  @override
+  String get gitNoUpstream => 'Dalın uzak depoda karşılığı yok';
+
+  @override
+  String get gitNoRemote => 'Depoda uzak depo (remote) tanımlı değil';
+
+  @override
+  String get gitAuthFailed =>
+      'Uzak depoda kimlik doğrulanamadı. PC\'de SSH anahtarı ya da kayıtlı kimlik bilgisi olmalı (ajan şifre soramaz).';
+
+  @override
+  String get gitPushRejected =>
+      'Uzak depoda yeni commit\'ler var; önce pull yapın';
+
+  @override
+  String get gitNewFilesNeedConfirm =>
+      'Yeni dosyalar yalnız ayrıca onaylanırsa silinir';
+
+  @override
+  String get notifClipboardTitle => 'PC\'de kopyalandı';
+
+  @override
+  String notifGitCommittedTitle(String repo, String branch) {
+    return 'Commit: $repo · $branch';
+  }
+
+  @override
+  String notifGitPushedTitle(String repo) {
+    return 'Push: $repo';
+  }
+
+  @override
+  String get notifyClipboardFromPc => 'PC\'de kopyalananı bildir';
+
+  @override
+  String get clipboardSyncToPc => 'Panoyu PC ile eşitle';
+
+  @override
+  String get clipboardSyncHint =>
+      'PC\'de kopyalanan metin sessiz bildirimle gelir; \"Kopyala\" uygulamayı açmadan telefonun panosuna yazar. Eşitleme açıksa uygulama öne gelince telefon panosu değiştiyse PC\'ye gönderilir (Android arka planda panoyu okumaya izin vermez). Parola yöneticisi içeriği ve 3 KB\'tan büyük metin PC\'den gönderilmez.';
+
+  @override
+  String get clipboardSyncHost => 'Eşitlenen PC';
+
+  @override
+  String clipboardHostAuto(String name) {
+    return 'Otomatik ($name)';
+  }
+
+  @override
+  String get clipboardCopyFailed => 'Panoya kopyalanamadı';
+
+  @override
+  String get agentClipboardSync => 'Pano eşitleme (PC → telefon)';
+
+  @override
+  String get agentClipboardSyncHint =>
+      'PC\'de kopyalanan metin telefona sessiz bildirimle gider. Parola yöneticisi içeriği ve 3 KB\'tan büyük metin gönderilmez; metin hiçbir kayda yazılmaz. Yeniden başlatma gerekmez.';
+
+  @override
+  String get noteTitle => 'Hızlı not';
+
+  @override
+  String noteTooLong(int max) {
+    return 'Not çok uzun (en çok $max karakter)';
+  }
+
+  @override
+  String get noteObsidianMissing =>
+      'Obsidian açılamadı. Bu telefonda Obsidian uygulaması yüklü mü?';
+
+  @override
+  String get noteSent => 'Obsidian\'a gönderildi';
+
+  @override
+  String get noteSetupTitle => 'Önce Obsidian\'ı ayarla';
+
+  @override
+  String get noteSetupBody =>
+      'Kasanın adını Obsidian uygulamasında göründüğü gibi yaz. Notu Obsidian\'ın kendisi yazar; LiveSync uçtan uca şifrelemeyle eşitler.';
+
+  @override
+  String get noteSetupAction => 'Obsidian ayarları';
+
+  @override
+  String get noteModeNew => 'Yeni not';
+
+  @override
+  String get noteModeDaily => 'Günlük nota ekle';
+
+  @override
+  String noteTarget(String vault, String path) {
+    return '$vault › $path';
+  }
+
+  @override
+  String get noteTitleField => 'Başlık';
+
+  @override
+  String get noteTitleHelper => 'Boşsa ilk satır (ya da saat) kullanılır';
+
+  @override
+  String get noteText => 'Not';
+
+  @override
+  String get noteVoice => 'Sesle yaz';
+
+  @override
+  String get noteSave => 'Obsidian\'a kaydet';
+
+  @override
+  String get noteExplain =>
+      'Obsidian kısa süreliğine açılıp notu kaydeder; hemen Tiphys\'e dönebilirsin.';
+
+  @override
+  String get obsidianExplain =>
+      'Hızlı notlar bu telefondaki Obsidian uygulamasına obsidian:// bağlantısıyla verilir. Tiphys kasaya kendisi yazmaz; LiveSync\'in uçtan uca şifrelemesi korunur.';
+
+  @override
+  String get obsidianVault => 'Kasa adı';
+
+  @override
+  String get obsidianVaultHelper =>
+      'Obsidian\'ın kasa listesinde göründüğü gibi';
+
+  @override
+  String get obsidianFolder => 'Yeni notların klasörü';
+
+  @override
+  String get obsidianDailyPath => 'Günlük not yolu';
+
+  @override
+  String get obsidianDailyPathHelper =>
+      'YYYY, MM ve DD bugünün tarihiyle değişir';
+
+  @override
+  String get obsidianMode => 'Varsayılan';
+
+  @override
+  String get mediaTitle => 'Medya';
+
+  @override
+  String get mediaNothingPlaying => 'PC\'de çalan bir şey yok';
+
+  @override
+  String get mediaNothingHint =>
+      'MPRIS destekleyen oynatıcılar (Spotify, tarayıcılar, VLC, mpv…) burada görünür.';
+
+  @override
+  String get mediaMute => 'Sesi kapat';
+
+  @override
+  String get mediaUnmute => 'Sesi aç';
+
+  @override
+  String get mediaVolume => 'Ses düzeyi';
+
+  @override
+  String get mediaMuted => 'Kapalı';
+
+  @override
+  String get mediaUnknownTitle => 'Bilinmeyen parça';
+
+  @override
+  String mediaPositionOf(String position, String length) {
+    return '$position / $length';
+  }
+
+  @override
+  String get mediaPrevious => 'Önceki';
+
+  @override
+  String get mediaNext => 'Sonraki';
+
+  @override
+  String get mediaPause => 'Duraklat';
+
+  @override
+  String get mediaPlay => 'Oynat';
+
+  @override
+  String get mediaBack10 => '10 sn geri';
+
+  @override
+  String get mediaForward10 => '10 sn ileri';
+
+  @override
+  String get mediaArt => 'Kapak';
+
+  @override
+  String get mediaFailed => 'Oynatıcı komutu kabul etmedi';
+
+  @override
+  String get mediaVolumeFailed =>
+      'Ses düzeyi okunamadı ya da değiştirilemedi (wpctl)';
+
+  @override
+  String get homeCardsNowPlaying => 'Şimdi çalıyor';
+
+  @override
+  String get openOnPc => 'PC\'de aç';
+
+  @override
+  String openOnPcOn(String host) {
+    return '$host üzerinde aç';
+  }
+
+  @override
+  String get openOnPcClipboardHint =>
+      'Telefon panosundaki bağlantıyı PC\'nin tarayıcısında açar';
+
+  @override
+  String openOnPcDone(String host) {
+    return '$host üzerinde açıldı';
+  }
+
+  @override
+  String get openOnPcNoUrl => 'Panoda bağlantı yok';
+
+  @override
+  String openOnPcConfirm(String url, String host) {
+    return 'Bu bağlantı $host üzerinde açılsın mı?\n\n$url';
+  }
+
+  @override
+  String get openOnPcBadUrl => 'Yalnız http(s) bağlantıları açılabilir';
+
+  @override
+  String get logSearchTitle => 'Log arama';
+
+  @override
+  String get logSearchHint => 'Aranacak metin (regex değil)';
+
+  @override
+  String get logSearchRun => 'Ara';
+
+  @override
+  String logSearchMinutes(int n) {
+    return '$n dk';
+  }
+
+  @override
+  String logSearchHours(int n) {
+    return '$n sa';
+  }
+
+  @override
+  String get logSearchExplain =>
+      'Seçili hostlarda SSH ile systemd günlüğünde (sistem + kullanıcı) ve çalışan container\'ların loglarında arar. Büyük/küçük harf duyarsız.';
+
+  @override
+  String get logSearchSearching => 'Aranıyor…';
+
+  @override
+  String logSearchHitCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count eşleşme',
+      zero: 'Eşleşme yok',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get logSearchUserOnly =>
+      'yalnız kullanıcı günlüğü (adm / systemd-journal grubunda değil)';
+
+  @override
+  String get logSearchTruncated =>
+      'çıktı sınırına ulaşıldı, sonuçlar eksik olabilir';
+
+  @override
+  String get logSearchNoDocker => 'Docker yok';
+
+  @override
+  String get logSearchDockerError => 'Docker okunamadı';
+
+  @override
+  String get logSearchAllSources => 'Tüm kaynaklar';
+
+  @override
+  String logSearchNoHits(String pattern, String range) {
+    return 'Son $range içinde \"$pattern\" bulunamadı.';
+  }
+
+  @override
+  String logSearchMore(int count) {
+    return 'Daha fazla göster ($count)';
+  }
+
+  @override
+  String get logSearchLineActions =>
+      'kopyala, Claude\'a sor, Obsidian\'a kaydet';
+
+  @override
+  String get logSearchAskClaudeHint =>
+      'Bu satır ve aynı kaynaktaki önceki eşleşmelerle yeni oturum';
+
+  @override
+  String logSearchClaudeIntro(String host, String source, String pattern) {
+    return '$host hostunda loglarda \"$pattern\" aradım ve $source kaynağında bu satırı buldum. Ne anlama geliyor, bir sorun varsa nasıl düzeltirim?';
+  }
+
+  @override
+  String get logSearchClaudeBefore => 'Aynı kaynaktaki önceki eşleşmeler:';
+
+  @override
+  String get vaultTitle => 'Şifre kasası';
+
+  @override
+  String get vaultSubtitle => 'Bu cihazda şifreli; PIN / parmak iziyle açılır';
+
+  @override
+  String get vaultSecurityFooter =>
+      'Kasa, uygulama açıkken de kilidi yeniden ister; hareketsizlikte ve arka planda kilitlenir, ekran görüntüsünü engeller. Yalnız şifreli profil yedeğine dahildir.';
+
+  @override
+  String get vaultLocked => 'Kasa kilitli';
+
+  @override
+  String get vaultLockedHint => 'Açmak için PIN ya da parmak izinle doğrula.';
+
+  @override
+  String get vaultNeedsLock =>
+      'Önce PIN ya da parmak izi kilidini aç (Ayarlar › Güvenlik). Kilit olmadan kasa açılmaz.';
+
+  @override
+  String get vaultUnlock => 'Kasayı aç';
+
+  @override
+  String get vaultLock => 'Kasayı kilitle';
+
+  @override
+  String get vaultAdd => 'Yeni kayıt';
+
+  @override
+  String get vaultImport => 'İçe aktar';
+
+  @override
+  String get vaultEmpty => 'Kasa boş';
+
+  @override
+  String get vaultEmptyHint =>
+      'Kayıt ekle ya da PC\'ndeki şifre listesini içe aktar.';
+
+  @override
+  String get vaultSearchHint => 'Başlık, kullanıcı, adres, etiket ara';
+
+  @override
+  String vaultFooter(int count, int minutes) {
+    return '$count kayıt. $minutes dk hareketsizlikte kilitlenir.';
+  }
+
+  @override
+  String get vaultUsername => 'Kullanıcı adı';
+
+  @override
+  String get vaultPassword => 'Şifre';
+
+  @override
+  String get vaultUrl => 'Adres';
+
+  @override
+  String get vaultTags => 'Etiketler';
+
+  @override
+  String get vaultTagsHint => 'Virgülle ayır';
+
+  @override
+  String get vaultNotes => 'Not';
+
+  @override
+  String get vaultEntryTitle => 'Başlık';
+
+  @override
+  String get vaultReveal => 'Şifreyi göster';
+
+  @override
+  String get vaultHide => 'Şifreyi gizle';
+
+  @override
+  String get vaultCopyUsername => 'Kullanıcı adını kopyala';
+
+  @override
+  String get vaultCopyPassword => 'Şifreyi kopyala';
+
+  @override
+  String vaultPasswordCopied(int seconds) {
+    return 'Şifre kopyalandı; pano $seconds sn sonra temizlenecek';
+  }
+
+  @override
+  String vaultDeleteConfirm(String title) {
+    return '\"$title\" silinsin mi? Geri alınamaz.';
+  }
+
+  @override
+  String vaultUpdated(String date) {
+    return 'Güncellendi: $date';
+  }
+
+  @override
+  String get vaultGenerate => 'Şifre üret';
+
+  @override
+  String get vaultRegenerate => 'Yeniden üret';
+
+  @override
+  String vaultLength(int n) {
+    return 'Uzunluk $n';
+  }
+
+  @override
+  String get vaultSymbols => 'Simgeler';
+
+  @override
+  String get vaultUse => 'Kullan';
+
+  @override
+  String get vaultImportExplain =>
+      'Bir hosttaki Markdown şifre listesini SFTP ile okur. Tablolar kayda, \"## Grup\" başlıkları etikete dönüşür. Onaylamadan hiçbir şey kaydedilmez.';
+
+  @override
+  String get vaultImportHost => 'Host';
+
+  @override
+  String get vaultImportPath => 'Dosya';
+
+  @override
+  String get vaultImportRead => 'Dosyayı oku';
+
+  @override
+  String get vaultImportNone => 'Dosyada tablo satırı bulunamadı.';
+
+  @override
+  String vaultImportPreview(int count) {
+    return '$count satır bulundu';
+  }
+
+  @override
+  String get vaultImportFooter =>
+      'Şifresi olmayan satırlar varsayılan olarak seçili değil. Başlığı ve kullanıcı adı aynı olan kayıt çoğaltılmaz, güncellenir.';
+
+  @override
+  String get vaultNoPassword => 'şifre yok';
+
+  @override
+  String get vaultWillUpdate => 'güncellenecek';
+
+  @override
+  String get vaultSelectAll => 'Tümünü seç';
+
+  @override
+  String get vaultSelectNone => 'Seçimi kaldır';
+
+  @override
+  String vaultImportCount(int count) {
+    return '$count kaydı içe aktar';
+  }
+
+  @override
+  String vaultImported(int added, int updated) {
+    return '$added eklendi, $updated güncellendi';
+  }
+
+  @override
+  String vaultDeleteSourceConfirm(String path, String host) {
+    return '$host üzerindeki $path de silinsin mi? (Varsa) shred ile üzerine yazılır, geri getirilemez. Emin değilsen silme.';
+  }
+
+  @override
+  String get vaultDeleteSource => 'Dosyayı sil';
+
+  @override
+  String get vaultSourceDeleted => 'Dosya silindi';
+
+  @override
+  String get composeHide => 'Gizle (arka planda sürer)';
+
+  @override
+  String get homeLayout => 'Düzen';
+
+  @override
+  String get homeLayoutCards => 'Kartlar';
+
+  @override
+  String get homeLayoutCardsDesc => 'Bugünkü bento kartlar';
+
+  @override
+  String get homeLayoutGrid => 'Kısayollar';
+
+  @override
+  String get homeLayoutGridDesc => 'Özet şeridi ve kısayol ızgarası';
+
+  @override
+  String get homeLayoutFocus => 'Odak';
+
+  @override
+  String get homeLayoutFocusDesc => 'Durum kartı ve kısayol listesi';
+
+  @override
+  String get homeCardsTitle => 'Kartlar';
+
+  @override
+  String get homeCardsLayoutNote =>
+      'Kısayollar ve Odak düzenlerinde kısayollar üstte gösterilir; Hızlı erişim kartı yalnız Kartlar düzeninde kullanılır.';
+
+  @override
+  String get homeShortcuts => 'Kısayollar';
+
+  @override
+  String get homeShortcutsFooter =>
+      'Ana ekranda yalnız açık ve kullanılabilir kısayollar görünür. Gerektirdiği şey (entegrasyon, ajan, SSH) ayarlı olmayan kısayol gizlenir; burada neyin eksik olduğu yazar.';
+
+  @override
+  String get homeStatus => 'Durum';
+
+  @override
+  String get homeOnline => 'çevrimiçi';
+
+  @override
+  String get shortcutWake => 'PC\'yi uyandır';
+
+  @override
+  String get shortcutSites => 'Siteler';
+
+  @override
+  String get shortcutNeedsAgent => 'Ajanlı host gerekir';
+
+  @override
+  String get shortcutNeedsDesktop => 'Ajanın masaüstü özelliği gerekir';
+
+  @override
+  String get shortcutNeedsSsh => 'SSH\'lı host gerekir';
+
+  @override
+  String get shortcutNeedsWake => 'Wake-on-LAN ayarlı host gerekir';
+
+  @override
+  String get shortcutNeedsObsidian => 'Obsidian kasası ayarlı değil';
+
+  @override
+  String get shortcutNeedsIntegration => 'Entegrasyon ayarlı değil';
+
+  @override
+  String get desktopTitle => 'Masaüstü';
+
+  @override
+  String get desktopWorkspaces => 'Çalışma alanları';
+
+  @override
+  String desktopWorkspace(String n) {
+    return 'Çalışma alanı $n';
+  }
+
+  @override
+  String desktopWindowCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count pencere',
+      zero: 'boş',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get desktopWindows => 'Pencereler';
+
+  @override
+  String get desktopNoWindows => 'Açık pencere yok';
+
+  @override
+  String get desktopNoWindowsHint =>
+      'Aşağıdan bir uygulama aç; burada görünür.';
+
+  @override
+  String get desktopWindowHint =>
+      'Dokun: öne getir · kaydır: kapat · basılı tut: diğer';
+
+  @override
+  String get desktopApps => 'Uygulamalar';
+
+  @override
+  String get desktopAppsSearch => 'Uygulama ara';
+
+  @override
+  String get desktopAppsEmpty => 'Uygulama bulunamadı';
+
+  @override
+  String get desktopRecent => 'Son kullanılanlar';
+
+  @override
+  String get desktopCatAll => 'Tümü';
+
+  @override
+  String get desktopCatNetwork => 'İnternet';
+
+  @override
+  String get desktopCatDevelopment => 'Geliştirme';
+
+  @override
+  String get desktopCatOffice => 'Ofis';
+
+  @override
+  String get desktopCatGraphics => 'Grafik';
+
+  @override
+  String get desktopCatMedia => 'Ses ve video';
+
+  @override
+  String get desktopCatGame => 'Oyunlar';
+
+  @override
+  String get desktopCatSystem => 'Sistem';
+
+  @override
+  String get desktopCatUtility => 'Araçlar';
+
+  @override
+  String get desktopCatOther => 'Diğer';
+
+  @override
+  String get desktopFocus => 'Öne getir';
+
+  @override
+  String get desktopCloseWindow => 'Pencereyi kapat';
+
+  @override
+  String desktopCloseConfirm(String title) {
+    return '\"$title\" kapatılsın mı? İçindeki kaydedilmemiş işler kaybolabilir.';
+  }
+
+  @override
+  String get desktopFullscreen => 'Tam ekran';
+
+  @override
+  String get desktopFloat => 'Yüzen / döşenmiş';
+
+  @override
+  String get desktopPin => 'Tüm alanlarda sabitle';
+
+  @override
+  String get desktopMoveTo => 'Çalışma alanına taşı';
+
+  @override
+  String get desktopFocused => 'Etkin';
+
+  @override
+  String desktopLaunched(String name) {
+    return '$name açılıyor';
+  }
+
+  @override
+  String get desktopScreenOff => 'Ekranı kapat';
+
+  @override
+  String get desktopScreenOn => 'Ekranı aç';
+
+  @override
+  String desktopControlOn(String time) {
+    return 'Kontrol açık · $time';
+  }
+
+  @override
+  String get desktopControlStop => 'Durdur';
+
+  @override
+  String get desktopControlExtend => '15 dk uzat';
+
+  @override
+  String get desktopControlAuthTitle => 'Masaüstü kontrolü';
+
+  @override
+  String get desktopControlNeedsLock =>
+      'PC\'yi kontrol etmek için önce uygulama kilidini (PIN ya da parmak izi) kur.';
+
+  @override
+  String get desktopControlOffHint =>
+      'Salt okunur: pencereleri yönetmek ve uygulama açmak için ajan ayarlarında \"Uzaktan kontrol\"ü aç.';
+
+  @override
+  String get desktopControlEnded => 'Kontrol oturumu bitti; yeniden dene.';
+
+  @override
+  String desktopControlBusy(String device) {
+    return 'PC\'yi başka bir cihaz ($device) kontrol ediyor.';
+  }
+
+  @override
+  String get desktopControlRateLimited => 'Çok hızlı; biraz bekle.';
+
+  @override
+  String get desktopControlIndicatorFailed =>
+      'PC\'de kontrol işareti gösterilemedi.';
+
+  @override
+  String get desktopFeatureOff => 'Bu ajanda masaüstü özelliği kapalı';
+
+  @override
+  String desktopFeatureOffHint(String host) {
+    return 'Ayarlar › Hostlar › $host › Ajan ayarları\'nda \"Masaüstü\"nü aç (pencereleri yönetmek için \"Uzaktan kontrol\"ü de). Ajan yeniden başlayınca geçerli olur.';
+  }
+
+  @override
+  String get desktopNoHyprland => 'Hyprland çalışmıyor';
+
+  @override
+  String get desktopNoHyprlandHint =>
+      'PC\'de oturum kapalı ya da başka bir masaüstü kullanılıyor. Uygulama listesi yine çalışır.';
+
+  @override
+  String get desktopWindowGone => 'Pencere artık yok';
+
+  @override
+  String get desktopBadAddress => 'Geçersiz pencere adresi';
+
+  @override
+  String get desktopHyprctlFailed => 'Hyprland komutu reddetti';
+
+  @override
+  String get agentFeatControl => 'Uzaktan kontrol (pencereler, uygulama açma)';
+
+  @override
+  String get notifControlStartedTitle => 'Uzaktan kontrol açıldı';
+
+  @override
+  String get notifControlEndedTitle => 'Uzaktan kontrol kapandı';
+
+  @override
+  String get notifControlExpired => 'süre doldu';
+
+  @override
+  String get desktopWindowMenu => 'Pencere işlemleri';
+
+  @override
+  String get liveTitle => 'Canlı ekran';
+
+  @override
+  String get liveShowWindow => 'Bu pencereyi göster';
+
+  @override
+  String get liveConnecting => 'Bağlanıyor…';
+
+  @override
+  String get liveReconnecting => 'Bağlantı koptu, yeniden bağlanıyor…';
+
+  @override
+  String get liveReconnectingShort => 'Yeniden bağlanıyor…';
+
+  @override
+  String liveStats(String fps, String ms) {
+    return '$fps fps · $ms ms';
+  }
+
+  @override
+  String liveStatsFps(String fps) {
+    return '$fps fps';
+  }
+
+  @override
+  String get liveFallback =>
+      'Yavaş kip: PC\'de wf-recorder kurulu değil; görüntü saniyede en çok 4 kez yenilenir.';
+
+  @override
+  String get liveQuality => 'Kalite';
+
+  @override
+  String get liveQualityAuto => 'Otomatik';
+
+  @override
+  String get liveQualityHigh => 'Yüksek';
+
+  @override
+  String get liveQualityMedium => 'Orta';
+
+  @override
+  String get liveQualityLow => 'Düşük';
+
+  @override
+  String get liveCodecAuto => 'Kodek: Otomatik';
+
+  @override
+  String get liveCodecH264 => 'Kodek: H.264';
+
+  @override
+  String get liveCodecJpeg => 'Kodek: JPEG';
+
+  @override
+  String get liveCodecFallback => 'H.264 kullanılamadı, JPEG\'e geçildi.';
+
+  @override
+  String liveBitrate(String value) {
+    return '$value Mbit/sn';
+  }
+
+  @override
+  String get liveModeDirect =>
+      'Doğrudan dokunma (dokunmatik fareye geçmek için dokun)';
+
+  @override
+  String get liveModeTouchpad =>
+      'Dokunmatik fare (doğrudan dokunmaya geçmek için dokun)';
+
+  @override
+  String get liveHideBar => 'Denetimleri gizle';
+
+  @override
+  String get liveShowBar => 'Denetimleri göster';
+
+  @override
+  String liveSessionLeft(String time) {
+    return 'Kontrol oturumu: $time kaldı';
+  }
+
+  @override
+  String get liveEnded => 'Canlı ekran durdu';
+
+  @override
+  String get liveRestart => 'Yeniden başlat';
+
+  @override
+  String get liveResetZoom => 'Yakınlaştırmayı sıfırla';
+
+  @override
+  String get liveKeyboard => 'Klavye';
+
+  @override
+  String get liveMoreKeys => 'F tuşları ve diğerleri';
+
+  @override
+  String get liveKeyLeft => 'Sol ok';
+
+  @override
+  String get liveKeyRight => 'Sağ ok';
+
+  @override
+  String get liveKeyUp => 'Yukarı ok';
+
+  @override
+  String get liveKeyDown => 'Aşağı ok';
+
+  @override
+  String get liveKeySpace => 'Boşluk';
+
+  @override
+  String get liveCopy => 'Kopyala';
+
+  @override
+  String get livePaste => 'Yapıştır';
+
+  @override
+  String get liveUndo => 'Geri al';
+
+  @override
+  String get liveSwitchWindow => 'Pencere değiştir';
+
+  @override
+  String get liveErrStreamFailed => 'PC ekranı yakalanamadı.';
+
+  @override
+  String get liveErrReplaced => 'Canlı ekran başka bir bağlantıda açıldı.';
+
+  @override
+  String get liveErrWindowNotVisible =>
+      'Bu pencere şu an ekranda değil (başka çalışma alanında).';
+
+  @override
+  String get liveErrMonitorNotFound => 'Monitör bulunamadı.';
+
+  @override
+  String get liveErrBadKey => 'Bu tuşa izin yok.';
+
+  @override
+  String get liveErrBadText => 'Metinde yazılamayan karakter var.';
+
+  @override
+  String get liveErrInputFailed => 'PC girişi almadı (ydotool / wtype).';
+
+  @override
+  String get shortcutNeedsControl => 'Ajanın uzaktan kontrol özelliği gerekir';
+
+  @override
+  String get claudePcUse => 'PC\'yi kullan';
+
+  @override
+  String get claudePcHint =>
+      'Claude ekranınıza bakıp fare ve klavyeyle çalışır. Riskli adımlarda telefondan onay ister; her an durdurabilirsiniz. Başlamak için kilit yeniden sorulur.';
+
+  @override
+  String get claudePcPromptHint =>
+      'Ne yapsın? (ör. Firefox\'ta yarının hava durumunu aç)';
+
+  @override
+  String get claudePcStart => 'Kilidi aç ve başlat';
+
+  @override
+  String get claudePcEnded => 'Kontrol kapandı · Claude PC\'yi kullanamaz';
+
+  @override
+  String get claudePcExpired => 'Kontrol süresi doldu · Claude durduruldu';
+
+  @override
+  String get claudePcReconnect => 'Kontrolü yeniden aç';
+
+  @override
+  String get claudePcExpand => 'Canlı ekranı büyüt';
+
+  @override
+  String get claudePcConfirmTitle => 'Claude onay istiyor';
+
+  @override
+  String get claudePcShot => 'Ekran görüntüsü';
+
+  @override
+  String get claudePcUnavailable =>
+      'Bu bilgisayarda Claude PC\'yi kullanamaz: masaüstü ve uzaktan kontrol açık olmalı.';
+
+  @override
+  String get pcOngoingTitle => 'Claude PC\'yi kullanıyor';
+
+  @override
+  String pcOngoingBody(String title, String time) {
+    return '$title · kontrol bitişi $time';
+  }
+
+  @override
+  String get notifPcEndedTitle => 'Claude durdu';
+
+  @override
+  String notifPcEndedExpired(String title) {
+    return '$title · kontrol süresi doldu';
+  }
+
+  @override
+  String notifPcEndedOther(String title) {
+    return '$title · uzaktan kontrol kapandı';
+  }
+
+  @override
+  String notifPcExpiringTitle(int minutes) {
+    return 'PC kontrolü $minutes dk içinde bitiyor';
+  }
+
+  @override
+  String get pcExtend => 'Uzat';
+
+  @override
+  String get pcActionFailedTitle => 'Tiphys ajana ulaşamadı';
+
+  @override
+  String get pcActionFailedBody => 'Uygulamayı açıp yeniden deneyin.';
+
+  @override
+  String get moonlightEntry => 'Yüksek kalite (Moonlight)';
+
+  @override
+  String get moonlightSubtitle => 'Sunshine ile 60 fps donanım kodlamalı akış';
+
+  @override
+  String get sunshineNotInstalledTitle => 'Sunshine kurulu değil';
+
+  @override
+  String sunshineNotInstalledBody(String host) {
+    return 'Yüksek kalite modu $host ekranını Sunshine ile (ekran kartında NVENC) Moonlight uygulamasına aktarır. $host üzerinde bir terminalde bir kez çalıştır:';
+  }
+
+  @override
+  String get sunshineInstallNote =>
+      'Hyprland\'de capture = wlr ek izin istemez. Görüntü siyah kalırsa capture = kms dene (paket gereken izni Sunshine\'a zaten verir). Sonra aynı kullanıcı adı ve şifreyi Ajan ayarları › Sunshine\'a gir.';
+
+  @override
+  String get sunshineCopyAll => 'Komutları kopyala';
+
+  @override
+  String get sunshineStoppedTitle => 'Sunshine durmuş';
+
+  @override
+  String sunshineStoppedBody(String host) {
+    return 'Moonlight bağlanabilsin diye $host üzerinde başlat.';
+  }
+
+  @override
+  String get sunshineStart => 'Sunshine\'ı başlat';
+
+  @override
+  String get sunshineStop => 'Sunshine\'ı durdur';
+
+  @override
+  String get sunshineStarted => 'Sunshine başladı';
+
+  @override
+  String get sunshineStoppedDone => 'Sunshine durdu';
+
+  @override
+  String get sunshineRunning => 'Sunshine çalışıyor';
+
+  @override
+  String sunshineInfo(String capture, String encoder, String paired) {
+    return 'Yakalama $capture · kodlayıcı $encoder · eşleşmiş cihaz $paired';
+  }
+
+  @override
+  String get sunshineDefault => 'varsayılan';
+
+  @override
+  String get moonlightMissingTitle => 'Moonlight bu telefonda yok';
+
+  @override
+  String get moonlightMissingBody =>
+      'Ücretsiz Moonlight uygulamasını kur, sonra buraya dön.';
+
+  @override
+  String get moonlightOpen => 'Moonlight\'ı aç';
+
+  @override
+  String get moonlightOpenFailed => 'Moonlight açılamadı';
+
+  @override
+  String get moonlightEnterPin => 'Moonlight PIN\'ini gir';
+
+  @override
+  String moonlightFirstTime(String address) {
+    return 'İlk kez: Moonlight\'ta + ile $address adresini ekle. Sonra PC\'ye dokun; Moonlight 4 haneli bir PIN gösterir. Onu burada “Moonlight PIN\'ini gir” ile yaz.';
+  }
+
+  @override
+  String get sunshineNoCredentials =>
+      'Buradan eşleştirmek için Sunshine web kullanıcı adı ve şifresini Ajan ayarlarına gir.';
+
+  @override
+  String get sunshineUnauthorized =>
+      'Sunshine, Ajan ayarlarındaki kullanıcı adını ya da şifreyi kabul etmedi.';
+
+  @override
+  String get sunshineSetupRequired =>
+      'Sunshine\'da henüz web kullanıcısı yok. PC\'de çalıştır: sunshine --creds KULLANICI ŞİFRE';
+
+  @override
+  String get sunshineUnreachable =>
+      'Sunshine web arayüzüne (47990 portu) ulaşılamıyor.';
+
+  @override
+  String get sunshineCertMismatch =>
+      'Sunshine sertifikası kendi dosyasıyla eşleşmiyor; istek engellendi.';
+
+  @override
+  String get sunshineUnitFailed =>
+      'Sunshine servisi başlatılamadı ya da durdurulamadı.';
+
+  @override
+  String get sunshineNoPending =>
+      'Sunshine PIN beklemiyor. Önce Moonlight\'ta PC\'ye dokun ve PIN penceresini açık tut.';
+
+  @override
+  String get sunshinePairFailed =>
+      'Eşleşme olmadı: PIN yanlış ya da Moonlight beklemeyi bıraktı. Yeniden dene.';
+
+  @override
+  String get sunshineBadPin => 'PIN 4 haneli olmalı.';
+
+  @override
+  String sunshineBadRequest(String message) {
+    return 'Sunshine isteği reddetti: $message';
+  }
+
+  @override
+  String get moonlightPinTitle => 'Moonlight PIN\'i';
+
+  @override
+  String get moonlightPinHint =>
+      'Moonlight\'ta PC\'ye dokun; 4 haneli bir PIN gösterir. Buraya yaz, Tiphys onu Sunshine\'a iletir; tarayıcı gerekmez.';
+
+  @override
+  String get moonlightPair => 'Eşleştir';
+
+  @override
+  String get moonlightPairing => 'Moonlight bekleniyor…';
+
+  @override
+  String get moonlightPaired => 'Eşleşti. Moonlight artık bağlanabilir.';
+
+  @override
+  String get agentSunshine => 'Sunshine (Moonlight)';
+
+  @override
+  String get agentSunshineHint =>
+      'Sunshine web kullanıcı adı ve şifresi. Yalnız ajanda saklanır, Moonlight PIN\'ini iletmek için kullanılır.';
+
+  @override
+  String get agentPasswordRequired =>
+      'Şifre gerekli: adres değiştiyse ya da ilk kayıtsa şifreyi yeniden gir';
+
+  @override
+  String get remoteAddress => 'Adres / ara';
+
+  @override
+  String get remoteBack => 'Geri';
+
+  @override
+  String get remoteForward => 'İleri';
+
+  @override
+  String get remoteReload => 'Yenile';
+
+  @override
+  String get remoteNewTab => 'Yeni sekme';
+
+  @override
+  String get remoteCloseTab => 'Sekmeyi kapat';
+
+  @override
+  String get remoteReopenTab => 'Kapatılanı aç';
+
+  @override
+  String get remoteNextTab => 'Sonraki sekme';
+
+  @override
+  String get remotePrevTab => 'Önceki sekme';
+
+  @override
+  String get remoteFind => 'Bul';
+
+  @override
+  String get remoteZoomIn => 'Yakınlaştır';
+
+  @override
+  String get remoteZoomOut => 'Uzaklaştır';
+
+  @override
+  String get remoteZoomReset => 'Gerçek boyut';
+
+  @override
+  String get remoteFullscreen => 'Tam ekran';
+
+  @override
+  String get remoteReader => 'Okuma kipi';
+
+  @override
+  String get remoteScrollDown => 'Aşağı kaydır';
+
+  @override
+  String get remoteScrollUp => 'Yukarı kaydır';
+
+  @override
+  String get remoteTop => 'En üste';
+
+  @override
+  String get remotePalette => 'Komut paleti';
+
+  @override
+  String get remoteGoToFile => 'Dosyaya git';
+
+  @override
+  String get remoteSave => 'Kaydet';
+
+  @override
+  String get remoteTerminal => 'Terminal';
+
+  @override
+  String get remoteReplace => 'Bul ve değiştir';
+
+  @override
+  String get remoteGoToLine => 'Satıra git';
+
+  @override
+  String get remoteRedo => 'Yinele';
+
+  @override
+  String get remoteComment => 'Yorum satırı';
+
+  @override
+  String get remoteSidebar => 'Kenar çubuğu';
+
+  @override
+  String get remoteInterrupt => 'Durdur (Ctrl+C)';
+
+  @override
+  String get remoteEof => 'Girişi bitir (Ctrl+D)';
+
+  @override
+  String get remoteHistory => 'Önceki komut';
+
+  @override
+  String get remoteCut => 'Kes';
+
+  @override
+  String get remoteParent => 'Üst klasör';
+
+  @override
+  String get remotePath => 'Yol yaz';
+
+  @override
+  String get remoteRename => 'Yeniden adlandır';
+
+  @override
+  String get remoteNewFolder => 'Yeni klasör';
+
+  @override
+  String get remoteHidden => 'Gizlileri göster';
+
+  @override
+  String get remotePlayPause => 'Oynat / duraklat';
+
+  @override
+  String get remoteSeekBack => 'Geri sar';
+
+  @override
+  String get remoteSeekForward => 'İleri sar';
+
+  @override
+  String get remoteVolumeDown => 'Sesi kıs';
+
+  @override
+  String get remoteVolumeUp => 'Sesi aç';
+
+  @override
+  String get remoteMute => 'Sessiz';
+
+  @override
+  String get remoteSubtitles => 'Altyazı';
+
+  @override
+  String get remoteSelectAll => 'Tümünü seç';
+
+  @override
+  String get remoteCloseWindow => 'Pencereyi kapat';
+
+  @override
+  String get remotePromptAddress => 'Adres ya da arama';
+
+  @override
+  String get remotePromptFind => 'Aranacak metin';
+
+  @override
+  String get remotePromptCommand => 'Komut';
+
+  @override
+  String get remotePromptFile => 'Dosya adı';
+
+  @override
+  String get remotePromptLine => 'Satır numarası';
+
+  @override
+  String get remotePromptPath => 'Klasör yolu';
+
+  @override
+  String get remotePromptText => 'Metin';
+
+  @override
+  String get remoteMore => 'Tüm kumandalar';
+
+  @override
+  String get remoteHide => 'Kumandayı gizle';
+
+  @override
+  String get remoteShow => 'Kumandayı göster';
+
+  @override
+  String remoteStripLabel(String app) {
+    return '$app kumandası';
+  }
+
+  @override
+  String remoteConfirm(String name) {
+    return '“$name” PC\'ye gönderilsin mi?';
+  }
+
+  @override
+  String get remoteConfirmHint => 'Önce onay sorar';
+
+  @override
+  String get remoteFocusChanged => 'Odak başka pencereye geçti; gönderilmedi.';
+
+  @override
+  String get remoteSend => 'Gönder';
+
+  @override
+  String get remoteDesktop => 'Masaüstü';
+
+  @override
+  String get remoteMine => 'Kendi düğmelerin';
+
+  @override
+  String get settingsDesktop => 'Masaüstü';
+
+  @override
+  String get settingsRemotes => 'Kumandalar';
+
+  @override
+  String get settingsRemotesHint =>
+      'Canlı ekranda uygulamaya göre kendi düğmelerin';
+
+  @override
+  String get remotesEmpty =>
+      'Henüz kendi düğmen yok. Firefox, VS Code, Zed, kitty, dosya yöneticileri, mpv, VLC ve Mousepad için hazır kumandalar zaten var.';
+
+  @override
+  String get remoteClass => 'Pencere sınıfı';
+
+  @override
+  String get remoteClassHelper =>
+      'Hyprland\'deki pencere sınıfı, ör. firefox, code, kitty';
+
+  @override
+  String get remoteName => 'Ad';
+
+  @override
+  String get remoteIconTitle => 'Simge';
+
+  @override
+  String get remoteActionTitle => 'Eylem';
+
+  @override
+  String get remoteKindCombo => 'Kısayol';
+
+  @override
+  String get remoteKindSequence => 'Dizi';
+
+  @override
+  String get remoteKindPrompt => 'Metin sor';
+
+  @override
+  String get remoteKindScroll => 'Kaydır';
+
+  @override
+  String get remoteComboHelper => 'ör. ctrl+shift+t, F5, alt+Left';
+
+  @override
+  String get remoteComboInvalid =>
+      'Bu kısayol gönderilemez: harf ve rakamlar Ctrl, Alt ya da Super ile olmalı, noktalama tuşu yok.';
+
+  @override
+  String get remoteAddStep => 'Adım ekle';
+
+  @override
+  String get remoteRemoveStep => 'Adımı kaldır';
+
+  @override
+  String get remotePromptBefore => 'Önce kısayol (isteğe bağlı)';
+
+  @override
+  String get remoteSubmit => 'Sonra Enter\'a bas';
+
+  @override
+  String get remoteScrollAmount => 'Çentik (aşağı +, yukarı −)';
+
+  @override
+  String get remoteScrollInvalid => '−20 ile 20 arası, 0 olmayan bir sayı';
+
+  @override
+  String get remoteConfirmSetting => 'Göndermeden önce sor';
+
+  @override
+  String get remoteIconZap => 'Şimşek';
+
+  @override
+  String get remoteIconStar => 'Yıldız';
+
+  @override
+  String get remoteIconPlay => 'Oynat';
+
+  @override
+  String get remoteIconSearch => 'Ara';
+
+  @override
+  String get remoteIconSave => 'Kaydet';
+
+  @override
+  String get remoteIconCopy => 'Kopyala';
+
+  @override
+  String get remoteIconRefresh => 'Yenile';
+
+  @override
+  String get remoteIconClose => 'Kapat';
+
+  @override
+  String get remoteIconPlus => 'Artı';
+
+  @override
+  String get remoteIconFolder => 'Klasör';
+
+  @override
+  String get remoteIconTerminal => 'Terminal';
+
+  @override
+  String get remoteIconGlobe => 'Dünya';
+
+  @override
+  String get browserTitle => 'Tarayıcı';
+
+  @override
+  String get browserTabs => 'Sekmeler';
+
+  @override
+  String get browserRowConnected => 'Firefox bağlı · sekmeler, okuma görünümü';
+
+  @override
+  String get browserRowSetup => 'Firefox köprüsü kurulmadı · kurulum adımları';
+
+  @override
+  String get browserSearch => 'Sekmelerde ara';
+
+  @override
+  String get browserNoTabs => 'Açık sekme yok.';
+
+  @override
+  String get browserNoMatch => 'Aramaya uyan sekme yok.';
+
+  @override
+  String browserWindow(int n) {
+    return 'Pencere $n';
+  }
+
+  @override
+  String browserTabCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count sekme',
+      one: '1 sekme',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get browserTabsHint =>
+      'Dokun = sekmeye geç · kaydır = kapat · basılı tut = seç';
+
+  @override
+  String get browserTabHint => 'sekmeye geçer';
+
+  @override
+  String get browserSelectHint => 'seçimi değiştirir';
+
+  @override
+  String get browserTabMenu => 'Sekme işlemleri';
+
+  @override
+  String get browserSelect => 'Seç';
+
+  @override
+  String browserSelected(int count) {
+    return '$count seçili';
+  }
+
+  @override
+  String get browserActive => 'etkin sekme';
+
+  @override
+  String get browserPinnedBadge => 'sabitli';
+
+  @override
+  String get browserAudible => 'ses çalıyor';
+
+  @override
+  String get browserMutedBadge => 'sessiz';
+
+  @override
+  String get browserActivate => 'Bu sekmeye geç';
+
+  @override
+  String get browserActivated => 'Sekmeye geçildi';
+
+  @override
+  String get browserToPhone => 'Telefona al';
+
+  @override
+  String get browserNotWebUrl =>
+      'Bu sekmenin adresi telefonda açılamaz (yalnız http/https).';
+
+  @override
+  String get browserReader => 'Okuma görünümü';
+
+  @override
+  String get browserPageControls => 'Sayfa kumandası';
+
+  @override
+  String get browserPin => 'Sabitle';
+
+  @override
+  String get browserUnpin => 'Sabitlemeyi kaldır';
+
+  @override
+  String get browserPinned => 'Sekme sabitlendi';
+
+  @override
+  String get browserUnpinned => 'Sabitleme kaldırıldı';
+
+  @override
+  String get browserMute => 'Sessize al';
+
+  @override
+  String get browserUnmute => 'Sesi aç';
+
+  @override
+  String get browserMutedDone => 'Sekme sessize alındı';
+
+  @override
+  String get browserUnmuted => 'Sekmenin sesi açıldı';
+
+  @override
+  String get browserSent => 'Gönderildi';
+
+  @override
+  String get browserCloseTabs => 'Sekmeleri kapat';
+
+  @override
+  String browserCloseConfirm(int count) {
+    return '$count sekme kapatılsın mı?';
+  }
+
+  @override
+  String get browserClosed => 'Sekme kapatıldı';
+
+  @override
+  String get browserRestore => 'Kapatılanı geri aç';
+
+  @override
+  String get browserRestored => 'Son kapatılan sekme geri açıldı';
+
+  @override
+  String get browserOpen => 'Aç';
+
+  @override
+  String get browserOpened => 'Yeni sekme açıldı';
+
+  @override
+  String get browserBadUrl => 'Geçerli bir http/https adresi yazın';
+
+  @override
+  String get browserNeedsControl =>
+      'Sekmeleri görmek için kontrol oturumu gerekiyor (adresler gezinti geçmişidir).';
+
+  @override
+  String get browserSetupTitle => 'Firefox köprüsü bağlı değil';
+
+  @override
+  String get browserSetupIntro =>
+      'Sekmeleri telefondan yönetmek için PC\'de bir kez kurun:';
+
+  @override
+  String get browserSetupStep1 =>
+      'PC\'de terminalde yardımcıyı kaydedin; komut eklenti dosyasının (XPI) yolunu yazar:';
+
+  @override
+  String get browserSetupStep2 =>
+      'Firefox\'ta about:config\'i açın, xpinstall.signatures.required ayarını false yapın:';
+
+  @override
+  String get browserSetupStep3 =>
+      'about:addons › dişli simgesi › \"Dosyadan eklenti yükle…\" ile komutun yazdığı XPI dosyasını seçin:';
+
+  @override
+  String get browserSetupStep4 =>
+      'Okuma görünümü ve sayfa kumandası için (isteğe bağlı): araç çubuğundaki Tiphys Köprüsü simgesi › \"Sayfa içeriği iznini ver\".';
+
+  @override
+  String get browserSetupWarning =>
+      'İmza denetimini kapatmak imzasız tüm eklentilere izin verir; yalnız bildiğiniz eklentileri kurun.';
+
+  @override
+  String get browserPermissionTitle => 'Sayfa içeriği izni gerekli';
+
+  @override
+  String get browserPermissionHint =>
+      'PC\'de Firefox\'ta Tiphys Köprüsü simgesine (ya da about:addons › Tiphys Köprüsü › Seçenekler) gidip \"Sayfa içeriği iznini ver\"e basın; Firefox izin soracak.';
+
+  @override
+  String get browserSummarize => 'Claude\'a özetlet';
+
+  @override
+  String get browserSummaryIntro =>
+      'Bu web sayfasını Türkçe olarak kısaca özetle; önemli noktaları madde madde yaz.';
+
+  @override
+  String get browserTruncated => 'Metin uzun olduğu için kısaltıldı.';
+
+  @override
+  String get browserFontSmaller => 'Yazıyı küçült';
+
+  @override
+  String get browserFontLarger => 'Yazıyı büyüt';
+
+  @override
+  String get browserMediaTitle => 'Sayfadaki medya';
+
+  @override
+  String get browserMediaHint => 'Sayfadaki video ya da ses';
+
+  @override
+  String get browserMediaVideo => 'Video';
+
+  @override
+  String get browserMediaAudio => 'Ses';
+
+  @override
+  String get browserRate => 'Oynatma hızı';
+
+  @override
+  String get browserScrollTitle => 'Sayfayı kaydır';
+
+  @override
+  String browserScrollPercent(int percent) {
+    return 'Sayfanın yüzde $percent\'i';
+  }
+
+  @override
+  String get browserBottom => 'En alta';
+
+  @override
+  String get browserTextTitle => 'Yazı alanına gönder';
+
+  @override
+  String get browserTextHint =>
+      'Odaktaki (ya da ilk görünen) alana yazılacak metin';
+
+  @override
+  String get browserTextSent => 'Metin yazı alanına gönderildi';
+
+  @override
+  String get browserPageHint =>
+      'Şifre alanı içeren sayfalarda okuma ve yazma kapalıdır.';
+
+  @override
+  String get browserErrNotConnected =>
+      'Firefox köprüsü bağlı değil (Firefox kapalı ya da eklenti kurulu değil).';
+
+  @override
+  String get browserErrPermission => 'Sayfa içeriği izni verilmemiş.';
+
+  @override
+  String get browserErrBadUrl => 'Bu adres açılamaz (yalnız http/https).';
+
+  @override
+  String get browserErrTabNotFound => 'Sekme artık yok (kapatılmış olabilir).';
+
+  @override
+  String get browserErrPassword =>
+      'Bu sayfada şifre alanı var; güvenlik için okunmuyor ve yazılmıyor.';
+
+  @override
+  String get browserErrNoMedia => 'Bu sayfada video ya da ses yok.';
+
+  @override
+  String get browserErrNoInput => 'Sayfada yazılabilir bir alan bulunamadı.';
+
+  @override
+  String get browserErrNoArticle => 'Bu sayfada okunacak bir metin bulunamadı.';
+
+  @override
+  String get browserErrUnsupported =>
+      'Firefox bu sayfada eklentiye izin vermiyor (Firefox\'un kendi sayfaları, eklenti mağazası).';
+
+  @override
+  String get browserErrTimeout => 'Firefox yanıt vermedi.';
+
+  @override
+  String get browserErrFailed => 'Firefox işlemi yapamadı.';
+
+  @override
+  String get uiTitle => 'Mobil görünüm';
+
+  @override
+  String get uiSearch => 'Bileşen ara';
+
+  @override
+  String get uiPartial =>
+      'Kısmi: pencere büyük, bazı bileşenler gösterilmiyor. Aramayı ya da canlı ekranı kullan.';
+
+  @override
+  String get uiNeedsControl => 'Mobil görünüm için kontrol oturumu gerekiyor.';
+
+  @override
+  String get uiUnsupportedTitle => 'Bu uygulama bileşenlerini paylaşmıyor';
+
+  @override
+  String get uiUnsupportedText =>
+      'Terminaller, oyunlar ve bazı uygulamalar (kitty, Steam gibi) erişilebilirlik ağacı vermez. Canlı ekranı ve uygulama kumandasını kullan.';
+
+  @override
+  String get uiOpenLive => 'Canlı ekranı aç';
+
+  @override
+  String get uiHelperMissingTitle => 'PC\'de erişilebilirlik yardımcısı eksik';
+
+  @override
+  String get uiHelperMissingText =>
+      'Mobil görünüm için PC\'de python3-gi ve gir1.2-atspi-2.0 paketleri gerekiyor.';
+
+  @override
+  String get uiEmpty => 'Bu pencerede gösterilecek bileşen yok.';
+
+  @override
+  String get uiNoMatch => 'Eşleşen bileşen yok.';
+
+  @override
+  String get uiToolbar => 'Araç çubuğu';
+
+  @override
+  String get uiMenuBar => 'Menü';
+
+  @override
+  String get uiWebContent => 'Sayfa içeriği';
+
+  @override
+  String uiTab(int n) {
+    return 'Sekme $n';
+  }
+
+  @override
+  String get uiField => 'Metin alanı';
+
+  @override
+  String get uiPasswordHint =>
+      'PC\'deki şifre alanına yazılır, burada saklanmaz';
+
+  @override
+  String uiPasswordConfirm(String name) {
+    return '\"$name\" şifre alanına yazılsın mı? Metin PC\'ye gönderilir.';
+  }
+
+  @override
+  String get uiPasswordSend => 'Şifreyi gönder';
+
+  @override
+  String get uiUnnamed => 'Adsız';
+
+  @override
+  String get uiMoreActions => 'Diğer eylemler';
+
+  @override
+  String get uiFocus => 'Odakla';
+
+  @override
+  String get uiSelect => 'Seç';
+
+  @override
+  String get uiPreview => 'Pencere önizlemesi';
+
+  @override
+  String get uiShowPreview => 'Önizlemeyi göster';
+
+  @override
+  String get uiHidePreview => 'Önizlemeyi gizle';
+
+  @override
+  String get uiDecrease => 'Azalt';
+
+  @override
+  String get uiIncrease => 'Artır';
+
+  @override
+  String get uiActClick => 'Tıkla';
+
+  @override
+  String get uiActPress => 'Bas';
+
+  @override
+  String get uiActActivate => 'Etkinleştir';
+
+  @override
+  String get uiActToggle => 'Değiştir';
+
+  @override
+  String get uiActJump => 'Bağlantıya git';
+
+  @override
+  String get uiActExpand => 'Aç / kapat';
+
+  @override
+  String get uiActSwitch => 'Sekmeye geç';
+
+  @override
+  String get uiActOpen => 'Aç';
+
+  @override
+  String get uiErrUnsupported =>
+      'Bu pencere bileşen ağacı vermiyor; canlı ekranı kullan.';
+
+  @override
+  String get uiErrStale => 'Pencere değişti; görünüm yenilendi, yeniden dene.';
+
+  @override
+  String get uiErrTimeout => 'Uygulama zamanında yanıt vermedi.';
+
+  @override
+  String get uiErrHelperMissing =>
+      'PC\'de erişilebilirlik yardımcısı eksik (python3-gi, gir1.2-atspi-2.0).';
+
+  @override
+  String get uiErrHelperFailed =>
+      'Erişilebilirlik yardımcısı çalışmadı; yeniden dene.';
+
+  @override
+  String get uiErrConfirm => 'Şifre alanına yazmak onay ister.';
+
+  @override
+  String get uiErrNoAction => 'Bu bileşenin böyle bir eylemi yok.';
+
+  @override
+  String get uiErrA11yBus => 'PC\'de erişilebilirlik veri yolu kapalı.';
+
+  @override
+  String get uiErrFailed => 'Uygulama bu işlemi yapamadı.';
+
+  @override
+  String get notifUiOpenedTitle => 'Mobil görünüm açıldı';
+
+  @override
+  String get claudePcBrowserTabs => 'Sekmelere baktı';
+
+  @override
+  String get claudePcBrowserOpen => 'Sekme açtı';
+
+  @override
+  String get claudePcBrowserActivate => 'Sekmeye geçti';
+
+  @override
+  String get claudePcBrowserClose => 'Sekme kapattı';
+
+  @override
+  String get claudePcPageText => 'Sayfayı okudu';
+
+  @override
+  String get claudePcUiTree => 'Bileşenleri okudu';
+
+  @override
+  String get claudePcUiPress => 'Düğmeye bastı';
+
+  @override
+  String get claudePcUiSetText => 'Alana yazdı';
+
+  @override
+  String get claudePcUiSetValue => 'Değer ayarladı';
 }

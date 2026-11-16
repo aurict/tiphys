@@ -1,4 +1,4 @@
-// Entegrasyonlar için küçük HTTP yardımcıları: JSON istekleri, JSONL ve SSE (Server-Sent Events) akışı.
+// Small HTTP helpers for integrations: JSON requests, JSONL and SSE (Server-Sent Events) streams.
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
@@ -63,7 +63,7 @@ class HttpJson {
     }
   }
 
-  /// JSON satırları (application/x-jsonl).
+  /// JSON lines (application/x-jsonl).
   Future<List<Map<String, dynamic>>> jsonl(String path, {Map<String, dynamic>? query}) async {
     final res = await open('GET', uri(path, query));
     final out = <Map<String, dynamic>>[];
@@ -74,23 +74,58 @@ class HttpJson {
     return out;
   }
 
-  /// SSE: (olay adı, veri) çiftleri. Bağlantı kapanınca akış biter.
-  Stream<(String, String)> sse(String path, {Map<String, dynamic>? query}) async* {
-    final res = await open('GET', uri(path, query), extra: {'Accept': 'text/event-stream'});
-    var event = 'message';
-    final data = StringBuffer();
-    await for (final line in res.transform(utf8.decoder).transform(const LineSplitter())) {
-      if (line.isEmpty) {
-        if (data.isNotEmpty) yield (event, data.toString());
-        event = 'message';
-        data.clear();
-      } else if (line.startsWith('event:')) {
-        event = line.substring(6).trim();
-      } else if (line.startsWith('data:')) {
-        if (data.isNotEmpty) data.write('\n');
-        data.write(line.substring(5).trimLeft());
-      }
-    }
+  /// SSE: (event name, data) pairs. The stream ends when the connection closes.
+  /// Uses a controller instead of `async*`: when the listener cancels, the connection closes immediately. (An
+  /// `async*` generator cancelled while awaiting data only stops when the next line arrives; on a quiet log stream
+  /// that can take minutes.)
+  Stream<(String, String)> sse(String path, {Map<String, dynamic>? query}) {
+    StreamSubscription<String>? sub;
+    var cancelled = false;
+    late final StreamController<(String, String)> ctrl;
+    ctrl = StreamController<(String, String)>(
+      onListen: () async {
+        final HttpClientResponse res;
+        try {
+          res = await open('GET', uri(path, query), extra: {'Accept': 'text/event-stream'});
+        } catch (e, st) {
+          if (!cancelled) {
+            ctrl.addError(e, st);
+            await ctrl.close();
+          }
+          return;
+        }
+        if (cancelled) {
+          // Cancelled while connecting: listen to the response and drop it right away (the socket closes).
+          await res.listen(null).cancel();
+          return;
+        }
+        var event = 'message';
+        final data = StringBuffer();
+        sub = res.transform(utf8.decoder).transform(const LineSplitter()).listen(
+          (line) {
+            if (line.isEmpty) {
+              if (data.isNotEmpty) ctrl.add((event, data.toString()));
+              event = 'message';
+              data.clear();
+            } else if (line.startsWith('event:')) {
+              event = line.substring(6).trim();
+            } else if (line.startsWith('data:')) {
+              if (data.isNotEmpty) data.write('\n');
+              data.write(line.substring(5).trimLeft());
+            }
+          },
+          onError: ctrl.addError,
+          onDone: ctrl.close,
+        );
+      },
+      onPause: () => sub?.pause(),
+      onResume: () => sub?.resume(),
+      onCancel: () async {
+        cancelled = true;
+        await sub?.cancel();
+      },
+    );
+    return ctrl.stream;
   }
 
   void close() => _http.close(force: true);

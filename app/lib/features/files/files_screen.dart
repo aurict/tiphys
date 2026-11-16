@@ -1,7 +1,6 @@
-// Dosyalar sekmesi: host seç → SFTP ile gez; önizleme, yükle/indir, yeniden adlandır, taşı, kopyala,
-// çöp kutusuna taşı, yeni klasör; her klasörde "burada terminal" ve "burada Claude".
+// Files tab: pick a host → browse via SFTP; preview, upload/download, rename, move, copy,
+// move to trash, new folder; "terminal here" and "Claude here" in every folder.
 import 'dart:convert';
-import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:file_picker/file_picker.dart';
@@ -10,8 +9,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
-import 'package:path_provider/path_provider.dart';
-import 'package:share_plus/share_plus.dart';
 
 import '../../core/profile/model.dart';
 import '../../core/ssh/connection.dart';
@@ -25,8 +22,9 @@ import '../../widgets/surfaces.dart';
 import '../terminal/sessions.dart';
 import '../terminal/terminal_screen.dart';
 import 'editor_screen.dart';
+import 'transfers.dart';
 
-/// Host başına açık SFTP oturumu (sekmeler arasında korunur).
+/// Open SFTP session per host (kept across tabs).
 class FileBrowsers extends Notifier<Map<String, RemoteFiles>> {
   final _open = <String, RemoteFiles>{};
 
@@ -86,13 +84,13 @@ class _FilesScreenState extends ConsumerState<FilesScreen> {
   String _path = '~';
   List<RemoteEntry>? _entries;
 
-  /// Çok kalabalık klasörlerde (node_modules gibi) ilk açılış hızlı kalsın diye önce bu kadarı çizilir.
+  /// In very crowded folders (like node_modules) only this many are drawn first so the initial open stays fast.
   static const _page = 200;
   int _limit = _page;
   Object? _error;
   bool _loading = false;
   RemoteFiles? _files;
-  (String, bool)? _clipboard; // (yol, kes mi)
+  (String, bool)? _clipboard; // (path, is cut)
 
   @override
   void initState() {
@@ -163,23 +161,34 @@ class _FilesScreenState extends ConsumerState<FilesScreen> {
     return r == null || r.isEmpty || r.contains('/') ? null : r;
   }
 
-  Future<void> _upload() async {
-    final l = AppLocalizations.of(context);
-    final picked = await FilePicker.pickFile();
-    if (picked == null) return;
-    final bytes = await picked.readAsBytes();
-    final name = picked.name;
-    await _act((f) => f.write(RemoteFiles.join(f.resolve(_path), name), bytes), done: l.filesUploaded(name));
+  /// Uploads and downloads run through the transfer list (progress, pause, resume where it left off).
+  Future<void> _showTransfers() async {
+    await showModalBottomSheet<void>(useRootNavigator: true, context: context, isScrollControlled: true, builder: (_) => const TransfersSheet());
+    if (mounted) await _load(); // so uploaded files show up in the list
   }
 
-  Future<void> _download(RemoteEntry e) async {
-    await _act((f) async {
-      final data = await f.read(e.path);
-      final dir = await getTemporaryDirectory();
-      final local = File('${dir.path}/${e.name}');
-      await local.writeAsBytes(data, flush: true);
-      await SharePlus.instance.share(ShareParams(files: [XFile(local.path)]));
-    });
+  Future<void> _upload() async {
+    final l = AppLocalizations.of(context);
+    final host = ref.read(profileProvider).host(_hostId);
+    final f = _files;
+    if (host == null || f == null) return;
+    final picked = await FilePicker.pickFile();
+    if (picked == null) return;
+    final size = await picked.length();
+    if (size == null) {
+      if (mounted) toast(context, l.transfersUnknownSize);
+      return;
+    }
+    ref.read(transfersProvider.notifier).upload(host, f.resolve(_path), picked, size);
+    await _showTransfers();
+  }
+
+  Future<void> _download(RemoteEntry e, {bool folder = false}) async {
+    final host = ref.read(profileProvider).host(_hostId);
+    if (host == null) return;
+    final n = ref.read(transfersProvider.notifier);
+    folder ? n.downloadFolder(host, e) : n.download(host, e);
+    await _showTransfers();
   }
 
   Future<void> _preview(RemoteEntry e) async {
@@ -213,7 +222,7 @@ class _FilesScreenState extends ConsumerState<FilesScreen> {
   void _entryMenu(RemoteEntry e) {
     final l = AppLocalizations.of(context);
     showModalBottomSheet<void>(
-      useRootNavigator: true, // alt sekme barının üstünde açılsın; yoksa bar sayfanın altını örter
+      useRootNavigator: true, // open above the bottom tab bar; otherwise the bar covers the bottom of the page
       context: context,
       builder: (c) {
         Widget item(IconData icon, String label, VoidCallback onTap, {bool danger = false}) => ListTile(
@@ -230,6 +239,7 @@ class _FilesScreenState extends ConsumerState<FilesScreen> {
             if (!e.isDir) item(LucideIcons.eye, l.filesPreview, () => _preview(e)),
             if (!e.isDir && e.size <= TextEditorScreen.maxBytes) item(LucideIcons.fileCode, l.filesEdit, () => _edit(e)),
             if (!e.isDir) item(LucideIcons.share2, l.filesDownload, () => _download(e)),
+            if (e.isDir) item(LucideIcons.fileArchive, l.filesDownloadFolder, () => _download(e, folder: true)),
             if (e.isDir) item(LucideIcons.terminal, l.filesTerminalHere, () => _terminalHere(e.path)),
             item(LucideIcons.pencil, l.filesRename, () async {
               final n = await _ask(l.filesRename, initial: e.name);
@@ -275,7 +285,11 @@ class _FilesScreenState extends ConsumerState<FilesScreen> {
             title: l.tabFiles,
             action: _hostId == null
                 ? null
-                : RoundIconButton(icon: LucideIcons.upload, tooltip: l.filesUpload, onPressed: _upload),
+                : Row(mainAxisSize: MainAxisSize.min, children: [
+                    _TransfersButton(onPressed: _showTransfers),
+                    const SizedBox(width: 8),
+                    RoundIconButton(icon: LucideIcons.upload, tooltip: l.filesUpload, onPressed: _upload),
+                  ]),
           ),
           const SizedBox(height: 12),
           if (hosts.isEmpty)
@@ -309,7 +323,7 @@ class _FilesScreenState extends ConsumerState<FilesScreen> {
               ]),
             ),
             const SizedBox(height: 10),
-            // Yol + üst klasör + yer imleri
+            // Path + parent folder + bookmarks
             TCard(
               padding: const EdgeInsets.fromLTRB(6, 4, 6, 4),
               radius: 18,
@@ -509,6 +523,29 @@ class _PreviewPage extends StatelessWidget {
                     child: SelectableText(text!, style: const TextStyle(fontFamily: 'JetBrainsMono', fontSize: 12.5, height: 1.4)),
                   ),
                 ),
+    );
+  }
+}
+
+/// Transfers button; shows the count of running transfers if any.
+class _TransfersButton extends ConsumerWidget {
+  const _TransfersButton({required this.onPressed});
+  final VoidCallback onPressed;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final l = AppLocalizations.of(context);
+    final list = ref.watch(transfersProvider);
+    return ListenableBuilder(
+      listenable: Listenable.merge(list),
+      builder: (context, _) {
+        final running = list.where((t) => t.active).length;
+        return Badge(
+          isLabelVisible: running > 0,
+          label: Text('$running'),
+          child: RoundIconButton(icon: LucideIcons.arrowDownUp, tooltip: running > 0 ? l.transfersRunning(running) : l.transfersTitle, onPressed: onPressed),
+        );
+      },
     );
   }
 }

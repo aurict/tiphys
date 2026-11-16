@@ -1,10 +1,12 @@
-// Anahtarlar ve şifreler: profilin başvurduğu her gizli bilginin durumu (kayıtlı / eksik).
-// Değerler asla gösterilmez; sadece yeni değer girilebilir ya da silinebilir.
+// Keys and passwords: the state of every secret the profile references (saved / missing).
+// Values are never shown; only a new value can be entered or deleted.
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../../core/profile/model.dart';
+import '../../core/push/push_service.dart' show pcControlSecretId;
+import '../../core/vault/vault.dart' show vaultSecretId;
 import '../../l10n/gen/app_localizations.dart';
 import '../../state/providers.dart';
 import '../../theme/tokens.dart';
@@ -12,7 +14,7 @@ import '../../widgets/forms.dart';
 import '../../widgets/surfaces.dart';
 import '../ssh/ssh_keys_section.dart';
 
-/// Gizli bilginin nerede kullanıldığı (ör. "atlas · SSH").
+/// Where the secret is used (e.g. "atlas · SSH").
 Map<String, List<String>> secretUsages(Profile p) {
   final m = <String, List<String>>{};
   void add(String ref, String where) => m.putIfAbsent(secretIdOf(ref), () => []).add(where);
@@ -65,7 +67,8 @@ class SecretsScreen extends ConsumerWidget {
     final stored = ref.watch(secretIdsProvider).value ?? const <String>{};
     final usages = secretUsages(p);
     final keyIds = p.keys.map((k) => k.id).toSet();
-    final ids = {...usages.keys, ...stored}.where((id) => !keyIds.contains(id)).toList()..sort();
+    // The password vault is a single secret entry; not shown here (overwriting/deleting it would lose the whole vault).
+    final ids = {...usages.keys, ...stored}.where((id) => !keyIds.contains(id) && id != vaultSecretId && id != pcControlSecretId).toList()..sort();
     return SettingsPage(title: l.settingsKeys, children: [
       const SshKeysSection(),
       if (ids.isNotEmpty)

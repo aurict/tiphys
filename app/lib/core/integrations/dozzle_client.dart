@@ -1,4 +1,4 @@
-// Dozzle (v11) istemcisi: container listesi (SSE olay akışından), geçmiş loglar (JSONL) ve canlı akış (SSE).
+// Dozzle (v11) client: container list (from the SSE event stream), historical logs (JSONL) and live stream (SSE).
 import 'dart:async';
 import 'dart:convert';
 
@@ -14,7 +14,7 @@ class DozzleContainer {
   String get state => j['state'] as String? ?? '';
   String? get health => j['health'] as String?;
   String? get project => (j['labels'] as Map?)?['com.docker.compose.project'] as String?;
-  double? get cpu => ((j['stats'] as List?)?.lastOrNull as Map?)?['cpu'] as double?;
+  double? get cpu => (((j['stats'] as List?)?.lastOrNull as Map?)?['cpu'] as num?)?.toDouble();
   int? get memoryBytes => (((j['stats'] as List?)?.lastOrNull as Map?)?['memoryUsage'] as num?)?.toInt();
   bool get running => state == 'running';
 }
@@ -27,7 +27,7 @@ class DozzleLog {
   String get level => j['l'] as String? ?? 'unknown';
   String get stream => j['s'] as String? ?? 'stdout';
 
-  /// Mesaj düz metin ya da (JSON log satırlarında) nesne olabilir.
+  /// The message may be plain text or (for JSON log lines) an object.
   Object? get message => j['m'];
   bool get isJson => message is Map || message is List;
   String get text => message is String ? message as String : const JsonEncoder.withIndent('  ').convert(message);
@@ -42,7 +42,7 @@ class DozzleClient {
         });
   final HttpJson _h;
 
-  /// Olay akışındaki ilk "containers-changed" mesajını bekler.
+  /// Waits for the first "containers-changed" message in the event stream.
   Future<List<DozzleContainer>> containers() async {
     await for (final (event, data) in _h.sse('/api/events/stream').timeout(const Duration(seconds: 15))) {
       if (event == 'containers-changed') {
@@ -65,7 +65,7 @@ class DozzleClient {
     return rows.map(DozzleLog.new).toList();
   }
 
-  /// Canlı loglar. Akış iptal edilene ya da bağlantı kopana kadar sürer.
+  /// Live logs. Lasts until the stream is cancelled or the connection drops.
   Stream<DozzleLog> stream(DozzleContainer c) => _h
       .sse('/api/hosts/${c.host}/containers/${c.id}/logs/stream', query: {'stdout': '1', 'stderr': '1', 'levels': dozzleLevels})
       .where((e) => e.$1 == 'message')
@@ -73,6 +73,27 @@ class DozzleClient {
       .where((j) => j is Map && j.containsKey('m'))
       .map((j) => DozzleLog(Map<String, dynamic>.from(j as Map)));
 
+  /// Are container actions (start/stop/restart) enabled on the server? Dozzle has no official settings endpoint;
+  /// the settings embedded in its UI (`<script id="config__json">`) are read. Actions are enabled only with
+  /// `DOZZLE_ENABLE_ACTIONS=true`; when disabled, the action endpoints return 404.
+  Future<bool> actionsEnabled() async {
+    final res = await _h.open('GET', _h.uri('/'));
+    final html = await res.transform(utf8.decoder).join().timeout(_h.timeout);
+    return parseActionsEnabled(html);
+  }
+
+  static bool parseActionsEnabled(String html) {
+    final m = RegExp(r'id="config__json"[^>]*>([\s\S]*?)</script>').firstMatch(html);
+    if (m == null) return false;
+    try {
+      final j = jsonDecode(m.group(1)!);
+      return j is Map && j['enableActions'] == true;
+    } on FormatException {
+      return false;
+    }
+  }
+
+  /// `action`: start | stop | restart
   Future<void> action(DozzleContainer c, String action) => _h.json('POST', '/api/hosts/${c.host}/containers/${c.id}/actions/$action');
 
   void close() => _h.close();

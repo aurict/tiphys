@@ -1,6 +1,7 @@
-// Görünüm, güvenlik, bildirimler, ana ekran kartları.
+// Appearance, security, notifications, home screen cards.
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../../core/profile/model.dart';
@@ -10,6 +11,8 @@ import '../../theme/tokens.dart';
 import '../../widgets/forms.dart';
 import '../../widgets/surfaces.dart';
 import '../lock/lock_gate.dart';
+import '../system/clipboard_sync.dart';
+import '../home/shortcuts.dart';
 import 'push_section.dart';
 
 class AppearanceScreen extends ConsumerWidget {
@@ -133,6 +136,9 @@ class _SecurityScreenState extends ConsumerState<SecurityScreen> {
         options: [for (final s in const [0, 30, 60, 300, 900]) (s, l.securityAutoLockSeconds(s))],
         onChanged: (v) => set(lock.copyWith(autoLockSeconds: v)),
       ),
+      GroupedSection(title: l.vaultTitle, footer: l.vaultSecurityFooter, children: [
+        GroupedRow(title: l.vaultTitle, subtitle: l.vaultSubtitle, icon: LucideIcons.keySquare, iconBackground: const Color(0xFF5E5CE6), onTap: () => context.push('/vault')),
+      ]),
     ]);
   }
 }
@@ -148,6 +154,7 @@ class NotificationsScreen extends ConsumerWidget {
     final c = p.claude;
     void setN(NotificationSettings v) => ref.read(profileProvider.notifier).update((p) => p.copyWith(notifications: v));
     void setC(ClaudeSettings v) => ref.read(profileProvider.notifier).update((p) => p.copyWith(claude: v));
+    final agentHosts = p.hosts.where((h) => h.agent != null).toList();
     return SettingsPage(title: l.settingsNotifications, children: [
       const PushSection(),
       GroupedSection(title: 'Claude', children: [
@@ -155,18 +162,14 @@ class NotificationsScreen extends ConsumerWidget {
         SwitchRow(title: l.notifyClaudeWaiting, value: c.notifyWaiting, onChanged: (v) => setC(c.copyWith(notifyWaiting: v))),
         SwitchRow(title: l.notifyClaudeError, value: c.notifyError, onChanged: (v) => setC(c.copyWith(notifyError: v))),
       ]),
-      GroupedSection(title: l.tabSystem, children: [
-        SwitchRow(title: l.notifySiteDown, value: n.siteDown, onChanged: (v) => setN(n.copyWith(siteDown: v))),
+      // Site outages go from Uptime Kuma straight to the ntfy app (the ntfy row above);
+      // the disk threshold is set in each host's agent. Neither can be changed from here.
+      GroupedSection(title: l.tabSystem, footer: l.notifyAgentSideHint, children: [
         SwitchRow(title: l.notifyPcOffline, value: n.pcOffline, onChanged: (v) => setN(n.copyWith(pcOffline: v))),
         SwitchRow(title: l.notifyServiceDown, value: n.serviceDown, onChanged: (v) => setN(n.copyWith(serviceDown: v))),
         SwitchRow(title: l.notifyGrafana, value: n.grafanaAlerts, onChanged: (v) => setN(n.copyWith(grafanaAlerts: v))),
+        SwitchRow(title: l.notifyBackups, value: n.backupAlerts, onChanged: (v) => setN(n.copyWith(backupAlerts: v))),
       ]),
-      ChoiceSection<int>(
-        title: l.notifyDiskFull,
-        value: n.diskFullPercent,
-        options: [for (final v in const [80, 90, 95]) (v, '%$v')],
-        onChanged: (v) => setN(n.copyWith(diskFullPercent: v)),
-      ),
       ChoiceSection<int>(
         title: l.notifyLongCommand,
         value: n.longCommandSeconds,
@@ -176,6 +179,21 @@ class NotificationsScreen extends ConsumerWidget {
         ],
         onChanged: (v) => setN(n.copyWith(longCommandSeconds: v)),
       ),
+      // Clipboard sync: PC → phone silent notification (the agent setting must also be on), phone → PC on foreground.
+      GroupedSection(title: l.toolsClipboard, footer: l.clipboardSyncHint, children: [
+        SwitchRow(title: l.notifyClipboardFromPc, value: n.clipboardFromPc, onChanged: (v) => setN(n.copyWith(clipboardFromPc: v))),
+        SwitchRow(title: l.clipboardSyncToPc, value: n.clipboardToPc, onChanged: (v) => setN(n.copyWith(clipboardToPc: v))),
+      ]),
+      if (n.clipboardToPc && agentHosts.length > 1)
+        ChoiceSection<String?>(
+          title: l.clipboardSyncHost,
+          value: agentHosts.any((h) => h.id == n.clipboardHostId) ? n.clipboardHostId : null,
+          options: [
+            (null, l.clipboardHostAuto(clipboardHost(p.copyWith(notifications: n.copyWith(clipboardHostId: () => null)))?.name ?? '')),
+            for (final h in agentHosts) (h.id, h.name),
+          ],
+          onChanged: (v) => setN(n.copyWith(clipboardHostId: () => v)),
+        ),
     ]);
   }
 }
@@ -189,51 +207,208 @@ class HomeCardsScreen extends ConsumerWidget {
         'system' => l.homeCardsSystem,
         'grafana' => l.homeCardsGrafana,
         'dozzle' => l.homeCardsDozzle,
+        'events' => l.homeCardsEvents,
+        'nowPlaying' => l.homeCardsNowPlaying,
         _ => l.homeCardsQuickAccess,
       };
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final l = AppLocalizations.of(context);
-    final t = context.tokens;
     final app = ref.watch(profileProvider.select((p) => p.app));
-    final order = [...app.cards, ...allHomeCards.where((c) => !app.cards.contains(c))];
-    void save(List<String> cards) =>
-        ref.read(profileProvider.notifier).update((p) => p.copyWith(app: p.app.copyWith(cards: cards)));
+    void update(AppSettings Function(AppSettings) f) => ref.read(profileProvider.notifier).update((p) => p.copyWith(app: f(p.app)));
     return SettingsPage(title: l.settingsHome, children: [
-      SectionLabel(l.settingsHomeHint),
+      SectionLabel(l.homeLayout),
       TCard(
         padding: EdgeInsets.zero,
         radius: TiphysTokens.radiusList,
-        child: ReorderableListView(
-          shrinkWrap: true,
-          physics: const NeverScrollableScrollPhysics(),
-          buildDefaultDragHandles: false,
-          onReorderItem: (a, b) {
-            final list = [...order];
-            final item = list.removeAt(a);
-            list.insert(b, item);
-            save(list.where(app.cards.contains).toList());
-          },
-          children: [
-            for (var i = 0; i < order.length; i++)
-              ListTile(
-                key: ValueKey(order[i]),
-                title: Text(_cardName(l, order[i]), style: Theme.of(context).textTheme.titleMedium),
-                leading: Switch(
-                  value: app.cards.contains(order[i]),
-                  onChanged: (on) => save(on
-                      ? order.where((c) => app.cards.contains(c) || c == order[i]).toList()
-                      : app.cards.where((c) => c != order[i]).toList()),
-                ),
-                trailing: ReorderableDragStartListener(
-                  index: i,
-                  child: Padding(padding: const EdgeInsets.all(8), child: Icon(LucideIcons.gripVertical, color: t.textSecondary)),
-                ),
-              ),
+        child: Column(children: [
+          for (final (i, (v, title, desc)) in [
+            (HomeLayout.cards, l.homeLayoutCards, l.homeLayoutCardsDesc),
+            (HomeLayout.grid, l.homeLayoutGrid, l.homeLayoutGridDesc),
+            (HomeLayout.focus, l.homeLayoutFocus, l.homeLayoutFocusDesc),
+          ].indexed) ...[
+            if (i > 0) Padding(padding: const EdgeInsets.only(left: 76), child: Divider(color: context.tokens.separator)),
+            _LayoutOption(
+              layout: v,
+              title: title,
+              description: desc,
+              selected: app.layout == v,
+              onTap: () => update((a) => a.copyWith(layout: v)),
+            ),
           ],
-        ),
+        ]),
+      ),
+      SectionLabel(l.homeCardsTitle),
+      _ReorderList(
+        order: [...app.cards, ...allHomeCards.where((c) => !app.cards.contains(c))],
+        enabled: app.cards,
+        title: (id) => _cardName(l, id),
+        onChanged: (cards) => update((a) => a.copyWith(cards: cards)),
+      ),
+      Padding(
+        padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+        child: Text(l.homeCardsLayoutNote, style: Theme.of(context).textTheme.bodySmall),
+      ),
+      SectionLabel(l.homeShortcuts),
+      _ReorderList(
+        order: [...app.shortcuts.where(allShortcuts.contains), ...allShortcuts.where((c) => !app.shortcuts.contains(c))],
+        enabled: app.shortcuts,
+        title: (id) => shortcutLabel(l, id),
+        icon: (id) => (shortcutIcon(id), shortcutColor(context.tokens, id)),
+        subtitle: (id) => shortcutMissing(ref, l, id),
+        onChanged: (s) => update((a) => a.copyWith(shortcuts: s)),
+      ),
+      Padding(
+        padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+        child: Text(l.homeShortcutsFooter, style: Theme.of(context).textTheme.bodySmall),
       ),
     ]);
+  }
+}
+
+/// List with on/off switches, sorted by drag handle (cards and shortcuts). [onChanged] gives only the enabled
+/// ones in their new order.
+class _ReorderList extends StatelessWidget {
+  const _ReorderList({required this.order, required this.enabled, required this.title, required this.onChanged, this.icon, this.subtitle});
+  final List<String> order;
+  final List<String> enabled;
+  final String Function(String id) title;
+  final (IconData, Color) Function(String id)? icon;
+  final String? Function(String id)? subtitle;
+  final ValueChanged<List<String>> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    final t = context.tokens;
+    return TCard(
+      padding: EdgeInsets.zero,
+      radius: TiphysTokens.radiusList,
+      child: ReorderableListView(
+        shrinkWrap: true,
+        physics: const NeverScrollableScrollPhysics(),
+        buildDefaultDragHandles: false,
+        onReorderItem: (a, b) {
+          final list = [...order];
+          final item = list.removeAt(a);
+          list.insert(b, item);
+          onChanged(list.where(enabled.contains).toList());
+        },
+        children: [
+          for (var i = 0; i < order.length; i++)
+            ListTile(
+              key: ValueKey(order[i]),
+              title: Row(children: [
+                if (icon != null) ...[
+                  Container(
+                    width: 30,
+                    height: 30,
+                    decoration: BoxDecoration(color: icon!(order[i]).$2, borderRadius: BorderRadius.circular(9)),
+                    child: Icon(icon!(order[i]).$1, size: 17, color: Colors.white),
+                  ),
+                  const SizedBox(width: 12),
+                ],
+                Expanded(
+                  child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                    Text(title(order[i]), style: Theme.of(context).textTheme.titleMedium, maxLines: 2, overflow: TextOverflow.ellipsis),
+                    if (subtitle?.call(order[i]) case final s?)
+                      Text(s, style: Theme.of(context).textTheme.bodySmall?.copyWith(color: t.warning), maxLines: 2, overflow: TextOverflow.ellipsis),
+                  ]),
+                ),
+              ]),
+              leading: Switch(
+                value: enabled.contains(order[i]),
+                onChanged: (on) => onChanged(on
+                    ? order.where((c) => enabled.contains(c) || c == order[i]).toList()
+                    : enabled.where((c) => c != order[i]).toList()),
+              ),
+              trailing: ReorderableDragStartListener(
+                index: i,
+                child: Padding(padding: const EdgeInsets.all(8), child: Icon(LucideIcons.gripVertical, color: t.textSecondary)),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Layout option: small diagram + name + one-line description; the selected one is checked (screen reader says
+/// "selected").
+class _LayoutOption extends StatelessWidget {
+  const _LayoutOption({required this.layout, required this.title, required this.description, required this.selected, required this.onTap});
+  final HomeLayout layout;
+  final String title;
+  final String description;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final t = context.tokens;
+    final tt = Theme.of(context).textTheme;
+    return Semantics(
+      button: true,
+      selected: selected,
+      inMutuallyExclusiveGroup: true,
+      label: '$title, $description',
+      child: ExcludeSemantics(
+        child: InkWell(
+          onTap: onTap,
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(minHeight: 64),
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(14, 10, 16, 10),
+              child: Row(children: [
+                _LayoutSketch(layout: layout, selected: selected),
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                    Text(title, style: tt.titleMedium, maxLines: 2, overflow: TextOverflow.ellipsis),
+                    Text(description, style: tt.bodySmall, maxLines: 2, overflow: TextOverflow.ellipsis),
+                  ]),
+                ),
+                const SizedBox(width: 8),
+                Icon(selected ? Icons.check_circle_rounded : Icons.radio_button_unchecked_rounded,
+                    size: 22, color: selected ? t.accent : t.textSecondary),
+              ]),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Small diagram of the layout (48×60): blocks on top and cards below.
+class _LayoutSketch extends StatelessWidget {
+  const _LayoutSketch({required this.layout, required this.selected});
+  final HomeLayout layout;
+  final bool selected;
+
+  @override
+  Widget build(BuildContext context) {
+    final t = context.tokens;
+    final ink = selected ? t.accent : t.textSecondary;
+    Widget box(double h, {double? w, double alpha = 0.35}) =>
+        Container(width: w, height: h, decoration: BoxDecoration(color: ink.withValues(alpha: alpha), borderRadius: BorderRadius.circular(2.5)));
+    Widget row(List<Widget> c) => Row(children: [for (var i = 0; i < c.length; i++) ...[if (i > 0) const SizedBox(width: 3), Expanded(child: c[i])]]);
+    const g = SizedBox(height: 3);
+    final children = switch (layout) {
+      HomeLayout.cards => [box(12, alpha: 0.55), g, row([box(9), box(9)]), g, row([box(6), box(6)]), g, box(8)],
+      HomeLayout.grid => [box(7, alpha: 0.55), g, row([box(9), box(9), box(9)]), g, row([box(9), box(9), box(9)]), g, box(8)],
+      HomeLayout.focus => [box(14, alpha: 0.55), g, box(4), g, box(4), g, box(4), g, box(6)],
+    };
+    return Container(
+      width: 48,
+      height: 60,
+      padding: const EdgeInsets.all(5),
+      decoration: BoxDecoration(
+        color: t.chipBackground,
+        borderRadius: BorderRadius.circular(9),
+        border: Border.all(color: selected ? t.accent : t.separator, width: selected ? 1.5 : 1),
+      ),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: children),
+    );
   }
 }

@@ -1,9 +1,10 @@
-// Profilin telefonda saklanması (gizli bilgiler hariç) ve içe/dışa aktarma işlemleri.
+// Storing the profile on the phone (excluding secrets) and import/export operations.
 import 'dart:convert';
 import 'dart:io';
 
 import '../secrets/secret_box.dart';
 import '../secrets/secret_store.dart';
+import '../vault/vault.dart';
 import 'codec.dart';
 import 'merge.dart';
 import 'model.dart';
@@ -11,7 +12,7 @@ import 'model.dart';
 class ProfileRepository {
   ProfileRepository({required this.file, required this.codec, required this.secrets});
 
-  /// Uygulama belgeleri klasöründeki profile.json
+  /// profile.json in the app documents folder
   final File file;
   final ProfileCodec codec;
   final SecretStore secrets;
@@ -28,17 +29,18 @@ class ProfileRepository {
     await tmp.rename(file.path);
   }
 
-  /// Gizlisiz dışa aktarma.
+  /// Export without secrets.
   String exportPlain(Profile p, {String? deviceName}) => codec.encode(p, exportedFrom: deviceName);
 
-  /// Şifreli yedek: profilin başvurduğu gizli bilgiler parolayla şifrelenip eklenir.
+  /// Encrypted backup: the secrets referenced by the profile and the password vault are encrypted with a password and
+  /// added. (Neither is included in an export without secrets.)
   Future<String> exportEncrypted(Profile p, String passphrase, {String? deviceName, Argon2Params params = Argon2Params.standard}) async {
-    final values = await secrets.readAll(p.secretIds);
+    final values = await secrets.readAll({...p.secretIds, vaultSecretId});
     final sealed = await SecretSeal.seal(values, passphrase, params: params);
     return codec.encode(p, encryptedSecrets: sealed, exportedFrom: deviceName);
   }
 
-  /// İçe aktarma planı (önizleme). Dosya şifreliyse ve parola verilmişse gizli bilgiler de açılır.
+  /// Import plan (preview). If the file is encrypted and a password is given, the secrets are decrypted too.
   Future<PreparedImport> prepare(Profile current, String text, ImportMode mode, {String? passphrase}) async {
     final file = codec.decode(text);
     Map<String, String> incoming = const {};
@@ -49,10 +51,16 @@ class ProfileRepository {
     return PreparedImport(plan, incoming, plan.missingSecrets(available), encrypted: sealed != null);
   }
 
-  /// Planı uygular: gizli bilgileri kasaya yazar, profili kaydeder.
+  /// Applies the plan: writes secrets to the store and saves the profile. The password vault isn't overwritten but
+  /// merged (for the same entry the one updated more recently wins; entries added after the backup aren't lost).
   Future<Profile> apply(PreparedImport prepared) async {
     for (final e in prepared.incomingSecrets.entries) {
-      await secrets.write(e.key, e.value);
+      var value = e.value;
+      if (e.key == vaultSecretId) {
+        final current = await secrets.read(vaultSecretId);
+        if (current != null) value = encodeVault(mergeVaults(decodeVault(current), decodeVault(value)));
+      }
+      await secrets.write(e.key, value);
     }
     final result = prepared.plan.result;
     await save(result);

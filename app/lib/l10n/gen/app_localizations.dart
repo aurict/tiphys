@@ -491,7 +491,7 @@ abstract class AppLocalizations {
   /// No description provided for @settingsHomeHint.
   ///
   /// In en, this message translates to:
-  /// **'Cards and their order'**
+  /// **'Layout, cards and shortcuts'**
   String get settingsHomeHint;
 
   /// No description provided for @settingsAppearance.
@@ -1424,12 +1424,6 @@ abstract class AppLocalizations {
   /// **'When it fails'**
   String get notifyClaudeError;
 
-  /// No description provided for @notifySiteDown.
-  ///
-  /// In en, this message translates to:
-  /// **'Site outages'**
-  String get notifySiteDown;
-
   /// No description provided for @notifyPcOffline.
   ///
   /// In en, this message translates to:
@@ -1447,12 +1441,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Grafana alerts'**
   String get notifyGrafana;
-
-  /// No description provided for @notifyDiskFull.
-  ///
-  /// In en, this message translates to:
-  /// **'Disk almost full warning at'**
-  String get notifyDiskFull;
 
   /// No description provided for @notifyLongCommand.
   ///
@@ -1657,12 +1645,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Upload here'**
   String get filesUpload;
-
-  /// No description provided for @filesUploaded.
-  ///
-  /// In en, this message translates to:
-  /// **'Uploaded {name}'**
-  String filesUploaded(String name);
 
   /// No description provided for @filesUp.
   ///
@@ -2407,12 +2389,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'stopped or unhealthy'**
   String get dozzleStopped;
-
-  /// No description provided for @notifClaudeDoneTitle.
-  ///
-  /// In en, this message translates to:
-  /// **'Claude finished'**
-  String get notifClaudeDoneTitle;
 
   /// No description provided for @notifClaudeWaitingTitle.
   ///
@@ -3691,6 +3667,4482 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'{count} edits'**
   String sessionEditCount(int count);
+
+  /// No description provided for @notifClaudeDoneTitleWith.
+  ///
+  /// In en, this message translates to:
+  /// **'Claude finished: {title}'**
+  String notifClaudeDoneTitleWith(String title);
+
+  /// No description provided for @notifFilesChanged.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 file changed} other{{count} files changed}}'**
+  String notifFilesChanged(int count);
+
+  /// No description provided for @notifyAgentSideHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Site outages come straight to the ntfy app (siteler topic). The disk-full threshold is set per host under Settings › Hosts › Agent settings.'**
+  String get notifyAgentSideHint;
+
+  /// No description provided for @pushSetupHint.
+  ///
+  /// In en, this message translates to:
+  /// **'In the ntfy app: set the default server to your own ntfy server, sign in with the phone user, then turn notifications on here.'**
+  String get pushSetupHint;
+
+  /// No description provided for @pushNotRegistered.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not register with: {hosts}. Is the agent running? Tap the row above to retry.'**
+  String pushNotRegistered(String hosts);
+
+  /// No description provided for @pushBatteryHint.
+  ///
+  /// In en, this message translates to:
+  /// **'On Xiaomi/Redmi phones set ntfy\'s battery saver to \"No restrictions\" and allow autostart, or notifications arrive late.'**
+  String get pushBatteryHint;
+
+  /// No description provided for @dozzleSelected.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} selected'**
+  String dozzleSelected(int count);
+
+  /// No description provided for @dozzleMerge.
+  ///
+  /// In en, this message translates to:
+  /// **'Watch several together'**
+  String get dozzleMerge;
+
+  /// No description provided for @dozzleMergeHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Pick the containers to follow in one stream (up to {max}).'**
+  String dozzleMergeHint(int max);
+
+  /// No description provided for @dozzleSelectProject.
+  ///
+  /// In en, this message translates to:
+  /// **'Select all of {project}'**
+  String dozzleSelectProject(String project);
+
+  /// No description provided for @dozzleWatchTogether.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =0{Pick containers} =1{Watch 1 container} other{Watch {count} containers together}}'**
+  String dozzleWatchTogether(int count);
+
+  /// No description provided for @dozzleMergedTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} containers'**
+  String dozzleMergedTitle(int count);
+
+  /// No description provided for @dozzleLevels.
+  ///
+  /// In en, this message translates to:
+  /// **'Log levels'**
+  String get dozzleLevels;
+
+  /// No description provided for @dozzleActionsOffTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Container actions are off'**
+  String get dozzleActionsOffTitle;
+
+  /// No description provided for @dozzleActionsOffBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Start/stop/restart is disabled on this Dozzle server. To allow it, restart Dozzle with DOZZLE_ENABLE_ACTIONS=true.'**
+  String get dozzleActionsOffBody;
+
+  /// No description provided for @dozzleActionsOffShort.
+  ///
+  /// In en, this message translates to:
+  /// **'Off in Dozzle'**
+  String get dozzleActionsOffShort;
+
+  /// No description provided for @dozzleActionConfirm.
+  ///
+  /// In en, this message translates to:
+  /// **'{action} {name}?'**
+  String dozzleActionConfirm(String action, String name);
+
+  /// No description provided for @dozzleActionDone.
+  ///
+  /// In en, this message translates to:
+  /// **'{action}: done'**
+  String dozzleActionDone(String action);
+
+  /// No description provided for @dozzleStart.
+  ///
+  /// In en, this message translates to:
+  /// **'Start'**
+  String get dozzleStart;
+
+  /// No description provided for @dozzleStop.
+  ///
+  /// In en, this message translates to:
+  /// **'Stop'**
+  String get dozzleStop;
+
+  /// No description provided for @dozzleRestart.
+  ///
+  /// In en, this message translates to:
+  /// **'Restart'**
+  String get dozzleRestart;
+
+  /// No description provided for @dozzleAskClaude.
+  ///
+  /// In en, this message translates to:
+  /// **'Ask Claude'**
+  String get dozzleAskClaude;
+
+  /// No description provided for @dozzleAskClaudeHint.
+  ///
+  /// In en, this message translates to:
+  /// **'New session with this line and the lines before it'**
+  String get dozzleAskClaudeHint;
+
+  /// No description provided for @dozzleNoClaudeHost.
+  ///
+  /// In en, this message translates to:
+  /// **'No host with an agent is set for Claude (Settings › Claude).'**
+  String get dozzleNoClaudeHost;
+
+  /// No description provided for @dozzleClaudeIntro.
+  ///
+  /// In en, this message translates to:
+  /// **'In Dozzle, the log of container \"{name}\" ({image}) shows the line below. What does it mean, what is the likely cause and how do I fix it?'**
+  String dozzleClaudeIntro(String name, String image);
+
+  /// No description provided for @dozzleClaudeBefore.
+  ///
+  /// In en, this message translates to:
+  /// **'Lines before it:'**
+  String get dozzleClaudeBefore;
+
+  /// No description provided for @terminalFullscreen.
+  ///
+  /// In en, this message translates to:
+  /// **'Full screen (rotates to landscape)'**
+  String get terminalFullscreen;
+
+  /// No description provided for @terminalExitFullscreen.
+  ///
+  /// In en, this message translates to:
+  /// **'Exit full screen'**
+  String get terminalExitFullscreen;
+
+  /// No description provided for @terminalInFullscreen.
+  ///
+  /// In en, this message translates to:
+  /// **'This session is open in full screen'**
+  String get terminalInFullscreen;
+
+  /// No description provided for @terminalFontSizeValue.
+  ///
+  /// In en, this message translates to:
+  /// **'{size} pt'**
+  String terminalFontSizeValue(String size);
+
+  /// No description provided for @transfersTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Transfers'**
+  String get transfersTitle;
+
+  /// No description provided for @transfersRunning.
+  ///
+  /// In en, this message translates to:
+  /// **'Transfers ({count} running)'**
+  String transfersRunning(int count);
+
+  /// No description provided for @transfersEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'No uploads or downloads yet. Interrupted transfers continue where they left off.'**
+  String get transfersEmpty;
+
+  /// No description provided for @transfersClear.
+  ///
+  /// In en, this message translates to:
+  /// **'Clear finished'**
+  String get transfersClear;
+
+  /// No description provided for @transfersArchiving.
+  ///
+  /// In en, this message translates to:
+  /// **'Compressing the folder on the server…'**
+  String get transfersArchiving;
+
+  /// No description provided for @transfersPaused.
+  ///
+  /// In en, this message translates to:
+  /// **'paused'**
+  String get transfersPaused;
+
+  /// No description provided for @transfersFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Interrupted, tap resume to continue where it stopped'**
+  String get transfersFailed;
+
+  /// No description provided for @transfersUploaded.
+  ///
+  /// In en, this message translates to:
+  /// **'Uploaded'**
+  String get transfersUploaded;
+
+  /// No description provided for @transfersDownloaded.
+  ///
+  /// In en, this message translates to:
+  /// **'Downloaded'**
+  String get transfersDownloaded;
+
+  /// No description provided for @transfersPause.
+  ///
+  /// In en, this message translates to:
+  /// **'Pause'**
+  String get transfersPause;
+
+  /// No description provided for @transfersResume.
+  ///
+  /// In en, this message translates to:
+  /// **'Resume'**
+  String get transfersResume;
+
+  /// No description provided for @transfersUnknownSize.
+  ///
+  /// In en, this message translates to:
+  /// **'The file size could not be read; pick the file again.'**
+  String get transfersUnknownSize;
+
+  /// No description provided for @filesDownloadFolder.
+  ///
+  /// In en, this message translates to:
+  /// **'Compress and download'**
+  String get filesDownloadFolder;
+
+  /// No description provided for @eventsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Events'**
+  String get eventsTitle;
+
+  /// No description provided for @eventsEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'No events yet'**
+  String get eventsEmpty;
+
+  /// No description provided for @eventsEmptyFiltered.
+  ///
+  /// In en, this message translates to:
+  /// **'No events match the filter'**
+  String get eventsEmptyFiltered;
+
+  /// No description provided for @eventsNoAgents.
+  ///
+  /// In en, this message translates to:
+  /// **'Events come from hosts with the Tiphys agent. Add an agent to a host first.'**
+  String get eventsNoAgents;
+
+  /// No description provided for @eventsAllHosts.
+  ///
+  /// In en, this message translates to:
+  /// **'All hosts'**
+  String get eventsAllHosts;
+
+  /// No description provided for @eventsAllTypes.
+  ///
+  /// In en, this message translates to:
+  /// **'All types'**
+  String get eventsAllTypes;
+
+  /// No description provided for @eventsTypeSystem.
+  ///
+  /// In en, this message translates to:
+  /// **'System'**
+  String get eventsTypeSystem;
+
+  /// No description provided for @eventsTypeBackup.
+  ///
+  /// In en, this message translates to:
+  /// **'Backups'**
+  String get eventsTypeBackup;
+
+  /// No description provided for @eventsTypeCommand.
+  ///
+  /// In en, this message translates to:
+  /// **'Commands'**
+  String get eventsTypeCommand;
+
+  /// No description provided for @eventsTypeOther.
+  ///
+  /// In en, this message translates to:
+  /// **'Other'**
+  String get eventsTypeOther;
+
+  /// No description provided for @eventsToday.
+  ///
+  /// In en, this message translates to:
+  /// **'Today'**
+  String get eventsToday;
+
+  /// No description provided for @eventsYesterday.
+  ///
+  /// In en, this message translates to:
+  /// **'Yesterday'**
+  String get eventsYesterday;
+
+  /// No description provided for @eventsFromPhone.
+  ///
+  /// In en, this message translates to:
+  /// **'from phone'**
+  String get eventsFromPhone;
+
+  /// No description provided for @eventsHostFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'{host}: events could not be loaded'**
+  String eventsHostFailed(String host);
+
+  /// No description provided for @homeCardsEvents.
+  ///
+  /// In en, this message translates to:
+  /// **'Recent events'**
+  String get homeCardsEvents;
+
+  /// No description provided for @homeEventsAll.
+  ///
+  /// In en, this message translates to:
+  /// **'All'**
+  String get homeEventsAll;
+
+  /// No description provided for @notifDockerDiedTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Container crashed · {host}'**
+  String notifDockerDiedTitle(String host);
+
+  /// No description provided for @notifDockerDiedBody.
+  ///
+  /// In en, this message translates to:
+  /// **'{container} (exit code {code})'**
+  String notifDockerDiedBody(String container, int code);
+
+  /// No description provided for @notifDockerOomTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Container out of memory · {host}'**
+  String notifDockerOomTitle(String host);
+
+  /// No description provided for @notifDockerRestartedTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Container restarted · {host}'**
+  String notifDockerRestartedTitle(String host);
+
+  /// No description provided for @notifBackupStaleTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Backup is stale: {name}'**
+  String notifBackupStaleTitle(String name);
+
+  /// No description provided for @notifBackupStaleBody.
+  ///
+  /// In en, this message translates to:
+  /// **'{host} · last backup {hours} h ago'**
+  String notifBackupStaleBody(String host, int hours);
+
+  /// No description provided for @notifBackupFailedTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Backup failed: {name}'**
+  String notifBackupFailedTitle(String name);
+
+  /// No description provided for @notifBackupOkTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Backup OK again: {name}'**
+  String notifBackupOkTitle(String name);
+
+  /// No description provided for @notifyBackups.
+  ///
+  /// In en, this message translates to:
+  /// **'Backup alerts'**
+  String get notifyBackups;
+
+  /// No description provided for @backupsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Backups'**
+  String get backupsTitle;
+
+  /// No description provided for @backupsCheckNow.
+  ///
+  /// In en, this message translates to:
+  /// **'Check now'**
+  String get backupsCheckNow;
+
+  /// No description provided for @backupsChecked.
+  ///
+  /// In en, this message translates to:
+  /// **'Checked: {status}'**
+  String backupsChecked(String status);
+
+  /// No description provided for @backupsStatusOk.
+  ///
+  /// In en, this message translates to:
+  /// **'Up to date'**
+  String get backupsStatusOk;
+
+  /// No description provided for @backupsStatusStale.
+  ///
+  /// In en, this message translates to:
+  /// **'Stale'**
+  String get backupsStatusStale;
+
+  /// No description provided for @backupsStatusFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Failed'**
+  String get backupsStatusFailed;
+
+  /// No description provided for @backupsStatusMissing.
+  ///
+  /// In en, this message translates to:
+  /// **'Missing'**
+  String get backupsStatusMissing;
+
+  /// No description provided for @backupsStatusUnknown.
+  ///
+  /// In en, this message translates to:
+  /// **'Not checked yet'**
+  String get backupsStatusUnknown;
+
+  /// No description provided for @backupsLast.
+  ///
+  /// In en, this message translates to:
+  /// **'Last backup {time}'**
+  String backupsLast(String time);
+
+  /// No description provided for @backupsNever.
+  ///
+  /// In en, this message translates to:
+  /// **'No backup yet'**
+  String get backupsNever;
+
+  /// No description provided for @backupsRunning.
+  ///
+  /// In en, this message translates to:
+  /// **'running now'**
+  String get backupsRunning;
+
+  /// No description provided for @backupsMaxAge.
+  ///
+  /// In en, this message translates to:
+  /// **'max. {hours} h old'**
+  String backupsMaxAge(String hours);
+
+  /// No description provided for @backupsReasonTooSmall.
+  ///
+  /// In en, this message translates to:
+  /// **'file is too small'**
+  String get backupsReasonTooSmall;
+
+  /// No description provided for @backupsReasonNoMatch.
+  ///
+  /// In en, this message translates to:
+  /// **'no matching file'**
+  String get backupsReasonNoMatch;
+
+  /// No description provided for @backupsReasonNotFound.
+  ///
+  /// In en, this message translates to:
+  /// **'unit not found'**
+  String get backupsReasonNotFound;
+
+  /// No description provided for @backupsReasonNeverRan.
+  ///
+  /// In en, this message translates to:
+  /// **'never ran'**
+  String get backupsReasonNeverRan;
+
+  /// No description provided for @backupsReasonUnit.
+  ///
+  /// In en, this message translates to:
+  /// **'unit result: {result}'**
+  String backupsReasonUnit(String result);
+
+  /// No description provided for @backupsEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'No backup checks. Turn on the “Backups” feature in a host\'s agent settings and add a check.'**
+  String get backupsEmpty;
+
+  /// No description provided for @backupsHostNoChecks.
+  ///
+  /// In en, this message translates to:
+  /// **'No checks on this host'**
+  String get backupsHostNoChecks;
+
+  /// No description provided for @backupsEveryMinutes.
+  ///
+  /// In en, this message translates to:
+  /// **'Checked every {minutes} min. Changes are notified.'**
+  String backupsEveryMinutes(int minutes);
+
+  /// No description provided for @agentFeatBackups.
+  ///
+  /// In en, this message translates to:
+  /// **'Backup status'**
+  String get agentFeatBackups;
+
+  /// No description provided for @agentBackupChecks.
+  ///
+  /// In en, this message translates to:
+  /// **'Backup checks'**
+  String get agentBackupChecks;
+
+  /// No description provided for @agentBackupChecksHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Changes are sent to the agent with Save; no restart needed.'**
+  String get agentBackupChecksHint;
+
+  /// No description provided for @agentBackupAdd.
+  ///
+  /// In en, this message translates to:
+  /// **'Add check'**
+  String get agentBackupAdd;
+
+  /// No description provided for @agentBackupName.
+  ///
+  /// In en, this message translates to:
+  /// **'Name'**
+  String get agentBackupName;
+
+  /// No description provided for @agentBackupKindFile.
+  ///
+  /// In en, this message translates to:
+  /// **'Newest file'**
+  String get agentBackupKindFile;
+
+  /// No description provided for @agentBackupKindUnit.
+  ///
+  /// In en, this message translates to:
+  /// **'systemd unit'**
+  String get agentBackupKindUnit;
+
+  /// No description provided for @agentBackupPath.
+  ///
+  /// In en, this message translates to:
+  /// **'File pattern'**
+  String get agentBackupPath;
+
+  /// No description provided for @agentBackupPathHint.
+  ///
+  /// In en, this message translates to:
+  /// **'* and ? only in the last part, e.g. ~/backups/obsidian/*.json.gz'**
+  String get agentBackupPathHint;
+
+  /// No description provided for @agentBackupUnit.
+  ///
+  /// In en, this message translates to:
+  /// **'Unit'**
+  String get agentBackupUnit;
+
+  /// No description provided for @agentBackupUnitHint.
+  ///
+  /// In en, this message translates to:
+  /// **'User unit first, then system unit'**
+  String get agentBackupUnitHint;
+
+  /// No description provided for @agentBackupMaxAge.
+  ///
+  /// In en, this message translates to:
+  /// **'Max. age (hours)'**
+  String get agentBackupMaxAge;
+
+  /// No description provided for @agentBackupMinBytes.
+  ///
+  /// In en, this message translates to:
+  /// **'Min. size (bytes)'**
+  String get agentBackupMinBytes;
+
+  /// No description provided for @agentBackupRemove.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove check'**
+  String get agentBackupRemove;
+
+  /// No description provided for @agentBackupRemoveConfirm.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove the backup check “{name}”?'**
+  String agentBackupRemoveConfirm(String name);
+
+  /// No description provided for @agentBackupInvalidPath.
+  ///
+  /// In en, this message translates to:
+  /// **'Wildcards are allowed only in the last part'**
+  String get agentBackupInvalidPath;
+
+  /// No description provided for @claudeFolderNotFound.
+  ///
+  /// In en, this message translates to:
+  /// **'Folder not found'**
+  String get claudeFolderNotFound;
+
+  /// No description provided for @claudeSchedules.
+  ///
+  /// In en, this message translates to:
+  /// **'Scheduled tasks'**
+  String get claudeSchedules;
+
+  /// No description provided for @claudeSchedulesEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'No scheduled tasks yet. For example, let Claude summarize a repository\'s status every morning.'**
+  String get claudeSchedulesEmpty;
+
+  /// No description provided for @claudeSchedulesHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Times use {host}\'s time zone. If {host} is off at the scheduled minute the run is skipped, not made up later; a run is also skipped while the previous one is still going.'**
+  String claudeSchedulesHint(String host);
+
+  /// No description provided for @claudeScheduleAdd.
+  ///
+  /// In en, this message translates to:
+  /// **'New task'**
+  String get claudeScheduleAdd;
+
+  /// No description provided for @claudeScheduleEdit.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit task'**
+  String get claudeScheduleEdit;
+
+  /// No description provided for @claudeScheduleName.
+  ///
+  /// In en, this message translates to:
+  /// **'Name'**
+  String get claudeScheduleName;
+
+  /// No description provided for @claudeScheduleNameHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Morning report'**
+  String get claudeScheduleNameHint;
+
+  /// No description provided for @claudeSchedulePrompt.
+  ///
+  /// In en, this message translates to:
+  /// **'What should Claude do?'**
+  String get claudeSchedulePrompt;
+
+  /// No description provided for @claudeSchedulePromptHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Summarize yesterday\'s commits and open TODOs'**
+  String get claudeSchedulePromptHint;
+
+  /// No description provided for @claudeScheduleWhen.
+  ///
+  /// In en, this message translates to:
+  /// **'When'**
+  String get claudeScheduleWhen;
+
+  /// No description provided for @claudeScheduleDaily.
+  ///
+  /// In en, this message translates to:
+  /// **'Daily'**
+  String get claudeScheduleDaily;
+
+  /// No description provided for @claudeScheduleWeekly.
+  ///
+  /// In en, this message translates to:
+  /// **'Weekly'**
+  String get claudeScheduleWeekly;
+
+  /// No description provided for @claudeScheduleInterval.
+  ///
+  /// In en, this message translates to:
+  /// **'Interval'**
+  String get claudeScheduleInterval;
+
+  /// No description provided for @claudeScheduleTime.
+  ///
+  /// In en, this message translates to:
+  /// **'Time'**
+  String get claudeScheduleTime;
+
+  /// No description provided for @claudeScheduleDays.
+  ///
+  /// In en, this message translates to:
+  /// **'Days'**
+  String get claudeScheduleDays;
+
+  /// No description provided for @claudeScheduleEveryLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Run every'**
+  String get claudeScheduleEveryLabel;
+
+  /// No description provided for @claudeScheduleDailyAt.
+  ///
+  /// In en, this message translates to:
+  /// **'Daily at {time}'**
+  String claudeScheduleDailyAt(String time);
+
+  /// No description provided for @claudeScheduleEveryMinutes.
+  ///
+  /// In en, this message translates to:
+  /// **'Every {minutes} min'**
+  String claudeScheduleEveryMinutes(int minutes);
+
+  /// No description provided for @claudeScheduleEveryHours.
+  ///
+  /// In en, this message translates to:
+  /// **'{hours, plural, =1{Every hour} other{Every {hours} h}}'**
+  String claudeScheduleEveryHours(int hours);
+
+  /// No description provided for @claudeScheduleToday.
+  ///
+  /// In en, this message translates to:
+  /// **'today {time}'**
+  String claudeScheduleToday(String time);
+
+  /// No description provided for @claudeScheduleTomorrow.
+  ///
+  /// In en, this message translates to:
+  /// **'tomorrow {time}'**
+  String claudeScheduleTomorrow(String time);
+
+  /// No description provided for @claudeScheduleYesterday.
+  ///
+  /// In en, this message translates to:
+  /// **'yesterday {time}'**
+  String claudeScheduleYesterday(String time);
+
+  /// No description provided for @claudeScheduleNext.
+  ///
+  /// In en, this message translates to:
+  /// **'next: {when}'**
+  String claudeScheduleNext(String when);
+
+  /// No description provided for @claudeScheduleOff.
+  ///
+  /// In en, this message translates to:
+  /// **'off'**
+  String get claudeScheduleOff;
+
+  /// No description provided for @claudeScheduleEnabled.
+  ///
+  /// In en, this message translates to:
+  /// **'enabled'**
+  String get claudeScheduleEnabled;
+
+  /// No description provided for @claudeScheduleLast.
+  ///
+  /// In en, this message translates to:
+  /// **'Last run {when}'**
+  String claudeScheduleLast(String when);
+
+  /// No description provided for @claudeScheduleNever.
+  ///
+  /// In en, this message translates to:
+  /// **'Hasn\'t run yet'**
+  String get claudeScheduleNever;
+
+  /// No description provided for @claudeScheduleRunning.
+  ///
+  /// In en, this message translates to:
+  /// **'running'**
+  String get claudeScheduleRunning;
+
+  /// No description provided for @claudeScheduleOk.
+  ///
+  /// In en, this message translates to:
+  /// **'succeeded'**
+  String get claudeScheduleOk;
+
+  /// No description provided for @claudeScheduleFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'failed'**
+  String get claudeScheduleFailed;
+
+  /// No description provided for @claudeScheduleNoResult.
+  ///
+  /// In en, this message translates to:
+  /// **'no result'**
+  String get claudeScheduleNoResult;
+
+  /// No description provided for @claudeScheduleRunNow.
+  ///
+  /// In en, this message translates to:
+  /// **'Run now'**
+  String get claudeScheduleRunNow;
+
+  /// No description provided for @claudeScheduleBusy.
+  ///
+  /// In en, this message translates to:
+  /// **'The previous run is still going'**
+  String get claudeScheduleBusy;
+
+  /// No description provided for @claudeScheduleManual.
+  ///
+  /// In en, this message translates to:
+  /// **'Started by hand'**
+  String get claudeScheduleManual;
+
+  /// No description provided for @claudeScheduleDeleteConfirm.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete \"{name}\"?'**
+  String claudeScheduleDeleteConfirm(String name);
+
+  /// No description provided for @claudeScheduleNeedsNameAndPrompt.
+  ///
+  /// In en, this message translates to:
+  /// **'Name and task are required'**
+  String get claudeScheduleNeedsNameAndPrompt;
+
+  /// No description provided for @claudeScheduleNeedsDays.
+  ///
+  /// In en, this message translates to:
+  /// **'Pick at least one day'**
+  String get claudeScheduleNeedsDays;
+
+  /// No description provided for @claudeScheduleAskHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Nobody may be watching when it runs: tool requests will wait for your approval.'**
+  String get claudeScheduleAskHint;
+
+  /// No description provided for @composeTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Compose stacks'**
+  String get composeTitle;
+
+  /// No description provided for @composeNoSshHosts.
+  ///
+  /// In en, this message translates to:
+  /// **'No host with SSH. Add SSH in Settings › Hosts.'**
+  String get composeNoSshHosts;
+
+  /// No description provided for @composeEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'No compose file found under {roots}.'**
+  String composeEmpty(String roots);
+
+  /// No description provided for @composeRootsFooter.
+  ///
+  /// In en, this message translates to:
+  /// **'Searched in {roots} (change in Settings › Hosts).'**
+  String composeRootsFooter(String roots);
+
+  /// No description provided for @composeRunningCount.
+  ///
+  /// In en, this message translates to:
+  /// **'{running}/{total} running'**
+  String composeRunningCount(int running, int total);
+
+  /// No description provided for @composeUnhealthy.
+  ///
+  /// In en, this message translates to:
+  /// **'unhealthy'**
+  String get composeUnhealthy;
+
+  /// No description provided for @composeStopped.
+  ///
+  /// In en, this message translates to:
+  /// **'Stopped'**
+  String get composeStopped;
+
+  /// No description provided for @composeNotCreated.
+  ///
+  /// In en, this message translates to:
+  /// **'No containers'**
+  String get composeNotCreated;
+
+  /// No description provided for @composeError.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t be read'**
+  String get composeError;
+
+  /// No description provided for @composeStackGone.
+  ///
+  /// In en, this message translates to:
+  /// **'This stack is no longer there.'**
+  String get composeStackGone;
+
+  /// No description provided for @composeContainers.
+  ///
+  /// In en, this message translates to:
+  /// **'Containers'**
+  String get composeContainers;
+
+  /// No description provided for @composeActions.
+  ///
+  /// In en, this message translates to:
+  /// **'Actions'**
+  String get composeActions;
+
+  /// No description provided for @composeActionsHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Check pulls the images and compares them with the running containers; Update then recreates only the services that changed.'**
+  String get composeActionsHint;
+
+  /// No description provided for @composeCheck.
+  ///
+  /// In en, this message translates to:
+  /// **'Check for updates'**
+  String get composeCheck;
+
+  /// No description provided for @composeUpdate.
+  ///
+  /// In en, this message translates to:
+  /// **'Update'**
+  String get composeUpdate;
+
+  /// No description provided for @composeRestart.
+  ///
+  /// In en, this message translates to:
+  /// **'Restart'**
+  String get composeRestart;
+
+  /// No description provided for @composeStop.
+  ///
+  /// In en, this message translates to:
+  /// **'Stop'**
+  String get composeStop;
+
+  /// No description provided for @composeStart.
+  ///
+  /// In en, this message translates to:
+  /// **'Start'**
+  String get composeStart;
+
+  /// No description provided for @composeLogs.
+  ///
+  /// In en, this message translates to:
+  /// **'Logs (last 200 lines)'**
+  String get composeLogs;
+
+  /// No description provided for @composeUpdateConfirm.
+  ///
+  /// In en, this message translates to:
+  /// **'Update {stack}? Images are pulled; services with a new image are recreated.'**
+  String composeUpdateConfirm(String stack);
+
+  /// No description provided for @composeForce.
+  ///
+  /// In en, this message translates to:
+  /// **'Recreate even if nothing changed'**
+  String get composeForce;
+
+  /// No description provided for @composeRestartConfirm.
+  ///
+  /// In en, this message translates to:
+  /// **'Restart {stack}? Its services will be briefly unavailable.'**
+  String composeRestartConfirm(String stack);
+
+  /// No description provided for @composeStopConfirm.
+  ///
+  /// In en, this message translates to:
+  /// **'Stop {stack}? Its containers stay stopped until started again.'**
+  String composeStopConfirm(String stack);
+
+  /// No description provided for @composeWorking.
+  ///
+  /// In en, this message translates to:
+  /// **'Working…'**
+  String get composeWorking;
+
+  /// No description provided for @composeOutput.
+  ///
+  /// In en, this message translates to:
+  /// **'Command output'**
+  String get composeOutput;
+
+  /// No description provided for @composeNoUpdates.
+  ///
+  /// In en, this message translates to:
+  /// **'No new images.'**
+  String get composeNoUpdates;
+
+  /// No description provided for @composeUpdatesAvailable.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{New image for 1 service: {services}} other{New images for {count} services: {services}}}'**
+  String composeUpdatesAvailable(int count, String services);
+
+  /// No description provided for @composeUpdated.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 service updated: {services}} other{{count} services updated: {services}}}'**
+  String composeUpdated(int count, String services);
+
+  /// No description provided for @composeUpToDate.
+  ///
+  /// In en, this message translates to:
+  /// **'Already up to date; nothing was restarted.'**
+  String get composeUpToDate;
+
+  /// No description provided for @composeRecreated.
+  ///
+  /// In en, this message translates to:
+  /// **'Recreated'**
+  String get composeRecreated;
+
+  /// No description provided for @composeDone.
+  ///
+  /// In en, this message translates to:
+  /// **'Done.'**
+  String get composeDone;
+
+  /// No description provided for @composeFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Failed: {step} (exit {code})'**
+  String composeFailed(String step, String code);
+
+  /// No description provided for @composeEventFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'(Couldn\'t record the event.)'**
+  String get composeEventFailed;
+
+  /// No description provided for @hostComposeRoots.
+  ///
+  /// In en, this message translates to:
+  /// **'Compose folders'**
+  String get hostComposeRoots;
+
+  /// No description provided for @hostComposeRootsHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Comma separated; compose files are looked up one level below each folder.'**
+  String get hostComposeRootsHint;
+
+  /// No description provided for @eventsUnknownTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'{type} event'**
+  String eventsUnknownTitle(String type);
+
+  /// No description provided for @notifComposeUpdatedTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'{stack} updated'**
+  String notifComposeUpdatedTitle(String stack);
+
+  /// No description provided for @notifComposeFailedTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'{stack} update failed'**
+  String notifComposeFailedTitle(String stack);
+
+  /// No description provided for @notifComposeFailedBody.
+  ///
+  /// In en, this message translates to:
+  /// **'{host} · {step} failed (exit {code})'**
+  String notifComposeFailedBody(String host, String step, String code);
+
+  /// No description provided for @notifClaudeScheduledTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Scheduled task started: {name}'**
+  String notifClaudeScheduledTitle(String name);
+
+  /// No description provided for @notifClaudeScheduleSkippedTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Scheduled task skipped: {name}'**
+  String notifClaudeScheduleSkippedTitle(String name);
+
+  /// No description provided for @notifClaudeScheduleSkippedBody.
+  ///
+  /// In en, this message translates to:
+  /// **'The previous run is still going'**
+  String get notifClaudeScheduleSkippedBody;
+
+  /// No description provided for @notifClaudeScheduleFailedTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Scheduled task couldn\'t start: {name}'**
+  String notifClaudeScheduleFailedTitle(String name);
+
+  /// No description provided for @sessionViewDiff.
+  ///
+  /// In en, this message translates to:
+  /// **'Show diff'**
+  String get sessionViewDiff;
+
+  /// No description provided for @sessionCommitPush.
+  ///
+  /// In en, this message translates to:
+  /// **'Commit + push'**
+  String get sessionCommitPush;
+
+  /// No description provided for @sessionCommitFiles.
+  ///
+  /// In en, this message translates to:
+  /// **'Only the {count} files this session changed are committed; other changes stay out.'**
+  String sessionCommitFiles(int count);
+
+  /// No description provided for @sessionWorktreeWarning.
+  ///
+  /// In en, this message translates to:
+  /// **'This session runs on a separate worktree branch ({branch}). Push sends this branch to the remote; it does not merge into your main branch.'**
+  String sessionWorktreeWarning(String branch);
+
+  /// No description provided for @sessionNoUpstream.
+  ///
+  /// In en, this message translates to:
+  /// **'No upstream yet (created on first push)'**
+  String get sessionNoUpstream;
+
+  /// No description provided for @sessionFileUnchanged.
+  ///
+  /// In en, this message translates to:
+  /// **'No changes now (committed or reverted)'**
+  String get sessionFileUnchanged;
+
+  /// No description provided for @sessionFileOutside.
+  ///
+  /// In en, this message translates to:
+  /// **'Outside the repository; not included in commit or revert'**
+  String get sessionFileOutside;
+
+  /// No description provided for @sessionPushed.
+  ///
+  /// In en, this message translates to:
+  /// **'Committed and pushed'**
+  String get sessionPushed;
+
+  /// No description provided for @sessionRevertTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Revert changes?'**
+  String get sessionRevertTitle;
+
+  /// No description provided for @sessionRevertBody.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} files changed by this session go back to their last committed state. This cannot be undone.'**
+  String sessionRevertBody(int count);
+
+  /// No description provided for @sessionRevertDeleteNew.
+  ///
+  /// In en, this message translates to:
+  /// **'Also delete the {count} new files this session created'**
+  String sessionRevertDeleteNew(int count);
+
+  /// No description provided for @sessionRevertNewTag.
+  ///
+  /// In en, this message translates to:
+  /// **'new'**
+  String get sessionRevertNewTag;
+
+  /// No description provided for @sessionReverted.
+  ///
+  /// In en, this message translates to:
+  /// **'Changes reverted'**
+  String get sessionReverted;
+
+  /// No description provided for @gitNoUpstreamConfirm.
+  ///
+  /// In en, this message translates to:
+  /// **'Branch {branch} does not exist on the remote yet. Publish and track it?'**
+  String gitNoUpstreamConfirm(String branch);
+
+  /// No description provided for @gitPublishBranch.
+  ///
+  /// In en, this message translates to:
+  /// **'Publish branch'**
+  String get gitPublishBranch;
+
+  /// No description provided for @gitNoUpstream.
+  ///
+  /// In en, this message translates to:
+  /// **'The branch has no upstream'**
+  String get gitNoUpstream;
+
+  /// No description provided for @gitNoRemote.
+  ///
+  /// In en, this message translates to:
+  /// **'No remote is configured for this repository'**
+  String get gitNoRemote;
+
+  /// No description provided for @gitAuthFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Authentication with the remote failed. The PC needs an SSH key or stored credentials (the agent cannot prompt for a password).'**
+  String get gitAuthFailed;
+
+  /// No description provided for @gitPushRejected.
+  ///
+  /// In en, this message translates to:
+  /// **'The remote has new commits; pull first'**
+  String get gitPushRejected;
+
+  /// No description provided for @gitNewFilesNeedConfirm.
+  ///
+  /// In en, this message translates to:
+  /// **'New files are only deleted after a separate confirmation'**
+  String get gitNewFilesNeedConfirm;
+
+  /// No description provided for @notifClipboardTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Copied on PC'**
+  String get notifClipboardTitle;
+
+  /// No description provided for @notifGitCommittedTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Commit: {repo} · {branch}'**
+  String notifGitCommittedTitle(String repo, String branch);
+
+  /// No description provided for @notifGitPushedTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Push: {repo}'**
+  String notifGitPushedTitle(String repo);
+
+  /// No description provided for @notifyClipboardFromPc.
+  ///
+  /// In en, this message translates to:
+  /// **'Notify when something is copied on the PC'**
+  String get notifyClipboardFromPc;
+
+  /// No description provided for @clipboardSyncToPc.
+  ///
+  /// In en, this message translates to:
+  /// **'Sync clipboard to PC'**
+  String get clipboardSyncToPc;
+
+  /// No description provided for @clipboardSyncHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Text copied on the PC arrives as a silent notification; \"Copy\" puts it on the phone clipboard without opening the app. With sync on, the phone clipboard is sent to the PC when the app comes to the foreground and it has changed (Android does not allow reading the clipboard in the background). Password manager content and text over 3 KB are not sent from the PC.'**
+  String get clipboardSyncHint;
+
+  /// No description provided for @clipboardSyncHost.
+  ///
+  /// In en, this message translates to:
+  /// **'PC to sync with'**
+  String get clipboardSyncHost;
+
+  /// No description provided for @clipboardHostAuto.
+  ///
+  /// In en, this message translates to:
+  /// **'Automatic ({name})'**
+  String clipboardHostAuto(String name);
+
+  /// No description provided for @clipboardCopyFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not copy to the clipboard'**
+  String get clipboardCopyFailed;
+
+  /// No description provided for @agentClipboardSync.
+  ///
+  /// In en, this message translates to:
+  /// **'Clipboard sync (PC → phone)'**
+  String get agentClipboardSync;
+
+  /// No description provided for @agentClipboardSyncHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Text copied on the PC goes to the phone as a silent notification. Password manager content and text over 3 KB are not sent; the text is never logged. No restart needed.'**
+  String get agentClipboardSyncHint;
+
+  /// No description provided for @noteTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Quick note'**
+  String get noteTitle;
+
+  /// No description provided for @noteTooLong.
+  ///
+  /// In en, this message translates to:
+  /// **'The note is too long (max {max} characters)'**
+  String noteTooLong(int max);
+
+  /// No description provided for @noteObsidianMissing.
+  ///
+  /// In en, this message translates to:
+  /// **'Obsidian could not be opened. Is the Obsidian app installed on this phone?'**
+  String get noteObsidianMissing;
+
+  /// No description provided for @noteSent.
+  ///
+  /// In en, this message translates to:
+  /// **'Sent to Obsidian'**
+  String get noteSent;
+
+  /// No description provided for @noteSetupTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Set up Obsidian first'**
+  String get noteSetupTitle;
+
+  /// No description provided for @noteSetupBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter the name of your vault exactly as it appears in the Obsidian app. Notes are written by Obsidian itself, so LiveSync keeps them end-to-end encrypted.'**
+  String get noteSetupBody;
+
+  /// No description provided for @noteSetupAction.
+  ///
+  /// In en, this message translates to:
+  /// **'Obsidian settings'**
+  String get noteSetupAction;
+
+  /// No description provided for @noteModeNew.
+  ///
+  /// In en, this message translates to:
+  /// **'New note'**
+  String get noteModeNew;
+
+  /// No description provided for @noteModeDaily.
+  ///
+  /// In en, this message translates to:
+  /// **'Append to daily note'**
+  String get noteModeDaily;
+
+  /// No description provided for @noteTarget.
+  ///
+  /// In en, this message translates to:
+  /// **'{vault} › {path}'**
+  String noteTarget(String vault, String path);
+
+  /// No description provided for @noteTitleField.
+  ///
+  /// In en, this message translates to:
+  /// **'Title'**
+  String get noteTitleField;
+
+  /// No description provided for @noteTitleHelper.
+  ///
+  /// In en, this message translates to:
+  /// **'Empty: the first line (or the time) is used'**
+  String get noteTitleHelper;
+
+  /// No description provided for @noteText.
+  ///
+  /// In en, this message translates to:
+  /// **'Note'**
+  String get noteText;
+
+  /// No description provided for @noteVoice.
+  ///
+  /// In en, this message translates to:
+  /// **'Dictate'**
+  String get noteVoice;
+
+  /// No description provided for @noteSave.
+  ///
+  /// In en, this message translates to:
+  /// **'Save to Obsidian'**
+  String get noteSave;
+
+  /// No description provided for @noteExplain.
+  ///
+  /// In en, this message translates to:
+  /// **'Obsidian opens briefly and saves the note; you can return to Tiphys right away.'**
+  String get noteExplain;
+
+  /// No description provided for @obsidianExplain.
+  ///
+  /// In en, this message translates to:
+  /// **'Quick notes are handed to the Obsidian app on this phone through an obsidian:// link. Tiphys never writes to the vault itself, so LiveSync\'s end-to-end encryption stays intact.'**
+  String get obsidianExplain;
+
+  /// No description provided for @obsidianVault.
+  ///
+  /// In en, this message translates to:
+  /// **'Vault name'**
+  String get obsidianVault;
+
+  /// No description provided for @obsidianVaultHelper.
+  ///
+  /// In en, this message translates to:
+  /// **'Exactly as shown in Obsidian\'s vault switcher'**
+  String get obsidianVaultHelper;
+
+  /// No description provided for @obsidianFolder.
+  ///
+  /// In en, this message translates to:
+  /// **'Folder for new notes'**
+  String get obsidianFolder;
+
+  /// No description provided for @obsidianDailyPath.
+  ///
+  /// In en, this message translates to:
+  /// **'Daily note path'**
+  String get obsidianDailyPath;
+
+  /// No description provided for @obsidianDailyPathHelper.
+  ///
+  /// In en, this message translates to:
+  /// **'YYYY, MM and DD are replaced with today\'s date'**
+  String get obsidianDailyPathHelper;
+
+  /// No description provided for @obsidianMode.
+  ///
+  /// In en, this message translates to:
+  /// **'Default'**
+  String get obsidianMode;
+
+  /// No description provided for @mediaTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Media'**
+  String get mediaTitle;
+
+  /// No description provided for @mediaNothingPlaying.
+  ///
+  /// In en, this message translates to:
+  /// **'Nothing is playing on the PC'**
+  String get mediaNothingPlaying;
+
+  /// No description provided for @mediaNothingHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Players that support MPRIS (Spotify, browsers, VLC, mpv…) appear here.'**
+  String get mediaNothingHint;
+
+  /// No description provided for @mediaMute.
+  ///
+  /// In en, this message translates to:
+  /// **'Mute'**
+  String get mediaMute;
+
+  /// No description provided for @mediaUnmute.
+  ///
+  /// In en, this message translates to:
+  /// **'Unmute'**
+  String get mediaUnmute;
+
+  /// No description provided for @mediaVolume.
+  ///
+  /// In en, this message translates to:
+  /// **'Volume'**
+  String get mediaVolume;
+
+  /// No description provided for @mediaMuted.
+  ///
+  /// In en, this message translates to:
+  /// **'Muted'**
+  String get mediaMuted;
+
+  /// No description provided for @mediaUnknownTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Unknown track'**
+  String get mediaUnknownTitle;
+
+  /// No description provided for @mediaPositionOf.
+  ///
+  /// In en, this message translates to:
+  /// **'{position} of {length}'**
+  String mediaPositionOf(String position, String length);
+
+  /// No description provided for @mediaPrevious.
+  ///
+  /// In en, this message translates to:
+  /// **'Previous'**
+  String get mediaPrevious;
+
+  /// No description provided for @mediaNext.
+  ///
+  /// In en, this message translates to:
+  /// **'Next'**
+  String get mediaNext;
+
+  /// No description provided for @mediaPause.
+  ///
+  /// In en, this message translates to:
+  /// **'Pause'**
+  String get mediaPause;
+
+  /// No description provided for @mediaPlay.
+  ///
+  /// In en, this message translates to:
+  /// **'Play'**
+  String get mediaPlay;
+
+  /// No description provided for @mediaBack10.
+  ///
+  /// In en, this message translates to:
+  /// **'Back 10 seconds'**
+  String get mediaBack10;
+
+  /// No description provided for @mediaForward10.
+  ///
+  /// In en, this message translates to:
+  /// **'Forward 10 seconds'**
+  String get mediaForward10;
+
+  /// No description provided for @mediaArt.
+  ///
+  /// In en, this message translates to:
+  /// **'Cover art'**
+  String get mediaArt;
+
+  /// No description provided for @mediaFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'The player did not accept the command'**
+  String get mediaFailed;
+
+  /// No description provided for @mediaVolumeFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not read or change the volume (wpctl)'**
+  String get mediaVolumeFailed;
+
+  /// No description provided for @homeCardsNowPlaying.
+  ///
+  /// In en, this message translates to:
+  /// **'Now playing'**
+  String get homeCardsNowPlaying;
+
+  /// No description provided for @openOnPc.
+  ///
+  /// In en, this message translates to:
+  /// **'Open on PC'**
+  String get openOnPc;
+
+  /// No description provided for @openOnPcOn.
+  ///
+  /// In en, this message translates to:
+  /// **'Open on {host}'**
+  String openOnPcOn(String host);
+
+  /// No description provided for @openOnPcClipboardHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Opens the link in the phone\'s clipboard in the PC browser'**
+  String get openOnPcClipboardHint;
+
+  /// No description provided for @openOnPcDone.
+  ///
+  /// In en, this message translates to:
+  /// **'Opened on {host}'**
+  String openOnPcDone(String host);
+
+  /// No description provided for @openOnPcNoUrl.
+  ///
+  /// In en, this message translates to:
+  /// **'There is no link in the clipboard'**
+  String get openOnPcNoUrl;
+
+  /// No description provided for @openOnPcConfirm.
+  ///
+  /// In en, this message translates to:
+  /// **'Open this link on {host}?\n\n{url}'**
+  String openOnPcConfirm(String url, String host);
+
+  /// No description provided for @openOnPcBadUrl.
+  ///
+  /// In en, this message translates to:
+  /// **'Only http(s) links can be opened'**
+  String get openOnPcBadUrl;
+
+  /// No description provided for @logSearchTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Log search'**
+  String get logSearchTitle;
+
+  /// No description provided for @logSearchHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Text to search (not a regex)'**
+  String get logSearchHint;
+
+  /// No description provided for @logSearchRun.
+  ///
+  /// In en, this message translates to:
+  /// **'Search'**
+  String get logSearchRun;
+
+  /// No description provided for @logSearchMinutes.
+  ///
+  /// In en, this message translates to:
+  /// **'{n} min'**
+  String logSearchMinutes(int n);
+
+  /// No description provided for @logSearchHours.
+  ///
+  /// In en, this message translates to:
+  /// **'{n} h'**
+  String logSearchHours(int n);
+
+  /// No description provided for @logSearchExplain.
+  ///
+  /// In en, this message translates to:
+  /// **'Searches the systemd journal (system + user) and running containers\' logs over SSH on the selected hosts. Case-insensitive.'**
+  String get logSearchExplain;
+
+  /// No description provided for @logSearchSearching.
+  ///
+  /// In en, this message translates to:
+  /// **'Searching…'**
+  String get logSearchSearching;
+
+  /// No description provided for @logSearchHitCount.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =0{No matches} =1{1 match} other{{count} matches}}'**
+  String logSearchHitCount(int count);
+
+  /// No description provided for @logSearchUserOnly.
+  ///
+  /// In en, this message translates to:
+  /// **'user journal only (not in adm / systemd-journal group)'**
+  String get logSearchUserOnly;
+
+  /// No description provided for @logSearchTruncated.
+  ///
+  /// In en, this message translates to:
+  /// **'output limit reached, results may be incomplete'**
+  String get logSearchTruncated;
+
+  /// No description provided for @logSearchNoDocker.
+  ///
+  /// In en, this message translates to:
+  /// **'no Docker'**
+  String get logSearchNoDocker;
+
+  /// No description provided for @logSearchDockerError.
+  ///
+  /// In en, this message translates to:
+  /// **'Docker unreadable'**
+  String get logSearchDockerError;
+
+  /// No description provided for @logSearchAllSources.
+  ///
+  /// In en, this message translates to:
+  /// **'All sources'**
+  String get logSearchAllSources;
+
+  /// No description provided for @logSearchNoHits.
+  ///
+  /// In en, this message translates to:
+  /// **'No match for \"{pattern}\" in the last {range}.'**
+  String logSearchNoHits(String pattern, String range);
+
+  /// No description provided for @logSearchMore.
+  ///
+  /// In en, this message translates to:
+  /// **'Show more ({count})'**
+  String logSearchMore(int count);
+
+  /// No description provided for @logSearchLineActions.
+  ///
+  /// In en, this message translates to:
+  /// **'copy, ask Claude, save to Obsidian'**
+  String get logSearchLineActions;
+
+  /// No description provided for @logSearchAskClaudeHint.
+  ///
+  /// In en, this message translates to:
+  /// **'New session with this line and earlier matches from the same source'**
+  String get logSearchAskClaudeHint;
+
+  /// No description provided for @logSearchClaudeIntro.
+  ///
+  /// In en, this message translates to:
+  /// **'I searched the logs on host {host} for \"{pattern}\" and found this line from {source}. What does it mean, and if something is wrong, how do I fix it?'**
+  String logSearchClaudeIntro(String host, String source, String pattern);
+
+  /// No description provided for @logSearchClaudeBefore.
+  ///
+  /// In en, this message translates to:
+  /// **'Earlier matches from the same source:'**
+  String get logSearchClaudeBefore;
+
+  /// No description provided for @vaultTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Password vault'**
+  String get vaultTitle;
+
+  /// No description provided for @vaultSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Encrypted on this device; opens with PIN / fingerprint'**
+  String get vaultSubtitle;
+
+  /// No description provided for @vaultSecurityFooter.
+  ///
+  /// In en, this message translates to:
+  /// **'The vault asks for the app lock again even when the app is unlocked, locks after inactivity and in the background, and blocks screenshots. It is included only in the encrypted profile backup.'**
+  String get vaultSecurityFooter;
+
+  /// No description provided for @vaultLocked.
+  ///
+  /// In en, this message translates to:
+  /// **'Vault locked'**
+  String get vaultLocked;
+
+  /// No description provided for @vaultLockedHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Confirm with your PIN or fingerprint to open it.'**
+  String get vaultLockedHint;
+
+  /// No description provided for @vaultNeedsLock.
+  ///
+  /// In en, this message translates to:
+  /// **'Turn on the PIN or fingerprint lock first (Settings › Security). The vault cannot be opened without it.'**
+  String get vaultNeedsLock;
+
+  /// No description provided for @vaultUnlock.
+  ///
+  /// In en, this message translates to:
+  /// **'Open vault'**
+  String get vaultUnlock;
+
+  /// No description provided for @vaultLock.
+  ///
+  /// In en, this message translates to:
+  /// **'Lock vault'**
+  String get vaultLock;
+
+  /// No description provided for @vaultAdd.
+  ///
+  /// In en, this message translates to:
+  /// **'New entry'**
+  String get vaultAdd;
+
+  /// No description provided for @vaultImport.
+  ///
+  /// In en, this message translates to:
+  /// **'Import'**
+  String get vaultImport;
+
+  /// No description provided for @vaultEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'The vault is empty'**
+  String get vaultEmpty;
+
+  /// No description provided for @vaultEmptyHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Add an entry or import the password list on your PC.'**
+  String get vaultEmptyHint;
+
+  /// No description provided for @vaultSearchHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Search title, user, address, tag'**
+  String get vaultSearchHint;
+
+  /// No description provided for @vaultFooter.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 entry} other{{count} entries}}. Locks after {minutes} min of inactivity.'**
+  String vaultFooter(int count, int minutes);
+
+  /// No description provided for @vaultUsername.
+  ///
+  /// In en, this message translates to:
+  /// **'Username'**
+  String get vaultUsername;
+
+  /// No description provided for @vaultPassword.
+  ///
+  /// In en, this message translates to:
+  /// **'Password'**
+  String get vaultPassword;
+
+  /// No description provided for @vaultUrl.
+  ///
+  /// In en, this message translates to:
+  /// **'Address'**
+  String get vaultUrl;
+
+  /// No description provided for @vaultTags.
+  ///
+  /// In en, this message translates to:
+  /// **'Tags'**
+  String get vaultTags;
+
+  /// No description provided for @vaultTagsHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Comma separated'**
+  String get vaultTagsHint;
+
+  /// No description provided for @vaultNotes.
+  ///
+  /// In en, this message translates to:
+  /// **'Notes'**
+  String get vaultNotes;
+
+  /// No description provided for @vaultEntryTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Title'**
+  String get vaultEntryTitle;
+
+  /// No description provided for @vaultReveal.
+  ///
+  /// In en, this message translates to:
+  /// **'Show password'**
+  String get vaultReveal;
+
+  /// No description provided for @vaultHide.
+  ///
+  /// In en, this message translates to:
+  /// **'Hide password'**
+  String get vaultHide;
+
+  /// No description provided for @vaultCopyUsername.
+  ///
+  /// In en, this message translates to:
+  /// **'Copy username'**
+  String get vaultCopyUsername;
+
+  /// No description provided for @vaultCopyPassword.
+  ///
+  /// In en, this message translates to:
+  /// **'Copy password'**
+  String get vaultCopyPassword;
+
+  /// No description provided for @vaultPasswordCopied.
+  ///
+  /// In en, this message translates to:
+  /// **'Password copied; the clipboard is cleared in {seconds} s'**
+  String vaultPasswordCopied(int seconds);
+
+  /// No description provided for @vaultDeleteConfirm.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete \"{title}\"? This cannot be undone.'**
+  String vaultDeleteConfirm(String title);
+
+  /// No description provided for @vaultUpdated.
+  ///
+  /// In en, this message translates to:
+  /// **'Updated {date}'**
+  String vaultUpdated(String date);
+
+  /// No description provided for @vaultGenerate.
+  ///
+  /// In en, this message translates to:
+  /// **'Generate password'**
+  String get vaultGenerate;
+
+  /// No description provided for @vaultRegenerate.
+  ///
+  /// In en, this message translates to:
+  /// **'Generate again'**
+  String get vaultRegenerate;
+
+  /// No description provided for @vaultLength.
+  ///
+  /// In en, this message translates to:
+  /// **'Length {n}'**
+  String vaultLength(int n);
+
+  /// No description provided for @vaultSymbols.
+  ///
+  /// In en, this message translates to:
+  /// **'Symbols'**
+  String get vaultSymbols;
+
+  /// No description provided for @vaultUse.
+  ///
+  /// In en, this message translates to:
+  /// **'Use'**
+  String get vaultUse;
+
+  /// No description provided for @vaultImportExplain.
+  ///
+  /// In en, this message translates to:
+  /// **'Reads a Markdown password list from a host over SFTP. Tables become entries, \"## Group\" headings become tags. Nothing is saved until you confirm.'**
+  String get vaultImportExplain;
+
+  /// No description provided for @vaultImportHost.
+  ///
+  /// In en, this message translates to:
+  /// **'Host'**
+  String get vaultImportHost;
+
+  /// No description provided for @vaultImportPath.
+  ///
+  /// In en, this message translates to:
+  /// **'File'**
+  String get vaultImportPath;
+
+  /// No description provided for @vaultImportRead.
+  ///
+  /// In en, this message translates to:
+  /// **'Read file'**
+  String get vaultImportRead;
+
+  /// No description provided for @vaultImportNone.
+  ///
+  /// In en, this message translates to:
+  /// **'No table rows found in the file.'**
+  String get vaultImportNone;
+
+  /// No description provided for @vaultImportPreview.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 row found} other{{count} rows found}}'**
+  String vaultImportPreview(int count);
+
+  /// No description provided for @vaultImportFooter.
+  ///
+  /// In en, this message translates to:
+  /// **'Rows without a password are not selected by default. An entry with the same title and username is updated instead of duplicated.'**
+  String get vaultImportFooter;
+
+  /// No description provided for @vaultNoPassword.
+  ///
+  /// In en, this message translates to:
+  /// **'no password'**
+  String get vaultNoPassword;
+
+  /// No description provided for @vaultWillUpdate.
+  ///
+  /// In en, this message translates to:
+  /// **'will update'**
+  String get vaultWillUpdate;
+
+  /// No description provided for @vaultSelectAll.
+  ///
+  /// In en, this message translates to:
+  /// **'Select all'**
+  String get vaultSelectAll;
+
+  /// No description provided for @vaultSelectNone.
+  ///
+  /// In en, this message translates to:
+  /// **'Select none'**
+  String get vaultSelectNone;
+
+  /// No description provided for @vaultImportCount.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{Import 1 entry} other{Import {count} entries}}'**
+  String vaultImportCount(int count);
+
+  /// No description provided for @vaultImported.
+  ///
+  /// In en, this message translates to:
+  /// **'{added} added, {updated} updated'**
+  String vaultImported(int added, int updated);
+
+  /// No description provided for @vaultDeleteSourceConfirm.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete {path} on {host} too? It is overwritten with shred (if available) and cannot be recovered. Keep it if you are not sure.'**
+  String vaultDeleteSourceConfirm(String path, String host);
+
+  /// No description provided for @vaultDeleteSource.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete file'**
+  String get vaultDeleteSource;
+
+  /// No description provided for @vaultSourceDeleted.
+  ///
+  /// In en, this message translates to:
+  /// **'File deleted'**
+  String get vaultSourceDeleted;
+
+  /// No description provided for @composeHide.
+  ///
+  /// In en, this message translates to:
+  /// **'Hide (keeps running)'**
+  String get composeHide;
+
+  /// No description provided for @homeLayout.
+  ///
+  /// In en, this message translates to:
+  /// **'Layout'**
+  String get homeLayout;
+
+  /// No description provided for @homeLayoutCards.
+  ///
+  /// In en, this message translates to:
+  /// **'Cards'**
+  String get homeLayoutCards;
+
+  /// No description provided for @homeLayoutCardsDesc.
+  ///
+  /// In en, this message translates to:
+  /// **'Today\'s bento cards'**
+  String get homeLayoutCardsDesc;
+
+  /// No description provided for @homeLayoutGrid.
+  ///
+  /// In en, this message translates to:
+  /// **'Shortcuts'**
+  String get homeLayoutGrid;
+
+  /// No description provided for @homeLayoutGridDesc.
+  ///
+  /// In en, this message translates to:
+  /// **'Summary strip and shortcut grid'**
+  String get homeLayoutGridDesc;
+
+  /// No description provided for @homeLayoutFocus.
+  ///
+  /// In en, this message translates to:
+  /// **'Focus'**
+  String get homeLayoutFocus;
+
+  /// No description provided for @homeLayoutFocusDesc.
+  ///
+  /// In en, this message translates to:
+  /// **'Status card and shortcut list'**
+  String get homeLayoutFocusDesc;
+
+  /// No description provided for @homeCardsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Cards'**
+  String get homeCardsTitle;
+
+  /// No description provided for @homeCardsLayoutNote.
+  ///
+  /// In en, this message translates to:
+  /// **'In the Shortcuts and Focus layouts shortcuts are shown at the top; the Quick access card is used only in the Cards layout.'**
+  String get homeCardsLayoutNote;
+
+  /// No description provided for @homeShortcuts.
+  ///
+  /// In en, this message translates to:
+  /// **'Shortcuts'**
+  String get homeShortcuts;
+
+  /// No description provided for @homeShortcutsFooter.
+  ///
+  /// In en, this message translates to:
+  /// **'Only enabled and available shortcuts appear on the home screen. A shortcut whose requirement (integration, agent, SSH) isn\'t set up stays hidden; what\'s missing is shown here.'**
+  String get homeShortcutsFooter;
+
+  /// No description provided for @homeStatus.
+  ///
+  /// In en, this message translates to:
+  /// **'Status'**
+  String get homeStatus;
+
+  /// No description provided for @homeOnline.
+  ///
+  /// In en, this message translates to:
+  /// **'online'**
+  String get homeOnline;
+
+  /// No description provided for @shortcutWake.
+  ///
+  /// In en, this message translates to:
+  /// **'Wake PC'**
+  String get shortcutWake;
+
+  /// No description provided for @shortcutSites.
+  ///
+  /// In en, this message translates to:
+  /// **'Sites'**
+  String get shortcutSites;
+
+  /// No description provided for @shortcutNeedsAgent.
+  ///
+  /// In en, this message translates to:
+  /// **'Needs a host with the agent'**
+  String get shortcutNeedsAgent;
+
+  /// No description provided for @shortcutNeedsDesktop.
+  ///
+  /// In en, this message translates to:
+  /// **'Needs the agent\'s desktop feature'**
+  String get shortcutNeedsDesktop;
+
+  /// No description provided for @shortcutNeedsSsh.
+  ///
+  /// In en, this message translates to:
+  /// **'Needs a host with SSH'**
+  String get shortcutNeedsSsh;
+
+  /// No description provided for @shortcutNeedsWake.
+  ///
+  /// In en, this message translates to:
+  /// **'Needs a host with Wake-on-LAN'**
+  String get shortcutNeedsWake;
+
+  /// No description provided for @shortcutNeedsObsidian.
+  ///
+  /// In en, this message translates to:
+  /// **'Obsidian vault not set up'**
+  String get shortcutNeedsObsidian;
+
+  /// No description provided for @shortcutNeedsIntegration.
+  ///
+  /// In en, this message translates to:
+  /// **'Integration not set up'**
+  String get shortcutNeedsIntegration;
+
+  /// No description provided for @desktopTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Desktop'**
+  String get desktopTitle;
+
+  /// No description provided for @desktopWorkspaces.
+  ///
+  /// In en, this message translates to:
+  /// **'Workspaces'**
+  String get desktopWorkspaces;
+
+  /// No description provided for @desktopWorkspace.
+  ///
+  /// In en, this message translates to:
+  /// **'Workspace {n}'**
+  String desktopWorkspace(String n);
+
+  /// No description provided for @desktopWindowCount.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =0{empty} =1{1 window} other{{count} windows}}'**
+  String desktopWindowCount(int count);
+
+  /// No description provided for @desktopWindows.
+  ///
+  /// In en, this message translates to:
+  /// **'Windows'**
+  String get desktopWindows;
+
+  /// No description provided for @desktopNoWindows.
+  ///
+  /// In en, this message translates to:
+  /// **'No open windows'**
+  String get desktopNoWindows;
+
+  /// No description provided for @desktopNoWindowsHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Open an app below; it appears here.'**
+  String get desktopNoWindowsHint;
+
+  /// No description provided for @desktopWindowHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Tap: bring to front · swipe: close · hold: more'**
+  String get desktopWindowHint;
+
+  /// No description provided for @desktopApps.
+  ///
+  /// In en, this message translates to:
+  /// **'Apps'**
+  String get desktopApps;
+
+  /// No description provided for @desktopAppsSearch.
+  ///
+  /// In en, this message translates to:
+  /// **'Search apps'**
+  String get desktopAppsSearch;
+
+  /// No description provided for @desktopAppsEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'No apps found'**
+  String get desktopAppsEmpty;
+
+  /// No description provided for @desktopRecent.
+  ///
+  /// In en, this message translates to:
+  /// **'Recent'**
+  String get desktopRecent;
+
+  /// No description provided for @desktopCatAll.
+  ///
+  /// In en, this message translates to:
+  /// **'All'**
+  String get desktopCatAll;
+
+  /// No description provided for @desktopCatNetwork.
+  ///
+  /// In en, this message translates to:
+  /// **'Internet'**
+  String get desktopCatNetwork;
+
+  /// No description provided for @desktopCatDevelopment.
+  ///
+  /// In en, this message translates to:
+  /// **'Development'**
+  String get desktopCatDevelopment;
+
+  /// No description provided for @desktopCatOffice.
+  ///
+  /// In en, this message translates to:
+  /// **'Office'**
+  String get desktopCatOffice;
+
+  /// No description provided for @desktopCatGraphics.
+  ///
+  /// In en, this message translates to:
+  /// **'Graphics'**
+  String get desktopCatGraphics;
+
+  /// No description provided for @desktopCatMedia.
+  ///
+  /// In en, this message translates to:
+  /// **'Sound & video'**
+  String get desktopCatMedia;
+
+  /// No description provided for @desktopCatGame.
+  ///
+  /// In en, this message translates to:
+  /// **'Games'**
+  String get desktopCatGame;
+
+  /// No description provided for @desktopCatSystem.
+  ///
+  /// In en, this message translates to:
+  /// **'System'**
+  String get desktopCatSystem;
+
+  /// No description provided for @desktopCatUtility.
+  ///
+  /// In en, this message translates to:
+  /// **'Utilities'**
+  String get desktopCatUtility;
+
+  /// No description provided for @desktopCatOther.
+  ///
+  /// In en, this message translates to:
+  /// **'Other'**
+  String get desktopCatOther;
+
+  /// No description provided for @desktopFocus.
+  ///
+  /// In en, this message translates to:
+  /// **'Bring to front'**
+  String get desktopFocus;
+
+  /// No description provided for @desktopCloseWindow.
+  ///
+  /// In en, this message translates to:
+  /// **'Close window'**
+  String get desktopCloseWindow;
+
+  /// No description provided for @desktopCloseConfirm.
+  ///
+  /// In en, this message translates to:
+  /// **'Close \"{title}\"? Unsaved work in it may be lost.'**
+  String desktopCloseConfirm(String title);
+
+  /// No description provided for @desktopFullscreen.
+  ///
+  /// In en, this message translates to:
+  /// **'Fullscreen'**
+  String get desktopFullscreen;
+
+  /// No description provided for @desktopFloat.
+  ///
+  /// In en, this message translates to:
+  /// **'Float / tile'**
+  String get desktopFloat;
+
+  /// No description provided for @desktopPin.
+  ///
+  /// In en, this message translates to:
+  /// **'Pin on all workspaces'**
+  String get desktopPin;
+
+  /// No description provided for @desktopMoveTo.
+  ///
+  /// In en, this message translates to:
+  /// **'Move to workspace'**
+  String get desktopMoveTo;
+
+  /// No description provided for @desktopFocused.
+  ///
+  /// In en, this message translates to:
+  /// **'Active'**
+  String get desktopFocused;
+
+  /// No description provided for @desktopLaunched.
+  ///
+  /// In en, this message translates to:
+  /// **'Opening {name}'**
+  String desktopLaunched(String name);
+
+  /// No description provided for @desktopScreenOff.
+  ///
+  /// In en, this message translates to:
+  /// **'Turn the screen off'**
+  String get desktopScreenOff;
+
+  /// No description provided for @desktopScreenOn.
+  ///
+  /// In en, this message translates to:
+  /// **'Turn the screen on'**
+  String get desktopScreenOn;
+
+  /// No description provided for @desktopControlOn.
+  ///
+  /// In en, this message translates to:
+  /// **'Control on · {time}'**
+  String desktopControlOn(String time);
+
+  /// No description provided for @desktopControlStop.
+  ///
+  /// In en, this message translates to:
+  /// **'Stop'**
+  String get desktopControlStop;
+
+  /// No description provided for @desktopControlExtend.
+  ///
+  /// In en, this message translates to:
+  /// **'Extend by 15 min'**
+  String get desktopControlExtend;
+
+  /// No description provided for @desktopControlAuthTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Desktop control'**
+  String get desktopControlAuthTitle;
+
+  /// No description provided for @desktopControlNeedsLock.
+  ///
+  /// In en, this message translates to:
+  /// **'Set up the app lock (PIN or fingerprint) first to control the PC.'**
+  String get desktopControlNeedsLock;
+
+  /// No description provided for @desktopControlOffHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Read-only: to manage windows and open apps, turn on \"Remote control\" in the agent settings.'**
+  String get desktopControlOffHint;
+
+  /// No description provided for @desktopControlEnded.
+  ///
+  /// In en, this message translates to:
+  /// **'The control session ended; try again.'**
+  String get desktopControlEnded;
+
+  /// No description provided for @desktopControlBusy.
+  ///
+  /// In en, this message translates to:
+  /// **'Another device ({device}) is controlling the PC.'**
+  String desktopControlBusy(String device);
+
+  /// No description provided for @desktopControlRateLimited.
+  ///
+  /// In en, this message translates to:
+  /// **'Too fast; wait a moment.'**
+  String get desktopControlRateLimited;
+
+  /// No description provided for @desktopControlIndicatorFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not show the control sign on the PC.'**
+  String get desktopControlIndicatorFailed;
+
+  /// No description provided for @desktopFeatureOff.
+  ///
+  /// In en, this message translates to:
+  /// **'The desktop feature is off on this agent'**
+  String get desktopFeatureOff;
+
+  /// No description provided for @desktopFeatureOffHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Turn on \"Desktop\" in Settings › Hosts › {host} › Agent settings (and \"Remote control\" to manage windows). It applies after the agent restarts.'**
+  String desktopFeatureOffHint(String host);
+
+  /// No description provided for @desktopNoHyprland.
+  ///
+  /// In en, this message translates to:
+  /// **'Hyprland is not running'**
+  String get desktopNoHyprland;
+
+  /// No description provided for @desktopNoHyprlandHint.
+  ///
+  /// In en, this message translates to:
+  /// **'No one is logged in on the PC, or another desktop is in use. The app list still works.'**
+  String get desktopNoHyprlandHint;
+
+  /// No description provided for @desktopWindowGone.
+  ///
+  /// In en, this message translates to:
+  /// **'The window is no longer there'**
+  String get desktopWindowGone;
+
+  /// No description provided for @desktopBadAddress.
+  ///
+  /// In en, this message translates to:
+  /// **'Invalid window address'**
+  String get desktopBadAddress;
+
+  /// No description provided for @desktopHyprctlFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Hyprland rejected the command'**
+  String get desktopHyprctlFailed;
+
+  /// No description provided for @agentFeatControl.
+  ///
+  /// In en, this message translates to:
+  /// **'Remote control (windows, opening apps)'**
+  String get agentFeatControl;
+
+  /// No description provided for @notifControlStartedTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Remote control started'**
+  String get notifControlStartedTitle;
+
+  /// No description provided for @notifControlEndedTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Remote control ended'**
+  String get notifControlEndedTitle;
+
+  /// No description provided for @notifControlExpired.
+  ///
+  /// In en, this message translates to:
+  /// **'time ran out'**
+  String get notifControlExpired;
+
+  /// No description provided for @desktopWindowMenu.
+  ///
+  /// In en, this message translates to:
+  /// **'Window actions'**
+  String get desktopWindowMenu;
+
+  /// No description provided for @liveTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Live screen'**
+  String get liveTitle;
+
+  /// No description provided for @liveShowWindow.
+  ///
+  /// In en, this message translates to:
+  /// **'Show this window'**
+  String get liveShowWindow;
+
+  /// No description provided for @liveConnecting.
+  ///
+  /// In en, this message translates to:
+  /// **'Connecting…'**
+  String get liveConnecting;
+
+  /// No description provided for @liveReconnecting.
+  ///
+  /// In en, this message translates to:
+  /// **'Connection lost, reconnecting…'**
+  String get liveReconnecting;
+
+  /// No description provided for @liveReconnectingShort.
+  ///
+  /// In en, this message translates to:
+  /// **'Reconnecting…'**
+  String get liveReconnectingShort;
+
+  /// No description provided for @liveStats.
+  ///
+  /// In en, this message translates to:
+  /// **'{fps} fps · {ms} ms'**
+  String liveStats(String fps, String ms);
+
+  /// No description provided for @liveStatsFps.
+  ///
+  /// In en, this message translates to:
+  /// **'{fps} fps'**
+  String liveStatsFps(String fps);
+
+  /// No description provided for @liveFallback.
+  ///
+  /// In en, this message translates to:
+  /// **'Slow mode: wf-recorder is not installed on the PC, so the image updates at most 4 times a second.'**
+  String get liveFallback;
+
+  /// No description provided for @liveQuality.
+  ///
+  /// In en, this message translates to:
+  /// **'Quality'**
+  String get liveQuality;
+
+  /// No description provided for @liveQualityAuto.
+  ///
+  /// In en, this message translates to:
+  /// **'Automatic'**
+  String get liveQualityAuto;
+
+  /// No description provided for @liveQualityHigh.
+  ///
+  /// In en, this message translates to:
+  /// **'High'**
+  String get liveQualityHigh;
+
+  /// No description provided for @liveQualityMedium.
+  ///
+  /// In en, this message translates to:
+  /// **'Medium'**
+  String get liveQualityMedium;
+
+  /// No description provided for @liveQualityLow.
+  ///
+  /// In en, this message translates to:
+  /// **'Low'**
+  String get liveQualityLow;
+
+  /// No description provided for @liveCodecAuto.
+  ///
+  /// In en, this message translates to:
+  /// **'Codec: Automatic'**
+  String get liveCodecAuto;
+
+  /// No description provided for @liveCodecH264.
+  ///
+  /// In en, this message translates to:
+  /// **'Codec: H.264'**
+  String get liveCodecH264;
+
+  /// No description provided for @liveCodecJpeg.
+  ///
+  /// In en, this message translates to:
+  /// **'Codec: JPEG'**
+  String get liveCodecJpeg;
+
+  /// No description provided for @liveCodecFallback.
+  ///
+  /// In en, this message translates to:
+  /// **'H.264 is unavailable, switched to JPEG.'**
+  String get liveCodecFallback;
+
+  /// No description provided for @liveBitrate.
+  ///
+  /// In en, this message translates to:
+  /// **'{value} Mbit/s'**
+  String liveBitrate(String value);
+
+  /// No description provided for @liveModeDirect.
+  ///
+  /// In en, this message translates to:
+  /// **'Direct touch (tap to switch to touchpad)'**
+  String get liveModeDirect;
+
+  /// No description provided for @liveModeTouchpad.
+  ///
+  /// In en, this message translates to:
+  /// **'Touchpad (tap to switch to direct touch)'**
+  String get liveModeTouchpad;
+
+  /// No description provided for @liveHideBar.
+  ///
+  /// In en, this message translates to:
+  /// **'Hide controls'**
+  String get liveHideBar;
+
+  /// No description provided for @liveShowBar.
+  ///
+  /// In en, this message translates to:
+  /// **'Show controls'**
+  String get liveShowBar;
+
+  /// No description provided for @liveSessionLeft.
+  ///
+  /// In en, this message translates to:
+  /// **'Control session: {time} left'**
+  String liveSessionLeft(String time);
+
+  /// No description provided for @liveEnded.
+  ///
+  /// In en, this message translates to:
+  /// **'Live screen stopped'**
+  String get liveEnded;
+
+  /// No description provided for @liveRestart.
+  ///
+  /// In en, this message translates to:
+  /// **'Start again'**
+  String get liveRestart;
+
+  /// No description provided for @liveResetZoom.
+  ///
+  /// In en, this message translates to:
+  /// **'Reset zoom'**
+  String get liveResetZoom;
+
+  /// No description provided for @liveKeyboard.
+  ///
+  /// In en, this message translates to:
+  /// **'Keyboard'**
+  String get liveKeyboard;
+
+  /// No description provided for @liveMoreKeys.
+  ///
+  /// In en, this message translates to:
+  /// **'F keys and more'**
+  String get liveMoreKeys;
+
+  /// No description provided for @liveKeyLeft.
+  ///
+  /// In en, this message translates to:
+  /// **'Left arrow'**
+  String get liveKeyLeft;
+
+  /// No description provided for @liveKeyRight.
+  ///
+  /// In en, this message translates to:
+  /// **'Right arrow'**
+  String get liveKeyRight;
+
+  /// No description provided for @liveKeyUp.
+  ///
+  /// In en, this message translates to:
+  /// **'Up arrow'**
+  String get liveKeyUp;
+
+  /// No description provided for @liveKeyDown.
+  ///
+  /// In en, this message translates to:
+  /// **'Down arrow'**
+  String get liveKeyDown;
+
+  /// No description provided for @liveKeySpace.
+  ///
+  /// In en, this message translates to:
+  /// **'Space'**
+  String get liveKeySpace;
+
+  /// No description provided for @liveCopy.
+  ///
+  /// In en, this message translates to:
+  /// **'Copy'**
+  String get liveCopy;
+
+  /// No description provided for @livePaste.
+  ///
+  /// In en, this message translates to:
+  /// **'Paste'**
+  String get livePaste;
+
+  /// No description provided for @liveUndo.
+  ///
+  /// In en, this message translates to:
+  /// **'Undo'**
+  String get liveUndo;
+
+  /// No description provided for @liveSwitchWindow.
+  ///
+  /// In en, this message translates to:
+  /// **'Switch window'**
+  String get liveSwitchWindow;
+
+  /// No description provided for @liveErrStreamFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'The PC screen could not be captured.'**
+  String get liveErrStreamFailed;
+
+  /// No description provided for @liveErrReplaced.
+  ///
+  /// In en, this message translates to:
+  /// **'The live screen was opened in another connection.'**
+  String get liveErrReplaced;
+
+  /// No description provided for @liveErrWindowNotVisible.
+  ///
+  /// In en, this message translates to:
+  /// **'That window is not on screen right now (another workspace).'**
+  String get liveErrWindowNotVisible;
+
+  /// No description provided for @liveErrMonitorNotFound.
+  ///
+  /// In en, this message translates to:
+  /// **'Monitor not found.'**
+  String get liveErrMonitorNotFound;
+
+  /// No description provided for @liveErrBadKey.
+  ///
+  /// In en, this message translates to:
+  /// **'This key is not allowed.'**
+  String get liveErrBadKey;
+
+  /// No description provided for @liveErrBadText.
+  ///
+  /// In en, this message translates to:
+  /// **'The text contains characters that can\'t be typed.'**
+  String get liveErrBadText;
+
+  /// No description provided for @liveErrInputFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'The PC did not accept the input (ydotool / wtype).'**
+  String get liveErrInputFailed;
+
+  /// No description provided for @shortcutNeedsControl.
+  ///
+  /// In en, this message translates to:
+  /// **'Needs the agent\'s remote control feature'**
+  String get shortcutNeedsControl;
+
+  /// No description provided for @claudePcUse.
+  ///
+  /// In en, this message translates to:
+  /// **'Use the PC'**
+  String get claudePcUse;
+
+  /// No description provided for @claudePcHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Claude looks at your screen and works with the mouse and keyboard. It asks for approval on your phone before risky steps; you can stop it at any time. The app lock is asked again to start.'**
+  String get claudePcHint;
+
+  /// No description provided for @claudePcPromptHint.
+  ///
+  /// In en, this message translates to:
+  /// **'What should it do? (e.g. open tomorrow\'s weather in Firefox)'**
+  String get claudePcPromptHint;
+
+  /// No description provided for @claudePcStart.
+  ///
+  /// In en, this message translates to:
+  /// **'Unlock and start'**
+  String get claudePcStart;
+
+  /// No description provided for @claudePcEnded.
+  ///
+  /// In en, this message translates to:
+  /// **'Control ended · Claude can\'t use the PC'**
+  String get claudePcEnded;
+
+  /// No description provided for @claudePcExpired.
+  ///
+  /// In en, this message translates to:
+  /// **'Control time ran out · Claude was stopped'**
+  String get claudePcExpired;
+
+  /// No description provided for @claudePcReconnect.
+  ///
+  /// In en, this message translates to:
+  /// **'Reopen control'**
+  String get claudePcReconnect;
+
+  /// No description provided for @claudePcExpand.
+  ///
+  /// In en, this message translates to:
+  /// **'Expand the live screen'**
+  String get claudePcExpand;
+
+  /// No description provided for @claudePcConfirmTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Claude asks for approval'**
+  String get claudePcConfirmTitle;
+
+  /// No description provided for @claudePcShot.
+  ///
+  /// In en, this message translates to:
+  /// **'Screenshot'**
+  String get claudePcShot;
+
+  /// No description provided for @claudePcUnavailable.
+  ///
+  /// In en, this message translates to:
+  /// **'Claude can\'t use this computer: desktop and remote control must be on.'**
+  String get claudePcUnavailable;
+
+  /// No description provided for @pcOngoingTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Claude is using the PC'**
+  String get pcOngoingTitle;
+
+  /// No description provided for @pcOngoingBody.
+  ///
+  /// In en, this message translates to:
+  /// **'{title} · control ends at {time}'**
+  String pcOngoingBody(String title, String time);
+
+  /// No description provided for @notifPcEndedTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Claude stopped'**
+  String get notifPcEndedTitle;
+
+  /// No description provided for @notifPcEndedExpired.
+  ///
+  /// In en, this message translates to:
+  /// **'{title} · control time ran out'**
+  String notifPcEndedExpired(String title);
+
+  /// No description provided for @notifPcEndedOther.
+  ///
+  /// In en, this message translates to:
+  /// **'{title} · remote control ended'**
+  String notifPcEndedOther(String title);
+
+  /// No description provided for @notifPcExpiringTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'PC control ends in {minutes} min'**
+  String notifPcExpiringTitle(int minutes);
+
+  /// No description provided for @pcExtend.
+  ///
+  /// In en, this message translates to:
+  /// **'Extend'**
+  String get pcExtend;
+
+  /// No description provided for @pcActionFailedTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t reach the Tiphys agent'**
+  String get pcActionFailedTitle;
+
+  /// No description provided for @pcActionFailedBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Open the app and try again.'**
+  String get pcActionFailedBody;
+
+  /// No description provided for @moonlightEntry.
+  ///
+  /// In en, this message translates to:
+  /// **'High quality (Moonlight)'**
+  String get moonlightEntry;
+
+  /// No description provided for @moonlightSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'60 fps hardware-encoded stream via Sunshine'**
+  String get moonlightSubtitle;
+
+  /// No description provided for @sunshineNotInstalledTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Sunshine is not installed'**
+  String get sunshineNotInstalledTitle;
+
+  /// No description provided for @sunshineNotInstalledBody.
+  ///
+  /// In en, this message translates to:
+  /// **'High quality mode streams {host} to the Moonlight app with Sunshine (NVENC on the GPU). Run these once in a terminal on {host}:'**
+  String sunshineNotInstalledBody(String host);
+
+  /// No description provided for @sunshineInstallNote.
+  ///
+  /// In en, this message translates to:
+  /// **'On Hyprland, capture = wlr needs no extra permission. If the picture stays black, try capture = kms (the package already gave Sunshine the needed permission). Then enter the same user name and password under Agent settings › Sunshine.'**
+  String get sunshineInstallNote;
+
+  /// No description provided for @sunshineCopyAll.
+  ///
+  /// In en, this message translates to:
+  /// **'Copy commands'**
+  String get sunshineCopyAll;
+
+  /// No description provided for @sunshineStoppedTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Sunshine is stopped'**
+  String get sunshineStoppedTitle;
+
+  /// No description provided for @sunshineStoppedBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Start it on {host} so Moonlight can connect.'**
+  String sunshineStoppedBody(String host);
+
+  /// No description provided for @sunshineStart.
+  ///
+  /// In en, this message translates to:
+  /// **'Start Sunshine'**
+  String get sunshineStart;
+
+  /// No description provided for @sunshineStop.
+  ///
+  /// In en, this message translates to:
+  /// **'Stop Sunshine'**
+  String get sunshineStop;
+
+  /// No description provided for @sunshineStarted.
+  ///
+  /// In en, this message translates to:
+  /// **'Sunshine started'**
+  String get sunshineStarted;
+
+  /// No description provided for @sunshineStoppedDone.
+  ///
+  /// In en, this message translates to:
+  /// **'Sunshine stopped'**
+  String get sunshineStoppedDone;
+
+  /// No description provided for @sunshineRunning.
+  ///
+  /// In en, this message translates to:
+  /// **'Sunshine is running'**
+  String get sunshineRunning;
+
+  /// No description provided for @sunshineInfo.
+  ///
+  /// In en, this message translates to:
+  /// **'Capture {capture} · encoder {encoder} · paired devices {paired}'**
+  String sunshineInfo(String capture, String encoder, String paired);
+
+  /// No description provided for @sunshineDefault.
+  ///
+  /// In en, this message translates to:
+  /// **'default'**
+  String get sunshineDefault;
+
+  /// No description provided for @moonlightMissingTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Moonlight is not on this phone'**
+  String get moonlightMissingTitle;
+
+  /// No description provided for @moonlightMissingBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Install the free Moonlight app, then come back here.'**
+  String get moonlightMissingBody;
+
+  /// No description provided for @moonlightOpen.
+  ///
+  /// In en, this message translates to:
+  /// **'Open Moonlight'**
+  String get moonlightOpen;
+
+  /// No description provided for @moonlightOpenFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Moonlight could not be opened'**
+  String get moonlightOpenFailed;
+
+  /// No description provided for @moonlightEnterPin.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter Moonlight PIN'**
+  String get moonlightEnterPin;
+
+  /// No description provided for @moonlightFirstTime.
+  ///
+  /// In en, this message translates to:
+  /// **'First time: in Moonlight tap + and add {address}. Then tap the PC; Moonlight shows a 4-digit PIN. Enter it here with “Enter Moonlight PIN”.'**
+  String moonlightFirstTime(String address);
+
+  /// No description provided for @sunshineNoCredentials.
+  ///
+  /// In en, this message translates to:
+  /// **'To pair from here, enter Sunshine\'s web user name and password in Agent settings.'**
+  String get sunshineNoCredentials;
+
+  /// No description provided for @sunshineUnauthorized.
+  ///
+  /// In en, this message translates to:
+  /// **'Sunshine rejected the user name or password saved in Agent settings.'**
+  String get sunshineUnauthorized;
+
+  /// No description provided for @sunshineSetupRequired.
+  ///
+  /// In en, this message translates to:
+  /// **'Sunshine has no web user yet. On the PC run: sunshine --creds USER PASSWORD'**
+  String get sunshineSetupRequired;
+
+  /// No description provided for @sunshineUnreachable.
+  ///
+  /// In en, this message translates to:
+  /// **'Sunshine\'s web interface (port 47990) is not reachable.'**
+  String get sunshineUnreachable;
+
+  /// No description provided for @sunshineCertMismatch.
+  ///
+  /// In en, this message translates to:
+  /// **'Sunshine\'s certificate does not match its own file; the request was blocked.'**
+  String get sunshineCertMismatch;
+
+  /// No description provided for @sunshineUnitFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'The Sunshine service could not be started or stopped.'**
+  String get sunshineUnitFailed;
+
+  /// No description provided for @sunshineNoPending.
+  ///
+  /// In en, this message translates to:
+  /// **'Sunshine is not waiting for a PIN. In Moonlight tap the PC first and keep the PIN window open.'**
+  String get sunshineNoPending;
+
+  /// No description provided for @sunshinePairFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Pairing failed: wrong PIN, or Moonlight stopped waiting. Try again.'**
+  String get sunshinePairFailed;
+
+  /// No description provided for @sunshineBadPin.
+  ///
+  /// In en, this message translates to:
+  /// **'The PIN must be 4 digits.'**
+  String get sunshineBadPin;
+
+  /// No description provided for @sunshineBadRequest.
+  ///
+  /// In en, this message translates to:
+  /// **'Sunshine rejected the request: {message}'**
+  String sunshineBadRequest(String message);
+
+  /// No description provided for @moonlightPinTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Moonlight PIN'**
+  String get moonlightPinTitle;
+
+  /// No description provided for @moonlightPinHint.
+  ///
+  /// In en, this message translates to:
+  /// **'In Moonlight, tap the PC; it shows a 4-digit PIN. Type it here and Tiphys sends it to Sunshine, no browser needed.'**
+  String get moonlightPinHint;
+
+  /// No description provided for @moonlightPair.
+  ///
+  /// In en, this message translates to:
+  /// **'Pair'**
+  String get moonlightPair;
+
+  /// No description provided for @moonlightPairing.
+  ///
+  /// In en, this message translates to:
+  /// **'Waiting for Moonlight…'**
+  String get moonlightPairing;
+
+  /// No description provided for @moonlightPaired.
+  ///
+  /// In en, this message translates to:
+  /// **'Paired. Moonlight can connect now.'**
+  String get moonlightPaired;
+
+  /// No description provided for @agentSunshine.
+  ///
+  /// In en, this message translates to:
+  /// **'Sunshine (Moonlight)'**
+  String get agentSunshine;
+
+  /// No description provided for @agentSunshineHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Sunshine web user name and password. Stored only on the agent and used to pass Moonlight PINs.'**
+  String get agentSunshineHint;
+
+  /// No description provided for @agentPasswordRequired.
+  ///
+  /// In en, this message translates to:
+  /// **'Password required: enter it again (new address or first setup)'**
+  String get agentPasswordRequired;
+
+  /// No description provided for @remoteAddress.
+  ///
+  /// In en, this message translates to:
+  /// **'Address / search'**
+  String get remoteAddress;
+
+  /// No description provided for @remoteBack.
+  ///
+  /// In en, this message translates to:
+  /// **'Back'**
+  String get remoteBack;
+
+  /// No description provided for @remoteForward.
+  ///
+  /// In en, this message translates to:
+  /// **'Forward'**
+  String get remoteForward;
+
+  /// No description provided for @remoteReload.
+  ///
+  /// In en, this message translates to:
+  /// **'Reload'**
+  String get remoteReload;
+
+  /// No description provided for @remoteNewTab.
+  ///
+  /// In en, this message translates to:
+  /// **'New tab'**
+  String get remoteNewTab;
+
+  /// No description provided for @remoteCloseTab.
+  ///
+  /// In en, this message translates to:
+  /// **'Close tab'**
+  String get remoteCloseTab;
+
+  /// No description provided for @remoteReopenTab.
+  ///
+  /// In en, this message translates to:
+  /// **'Reopen closed tab'**
+  String get remoteReopenTab;
+
+  /// No description provided for @remoteNextTab.
+  ///
+  /// In en, this message translates to:
+  /// **'Next tab'**
+  String get remoteNextTab;
+
+  /// No description provided for @remotePrevTab.
+  ///
+  /// In en, this message translates to:
+  /// **'Previous tab'**
+  String get remotePrevTab;
+
+  /// No description provided for @remoteFind.
+  ///
+  /// In en, this message translates to:
+  /// **'Find'**
+  String get remoteFind;
+
+  /// No description provided for @remoteZoomIn.
+  ///
+  /// In en, this message translates to:
+  /// **'Zoom in'**
+  String get remoteZoomIn;
+
+  /// No description provided for @remoteZoomOut.
+  ///
+  /// In en, this message translates to:
+  /// **'Zoom out'**
+  String get remoteZoomOut;
+
+  /// No description provided for @remoteZoomReset.
+  ///
+  /// In en, this message translates to:
+  /// **'Actual size'**
+  String get remoteZoomReset;
+
+  /// No description provided for @remoteFullscreen.
+  ///
+  /// In en, this message translates to:
+  /// **'Full screen'**
+  String get remoteFullscreen;
+
+  /// No description provided for @remoteReader.
+  ///
+  /// In en, this message translates to:
+  /// **'Reader view'**
+  String get remoteReader;
+
+  /// No description provided for @remoteScrollDown.
+  ///
+  /// In en, this message translates to:
+  /// **'Scroll down'**
+  String get remoteScrollDown;
+
+  /// No description provided for @remoteScrollUp.
+  ///
+  /// In en, this message translates to:
+  /// **'Scroll up'**
+  String get remoteScrollUp;
+
+  /// No description provided for @remoteTop.
+  ///
+  /// In en, this message translates to:
+  /// **'To top'**
+  String get remoteTop;
+
+  /// No description provided for @remotePalette.
+  ///
+  /// In en, this message translates to:
+  /// **'Command palette'**
+  String get remotePalette;
+
+  /// No description provided for @remoteGoToFile.
+  ///
+  /// In en, this message translates to:
+  /// **'Go to file'**
+  String get remoteGoToFile;
+
+  /// No description provided for @remoteSave.
+  ///
+  /// In en, this message translates to:
+  /// **'Save'**
+  String get remoteSave;
+
+  /// No description provided for @remoteTerminal.
+  ///
+  /// In en, this message translates to:
+  /// **'Terminal'**
+  String get remoteTerminal;
+
+  /// No description provided for @remoteReplace.
+  ///
+  /// In en, this message translates to:
+  /// **'Replace'**
+  String get remoteReplace;
+
+  /// No description provided for @remoteGoToLine.
+  ///
+  /// In en, this message translates to:
+  /// **'Go to line'**
+  String get remoteGoToLine;
+
+  /// No description provided for @remoteRedo.
+  ///
+  /// In en, this message translates to:
+  /// **'Redo'**
+  String get remoteRedo;
+
+  /// No description provided for @remoteComment.
+  ///
+  /// In en, this message translates to:
+  /// **'Toggle comment'**
+  String get remoteComment;
+
+  /// No description provided for @remoteSidebar.
+  ///
+  /// In en, this message translates to:
+  /// **'Sidebar'**
+  String get remoteSidebar;
+
+  /// No description provided for @remoteInterrupt.
+  ///
+  /// In en, this message translates to:
+  /// **'Interrupt (Ctrl+C)'**
+  String get remoteInterrupt;
+
+  /// No description provided for @remoteEof.
+  ///
+  /// In en, this message translates to:
+  /// **'End input (Ctrl+D)'**
+  String get remoteEof;
+
+  /// No description provided for @remoteHistory.
+  ///
+  /// In en, this message translates to:
+  /// **'Previous command'**
+  String get remoteHistory;
+
+  /// No description provided for @remoteCut.
+  ///
+  /// In en, this message translates to:
+  /// **'Cut'**
+  String get remoteCut;
+
+  /// No description provided for @remoteParent.
+  ///
+  /// In en, this message translates to:
+  /// **'Parent folder'**
+  String get remoteParent;
+
+  /// No description provided for @remotePath.
+  ///
+  /// In en, this message translates to:
+  /// **'Type a path'**
+  String get remotePath;
+
+  /// No description provided for @remoteRename.
+  ///
+  /// In en, this message translates to:
+  /// **'Rename'**
+  String get remoteRename;
+
+  /// No description provided for @remoteNewFolder.
+  ///
+  /// In en, this message translates to:
+  /// **'New folder'**
+  String get remoteNewFolder;
+
+  /// No description provided for @remoteHidden.
+  ///
+  /// In en, this message translates to:
+  /// **'Show hidden'**
+  String get remoteHidden;
+
+  /// No description provided for @remotePlayPause.
+  ///
+  /// In en, this message translates to:
+  /// **'Play / pause'**
+  String get remotePlayPause;
+
+  /// No description provided for @remoteSeekBack.
+  ///
+  /// In en, this message translates to:
+  /// **'Rewind'**
+  String get remoteSeekBack;
+
+  /// No description provided for @remoteSeekForward.
+  ///
+  /// In en, this message translates to:
+  /// **'Fast forward'**
+  String get remoteSeekForward;
+
+  /// No description provided for @remoteVolumeDown.
+  ///
+  /// In en, this message translates to:
+  /// **'Volume down'**
+  String get remoteVolumeDown;
+
+  /// No description provided for @remoteVolumeUp.
+  ///
+  /// In en, this message translates to:
+  /// **'Volume up'**
+  String get remoteVolumeUp;
+
+  /// No description provided for @remoteMute.
+  ///
+  /// In en, this message translates to:
+  /// **'Mute'**
+  String get remoteMute;
+
+  /// No description provided for @remoteSubtitles.
+  ///
+  /// In en, this message translates to:
+  /// **'Subtitles'**
+  String get remoteSubtitles;
+
+  /// No description provided for @remoteSelectAll.
+  ///
+  /// In en, this message translates to:
+  /// **'Select all'**
+  String get remoteSelectAll;
+
+  /// No description provided for @remoteCloseWindow.
+  ///
+  /// In en, this message translates to:
+  /// **'Close window'**
+  String get remoteCloseWindow;
+
+  /// No description provided for @remotePromptAddress.
+  ///
+  /// In en, this message translates to:
+  /// **'Address or search'**
+  String get remotePromptAddress;
+
+  /// No description provided for @remotePromptFind.
+  ///
+  /// In en, this message translates to:
+  /// **'Text to find'**
+  String get remotePromptFind;
+
+  /// No description provided for @remotePromptCommand.
+  ///
+  /// In en, this message translates to:
+  /// **'Command'**
+  String get remotePromptCommand;
+
+  /// No description provided for @remotePromptFile.
+  ///
+  /// In en, this message translates to:
+  /// **'File name'**
+  String get remotePromptFile;
+
+  /// No description provided for @remotePromptLine.
+  ///
+  /// In en, this message translates to:
+  /// **'Line number'**
+  String get remotePromptLine;
+
+  /// No description provided for @remotePromptPath.
+  ///
+  /// In en, this message translates to:
+  /// **'Folder path'**
+  String get remotePromptPath;
+
+  /// No description provided for @remotePromptText.
+  ///
+  /// In en, this message translates to:
+  /// **'Text'**
+  String get remotePromptText;
+
+  /// No description provided for @remoteMore.
+  ///
+  /// In en, this message translates to:
+  /// **'All controls'**
+  String get remoteMore;
+
+  /// No description provided for @remoteHide.
+  ///
+  /// In en, this message translates to:
+  /// **'Hide app controls'**
+  String get remoteHide;
+
+  /// No description provided for @remoteShow.
+  ///
+  /// In en, this message translates to:
+  /// **'Show app controls'**
+  String get remoteShow;
+
+  /// No description provided for @remoteStripLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'{app} controls'**
+  String remoteStripLabel(String app);
+
+  /// No description provided for @remoteConfirm.
+  ///
+  /// In en, this message translates to:
+  /// **'Send “{name}” to the PC?'**
+  String remoteConfirm(String name);
+
+  /// No description provided for @remoteConfirmHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Asks for confirmation first'**
+  String get remoteConfirmHint;
+
+  /// No description provided for @remoteFocusChanged.
+  ///
+  /// In en, this message translates to:
+  /// **'Focus moved to another window; nothing was sent.'**
+  String get remoteFocusChanged;
+
+  /// No description provided for @remoteSend.
+  ///
+  /// In en, this message translates to:
+  /// **'Send'**
+  String get remoteSend;
+
+  /// No description provided for @remoteDesktop.
+  ///
+  /// In en, this message translates to:
+  /// **'Desktop'**
+  String get remoteDesktop;
+
+  /// No description provided for @remoteMine.
+  ///
+  /// In en, this message translates to:
+  /// **'Your buttons'**
+  String get remoteMine;
+
+  /// No description provided for @settingsDesktop.
+  ///
+  /// In en, this message translates to:
+  /// **'Desktop'**
+  String get settingsDesktop;
+
+  /// No description provided for @settingsRemotes.
+  ///
+  /// In en, this message translates to:
+  /// **'App controls'**
+  String get settingsRemotes;
+
+  /// No description provided for @settingsRemotesHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Your own live screen buttons per app'**
+  String get settingsRemotesHint;
+
+  /// No description provided for @remotesEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'No buttons of your own yet. Built-in controls already cover Firefox, VS Code, Zed, kitty, file managers, mpv, VLC and Mousepad.'**
+  String get remotesEmpty;
+
+  /// No description provided for @remoteClass.
+  ///
+  /// In en, this message translates to:
+  /// **'Window class'**
+  String get remoteClass;
+
+  /// No description provided for @remoteClassHelper.
+  ///
+  /// In en, this message translates to:
+  /// **'The Hyprland window class, e.g. firefox, code, kitty'**
+  String get remoteClassHelper;
+
+  /// No description provided for @remoteName.
+  ///
+  /// In en, this message translates to:
+  /// **'Name'**
+  String get remoteName;
+
+  /// No description provided for @remoteIconTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Icon'**
+  String get remoteIconTitle;
+
+  /// No description provided for @remoteActionTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Action'**
+  String get remoteActionTitle;
+
+  /// No description provided for @remoteKindCombo.
+  ///
+  /// In en, this message translates to:
+  /// **'Shortcut'**
+  String get remoteKindCombo;
+
+  /// No description provided for @remoteKindSequence.
+  ///
+  /// In en, this message translates to:
+  /// **'Sequence'**
+  String get remoteKindSequence;
+
+  /// No description provided for @remoteKindPrompt.
+  ///
+  /// In en, this message translates to:
+  /// **'Ask for text'**
+  String get remoteKindPrompt;
+
+  /// No description provided for @remoteKindScroll.
+  ///
+  /// In en, this message translates to:
+  /// **'Scroll'**
+  String get remoteKindScroll;
+
+  /// No description provided for @remoteComboHelper.
+  ///
+  /// In en, this message translates to:
+  /// **'e.g. ctrl+shift+t, F5, alt+Left'**
+  String get remoteComboHelper;
+
+  /// No description provided for @remoteComboInvalid.
+  ///
+  /// In en, this message translates to:
+  /// **'This shortcut can\'t be sent: letters and digits need Ctrl, Alt or Super, and punctuation keys aren\'t allowed.'**
+  String get remoteComboInvalid;
+
+  /// No description provided for @remoteAddStep.
+  ///
+  /// In en, this message translates to:
+  /// **'Add step'**
+  String get remoteAddStep;
+
+  /// No description provided for @remoteRemoveStep.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove step'**
+  String get remoteRemoveStep;
+
+  /// No description provided for @remotePromptBefore.
+  ///
+  /// In en, this message translates to:
+  /// **'Shortcut first (optional)'**
+  String get remotePromptBefore;
+
+  /// No description provided for @remoteSubmit.
+  ///
+  /// In en, this message translates to:
+  /// **'Press Enter afterwards'**
+  String get remoteSubmit;
+
+  /// No description provided for @remoteScrollAmount.
+  ///
+  /// In en, this message translates to:
+  /// **'Notches (down +, up −)'**
+  String get remoteScrollAmount;
+
+  /// No description provided for @remoteScrollInvalid.
+  ///
+  /// In en, this message translates to:
+  /// **'A non-zero number from −20 to 20'**
+  String get remoteScrollInvalid;
+
+  /// No description provided for @remoteConfirmSetting.
+  ///
+  /// In en, this message translates to:
+  /// **'Ask before sending'**
+  String get remoteConfirmSetting;
+
+  /// No description provided for @remoteIconZap.
+  ///
+  /// In en, this message translates to:
+  /// **'Lightning'**
+  String get remoteIconZap;
+
+  /// No description provided for @remoteIconStar.
+  ///
+  /// In en, this message translates to:
+  /// **'Star'**
+  String get remoteIconStar;
+
+  /// No description provided for @remoteIconPlay.
+  ///
+  /// In en, this message translates to:
+  /// **'Play'**
+  String get remoteIconPlay;
+
+  /// No description provided for @remoteIconSearch.
+  ///
+  /// In en, this message translates to:
+  /// **'Search'**
+  String get remoteIconSearch;
+
+  /// No description provided for @remoteIconSave.
+  ///
+  /// In en, this message translates to:
+  /// **'Save'**
+  String get remoteIconSave;
+
+  /// No description provided for @remoteIconCopy.
+  ///
+  /// In en, this message translates to:
+  /// **'Copy'**
+  String get remoteIconCopy;
+
+  /// No description provided for @remoteIconRefresh.
+  ///
+  /// In en, this message translates to:
+  /// **'Refresh'**
+  String get remoteIconRefresh;
+
+  /// No description provided for @remoteIconClose.
+  ///
+  /// In en, this message translates to:
+  /// **'Close'**
+  String get remoteIconClose;
+
+  /// No description provided for @remoteIconPlus.
+  ///
+  /// In en, this message translates to:
+  /// **'Plus'**
+  String get remoteIconPlus;
+
+  /// No description provided for @remoteIconFolder.
+  ///
+  /// In en, this message translates to:
+  /// **'Folder'**
+  String get remoteIconFolder;
+
+  /// No description provided for @remoteIconTerminal.
+  ///
+  /// In en, this message translates to:
+  /// **'Terminal'**
+  String get remoteIconTerminal;
+
+  /// No description provided for @remoteIconGlobe.
+  ///
+  /// In en, this message translates to:
+  /// **'Globe'**
+  String get remoteIconGlobe;
+
+  /// No description provided for @browserTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Browser'**
+  String get browserTitle;
+
+  /// No description provided for @browserTabs.
+  ///
+  /// In en, this message translates to:
+  /// **'Tabs'**
+  String get browserTabs;
+
+  /// No description provided for @browserRowConnected.
+  ///
+  /// In en, this message translates to:
+  /// **'Firefox connected · tabs, reader view'**
+  String get browserRowConnected;
+
+  /// No description provided for @browserRowSetup.
+  ///
+  /// In en, this message translates to:
+  /// **'Firefox bridge not set up · setup steps'**
+  String get browserRowSetup;
+
+  /// No description provided for @browserSearch.
+  ///
+  /// In en, this message translates to:
+  /// **'Search tabs'**
+  String get browserSearch;
+
+  /// No description provided for @browserNoTabs.
+  ///
+  /// In en, this message translates to:
+  /// **'No open tabs.'**
+  String get browserNoTabs;
+
+  /// No description provided for @browserNoMatch.
+  ///
+  /// In en, this message translates to:
+  /// **'No tabs match the search.'**
+  String get browserNoMatch;
+
+  /// No description provided for @browserWindow.
+  ///
+  /// In en, this message translates to:
+  /// **'Window {n}'**
+  String browserWindow(int n);
+
+  /// No description provided for @browserTabCount.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 tab} other{{count} tabs}}'**
+  String browserTabCount(int count);
+
+  /// No description provided for @browserTabsHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Tap = switch to tab · swipe = close · long-press = select'**
+  String get browserTabsHint;
+
+  /// No description provided for @browserTabHint.
+  ///
+  /// In en, this message translates to:
+  /// **'switches to the tab'**
+  String get browserTabHint;
+
+  /// No description provided for @browserSelectHint.
+  ///
+  /// In en, this message translates to:
+  /// **'toggles selection'**
+  String get browserSelectHint;
+
+  /// No description provided for @browserTabMenu.
+  ///
+  /// In en, this message translates to:
+  /// **'Tab actions'**
+  String get browserTabMenu;
+
+  /// No description provided for @browserSelect.
+  ///
+  /// In en, this message translates to:
+  /// **'Select'**
+  String get browserSelect;
+
+  /// No description provided for @browserSelected.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} selected'**
+  String browserSelected(int count);
+
+  /// No description provided for @browserActive.
+  ///
+  /// In en, this message translates to:
+  /// **'active tab'**
+  String get browserActive;
+
+  /// No description provided for @browserPinnedBadge.
+  ///
+  /// In en, this message translates to:
+  /// **'pinned'**
+  String get browserPinnedBadge;
+
+  /// No description provided for @browserAudible.
+  ///
+  /// In en, this message translates to:
+  /// **'playing sound'**
+  String get browserAudible;
+
+  /// No description provided for @browserMutedBadge.
+  ///
+  /// In en, this message translates to:
+  /// **'muted'**
+  String get browserMutedBadge;
+
+  /// No description provided for @browserActivate.
+  ///
+  /// In en, this message translates to:
+  /// **'Switch to this tab'**
+  String get browserActivate;
+
+  /// No description provided for @browserActivated.
+  ///
+  /// In en, this message translates to:
+  /// **'Switched to the tab'**
+  String get browserActivated;
+
+  /// No description provided for @browserToPhone.
+  ///
+  /// In en, this message translates to:
+  /// **'Open on phone'**
+  String get browserToPhone;
+
+  /// No description provided for @browserNotWebUrl.
+  ///
+  /// In en, this message translates to:
+  /// **'This tab\'s address can\'t be opened on the phone (http/https only).'**
+  String get browserNotWebUrl;
+
+  /// No description provided for @browserReader.
+  ///
+  /// In en, this message translates to:
+  /// **'Reader view'**
+  String get browserReader;
+
+  /// No description provided for @browserPageControls.
+  ///
+  /// In en, this message translates to:
+  /// **'Page controls'**
+  String get browserPageControls;
+
+  /// No description provided for @browserPin.
+  ///
+  /// In en, this message translates to:
+  /// **'Pin'**
+  String get browserPin;
+
+  /// No description provided for @browserUnpin.
+  ///
+  /// In en, this message translates to:
+  /// **'Unpin'**
+  String get browserUnpin;
+
+  /// No description provided for @browserPinned.
+  ///
+  /// In en, this message translates to:
+  /// **'Tab pinned'**
+  String get browserPinned;
+
+  /// No description provided for @browserUnpinned.
+  ///
+  /// In en, this message translates to:
+  /// **'Tab unpinned'**
+  String get browserUnpinned;
+
+  /// No description provided for @browserMute.
+  ///
+  /// In en, this message translates to:
+  /// **'Mute'**
+  String get browserMute;
+
+  /// No description provided for @browserUnmute.
+  ///
+  /// In en, this message translates to:
+  /// **'Unmute'**
+  String get browserUnmute;
+
+  /// No description provided for @browserMutedDone.
+  ///
+  /// In en, this message translates to:
+  /// **'Tab muted'**
+  String get browserMutedDone;
+
+  /// No description provided for @browserUnmuted.
+  ///
+  /// In en, this message translates to:
+  /// **'Tab unmuted'**
+  String get browserUnmuted;
+
+  /// No description provided for @browserSent.
+  ///
+  /// In en, this message translates to:
+  /// **'Sent'**
+  String get browserSent;
+
+  /// No description provided for @browserCloseTabs.
+  ///
+  /// In en, this message translates to:
+  /// **'Close tabs'**
+  String get browserCloseTabs;
+
+  /// No description provided for @browserCloseConfirm.
+  ///
+  /// In en, this message translates to:
+  /// **'Close {count} tabs?'**
+  String browserCloseConfirm(int count);
+
+  /// No description provided for @browserClosed.
+  ///
+  /// In en, this message translates to:
+  /// **'Tab closed'**
+  String get browserClosed;
+
+  /// No description provided for @browserRestore.
+  ///
+  /// In en, this message translates to:
+  /// **'Reopen closed tab'**
+  String get browserRestore;
+
+  /// No description provided for @browserRestored.
+  ///
+  /// In en, this message translates to:
+  /// **'Reopened the last closed tab'**
+  String get browserRestored;
+
+  /// No description provided for @browserOpen.
+  ///
+  /// In en, this message translates to:
+  /// **'Open'**
+  String get browserOpen;
+
+  /// No description provided for @browserOpened.
+  ///
+  /// In en, this message translates to:
+  /// **'New tab opened'**
+  String get browserOpened;
+
+  /// No description provided for @browserBadUrl.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter a valid http/https address'**
+  String get browserBadUrl;
+
+  /// No description provided for @browserNeedsControl.
+  ///
+  /// In en, this message translates to:
+  /// **'Seeing tabs needs a control session (addresses are browsing history).'**
+  String get browserNeedsControl;
+
+  /// No description provided for @browserSetupTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Firefox bridge not connected'**
+  String get browserSetupTitle;
+
+  /// No description provided for @browserSetupIntro.
+  ///
+  /// In en, this message translates to:
+  /// **'Set it up once on the PC to manage tabs from the phone:'**
+  String get browserSetupIntro;
+
+  /// No description provided for @browserSetupStep1.
+  ///
+  /// In en, this message translates to:
+  /// **'On the PC, register the helper in a terminal; the command prints the add-on (XPI) path:'**
+  String get browserSetupStep1;
+
+  /// No description provided for @browserSetupStep2.
+  ///
+  /// In en, this message translates to:
+  /// **'In Firefox open about:config and set xpinstall.signatures.required to false:'**
+  String get browserSetupStep2;
+
+  /// No description provided for @browserSetupStep3.
+  ///
+  /// In en, this message translates to:
+  /// **'In about:addons › gear icon › \"Install Add-on From File…\" pick the XPI file the command printed:'**
+  String get browserSetupStep3;
+
+  /// No description provided for @browserSetupStep4.
+  ///
+  /// In en, this message translates to:
+  /// **'For reader view and page controls (optional): Tiphys Bridge icon in the toolbar › \"Sayfa içeriği iznini ver\" (grant page content permission).'**
+  String get browserSetupStep4;
+
+  /// No description provided for @browserSetupWarning.
+  ///
+  /// In en, this message translates to:
+  /// **'Turning off signature checks allows any unsigned add-on; only install add-ons you know.'**
+  String get browserSetupWarning;
+
+  /// No description provided for @browserPermissionTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Page content permission needed'**
+  String get browserPermissionTitle;
+
+  /// No description provided for @browserPermissionHint.
+  ///
+  /// In en, this message translates to:
+  /// **'On the PC, open the Tiphys Bridge icon in Firefox (or about:addons › Tiphys Bridge › Options) and press \"Sayfa içeriği iznini ver\" (grant page content permission); Firefox will ask to confirm.'**
+  String get browserPermissionHint;
+
+  /// No description provided for @browserSummarize.
+  ///
+  /// In en, this message translates to:
+  /// **'Summarize with Claude'**
+  String get browserSummarize;
+
+  /// No description provided for @browserSummaryIntro.
+  ///
+  /// In en, this message translates to:
+  /// **'Briefly summarize this web page; list the key points as bullets.'**
+  String get browserSummaryIntro;
+
+  /// No description provided for @browserTruncated.
+  ///
+  /// In en, this message translates to:
+  /// **'The text was shortened because it is long.'**
+  String get browserTruncated;
+
+  /// No description provided for @browserFontSmaller.
+  ///
+  /// In en, this message translates to:
+  /// **'Smaller text'**
+  String get browserFontSmaller;
+
+  /// No description provided for @browserFontLarger.
+  ///
+  /// In en, this message translates to:
+  /// **'Larger text'**
+  String get browserFontLarger;
+
+  /// No description provided for @browserMediaTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Media on the page'**
+  String get browserMediaTitle;
+
+  /// No description provided for @browserMediaHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Video or audio on the page'**
+  String get browserMediaHint;
+
+  /// No description provided for @browserMediaVideo.
+  ///
+  /// In en, this message translates to:
+  /// **'Video'**
+  String get browserMediaVideo;
+
+  /// No description provided for @browserMediaAudio.
+  ///
+  /// In en, this message translates to:
+  /// **'Audio'**
+  String get browserMediaAudio;
+
+  /// No description provided for @browserRate.
+  ///
+  /// In en, this message translates to:
+  /// **'Playback speed'**
+  String get browserRate;
+
+  /// No description provided for @browserScrollTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Scroll the page'**
+  String get browserScrollTitle;
+
+  /// No description provided for @browserScrollPercent.
+  ///
+  /// In en, this message translates to:
+  /// **'{percent} percent down the page'**
+  String browserScrollPercent(int percent);
+
+  /// No description provided for @browserBottom.
+  ///
+  /// In en, this message translates to:
+  /// **'To the bottom'**
+  String get browserBottom;
+
+  /// No description provided for @browserTextTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Send to text field'**
+  String get browserTextTitle;
+
+  /// No description provided for @browserTextHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Text for the focused (or first visible) field'**
+  String get browserTextHint;
+
+  /// No description provided for @browserTextSent.
+  ///
+  /// In en, this message translates to:
+  /// **'Text sent to the field'**
+  String get browserTextSent;
+
+  /// No description provided for @browserPageHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Reading and typing are off on pages with a password field.'**
+  String get browserPageHint;
+
+  /// No description provided for @browserErrNotConnected.
+  ///
+  /// In en, this message translates to:
+  /// **'The Firefox bridge isn\'t connected (Firefox closed or add-on not installed).'**
+  String get browserErrNotConnected;
+
+  /// No description provided for @browserErrPermission.
+  ///
+  /// In en, this message translates to:
+  /// **'Page content permission hasn\'t been granted.'**
+  String get browserErrPermission;
+
+  /// No description provided for @browserErrBadUrl.
+  ///
+  /// In en, this message translates to:
+  /// **'This address can\'t be opened (http/https only).'**
+  String get browserErrBadUrl;
+
+  /// No description provided for @browserErrTabNotFound.
+  ///
+  /// In en, this message translates to:
+  /// **'The tab is gone (it may have been closed).'**
+  String get browserErrTabNotFound;
+
+  /// No description provided for @browserErrPassword.
+  ///
+  /// In en, this message translates to:
+  /// **'This page has a password field; for safety it isn\'t read or typed into.'**
+  String get browserErrPassword;
+
+  /// No description provided for @browserErrNoMedia.
+  ///
+  /// In en, this message translates to:
+  /// **'There\'s no video or audio on this page.'**
+  String get browserErrNoMedia;
+
+  /// No description provided for @browserErrNoInput.
+  ///
+  /// In en, this message translates to:
+  /// **'No text field found on the page.'**
+  String get browserErrNoInput;
+
+  /// No description provided for @browserErrNoArticle.
+  ///
+  /// In en, this message translates to:
+  /// **'No readable article found on this page.'**
+  String get browserErrNoArticle;
+
+  /// No description provided for @browserErrUnsupported.
+  ///
+  /// In en, this message translates to:
+  /// **'Firefox doesn\'t allow add-ons on this page (Firefox\'s own pages, the add-on store).'**
+  String get browserErrUnsupported;
+
+  /// No description provided for @browserErrTimeout.
+  ///
+  /// In en, this message translates to:
+  /// **'Firefox didn\'t respond.'**
+  String get browserErrTimeout;
+
+  /// No description provided for @browserErrFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Firefox couldn\'t do that.'**
+  String get browserErrFailed;
+
+  /// No description provided for @uiTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Mobile view'**
+  String get uiTitle;
+
+  /// No description provided for @uiSearch.
+  ///
+  /// In en, this message translates to:
+  /// **'Search controls'**
+  String get uiSearch;
+
+  /// No description provided for @uiPartial.
+  ///
+  /// In en, this message translates to:
+  /// **'Partial: the window is large, some controls aren\'t shown. Use search or the live screen.'**
+  String get uiPartial;
+
+  /// No description provided for @uiNeedsControl.
+  ///
+  /// In en, this message translates to:
+  /// **'Mobile view needs a control session.'**
+  String get uiNeedsControl;
+
+  /// No description provided for @uiUnsupportedTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'This app doesn\'t share its controls'**
+  String get uiUnsupportedTitle;
+
+  /// No description provided for @uiUnsupportedText.
+  ///
+  /// In en, this message translates to:
+  /// **'Terminals, games and some apps (like kitty or Steam) don\'t expose an accessibility tree. Use the live screen and the app remote instead.'**
+  String get uiUnsupportedText;
+
+  /// No description provided for @uiOpenLive.
+  ///
+  /// In en, this message translates to:
+  /// **'Open live screen'**
+  String get uiOpenLive;
+
+  /// No description provided for @uiHelperMissingTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Accessibility helper missing on the PC'**
+  String get uiHelperMissingTitle;
+
+  /// No description provided for @uiHelperMissingText.
+  ///
+  /// In en, this message translates to:
+  /// **'Mobile view needs the python3-gi and gir1.2-atspi-2.0 packages on the PC.'**
+  String get uiHelperMissingText;
+
+  /// No description provided for @uiEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'No controls to show in this window.'**
+  String get uiEmpty;
+
+  /// No description provided for @uiNoMatch.
+  ///
+  /// In en, this message translates to:
+  /// **'No matching controls.'**
+  String get uiNoMatch;
+
+  /// No description provided for @uiToolbar.
+  ///
+  /// In en, this message translates to:
+  /// **'Toolbar'**
+  String get uiToolbar;
+
+  /// No description provided for @uiMenuBar.
+  ///
+  /// In en, this message translates to:
+  /// **'Menu'**
+  String get uiMenuBar;
+
+  /// No description provided for @uiWebContent.
+  ///
+  /// In en, this message translates to:
+  /// **'Page content'**
+  String get uiWebContent;
+
+  /// No description provided for @uiTab.
+  ///
+  /// In en, this message translates to:
+  /// **'Tab {n}'**
+  String uiTab(int n);
+
+  /// No description provided for @uiField.
+  ///
+  /// In en, this message translates to:
+  /// **'Text field'**
+  String get uiField;
+
+  /// No description provided for @uiPasswordHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Typed into the PC\'s password field, not stored here'**
+  String get uiPasswordHint;
+
+  /// No description provided for @uiPasswordConfirm.
+  ///
+  /// In en, this message translates to:
+  /// **'Type into the \"{name}\" password field? The text is sent to the PC.'**
+  String uiPasswordConfirm(String name);
+
+  /// No description provided for @uiPasswordSend.
+  ///
+  /// In en, this message translates to:
+  /// **'Send password'**
+  String get uiPasswordSend;
+
+  /// No description provided for @uiUnnamed.
+  ///
+  /// In en, this message translates to:
+  /// **'Unnamed'**
+  String get uiUnnamed;
+
+  /// No description provided for @uiMoreActions.
+  ///
+  /// In en, this message translates to:
+  /// **'More actions'**
+  String get uiMoreActions;
+
+  /// No description provided for @uiFocus.
+  ///
+  /// In en, this message translates to:
+  /// **'Focus'**
+  String get uiFocus;
+
+  /// No description provided for @uiSelect.
+  ///
+  /// In en, this message translates to:
+  /// **'Select'**
+  String get uiSelect;
+
+  /// No description provided for @uiPreview.
+  ///
+  /// In en, this message translates to:
+  /// **'Window preview'**
+  String get uiPreview;
+
+  /// No description provided for @uiShowPreview.
+  ///
+  /// In en, this message translates to:
+  /// **'Show preview'**
+  String get uiShowPreview;
+
+  /// No description provided for @uiHidePreview.
+  ///
+  /// In en, this message translates to:
+  /// **'Hide preview'**
+  String get uiHidePreview;
+
+  /// No description provided for @uiDecrease.
+  ///
+  /// In en, this message translates to:
+  /// **'Decrease'**
+  String get uiDecrease;
+
+  /// No description provided for @uiIncrease.
+  ///
+  /// In en, this message translates to:
+  /// **'Increase'**
+  String get uiIncrease;
+
+  /// No description provided for @uiActClick.
+  ///
+  /// In en, this message translates to:
+  /// **'Click'**
+  String get uiActClick;
+
+  /// No description provided for @uiActPress.
+  ///
+  /// In en, this message translates to:
+  /// **'Press'**
+  String get uiActPress;
+
+  /// No description provided for @uiActActivate.
+  ///
+  /// In en, this message translates to:
+  /// **'Activate'**
+  String get uiActActivate;
+
+  /// No description provided for @uiActToggle.
+  ///
+  /// In en, this message translates to:
+  /// **'Toggle'**
+  String get uiActToggle;
+
+  /// No description provided for @uiActJump.
+  ///
+  /// In en, this message translates to:
+  /// **'Follow link'**
+  String get uiActJump;
+
+  /// No description provided for @uiActExpand.
+  ///
+  /// In en, this message translates to:
+  /// **'Expand / collapse'**
+  String get uiActExpand;
+
+  /// No description provided for @uiActSwitch.
+  ///
+  /// In en, this message translates to:
+  /// **'Switch to tab'**
+  String get uiActSwitch;
+
+  /// No description provided for @uiActOpen.
+  ///
+  /// In en, this message translates to:
+  /// **'Open'**
+  String get uiActOpen;
+
+  /// No description provided for @uiErrUnsupported.
+  ///
+  /// In en, this message translates to:
+  /// **'This window doesn\'t expose its controls; use the live screen.'**
+  String get uiErrUnsupported;
+
+  /// No description provided for @uiErrStale.
+  ///
+  /// In en, this message translates to:
+  /// **'The window changed; the view was refreshed, try again.'**
+  String get uiErrStale;
+
+  /// No description provided for @uiErrTimeout.
+  ///
+  /// In en, this message translates to:
+  /// **'The app didn\'t respond in time.'**
+  String get uiErrTimeout;
+
+  /// No description provided for @uiErrHelperMissing.
+  ///
+  /// In en, this message translates to:
+  /// **'Accessibility helper missing on the PC (python3-gi, gir1.2-atspi-2.0).'**
+  String get uiErrHelperMissing;
+
+  /// No description provided for @uiErrHelperFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'The accessibility helper failed; try again.'**
+  String get uiErrHelperFailed;
+
+  /// No description provided for @uiErrConfirm.
+  ///
+  /// In en, this message translates to:
+  /// **'Typing into a password field needs confirmation.'**
+  String get uiErrConfirm;
+
+  /// No description provided for @uiErrNoAction.
+  ///
+  /// In en, this message translates to:
+  /// **'This control has no such action.'**
+  String get uiErrNoAction;
+
+  /// No description provided for @uiErrA11yBus.
+  ///
+  /// In en, this message translates to:
+  /// **'The PC\'s accessibility bus is off.'**
+  String get uiErrA11yBus;
+
+  /// No description provided for @uiErrFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'The app couldn\'t do that.'**
+  String get uiErrFailed;
+
+  /// No description provided for @notifUiOpenedTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Mobile view opened'**
+  String get notifUiOpenedTitle;
+
+  /// No description provided for @claudePcBrowserTabs.
+  ///
+  /// In en, this message translates to:
+  /// **'Listed tabs'**
+  String get claudePcBrowserTabs;
+
+  /// No description provided for @claudePcBrowserOpen.
+  ///
+  /// In en, this message translates to:
+  /// **'Opened a tab'**
+  String get claudePcBrowserOpen;
+
+  /// No description provided for @claudePcBrowserActivate.
+  ///
+  /// In en, this message translates to:
+  /// **'Switched tab'**
+  String get claudePcBrowserActivate;
+
+  /// No description provided for @claudePcBrowserClose.
+  ///
+  /// In en, this message translates to:
+  /// **'Closed tabs'**
+  String get claudePcBrowserClose;
+
+  /// No description provided for @claudePcPageText.
+  ///
+  /// In en, this message translates to:
+  /// **'Read the page'**
+  String get claudePcPageText;
+
+  /// No description provided for @claudePcUiTree.
+  ///
+  /// In en, this message translates to:
+  /// **'Read the controls'**
+  String get claudePcUiTree;
+
+  /// No description provided for @claudePcUiPress.
+  ///
+  /// In en, this message translates to:
+  /// **'Pressed'**
+  String get claudePcUiPress;
+
+  /// No description provided for @claudePcUiSetText.
+  ///
+  /// In en, this message translates to:
+  /// **'Typed into a field'**
+  String get claudePcUiSetText;
+
+  /// No description provided for @claudePcUiSetValue.
+  ///
+  /// In en, this message translates to:
+  /// **'Set a value'**
+  String get claudePcUiSetValue;
 }
 
 class _AppLocalizationsDelegate

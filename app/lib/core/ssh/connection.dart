@@ -1,4 +1,4 @@
-// SSH bağlantısı: profildeki host + kasadaki anahtar/şifre ile bağlanır; kabuk, komut ve SFTP sağlar.
+// SSH connection: host from the profile + key/password from the vault; provides shell, commands and SFTP.
 import 'dart:async';
 import 'dart:convert';
 import 'dart:typed_data';
@@ -18,7 +18,7 @@ class SshFailure implements Exception {
   String toString() => 'SshFailure($code${detail == null ? '' : ': $detail'})';
 }
 
-/// Sunucu anahtarları ilk bağlantıda kaydedilir (TOFU); sonra değişirse bağlantı reddedilir.
+/// Server keys are saved on first connection (TOFU); if they change later the connection is refused.
 abstract class KnownHosts {
   Future<String?> fingerprint(String hostPort);
   Future<void> remember(String hostPort, String fingerprint);
@@ -42,7 +42,17 @@ class MemoryKnownHosts implements KnownHosts {
   Future<void> remember(String hostPort, String fingerprint) async => m[hostPort] = fingerprint;
 }
 
-class SshConnection {
+/// Remote command runner (compose screen; tests supply a fake).
+abstract interface class RemoteShell {
+  Future<({String stdout, String stderr, int? code})> exec(String command, {Duration timeout});
+
+  /// Output (stdout and stderr) is passed to [onOutput] as it arrives; returns the exit code.
+  Future<int?> execStreaming(String command, void Function(String chunk) onOutput, {Duration timeout});
+
+  void close();
+}
+
+class SshConnection implements RemoteShell {
   SshConnection._(this.host, this.client);
   final Host host;
   final SSHClient client;
@@ -110,7 +120,8 @@ class SshConnection {
     return SshConnection._(host, client);
   }
 
-  /// Komut çalıştırır; stdout, stderr ve çıkış kodunu döner.
+  /// Runs a command; returns stdout, stderr and the exit code.
+  @override
   Future<({String stdout, String stderr, int? code})> exec(String command, {Duration timeout = const Duration(seconds: 60)}) async {
     final session = await client.execute(command);
     final out = BytesBuilder(copy: false), err = BytesBuilder(copy: false);
@@ -124,7 +135,24 @@ class SshConnection {
     );
   }
 
-  /// Etkileşimli kabuk: tmux varsa adlandırılmış oturuma bağlanır (yoksa oluşturur), yoksa giriş kabuğu.
+  /// Long-running command (e.g. docker compose pull): output is delivered in chunks, preserving UTF-8 boundaries.
+  /// On timeout the session is closed and a TimeoutException is thrown.
+  @override
+  Future<int?> execStreaming(String command, void Function(String chunk) onOutput, {Duration timeout = const Duration(minutes: 20)}) async {
+    final session = await client.execute(command);
+    const dec = Utf8Decoder(allowMalformed: true);
+    final a = dec.bind(session.stdout).listen(onOutput).asFuture<void>();
+    final b = dec.bind(session.stderr).listen(onOutput).asFuture<void>();
+    try {
+      await Future.wait([a, b, session.done]).timeout(timeout);
+    } on TimeoutException {
+      session.close();
+      rethrow;
+    }
+    return session.exitCode;
+  }
+
+  /// Interactive shell: attaches to the named tmux session if tmux exists (creating it if needed), else a login shell.
   Future<SSHSession> shell({required int cols, required int rows, String? startDir}) {
     final name = host.ssh!.tmuxSession;
     final cd = startDir == null ? '' : 'cd ${shellQuote(startDir)} 2>/dev/null; ';
@@ -135,10 +163,11 @@ class SshConnection {
 
   Future<SftpClient> sftp() => client.sftp();
 
+  @override
   void close() => client.close();
 }
 
-/// Kabukta güvenli tek tırnak kaçışı. "~/" ile başlayan yollar ev dizinine genişlesin diye ayrı ele alınır.
+/// Safe single-quote escaping for the shell. Paths starting with "~/" are handled separately so they expand to home.
 String shellQuote(String s) {
   if (s == '~') return r'"$HOME"';
   if (s.startsWith('~/')) return '"\$HOME"/${shellQuote(s.substring(2))}';

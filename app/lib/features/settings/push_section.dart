@@ -1,4 +1,4 @@
-// Ayarlar › Bildirimler › Bu telefon: UnifiedPush dağıtıcısı, kayıt durumu, test, site uyarıları.
+// Settings › Notifications › This phone: UnifiedPush distributor, registration state, test, site alerts.
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
@@ -12,7 +12,7 @@ import '../../widgets/forms.dart';
 import '../../widgets/surfaces.dart';
 import '../system/agent_providers.dart';
 
-/// main.dart'ta gerçek örnekle değiştirilir; testlerde yok (bölüm gizlenir).
+/// Replaced with the real instance in main.dart; absent in tests (the section is hidden).
 final pushServiceProvider = Provider<PushService?>((ref) => null);
 
 class PushSection extends ConsumerStatefulWidget {
@@ -66,7 +66,7 @@ class _PushSectionState extends ConsumerState<PushSection> {
     if (pick == null) return;
     setState(() => _busy = true);
     await p.enable(pick);
-    // Uç nokta birkaç saniye içinde gelir (onNewEndpoint) ve ajanlara kaydedilir.
+    // The endpoint arrives within a few seconds (onNewEndpoint) and is registered with the agents.
     await Future<void>.delayed(const Duration(seconds: 3));
     await _refresh();
     if (mounted) setState(() => _busy = false);
@@ -90,11 +90,20 @@ class _PushSectionState extends ConsumerState<PushSection> {
     final push = ref.watch(pushServiceProvider);
     if (push == null) return const SizedBox.shrink();
     final ntfy = ref.watch(profileProvider.select((p) => p.integrations.ntfy));
+    final agentHosts = ref.watch(profileProvider.select((p) => p.hosts)).where((h) => h.agent != null);
     final on = _distributor != null;
+    // Agents the registration couldn't reach can't send that host's notifications (Claude, alerts) to the phone.
+    final missing = on && _registered != null ? [for (final h in agentHosts) if (!_registered!.contains(h.id)) h.name] : const <String>[];
     return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
       GroupedSection(
         title: l.pushThisPhone,
-        footer: _available.isEmpty ? l.pushNoDistributor : null,
+        footer: _available.isEmpty
+            ? l.pushNoDistributor
+            : !on
+                ? l.pushSetupHint
+                : missing.isNotEmpty
+                    ? l.pushNotRegistered(missing.join(', '))
+                    : l.pushBatteryHint,
         children: [
           GroupedRow(
             title: on ? l.pushEnabled : l.pushEnable,

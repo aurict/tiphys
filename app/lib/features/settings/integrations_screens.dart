@@ -1,4 +1,4 @@
-// Entegrasyonlar: Grafana (çoklu), Dozzle (çoklu), Homepage, Uptime Kuma, ntfy, Scriberr.
+// Integrations: Grafana (multiple), Dozzle (multiple), Homepage, Uptime Kuma, ntfy, Scriberr, Obsidian (quick note).
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -38,12 +38,18 @@ class IntegrationsScreen extends ConsumerWidget {
                 null => l.integrationNotSet,
                 final s => '${switch (s.language) { 'tr' => l.appearanceLanguageTr, 'en' => l.appearanceLanguageEn, _ => l.scriberrAutoDetect }} · ${s.model}',
               }, icon: LucideIcons.mic, iconBackground: const Color(0xFF5E5CE6), onTap: () => go('scriberr')),
+        GroupedRow(
+            title: 'Obsidian',
+            subtitle: i.obsidian == null ? l.integrationNotSet : '${i.obsidian!.vault} · ${i.obsidian!.mode == 'dailyNote' ? l.noteModeDaily : i.obsidian!.folder}',
+            icon: LucideIcons.notebookPen,
+            iconBackground: const Color(0xFF7C3AED),
+            onTap: () => go('obsidian')),
       ]),
     ]);
   }
 }
 
-/// Ortak: bağlantı testi butonu ve sonucu.
+/// Shared: connection test button and its result.
 class TestButton extends StatefulWidget {
   const TestButton({super.key, required this.run});
   final Future<TestResult> Function() run;
@@ -519,7 +525,80 @@ class _ScriberrEditState extends ConsumerState<ScriberrEditScreen> with _Saving 
   }
 }
 
-// ───────── ortak parçalar ─────────
+// ───────── Obsidian ─────────
+
+class ObsidianEditScreen extends ConsumerStatefulWidget {
+  const ObsidianEditScreen({super.key});
+  @override
+  ConsumerState<ObsidianEditScreen> createState() => _ObsidianEditState();
+}
+
+class _ObsidianEditState extends ConsumerState<ObsidianEditScreen> with _Saving {
+  final _vault = TextEditingController();
+  final _folder = TextEditingController(text: 'Gelen kutusu');
+  final _daily = TextEditingController(text: 'Günlük/YYYY-MM-DD');
+  String _mode = 'newNote';
+
+  @override
+  void initState() {
+    super.initState();
+    final o = ref.read(profileProvider).integrations.obsidian;
+    if (o != null) {
+      _vault.text = o.vault;
+      _folder.text = o.folder;
+      _daily.text = o.dailyNotePath;
+      _mode = o.mode;
+    }
+  }
+
+  @override
+  void dispose() {
+    _vault.dispose();
+    _folder.dispose();
+    _daily.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final l = AppLocalizations.of(context);
+    final p = ref.watch(profileProvider);
+    return Form(
+      key: form,
+      child: SettingsPage(
+        title: 'Obsidian',
+        saving: saving,
+        onSave: () => runSave(() async {
+          final o = ObsidianConfig(
+            vault: _vault.text.trim(),
+            folder: _folder.text.trim(),
+            mode: _mode,
+            dailyNotePath: _daily.text.trim().isEmpty ? 'Günlük/YYYY-MM-DD' : _daily.text.trim(),
+          );
+          await ref.read(profileProvider.notifier).update((p) => p.copyWith(integrations: p.integrations.copyWith(obsidian: () => o)));
+        }),
+        children: [
+          _Explain(l.obsidianExplain),
+          FieldCard(children: [
+            TField(controller: _vault, label: l.obsidianVault, hint: 'Notlar', helper: l.obsidianVaultHelper, validator: requiredV(l), autofocus: p.integrations.obsidian == null),
+            TField(controller: _folder, label: l.obsidianFolder, hint: 'Gelen kutusu'),
+            TField(controller: _daily, label: l.obsidianDailyPath, hint: 'Günlük/YYYY-MM-DD', helper: l.obsidianDailyPathHelper),
+          ]),
+          ChoiceSection<String>(
+            title: l.obsidianMode,
+            value: _mode,
+            options: [('newNote', l.noteModeNew), ('dailyNote', l.noteModeDaily)],
+            onChanged: (v) => setState(() => _mode = v),
+          ),
+          if (p.integrations.obsidian != null)
+            _DeleteRow(onDelete: () => ref.read(profileProvider.notifier).update((p) => p.copyWith(integrations: p.integrations.copyWith(obsidian: () => null)))),
+        ],
+      ),
+    );
+  }
+}
+
+// ───────── shared pieces ─────────
 
 class _HostDropdown extends StatelessWidget {
   const _HostDropdown({required this.hosts, required this.value, required this.label, required this.onChanged});
