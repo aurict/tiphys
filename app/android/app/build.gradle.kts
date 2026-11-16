@@ -13,7 +13,7 @@ val releaseKey = Properties().apply { if (releaseKeyFile.exists()) releaseKeyFil
 
 android {
     namespace = "com.aurict.tiphys"
-    compileSdk = flutter.compileSdkVersion
+    compileSdk = 37 // androidx.core 1.19 and flutter_local_notifications 23 need 37 (Flutter default is 36)
     ndkVersion = flutter.ndkVersion
 
     compileOptions {
