@@ -27,6 +27,13 @@
         "terminal",
         "files",
         "system"
+      ],
+      "layout": "cards",
+      "shortcuts": [
+        "terminal",
+        "files",
+        "quickNote",
+        "homepage"
       ]
     }
   },
@@ -248,6 +255,29 @@
       "hostId": "argo",
       "command": "cd ~/homepage && docker compose restart homepage",
       "confirm": true
+    }
+  ],
+  "desktopRemotes": [
+    {
+      "id": "firefox-github",
+      "windowClass": "firefox",
+      "name": "GitHub",
+      "icon": "globe",
+      "action": {
+        "kind": "sequence",
+        "steps": [
+          {
+            "combo": "ctrl+l"
+          },
+          {
+            "text": "github.com"
+          },
+          {
+            "combo": "Enter"
+          }
+        ]
+      },
+      "confirm": false
     }
   ],
   "notifications": {

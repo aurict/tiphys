@@ -1,5 +1,9 @@
-// Yerel uyarılar: disk dolu, çöken (failed) systemd servisleri ve Grafana/Prometheus alarmları.
-// Her durum bir kez bildirilir; düzelince "düzeldi" bildirimi gider ve tekrar bildirilebilir hale gelir.
+// Local alerts: disk full, crashed (failed) systemd services and Grafana/Prometheus alerts.
+// Each condition is reported once; when it clears a "resolved" notification goes out and it can be reported again.
+// Docker events (die/oom/restart) are also watched: unexpected crashes and out-of-memory are notified,
+// restarts are only written to the event stream.
+import { spawn, type ChildProcess } from "node:child_process";
+import { createInterface } from "node:readline";
 import si from "systeminformation";
 import type { FastifyInstance } from "fastify";
 import { run } from "./exec.ts";
@@ -14,7 +18,7 @@ export interface AlertInputs {
 type Kind = "disk" | "service" | "grafana";
 
 export class AlertMonitor {
-  /** Etkin durumlar: "disk:/", "service:user/foo.service", "grafana:AlertName" */
+  /** Active conditions: "disk:/", "service:user/foo.service", "grafana:AlertName" */
   readonly active = new Set<string>();
   #first = true;
   #timer: NodeJS.Timeout | null = null;
@@ -63,7 +67,7 @@ export class AlertMonitor {
       try {
         for (const u of JSON.parse(r.stdout || "[]") as Array<{ unit: string }>) out.push(`${scope}/${u.unit}`);
       } catch {
-        /* systemctl yoksa boş */
+        /* empty if there is no systemctl */
       }
     }
     return out;
@@ -84,13 +88,13 @@ export class AlertMonitor {
           out.push({ name: a.labels?.alertname ?? "?", state, severity: a.labels?.severity ?? null });
         }
       } catch {
-        /* Grafana'ya ulaşılamadı: bu tur atlanır */
+        /* Grafana unreachable: this round is skipped */
       }
     }
     return out;
   }
 
-  /** Yeni durumlar için bildirim gönderir. İlk turda zaten var olan durumlar sessizce kaydedilir. */
+  /** Sends notifications for new conditions. Conditions already present on the first round are recorded silently. */
   async evaluate(i: AlertInputs) {
     const cfg = this.#ctx.store.get().alerts;
     const now = new Map<string, { kind: Kind; params: Record<string, string | number> }>();
@@ -121,9 +125,118 @@ export class AlertMonitor {
   }
 }
 
+export interface DockerEvent {
+  action: string;
+  name: string;
+  exitCode: number | null;
+  /** Event time, ms */
+  at: number;
+}
+
+/** A `docker events --format '{{json .}}'` line → event; null if it isn't a container event. */
+export function parseDockerEvent(line: string): DockerEvent | null {
+  let j: { Type?: string; Action?: string; status?: string; Actor?: { Attributes?: Record<string, string> }; timeNano?: number; time?: number };
+  try {
+    j = JSON.parse(line);
+  } catch {
+    return null;
+  }
+  if (j.Type !== undefined && j.Type !== "container") return null;
+  const action = (j.Action ?? j.status ?? "").split(":")[0]!;
+  const name = j.Actor?.Attributes?.name;
+  if (!action || !name) return null;
+  const code = j.Actor?.Attributes?.exitCode;
+  return {
+    action,
+    name,
+    exitCode: code === undefined || code === "" ? null : Number(code),
+    at: j.timeNano ? Math.floor(j.timeNano / 1e6) : j.time ? j.time * 1000 : Date.now(),
+  };
+}
+
+/** A die within this time after kill/stop counts as "expected" (docker stop, compose down/up, restart). */
+const EXPECTED_WINDOW_MS = 60_000;
+/** No repeat record/notification for the same container + kind within this time (crash loop noise). */
+export const DOCKER_DEBOUNCE_MS = 15 * 60_000;
+
+/**
+ * Interprets Docker events: die (unexpected: exit code ≠ 0 and no recent kill/stop) and oom give a notification
+ * + event; restart only an event. Once per container + kind within DOCKER_DEBOUNCE_MS.
+ */
+export class DockerEventWatcher {
+  #ctx: Ctx;
+  #lastKill = new Map<string, number>();
+  #lastSeen = new Map<string, number>();
+  #child: ChildProcess | null = null;
+  #retry: NodeJS.Timeout | null = null;
+  #stopped = false;
+
+  constructor(ctx: Ctx) {
+    this.#ctx = ctx;
+  }
+
+  async handle(e: DockerEvent): Promise<void> {
+    if (e.action === "kill" || e.action === "stop") {
+      this.#lastKill.set(e.name, e.at);
+      return;
+    }
+    let key: string;
+    if (e.action === "oom") key = "docker.oom";
+    else if (e.action === "restart") key = "docker.restarted";
+    else if (e.action === "die") {
+      const killed = e.at - (this.#lastKill.get(e.name) ?? -Infinity) < EXPECTED_WINDOW_MS;
+      if (killed || e.exitCode === 0) return; // stopped on purpose or exited cleanly
+      key = "docker.died";
+    } else return;
+    const dk = `${key}|${e.name}`;
+    if (e.at - (this.#lastSeen.get(dk) ?? -Infinity) < DOCKER_DEBOUNCE_MS) return;
+    this.#lastSeen.set(dk, e.at);
+    const host = this.#ctx.store.get().name;
+    const params: Record<string, string | number> = { host, container: e.name, ...(e.exitCode !== null && key === "docker.died" ? { code: e.exitCode } : {}) };
+    if (key === "docker.restarted") {
+      await this.#ctx.notifier.events?.record({ key, params, link: "tiphys://system" });
+      return;
+    }
+    await this.#ctx.notifier.send({ key, params, link: "tiphys://system", priority: "high" });
+  }
+
+  /** Starts the `docker events` process; if it ends (Docker restarted, missing) retries after 60 s. */
+  start() {
+    if (this.#stopped) return;
+    const child = spawn(
+      "docker",
+      ["events", "--format", "{{json .}}", "--filter", "type=container", ...["die", "oom", "restart", "kill", "stop"].flatMap((a) => ["--filter", `event=${a}`])],
+      { stdio: ["ignore", "pipe", "ignore"] },
+    );
+    this.#child = child;
+    child.on("error", () => {}); // no docker: retried via exit/close
+    createInterface({ input: child.stdout! }).on("line", (line) => {
+      const e = parseDockerEvent(line);
+      if (e) void this.handle(e).catch(() => {});
+    });
+    child.on("close", () => {
+      this.#child = null;
+      if (this.#stopped) return;
+      this.#retry = setTimeout(() => this.start(), 60_000);
+      this.#retry.unref();
+    });
+  }
+
+  stop() {
+    this.#stopped = true;
+    if (this.#retry) clearTimeout(this.#retry);
+    this.#child?.kill();
+  }
+}
+
 export function alertRoutes(app: FastifyInstance, ctx: Ctx) {
   const m = new AlertMonitor(ctx);
   m.start();
   app.addHook("onClose", async () => m.stop());
+  if (ctx.store.get().features.docker) {
+    const d = new DockerEventWatcher(ctx);
+    d.start();
+    app.addHook("onClose", async () => d.stop());
+  }
   app.get("/v1/alerts", async () => ({ active: [...m.active] }));
 }

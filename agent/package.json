@@ -2,7 +2,7 @@
   "name": "tiphys-agent",
   "version": "0.3.0",
   "private": true,
-  "description": "Tiphys Ajan\u0131: telefondaki Tiphys uygulamas\u0131na Claude, sistem, servis ve izleme API'si sunar.",
+  "description": "Tiphys agent: the per-machine service the Tiphys phone app talks to (Claude Code, system, services, desktop control, monitoring).",
   "type": "module",
   "engines": {
     "node": ">=22"
@@ -33,5 +33,11 @@
     "@types/web-push": "^3.6.4",
     "typescript": "^7.0.2",
     "vitest": "^5.1.0"
+  },
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/aurict/tiphys.git",
+    "directory": "agent"
   }
 }

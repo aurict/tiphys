@@ -1,4 +1,4 @@
-// Claude modülü: SDK'yı taklit eden sahte query ile (gerçek API çağrısı yapmaz).
+// Claude module: tested with a fake query that mimics the SDK (makes no real API calls).
 import { spawn } from "node:child_process";
 import { mkdtemp, mkdir, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
@@ -10,7 +10,7 @@ import { Notifier } from "../src/notify.ts";
 import { buildApp } from "../src/server.ts";
 import { testApp } from "./helpers.ts";
 
-/** Gelen her kullanıcı mesajına senaryodaki adımlarla cevap veren sahte query. */
+/** Fake query that answers every incoming user message with the steps of a scenario. */
 function fakeQuery(script: (text: string, opts: Options) => AsyncGenerator<SDKMessage>) {
   const calls: Options[] = [];
   let interrupted = false;
@@ -75,7 +75,13 @@ describe("Claude oturumları", () => {
     const { app, auth, root, fq, sent } = await setup(async function* (text) {
       yield assistant([{ type: "text", text: `Tamam: ${text}` }, { type: "tool_use", id: "t1", name: "Bash", input: { command: "ls" } }]);
       yield { type: "user", parent_tool_use_id: null, message: { role: "user", content: [{ type: "tool_result", tool_use_id: "t1", content: "a.txt\nb.txt" }] } } as unknown as SDKMessage;
-      yield result("Bitti");
+      // Two edits to the same file + one new file = 2 changed files
+      yield assistant([
+        { type: "tool_use", id: "t2", name: "Edit", input: { file_path: "/p/a.txt" } },
+        { type: "tool_use", id: "t3", name: "Edit", input: { file_path: "/p/a.txt" } },
+        { type: "tool_use", id: "t4", name: "Write", input: { file_path: "/p/c.txt" } },
+      ]);
+      yield result(text === "dosyaları listele" ? "## **Bitti:** iki dosya güncellendi\n\nAyrıntılar…" : "Bitti");
     });
     const res = await app.inject({ method: "POST", url: "/v1/claude/sessions", headers: auth, payload: { cwd: join(root, "proje"), prompt: "dosyaları listele", permissionMode: "bypassPermissions", effort: "high" } });
     expect(res.statusCode).toBe(200);
@@ -90,10 +96,12 @@ describe("Claude oturumları", () => {
     const kinds = events.map((e: { kind: string }) => e.kind);
     expect(kinds).toContain("init");
     expect(kinds.indexOf("text")).toBeLessThan(kinds.indexOf("tool_result"));
-    expect(events.find((e: { kind: string }) => e.kind === "result")).toMatchObject({ ok: true, text: "Bitti", costUsd: 0.0123 });
-    expect(sent).toContainEqual(expect.objectContaining({ key: "claude.done" }));
+    expect(events.find((e: { kind: string }) => e.kind === "result")).toMatchObject({ ok: true, costUsd: 0.0123 });
+    expect(sent).toContainEqual(
+      expect.objectContaining({ key: "claude.done", params: expect.objectContaining({ files: 2, summary: "Bitti: iki dosya güncellendi", seconds: 2, cost: 0.01 }) }),
+    );
 
-    // Aynı oturuma yeni mesaj
+    // New message to the same session
     await app.inject({ method: "POST", url: `/v1/claude/sessions/${id}/messages`, headers: auth, payload: { text: "bir daha" } });
     await waitFor(async () => {
       const r = (await app.inject({ url: `/v1/claude/sessions/${id}`, headers: auth })).json();
@@ -121,7 +129,7 @@ describe("Claude oturumları", () => {
     const { app, auth, root, claudeDir } = await setup(async function* () {});
     const id = "22222222-2222-4222-8222-222222222222";
     await mkdir(join(claudeDir, "sessions"));
-    // Bu test sürecinin kendisi "terminaldeki Claude" yerine geçer (yaşıyor; procStart verilmedi).
+    // This test process itself stands in for "Claude in the terminal" (alive; no procStart given).
     await writeFile(join(claudeDir, "sessions", `${process.pid}.json`), JSON.stringify({ pid: process.pid, sessionId: id, cwd: root, status: "idle", name: "deneme" }));
     const r = (await app.inject({ url: "/v1/claude/sessions", headers: auth })).json();
     expect(r.terminal).toEqual([expect.objectContaining({ pid: process.pid, sdkSessionId: id, status: "idle", title: "deneme" })]);
@@ -132,7 +140,7 @@ describe("Claude oturumları", () => {
     const { app, auth, root, claudeDir, fq } = await setup(async function* () {});
     const id = "33333333-3333-4333-8333-333333333333";
     await mkdir(join(claudeDir, "sessions"));
-    const term = spawn("sleep", ["30"]); // terminaldeki Claude yerine
+    const term = spawn("sleep", ["30"]); // stands in for Claude in the terminal
     const exited = new Promise<number | null>((r) => term.on("exit", (_c, sig) => r(sig === "SIGTERM" ? 1 : 0)));
     const file = join(claudeDir, "sessions", `${term.pid}.json`);
     const write = (status: string) => writeFile(file, JSON.stringify({ pid: term.pid, sessionId: id, cwd: join(root, "proje"), status }));
@@ -141,18 +149,18 @@ describe("Claude oturumları", () => {
     await write("idle");
     expect((await takeover({})).json().error.code).toBe("agent.claude.confirmRequired");
     await write("busy");
-    expect((await takeover({ confirm: true })).statusCode).toBe(409); // Claude çalışırken kesilmez
+    expect((await takeover({ confirm: true })).statusCode).toBe(409); // not interrupted while Claude is running
     expect(term.exitCode).toBeNull();
 
     await write("idle");
     const res = await takeover({ confirm: true, permissionMode: "acceptEdits" });
     expect(res.statusCode).toBe(200);
-    expect(await exited).toBe(1); // SIGTERM ile kapandı
-    expect(fq.calls).toHaveLength(0); // Claude süreci ilk mesajla başlar
+    expect(await exited).toBe(1); // closed with SIGTERM
+    expect(fq.calls).toHaveLength(0); // the Claude process starts with the first message
     await app.inject({ method: "POST", url: `/v1/claude/sessions/${res.json().id}/messages`, headers: auth, payload: { text: "devam" } });
     expect(fq.calls.at(-1)).toMatchObject({ resume: id, cwd: join(root, "proje"), permissionMode: "acceptEdits" });
-    expect(res.json()).toMatchObject({ status: "idle" }); // telefondan ilk mesajı bekler
-    expect((await takeover({ confirm: true })).statusCode).toBe(404); // artık terminalde değil
+    expect(res.json()).toMatchObject({ status: "idle" }); // waits for the first message from the phone
+    expect((await takeover({ confirm: true })).statusCode).toBe(404); // no longer in the terminal
   });
 
   it("ajan yeniden başlayınca canlı oturum aynı kimlikle, geçmişiyle geri gelir ve kaldığı yerden sürer", async () => {
@@ -161,11 +169,11 @@ describe("Claude oturumları", () => {
       yield result("Bitti");
     };
     const { app, auth, root, claudeDir, store } = await setup(script);
-    const sdkId = "11111111-1111-4111-8111-111111111111"; // sahte query'nin init kimliği
+    const sdkId = "11111111-1111-4111-8111-111111111111"; // the fake query's init id
     const res = await app.inject({ method: "POST", url: "/v1/claude/sessions", headers: auth, payload: { cwd: join(root, "proje"), prompt: "merhaba", effort: "high" } });
     const id = res.json().id as string;
     await waitFor(async () => ((await app.inject({ url: `/v1/claude/sessions/${id}`, headers: auth })).json().session.status === "idle" ? true : undefined));
-    // Claude'un kendi kaydı (geri yüklemede geçmiş buradan okunur)
+    // Claude's own transcript (history is read from here on restore)
     await mkdir(join(claudeDir, "projects", "p"), { recursive: true });
     await writeFile(
       join(claudeDir, "projects", "p", `${sdkId}.jsonl`),
@@ -174,14 +182,14 @@ describe("Claude oturumları", () => {
         { type: "assistant", uuid: "a1", parentUuid: "u1", message: { role: "assistant", content: [{ type: "text", text: "Tamam: merhaba" }] } },
       ].map((r) => JSON.stringify(r)).join("\n") + "\n",
     );
-    await app.close(); // ajan kapanıyor (güncelleme/çökme)
+    await app.close(); // the agent is shutting down (update/crash)
 
     const fq2 = fakeQuery(script);
     const app2 = await buildApp({ store, notifier: new Notifier(() => store.get(), () => {}), extraRoutes: [claudeRoutes(fq2.fn)] });
     const back = (await app2.inject({ url: `/v1/claude/sessions/${id}`, headers: auth })).json();
     expect(back.session).toMatchObject({ id, sdkSessionId: sdkId, status: "idle", title: "merhaba" });
     expect(back.events.map((e: { kind: string }) => e.kind)).toEqual(["user", "text", "restored", "status"]);
-    expect(fq2.calls).toHaveLength(0); // mesaj gelene kadar Claude süreci yok
+    expect(fq2.calls).toHaveLength(0); // no Claude process until a message arrives
     await app2.inject({ method: "POST", url: `/v1/claude/sessions/${id}/messages`, headers: auth, payload: { text: "devam et" } });
     expect(fq2.calls[0]).toMatchObject({ resume: sdkId, cwd: join(root, "proje"), effort: "high" });
     await app2.close();
@@ -205,6 +213,27 @@ describe("Claude oturumları", () => {
     expect(fq.calls[1]).toMatchObject({ resume: "11111111-1111-4111-8111-111111111111" });
   });
 
+  it("bitti bildirimindeki maliyet o turun maliyeti; süreç yeniden başlayınca sayım sıfırdan", async () => {
+    // The SDK accumulates the total per process: process 1 0.10 → 0.25, crash, process 2 0.40
+    const totals: Record<string, number> = { bir: 0.1, iki: 0.25, dort: 0.4 };
+    const { app, auth, root, sent } = await setup(async function* (text) {
+      if (text === "uc") throw new Error("süreç kapandı");
+      yield { ...(result("ok") as object), total_cost_usd: totals[text] } as unknown as SDKMessage;
+    });
+    const id = (await app.inject({ method: "POST", url: "/v1/claude/sessions", headers: auth, payload: { cwd: join(root, "proje"), prompt: "bir" } })).json().id as string;
+    const status = async () => (await app.inject({ url: `/v1/claude/sessions/${id}`, headers: auth })).json().session.status;
+    const send = async (text: string, want: string) => {
+      await app.inject({ method: "POST", url: `/v1/claude/sessions/${id}/messages`, headers: auth, payload: { text } });
+      await waitFor(async () => ((await status()) === want ? true : undefined));
+    };
+    await waitFor(async () => ((await status()) === "idle" ? true : undefined));
+    await send("iki", "idle");
+    await send("uc", "error");
+    await send("dort", "idle");
+    const costs = (sent as Array<{ key: string; params: { cost: number } }>).filter((n) => n.key === "claude.done").map((n) => n.params.cost);
+    expect(costs).toEqual([0.1, 0.15, 0.4]);
+  });
+
   it("aynı clientId ile tekrar gönderilen mesaj ikinci kez işlenmez", async () => {
     const { app, auth, root } = await setup(async function* (text) {
       yield result(`Tamam: ${text}`);
@@ -212,7 +241,7 @@ describe("Claude oturumları", () => {
     const id = (await app.inject({ method: "POST", url: "/v1/claude/sessions", headers: auth, payload: { cwd: join(root, "proje") } })).json().id as string;
     const send = () => app.inject({ method: "POST", url: `/v1/claude/sessions/${id}/messages`, headers: auth, payload: { text: "bir kez", clientId: "abcdef0123456789" } });
     expect((await send()).json()).toEqual({ ok: true, duplicate: false });
-    expect((await send()).json()).toEqual({ ok: true, duplicate: true }); // zaman aşımı sonrası yeniden deneme
+    expect((await send()).json()).toEqual({ ok: true, duplicate: true }); // retry after timeout
     const r = (await app.inject({ url: `/v1/claude/sessions/${id}`, headers: auth })).json();
     expect(r.events.filter((e: { kind: string }) => e.kind === "user")).toHaveLength(1);
   });
@@ -238,7 +267,7 @@ describe("Claude oturumları", () => {
     await app.inject({ method: "POST", url: `/v1/claude/sessions/${id}/permissions/${perm.requestId}`, headers: auth, payload: { allow: false } });
     await waitFor(async () => (decisions.length ? true : undefined));
     expect(decisions).toEqual(["deny"]);
-    // Aynı isteğe ikinci kez cevap verilemez
+    // The same request can't be answered twice
     const again = await app.inject({ method: "POST", url: `/v1/claude/sessions/${id}/permissions/${perm.requestId}`, headers: auth, payload: { allow: true } });
     expect(again.json().error.code).toBe("agent.claude.permission.notFound");
   });

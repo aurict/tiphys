@@ -13,8 +13,19 @@ import { serviceRoutes } from "./routes/services.ts";
 import { systemRoutes } from "./routes/system.ts";
 import { wakeRoutes } from "./routes/wake.ts";
 import { auditRoutes } from "./audit.ts";
+import { EventLog, eventRoutes, eventsPath } from "./events.ts";
 import { agentStatusRoutes, type RunLog } from "./runs.ts";
-import { desktopRoutes } from "./routes/desktop.ts";
+import { desktopRoutes, openRoutes } from "./routes/desktop.ts";
+import { browserOpener, browserRoutes } from "./routes/browser.ts";
+import type { BrowserBridge } from "./browser_bridge.ts";
+import { mediaRoutes } from "./routes/media.ts";
+import { hyprRoutes } from "./routes/hypr.ts";
+import { streamRoutes } from "./routes/stream.ts";
+import { sunshineRoutes } from "./routes/sunshine.ts";
+import { atspiRoutes, type UiService } from "./atspi.ts";
+import type { ControlSessions } from "./control.ts";
+import type { Hyprctl } from "./hyprctl.ts";
+import type { DesktopApp } from "./desktop_apps.ts";
 import { gitRoutes } from "./routes/git.ts";
 import { portRoutes } from "./routes/ports.ts";
 import { processRoutes } from "./routes/processes.ts";
@@ -26,10 +37,20 @@ import { VERSION } from "./version.ts";
 export interface Ctx {
   store: ConfigStore;
   notifier: Notifier;
-  /** İsteğe özel ek modüller (Claude, Uptime Kuma) server.ts'e bağımlı olmadan kaydolur. */
+  /** Optional extra modules (Claude, Uptime Kuma) register without depending on server.ts. */
   extraRoutes?: Array<(app: FastifyInstance, ctx: Ctx) => void | Promise<void>>;
-  /** Çalışma kayıtları (beklenmedik yeniden başlamalar); yoksa durum ucu yalnız anlık bilgi verir. */
+  /** Run records (unexpected restarts); without it the status endpoint only gives live info. */
   runs?: RunLog;
+  /** Remote control sessions (while "desktop" is on; the live screen and Claude tools use it too). */
+  control?: ControlSessions;
+  /** Hyprland command adapter (shared classic/Lua mode detection; set up by hyprRoutes). */
+  hyprctl?: Hyprctl;
+  /** Launchable .desktop apps (set up by hyprRoutes; Claude's launch_app tool only opens these). */
+  desktopApps?: () => Promise<DesktopApp[]>;
+  /** Firefox bridge socket (11.2; set up by `serve`, a fake socket is supplied in tests). */
+  browser?: BrowserBridge;
+  /** Mobile view sessions (11.4; set up by atspiRoutes, also used by Claude's ui_* tools). */
+  ui?: UiService;
 }
 
 declare module "fastify" {
@@ -68,7 +89,7 @@ export async function buildApp(ctx: Ctx, opts: { logger?: boolean } = {}): Promi
     reply.status(404).send({ error: { code: "agent.route.notFound", params: { url: req.url.split("?")[0] } } }),
   );
 
-  // Kimlik doğrulama: /v1/health dışında her istek cihaz token'ı ister.
+  // Authentication: every request except /v1/health requires a device token.
   app.addHook("onRequest", async (req) => {
     if (req.url === "/v1/health" || req.url.startsWith("/v1/health?")) return;
     req.device = authenticate(ctx.store.get(), req);
@@ -80,6 +101,9 @@ export async function buildApp(ctx: Ctx, opts: { logger?: boolean } = {}): Promi
   });
 
   auditRoutes(app, ctx);
+  // The event stream is always on (no feature flag); notifications are written here too.
+  ctx.notifier.events ??= new EventLog(eventsPath(ctx.store.path));
+  eventRoutes(app, ctx);
   agentStatusRoutes(ctx.runs ?? null)(app);
   configRoutes(app, ctx);
   const f = ctx.store.get().features;
@@ -88,7 +112,16 @@ export async function buildApp(ctx: Ctx, opts: { logger?: boolean } = {}): Promi
     processRoutes(app, ctx);
   }
   if (f.git) gitRoutes(app, ctx);
-  if (f.desktop) desktopRoutes(app, ctx);
+  if (f.desktop) {
+    desktopRoutes(app, ctx);
+    openRoutes(app, browserOpener(ctx)); // "Open on PC": new tab if the extension is connected
+    mediaRoutes(app, ctx);
+    hyprRoutes(app, ctx);
+    browserRoutes(app, ctx); // Firefox bridge (11.2): uses hyprRoutes' control session
+    streamRoutes(app, ctx); // live screen (10.2): uses hyprRoutes' control session
+    sunshineRoutes(app, ctx); // high quality (10.2 B): Sunshine status, start/stop, Moonlight pairing
+    atspiRoutes(app, ctx); // mobile view (11.4): AT-SPI tree; uses hyprRoutes' control session
+  }
   if (f.ports) portRoutes(app, ctx);
   if (f.transcribe) transcribeRoutes(app, ctx);
   if (f.services) serviceRoutes(app, ctx);

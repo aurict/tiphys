@@ -1,5 +1,5 @@
-// Ağır ya da isteğe bağlı modüller (Claude, Uptime Kuma köprüsü, host izleme, uyarılar) burada kaydolur.
-// Özellik kapalıysa modül hiç yüklenmez (ör. Claude kapalı bir sunucuda Claude SDK hiç içe aktarılmaz).
+// Heavy or optional modules (Claude, Uptime Kuma bridge, host monitoring, alerts, backups) register here.
+// If a feature is off its module is never loaded (e.g. on a server with Claude off, the Claude SDK is never imported).
 import type { FastifyInstance } from "fastify";
 import type { Ctx } from "./server.ts";
 
@@ -20,6 +20,10 @@ export async function extraModules(ctx: Ctx): Promise<Register[]> {
   if (f.alerts) {
     const { alertRoutes } = await import("./alerts.ts");
     out.push(alertRoutes);
+  }
+  if (f.backups) {
+    const { backupRoutes } = await import("./backups.ts");
+    out.push((app, c) => backupRoutes(app, c));
   }
   if (f.uptime) {
     const { uptimeRoutes } = await import("./uptime/bridge.ts");

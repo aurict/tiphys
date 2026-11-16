@@ -1,5 +1,5 @@
-// Ajanın kendi ayarları ve eşleşmiş cihazlar. Telefon bunları Ayarlar ekranından düzenler.
-// Gizli değerler (token özetleri, şifreler) asla geri gönderilmez.
+// The agent's own settings and paired devices. The phone edits these from the Settings screen.
+// Secret values (token hashes, passwords) are never sent back.
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 import { agentConfigSchema, type AgentConfig } from "../config.ts";
@@ -16,16 +16,19 @@ export function redact(c: AgentConfig) {
     homepage: c.homepage,
     push: { endpoints: c.push.endpoints.map((e) => ({ deviceId: e.deviceId })), hasToken: c.push.token !== null },
     uptimeKuma: c.uptimeKuma ? { url: c.uptimeKuma.url, username: c.uptimeKuma.username, hasPassword: true } : null,
+    sunshine: c.sunshine ? { url: c.sunshine.url, username: c.sunshine.username, hasPassword: true } : null,
     wake: c.wake,
     watch: c.watch,
     alerts: { ...c.alerts, grafana: c.alerts.grafana ? { url: c.alerts.grafana.url, datasourceUids: c.alerts.grafana.datasourceUids, hasToken: true } : null },
     transcribe: c.transcribe,
+    backups: c.backups,
+    desktop: c.desktop,
     devices: c.devices.map(({ id, name, createdAt }) => ({ id, name, createdAt })),
   };
 }
 
 const shape = agentConfigSchema.shape;
-/** Telefonun değiştirebildiği alanlar. Cihaz listesi ve dinleme adresi buradan değişmez. */
+/** Fields the phone can change. The device list and listen address can't be changed from here. */
 const patchSchema = z.strictObject({
   name: shape.name.optional(),
   features: shape.features.partial().optional(),
@@ -35,6 +38,10 @@ const patchSchema = z.strictObject({
   pushToken: z.string().min(1).nullable().optional(),
   uptimeKuma: z
     .strictObject({ url: z.url(), username: z.string().min(1), password: z.string().min(1).optional() })
+    .nullable()
+    .optional(),
+  sunshine: z
+    .strictObject({ url: z.url({ protocol: /^https$/ }).optional(), username: z.string().min(1).max(128), password: z.string().min(1).max(256).optional() })
     .nullable()
     .optional(),
   wake: shape.wake.optional(),
@@ -50,6 +57,8 @@ const patchSchema = z.strictObject({
     })
     .optional(),
   transcribe: shape.transcribe.optional(),
+  desktop: z.strictObject({ clipboardSync: z.boolean() }).optional(),
+  backups: z.strictObject({ checks: shape.backups.unwrap().shape.checks }).optional(),
 });
 
 export function configRoutes(app: FastifyInstance, ctx: Ctx) {
@@ -66,21 +75,36 @@ export function configRoutes(app: FastifyInstance, ctx: Ctx) {
       if (p.pushToken !== undefined) c.push.token = p.pushToken;
       if (p.uptimeKuma === null) c.uptimeKuma = null;
       else if (p.uptimeKuma) {
-        const password = p.uptimeKuma.password ?? c.uptimeKuma?.password;
+        // When the address changes the old password mustn't be sent to the new address: it's asked for again.
+        const password = p.uptimeKuma.password ?? (p.uptimeKuma.url === c.uptimeKuma?.url ? c.uptimeKuma?.password : undefined);
         if (!password) throw new AppError("agent.config.passwordRequired", 400, { field: "uptimeKuma.password" });
         c.uptimeKuma = { url: p.uptimeKuma.url, username: p.uptimeKuma.username, password };
+      }
+      // Sunshine: if no password is sent the old one stays (the phone never sees it back); the setting is read per request.
+      if (p.sunshine === null) c.sunshine = null;
+      else if (p.sunshine) {
+        const url = p.sunshine.url ?? c.sunshine?.url ?? "https://127.0.0.1:47990";
+        const password = p.sunshine.password ?? (url === c.sunshine?.url ? c.sunshine?.password : undefined);
+        if (!password) throw new AppError("agent.config.passwordRequired", 400, { field: "sunshine.password" });
+        c.sunshine = { url, username: p.sunshine.username, password };
       }
       if (p.wake) c.wake = p.wake;
       if (p.watch) c.watch = p.watch;
       if (p.transcribe) c.transcribe = p.transcribe;
+      // The clipboard watcher reads the setting on every change: no restart needed.
+      if (p.desktop) c.desktop = p.desktop;
+      // Checks read the setting every round: no restart needed.
+      if (p.backups) c.backups = p.backups;
       if (p.alerts) {
         const g = p.alerts.grafana;
-        const token = g ? (g.token ?? c.alerts.grafana?.token) : undefined;
+        const token = g ? (g.token ?? (g.url === c.alerts.grafana?.url ? c.alerts.grafana?.token : undefined)) : undefined;
         if (g && !token) throw new AppError("agent.config.passwordRequired", 400, { field: "alerts.grafana.token" });
         c.alerts = { ...p.alerts, grafana: g ? { url: g.url, token: token!, datasourceUids: g.datasourceUids } : null };
       }
       return c;
     });
+    // Remote control turned off: an open session (live screen, Claude's PC tools) ends immediately.
+    if (p.features?.control === false) await ctx.control?.end("stopped");
     return { config: redact(next), restartRequired: p.features !== undefined || p.alerts !== undefined };
   });
 
@@ -97,7 +121,7 @@ export function configRoutes(app: FastifyInstance, ctx: Ctx) {
     return { ok: true };
   });
 
-  // "Her şeyi kilitle": tüm cihazların token'ları iptal edilir (bu istek dahil).
+  // "Lock everything": all devices' tokens are revoked (including this request's).
   app.post("/v1/devices/revoke-all", async (req) => {
     if (!z.object({ confirm: z.literal(true) }).safeParse(req.body).success) {
       throw new AppError("agent.devices.confirmRequired", 400);

@@ -1,9 +1,9 @@
-// .tiphys.json profil dosyasının tek doğru tanımı. `npm run schema` bundan JSON Schema üretir
-// (../schema/tiphys.schema.json); Flutter uygulaması aynı şemayla doğrulama yapar.
-// Tüm üst düzey bölümler isteğe bağlıdır: kısmi dosya sadece içerdiği bölümleri birleştirir.
+// The single source of truth for the .tiphys.json profile file. `npm run schema` generates JSON Schema from it
+// (../schema/tiphys.schema.json); the Flutter app validates with the same schema.
+// All top-level sections are optional: a partial file merges only the sections it contains.
 import { z } from "zod";
 
-export const SCHEMA_VERSION = 1;
+export const SCHEMA_VERSION = 2;
 
 const id = z.string().regex(/^[a-z0-9][a-z0-9-]{0,62}$/).describe("kebab-case kimlik");
 const secretRef = z.string().regex(/^secret:[a-z0-9][a-z0-9-]{0,62}$/).describe("Telefon kasasındaki gizli bilgiye başvuru");
@@ -11,8 +11,14 @@ const color = z.string().regex(/^#[0-9A-Fa-f]{6}$/);
 const url = z.string().regex(/^https?:\/\/\S+$/);
 const path = z.string().min(1).max(1024);
 
-export const homeCard = z.enum(["infra", "claude", "system", "grafana", "dozzle", "quickAccess"]);
+export const homeCard = z.enum(["infra", "claude", "system", "grafana", "dozzle", "quickAccess", "events", "nowPlaying"]);
 export const tab = z.enum(["home", "claude", "terminal", "files", "system"]);
+// Home screen shortcuts; the default set is the rows of the old "Hızlı erişim" card.
+export const shortcut = z.enum([
+  "terminal", "files", "quickNote", "homepage", "vault", "desktop", "liveScreen", "media", "openOnPc", "newClaude", "schedules",
+  "events", "compose", "logs", "backups", "dozzle", "grafana", "sites", "wake",
+]);
+const defaultShortcuts: z.infer<typeof shortcut>[] = ["terminal", "files", "quickNote", "homepage"];
 
 const app = z.strictObject({
   theme: z.enum(["system", "light", "dark"]).default("system"),
@@ -28,8 +34,15 @@ const app = z.strictObject({
     .strictObject({
       cards: z.array(homeCard).default(["infra", "claude", "system", "grafana", "dozzle", "quickAccess"]),
       tabs: z.array(tab).min(1).max(5).default(["home", "claude", "terminal", "files", "system"]),
+      layout: z.enum(["cards", "grid", "focus"]).default("cards"),
+      shortcuts: z.array(shortcut).default(defaultShortcuts),
     })
-    .default({ cards: ["infra", "claude", "system", "grafana", "dozzle", "quickAccess"], tabs: ["home", "claude", "terminal", "files", "system"] }),
+    .default({
+      cards: ["infra", "claude", "system", "grafana", "dozzle", "quickAccess"],
+      tabs: ["home", "claude", "terminal", "files", "system"],
+      layout: "cards",
+      shortcuts: defaultShortcuts,
+    }),
 });
 
 const sshAuth = z.discriminatedUnion("type", [
@@ -60,6 +73,8 @@ const host = z.strictObject({
     .nullable()
     .default(null),
   tags: z.array(z.string().max(32)).default([]),
+  /** Roots where Compose stacks are looked for (SSH): compose.y*ml / docker-compose.y*ml in each root's subfolders. */
+  composeRoots: z.array(path).max(10).default(["~/stack"]),
 });
 
 const key = z.strictObject({
@@ -138,18 +153,29 @@ const integrations = z.strictObject({
     .nullable()
     .default(null),
   ntfy: z
-    // tokenRef eski dosyalarla uyum için kabul edilir ama kullanılmaz: bildirim girişi telefondaki ntfy uygulamasında.
+    // tokenRef is accepted for compatibility with old files but unused: notification login is in the ntfy app on the phone.
     .strictObject({ url, tokenRef: secretRef.nullable().optional(), topics: z.array(z.string().min(1)).default([]) })
     .nullable()
     .default(null),
   scriberr: z
-    // Ses, PC'deki ajan üzerinden yazıya çevrilir (Scriberr anahtarı ajanda). url/apiKeyRef eski dosyalarla
-    // uyum için kabul edilir ama kullanılmaz.
+    // Voice is transcribed via the agent on the PC (the Scriberr key is on the agent). url/apiKeyRef are accepted for
+    // compatibility with old files but unused.
     .strictObject({
       url: url.optional(),
       apiKeyRef: secretRef.optional(),
       language: z.enum(["tr", "en", "auto"]).default("tr"),
       model: z.enum(["small", "large-v3"]).default("small"),
+    })
+    .nullable()
+    .default(null),
+  obsidian: z
+    // Quick note: the app has the note written to Obsidian on the phone via an obsidian:// link (LiveSync encryption is kept).
+    .strictObject({
+      vault: z.string().min(1).max(200),
+      folder: z.string().max(500).default("Gelen kutusu"),
+      mode: z.enum(["newNote", "dailyNote"]).default("newNote"),
+      /** Daily note path; YYYY, MM, DD are replaced with the date. */
+      dailyNotePath: z.string().min(1).max(500).default("Günlük/YYYY-MM-DD"),
     })
     .nullable()
     .default(null),
@@ -176,6 +202,32 @@ const quickAction = z.strictObject({
   confirm: z.boolean().default(true),
 });
 
+// Live screen controls (11.1): the user's own buttons per window class. Shortcut text ("ctrl+shift+t", "F5") is
+// validated on the phone with the agent's key table; a non-allowed key isn't saved. Text is typed with wtype.
+export const remoteIcon = z.enum(["zap", "star", "play", "search", "save", "copy", "refresh", "close", "plus", "folder", "terminal", "globe"]);
+const remoteCombo = z.string().min(1).max(40);
+const remoteAction = z.discriminatedUnion("kind", [
+  z.strictObject({ kind: z.literal("combo"), combo: remoteCombo }),
+  z.strictObject({
+    kind: z.literal("sequence"),
+    steps: z.array(z.union([z.strictObject({ combo: remoteCombo }), z.strictObject({ text: z.string().min(1).max(500) })])).min(1).max(10),
+  }),
+  /** Text is asked on the phone: first [combo] (e.g. ctrl+l), then the text, Enter if [submit]. */
+  z.strictObject({ kind: z.literal("prompt"), combo: remoteCombo.optional(), submit: z.boolean().default(true) }),
+  /** Wheel: dy > 0 is down (notches). */
+  z.strictObject({ kind: z.literal("scroll"), dy: z.int().min(-20).max(20) }),
+]);
+const desktopRemote = z.strictObject({
+  id,
+  /** Window class (Hyprland class/initialClass; case-insensitive). */
+  windowClass: z.string().min(1).max(200),
+  name: z.string().min(1).max(40),
+  icon: remoteIcon.default("zap"),
+  action: remoteAction,
+  /** Confirm on the phone before sending (e.g. close/delete). */
+  confirm: z.boolean().default(false),
+});
+
 const notifications = z.strictObject({
   longCommandSeconds: z.int().min(0).default(60),
   serviceDown: z.boolean().default(true),
@@ -183,6 +235,13 @@ const notifications = z.strictObject({
   pcOffline: z.boolean().default(true),
   grafanaAlerts: z.boolean().default(true),
   siteDown: z.boolean().default(true),
+  backupAlerts: z.boolean().default(true),
+  /** Silent notification when the PC clipboard changes (with a Copy button). */
+  clipboardFromPc: z.boolean().default(true),
+  /** When the app comes to the foreground, the phone clipboard is sent to the PC if it changed. */
+  clipboardToPc: z.boolean().default(false),
+  /** PC whose clipboard is synced; null: the Claude host or the first host with an agent. */
+  clipboardHostId: id.nullable().default(null),
 });
 
 const encryptedSecrets = z.strictObject({
@@ -214,8 +273,9 @@ export const profileSchema = z
     terminal: terminal.optional(),
     files: files.optional(),
     quickActions: z.array(quickAction).optional(),
+    desktopRemotes: z.array(desktopRemote).optional(),
     notifications: notifications.optional(),
-    /** Her ajanın kendi ayarlarının kopyası (hostId → agent.json'un düzenlenebilir kısmı). */
+    /** Copy of each agent's own settings (hostId → editable part of agent.json). */
     agentConfigs: z.record(id, z.record(z.string(), z.unknown())).optional(),
     encryptedSecrets: encryptedSecrets.nullable().optional(),
   })

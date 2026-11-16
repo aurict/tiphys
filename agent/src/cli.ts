@@ -1,17 +1,20 @@
 #!/usr/bin/env node
-// tiphys-agent <komut>
-//   serve                      ajanı başlatır
-//   init [--name AD] [--features a,b] [--tailscale-login E-POSTA]   ayar dosyası oluşturur
-//   pair --name "Phone" [--url https://host:7443]   yeni cihaz eşler, QR kodu basar
-//   devices | revoke <id>      eşleşmiş cihazlar
-//   schema                     profil JSON Schema'sını basar
-//   run -- KOMUT [arg...]      komutu çalıştırır, bitince telefona bildirim gönderir (uzun işler için)
+// tiphys-agent <command>
+//   serve                      starts the agent
+//   init [--name AD] [--features a,b] [--tailscale-login E-POSTA]   creates the settings file
+//   pair --name "Phone" [--url https://host:7443]   pairs a new device, prints a QR code
+//   devices | revoke <id>      paired devices
+//   schema                     prints the profile JSON Schema
+//   run -- KOMUT [arg...]      runs the command, sends a notification to the phone when done (for long jobs)
+//   firefox install            registers the Firefox bridge native messaging host (11.2)
+//   vscode-a11y install|remove adds/removes --force-renderer-accessibility in the VS Code launcher (11.4)
 import { spawn } from "node:child_process";
 import { hostname } from "node:os";
 import { parseArgs } from "node:util";
 import qrcode from "qrcode-terminal";
 import { hashToken, newToken } from "./auth.ts";
 import { ConfigStore, defaultConfigPath } from "./config.ts";
+import { EventLog, eventsPath } from "./events.ts";
 import { Notifier } from "./notify.ts";
 import { profileJsonSchema } from "./profile/schema.ts";
 import { buildApp, type Ctx } from "./server.ts";
@@ -95,7 +98,7 @@ async function main() {
         process.exit(2);
       }
       const store = await ConfigStore.load(configPath);
-      const notifier = new Notifier(() => store.get(), (m) => console.error(`[tiphys] ${m}`));
+      const notifier = new Notifier(() => store.get(), (m) => console.error(`[tiphys] ${m}`), new EventLog(eventsPath(store.path)));
       const started = Date.now();
       const child = spawn(positionals[0]!, positionals.slice(1), { stdio: "inherit" });
       for (const sig of ["SIGINT", "SIGTERM", "SIGHUP"] as const) process.on(sig, () => child.kill(sig));
@@ -111,26 +114,59 @@ async function main() {
       process.exit(code);
     }
 
+    case "firefox": {
+      if (positionals[0] !== "install") throw new Error("kullanım: tiphys-agent firefox install");
+      const { installFirefoxHost } = await import("./firefox_install.ts");
+      const r = await installFirefoxHost();
+      console.log(`Yerel ileti manifesti: ${r.manifest}\nBaşlatıcı: ${r.launcher}`);
+      console.log(r.xpi ? `Eklenti (imzasız XPI): ${r.xpi}` : "Eklenti XPI'si yok: önce cd firefox && npm run build");
+      console.log(
+        "\nElle yapılacak iki adım (Firefox 140 ESR):\n" +
+          "  1. about:config → xpinstall.signatures.required = false\n" +
+          "  2. about:addons → dişli → \"Dosyadan eklenti yükle…\" → yukarıdaki XPI\n" +
+          "Sayfa içeriği (okuma, medya, kaydırma, yazı) için eklenti simgesi › \"Sayfa içeriği iznini ver\".",
+      );
+      return;
+    }
+
+    case "vscode-a11y": {
+      const action = positionals[0];
+      if (action !== "install" && action !== "remove") throw new Error("kullanım: tiphys-agent vscode-a11y install|remove");
+      const { vscodeA11y } = await import("./vscode_a11y.ts");
+      console.log(await vscodeA11y(action));
+      return;
+    }
+
     case "serve": {
-      // Güvenlik ağı: yakalanmamış bir hata tüm ajanı (ve her canlı Claude oturumunu) düşürmesin; kaydedilir.
+      // Safety net: an uncaught error must not take down the whole agent (and every live Claude session); it's logged.
       process.on("unhandledRejection", (e) => console.error("yakalanmamış hata (ajan çalışmaya devam ediyor):", e));
       const store = await ConfigStore.load(configPath);
-      const notifier = new Notifier(() => store.get(), (m, e) => console.error(m, e ?? ""));
+      const notifier = new Notifier(() => store.get(), (m, e) => console.error(m, e ?? ""), new EventLog(eventsPath(store.path)));
       const { RunLog, runLogPath } = await import("./runs.ts");
       const runs = new RunLog(runLogPath({ store } as Ctx));
       await runs.begin();
       const ctx: Ctx = { store, notifier, extraRoutes: [], runs };
+      if (store.get().features.desktop) {
+        // Firefox bridge socket (11.2); if it can't be opened (e.g. another agent listens) the bridge is skipped, agent runs.
+        const { BrowserBridge } = await import("./browser_bridge.ts");
+        const { defaultSocketPath } = await import("./firefox_host.ts");
+        ctx.browser = await BrowserBridge.listen(defaultSocketPath(), { log: (m) => console.error(m) }).catch((e) => {
+          console.error("Firefox köprüsü açılamadı:", e instanceof Error ? e.message : e);
+          return undefined;
+        });
+      }
       const { extraModules } = await import("./modules.ts");
       ctx.extraRoutes!.push(...(await extraModules(ctx)));
       const app = await buildApp(ctx, { logger: true });
       const { host, port } = store.get().listen;
       await app.listen({ host, port });
-      // Önceki çalışma düzgün kapanmadıysa (çökme, bellek yetersizliği): telefona haber ver.
+      // If the previous run didn't shut down cleanly (crash, out of memory): notify the phone.
       if (runs.previousCrashed) {
         void notifier.send({ key: "agent.restarted", params: { host: store.get().name }, link: "tiphys://system", priority: "high" });
       }
       const stop = async () => {
         await app.close();
+        await ctx.browser?.close().catch(() => {});
         await runs.end().catch(() => {});
         process.exit(0);
       };
@@ -140,7 +176,7 @@ async function main() {
     }
 
     default:
-      console.error("komutlar: serve | init | pair | devices | revoke <id> | schema | run -- KOMUT");
+      console.error("komutlar: serve | init | pair | devices | revoke <id> | schema | run -- KOMUT | firefox install | vscode-a11y install|remove");
       process.exit(2);
   }
 }

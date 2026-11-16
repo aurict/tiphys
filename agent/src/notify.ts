@@ -1,39 +1,60 @@
-// Telefona bildirim: UnifiedPush (dağıtıcı = telefondaki ntfy uygulaması, sunucu = kendi ntfy sunucun).
-// Telefon kayıt olurken uç nokta adresini ve WebPush açık anahtarını (pubKey + auth) ajana bildirir.
-// Ajan JSON'u RFC 8291 (aes128gcm) ile şifreleyip gönderir; ntfy sunucusu içeriği okuyamaz.
-// Metni telefondaki Tiphys seçili dilde oluşturur. Google/Firebase kullanılmaz.
+// Notifications to the phone: UnifiedPush (distributor = the ntfy app on the phone, server = your own ntfy server).
+// On registration the phone tells the agent its endpoint URL and WebPush public key (pubKey + auth).
+// The agent encrypts the JSON with RFC 8291 (aes128gcm) and sends it; the ntfy server can't read the content.
+// Tiphys on the phone builds the text in the selected language. Google/Firebase are not used.
 import webpush from "web-push";
 import type { AgentConfig } from "./config.ts";
+import type { EventLog } from "./events.ts";
 
 export interface Notice {
-  key: string; // ör. "claude.done", "claude.waiting", "host.offline"
+  key: string; // e.g. "claude.done", "claude.waiting", "host.offline"
   params?: Record<string, string | number>;
-  /** Uygulamada açılacak ekran, ör. "tiphys://claude/abc" */
+  /** Screen to open in the app, e.g. "tiphys://claude/abc" */
   link?: string;
   priority?: "low" | "default" | "high";
-  /** Bildirim düğmeleri için ek bilgi (ör. claude.waiting: oturum ve izin isteği kimliği). */
+  /** Extra info for notification buttons (e.g. claude.waiting: session and permission request id). */
   data?: Record<string, string>;
+  /**
+   * Sensitive content (e.g. clipboard text): not written to the event stream (events.jsonl) and sent only to endpoints
+   * with a WebPush key (end-to-end encrypted); plain text never goes to ntfy.
+   */
+  sensitive?: boolean;
 }
 
 export function payloadOf(n: Notice) {
   return JSON.stringify({ v: 1, key: n.key, params: n.params ?? {}, link: n.link ?? null, ...(n.data ? { data: n.data } : {}), at: new Date().toISOString() });
 }
 
+/**
+ * Parameters written to the event stream (persisted on disk, read via GET /v1/events). Command lines may contain
+ * passwords (`mysql -pGIZLI …`): the notification shows the full command, the persistent record keeps only the program name.
+ */
+export function eventParams(n: Notice): Record<string, string | number> | undefined {
+  if (!n.params || !n.key.startsWith("command.") || typeof n.params.command !== "string") return n.params;
+  const program = n.params.command.trim().split(/\s+/)[0] ?? "";
+  return { ...n.params, command: program.split("/").pop() ?? program };
+}
+
 export class Notifier {
   #getConfig: () => AgentConfig;
   #log: (msg: string, err?: unknown) => void;
+  /** Every notification is also written to the event stream (created next to the settings file if there's no buildApp). */
+  events: EventLog | null;
 
-  constructor(getConfig: () => AgentConfig, log: (msg: string, err?: unknown) => void) {
+  constructor(getConfig: () => AgentConfig, log: (msg: string, err?: unknown) => void, events: EventLog | null = null) {
     this.#getConfig = getConfig;
     this.#log = log;
+    this.events = events;
   }
 
-  /** Kayıtlı tüm uç noktalara gönderir; başarılı gönderim sayısını döner. */
+  /** Records an event (if not sensitive) and sends to all registered endpoints; returns the number of successful sends. */
   async send(n: Notice): Promise<number> {
     const { endpoints, token } = this.#getConfig().push;
     const body = payloadOf(n);
+    const recorded = n.sensitive ? undefined : this.events?.record({ key: n.key, params: eventParams(n), link: n.link }, (e) => this.#log("olay yazılamadı", e));
     const results = await Promise.all(
       endpoints.map(async (e) => {
+        if (n.sensitive && !(e.pubKey && e.auth)) return false;
         try {
           let headers: Record<string, string> = { "Content-Type": "application/json" };
           let data: string | Buffer = body;
@@ -56,6 +77,7 @@ export class Notifier {
         }
       }),
     );
+    await recorded;
     return results.filter(Boolean).length;
   }
 }

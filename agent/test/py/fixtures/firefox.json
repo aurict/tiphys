@@ -1,0 +1,41 @@
+{"role":"desktop frame","children":[
+ {"role":"application","name":"nm-applet","pid":900,"children":[]},
+ {"role":"application","name":"Firefox","pid":4321,"children":[
+  {"role":"frame","name":"Eski sekme — Mozilla Firefox","states":["visible"],"children":[]},
+  {"role":"frame","name":"Giriş — Mozilla Firefox","states":["showing","visible","active"],"children":[
+   {"role":"tool bar","name":"Gezinti","states":["showing","visible","enabled"],"children":[
+    {"role":"button","name":"Geri","states":["showing","visible","enabled","sensitive"],"actions":["press"]},
+    {"role":"button","name":"İleri","states":["showing","visible"],"actions":["press"]},
+    {"role":"combo box","name":"Adres","states":["showing","visible","enabled"],"children":[
+     {"role":"entry","name":"Ara ya da adres gir","states":["showing","visible","enabled","editable","focused"],"text":"https://example.com/giris","actions":["activate"]}
+    ]},
+    {"role":"menu","name":"Gizli menü","states":["visible"],"children":[
+     {"role":"menu item","name":"Görünmemeli","states":["showing","visible"],"actions":["click"]}
+    ]}
+   ]},
+   {"role":"page tab list","name":"","states":["showing","visible"],"children":[
+    {"role":"page tab","name":"Giriş","states":["showing","visible","selected","enabled"],"actions":["switch"]},
+    {"role":"page tab","name":"Haberler","states":["showing","visible","enabled"],"actions":["switch"]}
+   ]},
+   {"role":"internal frame","name":"","states":["showing","visible"],"children":[
+    {"role":"document web","name":"Giriş","states":["showing","visible","enabled"],"children":[
+     {"role":"heading","name":"Hesabına gir","states":["showing","visible"]},
+     {"role":"section","name":"","states":["showing","visible"],"children":[
+      {"role":"label","name":"Kullanıcı adı","states":["showing","visible"]},
+      {"role":"entry","name":"Kullanıcı adı","states":["showing","visible","enabled","editable"],"text":"ayse"},
+      {"role":"password text","name":"Şifre","states":["showing","visible","enabled","editable"],"text":"GİZLİ-ŞİFRE-123"},
+      {"role":"check box","name":"Beni hatırla","states":["showing","visible","enabled","checked"],"actions":["click"]},
+      {"role":"toggle button","name":"Koyu tema","states":["showing","visible","enabled","pressed"],"actions":["press"]},
+      {"role":"button","name":"Giriş yap","states":["showing","visible","enabled"],"actions":["press"],"children":[
+       {"role":"label","name":"Giriş yap","states":["showing","visible"]}
+      ]},
+      {"role":"text","name":"Salt okunur paragraf","states":["showing","visible"],"text":"okunmasın"},
+      {"role":"slider","name":"Ses","states":["showing","visible","enabled"],"value":{"now":40,"min":0,"max":100,"step":1}},
+      {"role":"link","name":"Şifremi unuttum","states":["showing","visible","enabled"],"actions":["jump"]},
+      {"role":"label","name":"","states":["showing","visible"]}
+     ]}
+    ]}
+   ]}
+  ]}
+ ]}
+]}
