@@ -8,7 +8,7 @@ import { existsSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { PassThrough } from "node:stream";
-import webpush from "web-push";
+import { generateRequestDetails } from "web-push";
 import { describe, expect, it } from "vitest";
 import { createServer } from "node:http";
 import { Notifier, payloadOf, type Notice } from "../src/notify.ts";
@@ -302,7 +302,7 @@ describe("pano eşitleme (PC → telefon)", () => {
     const n: Notice = { key: "clipboard.pc", params: { text: "" }, priority: "low", sensitive: true };
     n.params!.text = "x".repeat(CLIP_MAX_PAYLOAD - Buffer.byteLength(payloadOf(n)));
     expect(Buffer.byteLength(payloadOf(n))).toBe(CLIP_MAX_PAYLOAD);
-    const req = webpush.generateRequestDetails({ endpoint: "https://ntfy.example/up1", keys }, payloadOf(n), { TTL: 60, contentEncoding: "aes128gcm" });
+    const req = generateRequestDetails({ endpoint: "https://ntfy.example/up1", keys }, payloadOf(n), { TTL: 60, contentEncoding: "aes128gcm" });
     expect((req.body as Buffer).length).toBeLessThanOrEqual(4096);
   });
 
