@@ -26,3 +26,7 @@ tools/logo/out/
 .idea/
 .vscode/
 *.iml
+__pycache__/
+firefox/node_modules/
+firefox/dist/
+agent/test/py/**/__pycache__/
