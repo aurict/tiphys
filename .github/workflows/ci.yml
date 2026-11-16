@@ -1,0 +1,86 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  agent:
+    name: Agent (TypeScript)
+    runs-on: ubuntu-24.04
+    defaults:
+      run:
+        working-directory: agent
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: agent/package-lock.json
+      - run: npm ci
+      - run: npx tsc --noEmit -p .
+      - run: npx vitest run
+      - run: npm run build
+
+  atspi-helper:
+    name: AT-SPI helper (Python)
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Unit tests (fake accessibility tree; real tests need TIPHYS_REAL=1)
+        working-directory: agent/test/py
+        run: python3 -I -m unittest -v
+
+  firefox:
+    name: Firefox extension
+    runs-on: ubuntu-24.04
+    defaults:
+      run:
+        working-directory: firefox
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: firefox/package-lock.json
+      - run: npm ci --include=dev
+      - run: npm audit signatures --include=dev
+      - run: npm run lint
+      - name: Build XPI (verifies the pinned Readability hash)
+        run: npm run build
+
+  app:
+    name: App (Flutter)
+    runs-on: ubuntu-24.04
+    defaults:
+      run:
+        working-directory: app
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: 3.47.9
+          channel: stable
+          cache: true
+      - run: flutter pub get
+      - run: flutter gen-l10n
+      - run: flutter analyze
+      - name: Tests (real-server integration tests excluded)
+        run: flutter test --exclude-tags real
+      - name: Upload golden failures
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: golden-failures
+          path: app/test/goldens/failures/
+          if-no-files-found: ignore
