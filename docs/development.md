@@ -76,6 +76,8 @@ landscape layouts. Fake agents and fixtures live in `test/helpers/`.
   git diff --stat app/test/goldens/png/
   ```
 
+- Some screens show local times, so goldens are rendered in `TZ=Europe/Berlin` (CI sets this). Run
+  `TZ=Europe/Berlin flutter test` if your machine is in another time zone.
 - Failed comparisons write images to `app/test/goldens/failures/` (git-ignored; uploaded as a CI artifact).
 - Golden data must be fictional: example host names (`argo`, `atlas`, `orion`), `example.com` URLs, no real tokens,
   paths or personal content. The README screenshots in `docs/images/` are composites of these goldens.
