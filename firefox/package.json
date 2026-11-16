@@ -1,0 +1,22 @@
+{
+  "name": "tiphys-bridge",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Tiphys Bridge: Firefox extension that connects tabs to the local Tiphys agent via native messaging.",
+  "type": "module",
+  "scripts": {
+    "vendor": "node scripts/vendor.mjs",
+    "build": "node scripts/build.mjs",
+    "lint": "web-ext lint --source-dir src --self-hosted"
+  },
+  "devDependencies": {
+    "@mozilla/readability": "0.6.0",
+    "web-ext": "10.8.0"
+  },
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/aurict/tiphys.git",
+    "directory": "firefox"
+  }
+}

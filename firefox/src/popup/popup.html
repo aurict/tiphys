@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width">
+<title>Tiphys Köprüsü</title>
+<link rel="stylesheet" href="popup.css">
+<script src="popup.js" type="module"></script>
+</head>
+<body>
+<main>
+  <h1>Tiphys Köprüsü</h1>
+  <dl>
+    <dt>Yerel yardımcı</dt><dd id="host">…</dd>
+    <dt>Tiphys ajanı</dt><dd id="agent">…</dd>
+    <dt>Sayfa içeriği</dt><dd id="content">…</dd>
+  </dl>
+  <p class="hint">Sayfa içeriği izni okuma görünümü, sayfadaki medya, kaydırma ve yazı göndermek içindir; her sitede
+    sayfayı okuyabilir. Şifre alanı olan sayfalarda okuma/yazma yapılmaz.</p>
+  <button id="grant" type="button" hidden>Sayfa içeriği iznini ver</button>
+  <button id="revoke" type="button" hidden>Sayfa içeriği iznini kaldır</button>
+  <p class="hint">Gizli pencerelerdeki sekmeler hiçbir zaman gönderilmez.</p>
+</main>
+</body>
+</html>
