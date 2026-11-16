@@ -30,6 +30,13 @@ jobs:
       - run: npx tsc --noEmit -p .
       - run: npx vitest run
       - run: npm run build
+      - name: Load compiled modules in plain Node (catches ESM/CJS interop that vitest hides)
+        run: |
+          node --input-type=module -e "
+          import { readdirSync } from 'node:fs';
+          const files = readdirSync('dist', { recursive: true }).filter(f => f.endsWith('.js') && !/^(cli|firefox_host)\.js$/.test(f));
+          for (const f of files) await import('./dist/' + f);
+          console.log('loaded', files.length, 'modules');"
 
   atspi-helper:
     name: AT-SPI helper (Python)
