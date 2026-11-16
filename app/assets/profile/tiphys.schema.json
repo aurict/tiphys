@@ -85,6 +85,13 @@
               "terminal",
               "files",
               "system"
+            ],
+            "layout": "cards",
+            "shortcuts": [
+              "terminal",
+              "files",
+              "quickNote",
+              "homepage"
             ]
           },
           "type": "object",
@@ -107,7 +114,9 @@
                   "system",
                   "grafana",
                   "dozzle",
-                  "quickAccess"
+                  "quickAccess",
+                  "events",
+                  "nowPlaying"
                 ]
               }
             },
@@ -130,6 +139,48 @@
                   "terminal",
                   "files",
                   "system"
+                ]
+              }
+            },
+            "layout": {
+              "default": "cards",
+              "type": "string",
+              "enum": [
+                "cards",
+                "grid",
+                "focus"
+              ]
+            },
+            "shortcuts": {
+              "default": [
+                "terminal",
+                "files",
+                "quickNote",
+                "homepage"
+              ],
+              "type": "array",
+              "items": {
+                "type": "string",
+                "enum": [
+                  "terminal",
+                  "files",
+                  "quickNote",
+                  "homepage",
+                  "vault",
+                  "desktop",
+                  "liveScreen",
+                  "media",
+                  "openOnPc",
+                  "newClaude",
+                  "schedules",
+                  "events",
+                  "compose",
+                  "logs",
+                  "backups",
+                  "dozzle",
+                  "grafana",
+                  "sites",
+                  "wake"
                 ]
               }
             }
@@ -307,6 +358,18 @@
             "items": {
               "type": "string",
               "maxLength": 32
+            }
+          },
+          "composeRoots": {
+            "default": [
+              "~/stack"
+            ],
+            "maxItems": 10,
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 1024
             }
           }
         },
@@ -846,6 +909,47 @@
               "type": "null"
             }
           ]
+        },
+        "obsidian": {
+          "default": null,
+          "anyOf": [
+            {
+              "type": "object",
+              "properties": {
+                "vault": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 200
+                },
+                "folder": {
+                  "default": "Gelen kutusu",
+                  "type": "string",
+                  "maxLength": 500
+                },
+                "mode": {
+                  "default": "newNote",
+                  "type": "string",
+                  "enum": [
+                    "newNote",
+                    "dailyNote"
+                  ]
+                },
+                "dailyNotePath": {
+                  "default": "Günlük/YYYY-MM-DD",
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 500
+                }
+              },
+              "required": [
+                "vault"
+              ],
+              "additionalProperties": false
+            },
+            {
+              "type": "null"
+            }
+          ]
         }
       },
       "additionalProperties": false
@@ -998,6 +1102,173 @@
         "additionalProperties": false
       }
     },
+    "desktopRemotes": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^[a-z0-9][a-z0-9-]{0,62}$",
+            "description": "kebab-case kimlik"
+          },
+          "windowClass": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 200
+          },
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 40
+          },
+          "icon": {
+            "default": "zap",
+            "type": "string",
+            "enum": [
+              "zap",
+              "star",
+              "play",
+              "search",
+              "save",
+              "copy",
+              "refresh",
+              "close",
+              "plus",
+              "folder",
+              "terminal",
+              "globe"
+            ]
+          },
+          "action": {
+            "oneOf": [
+              {
+                "type": "object",
+                "properties": {
+                  "kind": {
+                    "type": "string",
+                    "const": "combo"
+                  },
+                  "combo": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 40
+                  }
+                },
+                "required": [
+                  "kind",
+                  "combo"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "kind": {
+                    "type": "string",
+                    "const": "sequence"
+                  },
+                  "steps": {
+                    "minItems": 1,
+                    "maxItems": 10,
+                    "type": "array",
+                    "items": {
+                      "anyOf": [
+                        {
+                          "type": "object",
+                          "properties": {
+                            "combo": {
+                              "type": "string",
+                              "minLength": 1,
+                              "maxLength": 40
+                            }
+                          },
+                          "required": [
+                            "combo"
+                          ],
+                          "additionalProperties": false
+                        },
+                        {
+                          "type": "object",
+                          "properties": {
+                            "text": {
+                              "type": "string",
+                              "minLength": 1,
+                              "maxLength": 500
+                            }
+                          },
+                          "required": [
+                            "text"
+                          ],
+                          "additionalProperties": false
+                        }
+                      ]
+                    }
+                  }
+                },
+                "required": [
+                  "kind",
+                  "steps"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "kind": {
+                    "type": "string",
+                    "const": "prompt"
+                  },
+                  "combo": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 40
+                  },
+                  "submit": {
+                    "default": true,
+                    "type": "boolean"
+                  }
+                },
+                "required": [
+                  "kind"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "kind": {
+                    "type": "string",
+                    "const": "scroll"
+                  },
+                  "dy": {
+                    "type": "integer",
+                    "minimum": -20,
+                    "maximum": 20
+                  }
+                },
+                "required": [
+                  "kind",
+                  "dy"
+                ],
+                "additionalProperties": false
+              }
+            ]
+          },
+          "confirm": {
+            "default": false,
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "id",
+          "windowClass",
+          "name",
+          "action"
+        ],
+        "additionalProperties": false
+      }
+    },
     "notifications": {
       "type": "object",
       "properties": {
@@ -1028,6 +1299,31 @@
         "siteDown": {
           "default": true,
           "type": "boolean"
+        },
+        "backupAlerts": {
+          "default": true,
+          "type": "boolean"
+        },
+        "clipboardFromPc": {
+          "default": true,
+          "type": "boolean"
+        },
+        "clipboardToPc": {
+          "default": false,
+          "type": "boolean"
+        },
+        "clipboardHostId": {
+          "default": null,
+          "anyOf": [
+            {
+              "type": "string",
+              "pattern": "^[a-z0-9][a-z0-9-]{0,62}$",
+              "description": "kebab-case kimlik"
+            },
+            {
+              "type": "null"
+            }
+          ]
         }
       },
       "additionalProperties": false

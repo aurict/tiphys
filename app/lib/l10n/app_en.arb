@@ -117,7 +117,7 @@
   "settingsQuickActions": "Quick actions",
   "settingsQuickActionsHint": "Your own one-tap commands",
   "settingsHome": "Home screen",
-  "settingsHomeHint": "Cards and their order",
+  "settingsHomeHint": "Layout, cards and shortcuts",
   "settingsAppearance": "Appearance",
   "settingsAppearanceHint": "Theme and language",
   "settingsSecurity": "Security",
@@ -350,11 +350,9 @@
   "notifyClaudeDone": "When a session finishes",
   "notifyClaudeWaiting": "When it needs my approval",
   "notifyClaudeError": "When it fails",
-  "notifySiteDown": "Site outages",
   "notifyPcOffline": "PC goes offline",
   "notifyServiceDown": "A service crashes",
   "notifyGrafana": "Grafana alerts",
-  "notifyDiskFull": "Disk almost full warning at",
   "notifyLongCommand": "Tell me when a long command finishes",
   "ntfyTopics": "Topics to follow",
   "ntfyTopicsHint": "Comma separated. e.g. siteler for Uptime Kuma alerts",
@@ -403,14 +401,6 @@
   "terminalPickHost": "Pick a host above to open a terminal.",
   "terminalNoSshHosts": "No host with SSH yet. Add one in Settings › Hosts.",
   "filesUpload": "Upload here",
-  "filesUploaded": "Uploaded {name}",
-  "@filesUploaded": {
-    "placeholders": {
-      "name": {
-        "type": "String"
-      }
-    }
-  },
   "filesUp": "Parent folder",
   "filesTerminalHere": "Terminal here",
   "filesClaudeHere": "Claude here",
@@ -663,7 +653,6 @@
   },
   "dozzleRunning": "running",
   "dozzleStopped": "stopped or unhealthy",
-  "notifClaudeDoneTitle": "Claude finished",
   "notifClaudeWaitingTitle": "Claude needs your approval",
   "notifClaudeWaitingBody": "{title} · wants to use {tool}",
   "@notifClaudeWaitingBody": {
@@ -1244,5 +1233,1607 @@
         "type": "int"
       }
     }
-  }
+  },
+  "notifClaudeDoneTitleWith": "Claude finished: {title}",
+  "@notifClaudeDoneTitleWith": {
+    "placeholders": {
+      "title": {
+        "type": "String"
+      }
+    }
+  },
+  "notifFilesChanged": "{count, plural, =1{1 file changed} other{{count} files changed}}",
+  "@notifFilesChanged": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "notifyAgentSideHint": "Site outages come straight to the ntfy app (siteler topic). The disk-full threshold is set per host under Settings › Hosts › Agent settings.",
+  "pushSetupHint": "In the ntfy app: set the default server to your own ntfy server, sign in with the phone user, then turn notifications on here.",
+  "pushNotRegistered": "Could not register with: {hosts}. Is the agent running? Tap the row above to retry.",
+  "@pushNotRegistered": {
+    "placeholders": {
+      "hosts": {
+        "type": "String"
+      }
+    }
+  },
+  "pushBatteryHint": "On Xiaomi/Redmi phones set ntfy's battery saver to \"No restrictions\" and allow autostart, or notifications arrive late.",
+  "dozzleSelected": "{count} selected",
+  "@dozzleSelected": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "dozzleMerge": "Watch several together",
+  "dozzleMergeHint": "Pick the containers to follow in one stream (up to {max}).",
+  "@dozzleMergeHint": {
+    "placeholders": {
+      "max": {
+        "type": "int"
+      }
+    }
+  },
+  "dozzleSelectProject": "Select all of {project}",
+  "@dozzleSelectProject": {
+    "placeholders": {
+      "project": {
+        "type": "String"
+      }
+    }
+  },
+  "dozzleWatchTogether": "{count, plural, =0{Pick containers} =1{Watch 1 container} other{Watch {count} containers together}}",
+  "@dozzleWatchTogether": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "dozzleMergedTitle": "{count} containers",
+  "@dozzleMergedTitle": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "dozzleLevels": "Log levels",
+  "dozzleActionsOffTitle": "Container actions are off",
+  "dozzleActionsOffBody": "Start/stop/restart is disabled on this Dozzle server. To allow it, restart Dozzle with DOZZLE_ENABLE_ACTIONS=true.",
+  "dozzleActionsOffShort": "Off in Dozzle",
+  "dozzleActionConfirm": "{action} {name}?",
+  "@dozzleActionConfirm": {
+    "placeholders": {
+      "action": {
+        "type": "String"
+      },
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "dozzleActionDone": "{action}: done",
+  "@dozzleActionDone": {
+    "placeholders": {
+      "action": {
+        "type": "String"
+      }
+    }
+  },
+  "dozzleStart": "Start",
+  "dozzleStop": "Stop",
+  "dozzleRestart": "Restart",
+  "dozzleAskClaude": "Ask Claude",
+  "dozzleAskClaudeHint": "New session with this line and the lines before it",
+  "dozzleNoClaudeHost": "No host with an agent is set for Claude (Settings › Claude).",
+  "dozzleClaudeIntro": "In Dozzle, the log of container \"{name}\" ({image}) shows the line below. What does it mean, what is the likely cause and how do I fix it?",
+  "@dozzleClaudeIntro": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      },
+      "image": {
+        "type": "String"
+      }
+    }
+  },
+  "dozzleClaudeBefore": "Lines before it:",
+  "terminalFullscreen": "Full screen (rotates to landscape)",
+  "terminalExitFullscreen": "Exit full screen",
+  "terminalInFullscreen": "This session is open in full screen",
+  "terminalFontSizeValue": "{size} pt",
+  "@terminalFontSizeValue": {
+    "placeholders": {
+      "size": {
+        "type": "String"
+      }
+    }
+  },
+  "transfersTitle": "Transfers",
+  "transfersRunning": "Transfers ({count} running)",
+  "@transfersRunning": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "transfersEmpty": "No uploads or downloads yet. Interrupted transfers continue where they left off.",
+  "transfersClear": "Clear finished",
+  "transfersArchiving": "Compressing the folder on the server…",
+  "transfersPaused": "paused",
+  "transfersFailed": "Interrupted, tap resume to continue where it stopped",
+  "transfersUploaded": "Uploaded",
+  "transfersDownloaded": "Downloaded",
+  "transfersPause": "Pause",
+  "transfersResume": "Resume",
+  "transfersUnknownSize": "The file size could not be read; pick the file again.",
+  "filesDownloadFolder": "Compress and download",
+  "eventsTitle": "Events",
+  "eventsEmpty": "No events yet",
+  "eventsEmptyFiltered": "No events match the filter",
+  "eventsNoAgents": "Events come from hosts with the Tiphys agent. Add an agent to a host first.",
+  "eventsAllHosts": "All hosts",
+  "eventsAllTypes": "All types",
+  "eventsTypeSystem": "System",
+  "eventsTypeBackup": "Backups",
+  "eventsTypeCommand": "Commands",
+  "eventsTypeOther": "Other",
+  "eventsToday": "Today",
+  "eventsYesterday": "Yesterday",
+  "eventsFromPhone": "from phone",
+  "eventsHostFailed": "{host}: events could not be loaded",
+  "@eventsHostFailed": {
+    "placeholders": {
+      "host": {
+        "type": "String"
+      }
+    }
+  },
+  "homeCardsEvents": "Recent events",
+  "homeEventsAll": "All",
+  "notifDockerDiedTitle": "Container crashed · {host}",
+  "@notifDockerDiedTitle": {
+    "placeholders": {
+      "host": {
+        "type": "String"
+      }
+    }
+  },
+  "notifDockerDiedBody": "{container} (exit code {code})",
+  "@notifDockerDiedBody": {
+    "placeholders": {
+      "container": {
+        "type": "String"
+      },
+      "code": {
+        "type": "int"
+      }
+    }
+  },
+  "notifDockerOomTitle": "Container out of memory · {host}",
+  "@notifDockerOomTitle": {
+    "placeholders": {
+      "host": {
+        "type": "String"
+      }
+    }
+  },
+  "notifDockerRestartedTitle": "Container restarted · {host}",
+  "@notifDockerRestartedTitle": {
+    "placeholders": {
+      "host": {
+        "type": "String"
+      }
+    }
+  },
+  "notifBackupStaleTitle": "Backup is stale: {name}",
+  "@notifBackupStaleTitle": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "notifBackupStaleBody": "{host} · last backup {hours} h ago",
+  "@notifBackupStaleBody": {
+    "placeholders": {
+      "host": {
+        "type": "String"
+      },
+      "hours": {
+        "type": "int"
+      }
+    }
+  },
+  "notifBackupFailedTitle": "Backup failed: {name}",
+  "@notifBackupFailedTitle": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "notifBackupOkTitle": "Backup OK again: {name}",
+  "@notifBackupOkTitle": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "notifyBackups": "Backup alerts",
+  "backupsTitle": "Backups",
+  "backupsCheckNow": "Check now",
+  "backupsChecked": "Checked: {status}",
+  "@backupsChecked": {
+    "placeholders": {
+      "status": {
+        "type": "String"
+      }
+    }
+  },
+  "backupsStatusOk": "Up to date",
+  "backupsStatusStale": "Stale",
+  "backupsStatusFailed": "Failed",
+  "backupsStatusMissing": "Missing",
+  "backupsStatusUnknown": "Not checked yet",
+  "backupsLast": "Last backup {time}",
+  "@backupsLast": {
+    "placeholders": {
+      "time": {
+        "type": "String"
+      }
+    }
+  },
+  "backupsNever": "No backup yet",
+  "backupsRunning": "running now",
+  "backupsMaxAge": "max. {hours} h old",
+  "@backupsMaxAge": {
+    "placeholders": {
+      "hours": {
+        "type": "String"
+      }
+    }
+  },
+  "backupsReasonTooSmall": "file is too small",
+  "backupsReasonNoMatch": "no matching file",
+  "backupsReasonNotFound": "unit not found",
+  "backupsReasonNeverRan": "never ran",
+  "backupsReasonUnit": "unit result: {result}",
+  "@backupsReasonUnit": {
+    "placeholders": {
+      "result": {
+        "type": "String"
+      }
+    }
+  },
+  "backupsEmpty": "No backup checks. Turn on the “Backups” feature in a host's agent settings and add a check.",
+  "backupsHostNoChecks": "No checks on this host",
+  "backupsEveryMinutes": "Checked every {minutes} min. Changes are notified.",
+  "@backupsEveryMinutes": {
+    "placeholders": {
+      "minutes": {
+        "type": "int"
+      }
+    }
+  },
+  "agentFeatBackups": "Backup status",
+  "agentBackupChecks": "Backup checks",
+  "agentBackupChecksHint": "Changes are sent to the agent with Save; no restart needed.",
+  "agentBackupAdd": "Add check",
+  "agentBackupName": "Name",
+  "agentBackupKindFile": "Newest file",
+  "agentBackupKindUnit": "systemd unit",
+  "agentBackupPath": "File pattern",
+  "agentBackupPathHint": "* and ? only in the last part, e.g. ~/backups/obsidian/*.json.gz",
+  "agentBackupUnit": "Unit",
+  "agentBackupUnitHint": "User unit first, then system unit",
+  "agentBackupMaxAge": "Max. age (hours)",
+  "agentBackupMinBytes": "Min. size (bytes)",
+  "agentBackupRemove": "Remove check",
+  "agentBackupRemoveConfirm": "Remove the backup check “{name}”?",
+  "@agentBackupRemoveConfirm": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "agentBackupInvalidPath": "Wildcards are allowed only in the last part",
+  "claudeFolderNotFound": "Folder not found",
+  "claudeSchedules": "Scheduled tasks",
+  "claudeSchedulesEmpty": "No scheduled tasks yet. For example, let Claude summarize a repository's status every morning.",
+  "claudeSchedulesHint": "Times use {host}'s time zone. If {host} is off at the scheduled minute the run is skipped, not made up later; a run is also skipped while the previous one is still going.",
+  "@claudeSchedulesHint": {
+    "placeholders": {
+      "host": {
+        "type": "String"
+      }
+    }
+  },
+  "claudeScheduleAdd": "New task",
+  "claudeScheduleEdit": "Edit task",
+  "claudeScheduleName": "Name",
+  "claudeScheduleNameHint": "Morning report",
+  "claudeSchedulePrompt": "What should Claude do?",
+  "claudeSchedulePromptHint": "Summarize yesterday's commits and open TODOs",
+  "claudeScheduleWhen": "When",
+  "claudeScheduleDaily": "Daily",
+  "claudeScheduleWeekly": "Weekly",
+  "claudeScheduleInterval": "Interval",
+  "claudeScheduleTime": "Time",
+  "claudeScheduleDays": "Days",
+  "claudeScheduleEveryLabel": "Run every",
+  "claudeScheduleDailyAt": "Daily at {time}",
+  "@claudeScheduleDailyAt": {
+    "placeholders": {
+      "time": {
+        "type": "String"
+      }
+    }
+  },
+  "claudeScheduleEveryMinutes": "Every {minutes} min",
+  "@claudeScheduleEveryMinutes": {
+    "placeholders": {
+      "minutes": {
+        "type": "int"
+      }
+    }
+  },
+  "claudeScheduleEveryHours": "{hours, plural, =1{Every hour} other{Every {hours} h}}",
+  "@claudeScheduleEveryHours": {
+    "placeholders": {
+      "hours": {
+        "type": "int"
+      }
+    }
+  },
+  "claudeScheduleToday": "today {time}",
+  "@claudeScheduleToday": {
+    "placeholders": {
+      "time": {
+        "type": "String"
+      }
+    }
+  },
+  "claudeScheduleTomorrow": "tomorrow {time}",
+  "@claudeScheduleTomorrow": {
+    "placeholders": {
+      "time": {
+        "type": "String"
+      }
+    }
+  },
+  "claudeScheduleYesterday": "yesterday {time}",
+  "@claudeScheduleYesterday": {
+    "placeholders": {
+      "time": {
+        "type": "String"
+      }
+    }
+  },
+  "claudeScheduleNext": "next: {when}",
+  "@claudeScheduleNext": {
+    "placeholders": {
+      "when": {
+        "type": "String"
+      }
+    }
+  },
+  "claudeScheduleOff": "off",
+  "claudeScheduleEnabled": "enabled",
+  "claudeScheduleLast": "Last run {when}",
+  "@claudeScheduleLast": {
+    "placeholders": {
+      "when": {
+        "type": "String"
+      }
+    }
+  },
+  "claudeScheduleNever": "Hasn't run yet",
+  "claudeScheduleRunning": "running",
+  "claudeScheduleOk": "succeeded",
+  "claudeScheduleFailed": "failed",
+  "claudeScheduleNoResult": "no result",
+  "claudeScheduleRunNow": "Run now",
+  "claudeScheduleBusy": "The previous run is still going",
+  "claudeScheduleManual": "Started by hand",
+  "claudeScheduleDeleteConfirm": "Delete \"{name}\"?",
+  "@claudeScheduleDeleteConfirm": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "claudeScheduleNeedsNameAndPrompt": "Name and task are required",
+  "claudeScheduleNeedsDays": "Pick at least one day",
+  "claudeScheduleAskHint": "Nobody may be watching when it runs: tool requests will wait for your approval.",
+  "composeTitle": "Compose stacks",
+  "composeNoSshHosts": "No host with SSH. Add SSH in Settings › Hosts.",
+  "composeEmpty": "No compose file found under {roots}.",
+  "@composeEmpty": {
+    "placeholders": {
+      "roots": {
+        "type": "String"
+      }
+    }
+  },
+  "composeRootsFooter": "Searched in {roots} (change in Settings › Hosts).",
+  "@composeRootsFooter": {
+    "placeholders": {
+      "roots": {
+        "type": "String"
+      }
+    }
+  },
+  "composeRunningCount": "{running}/{total} running",
+  "@composeRunningCount": {
+    "placeholders": {
+      "running": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "composeUnhealthy": "unhealthy",
+  "composeStopped": "Stopped",
+  "composeNotCreated": "No containers",
+  "composeError": "Couldn't be read",
+  "composeStackGone": "This stack is no longer there.",
+  "composeContainers": "Containers",
+  "composeActions": "Actions",
+  "composeActionsHint": "Check pulls the images and compares them with the running containers; Update then recreates only the services that changed.",
+  "composeCheck": "Check for updates",
+  "composeUpdate": "Update",
+  "composeRestart": "Restart",
+  "composeStop": "Stop",
+  "composeStart": "Start",
+  "composeLogs": "Logs (last 200 lines)",
+  "composeUpdateConfirm": "Update {stack}? Images are pulled; services with a new image are recreated.",
+  "@composeUpdateConfirm": {
+    "placeholders": {
+      "stack": {
+        "type": "String"
+      }
+    }
+  },
+  "composeForce": "Recreate even if nothing changed",
+  "composeRestartConfirm": "Restart {stack}? Its services will be briefly unavailable.",
+  "@composeRestartConfirm": {
+    "placeholders": {
+      "stack": {
+        "type": "String"
+      }
+    }
+  },
+  "composeStopConfirm": "Stop {stack}? Its containers stay stopped until started again.",
+  "@composeStopConfirm": {
+    "placeholders": {
+      "stack": {
+        "type": "String"
+      }
+    }
+  },
+  "composeWorking": "Working…",
+  "composeOutput": "Command output",
+  "composeNoUpdates": "No new images.",
+  "composeUpdatesAvailable": "{count, plural, =1{New image for 1 service: {services}} other{New images for {count} services: {services}}}",
+  "@composeUpdatesAvailable": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      },
+      "services": {
+        "type": "String"
+      }
+    }
+  },
+  "composeUpdated": "{count, plural, =1{1 service updated: {services}} other{{count} services updated: {services}}}",
+  "@composeUpdated": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      },
+      "services": {
+        "type": "String"
+      }
+    }
+  },
+  "composeUpToDate": "Already up to date; nothing was restarted.",
+  "composeRecreated": "Recreated",
+  "composeDone": "Done.",
+  "composeFailed": "Failed: {step} (exit {code})",
+  "@composeFailed": {
+    "placeholders": {
+      "step": {
+        "type": "String"
+      },
+      "code": {
+        "type": "String"
+      }
+    }
+  },
+  "composeEventFailed": "(Couldn't record the event.)",
+  "hostComposeRoots": "Compose folders",
+  "hostComposeRootsHint": "Comma separated; compose files are looked up one level below each folder.",
+  "eventsUnknownTitle": "{type} event",
+  "@eventsUnknownTitle": {
+    "placeholders": {
+      "type": {
+        "type": "String"
+      }
+    }
+  },
+  "notifComposeUpdatedTitle": "{stack} updated",
+  "@notifComposeUpdatedTitle": {
+    "placeholders": {
+      "stack": {
+        "type": "String"
+      }
+    }
+  },
+  "notifComposeFailedTitle": "{stack} update failed",
+  "@notifComposeFailedTitle": {
+    "placeholders": {
+      "stack": {
+        "type": "String"
+      }
+    }
+  },
+  "notifComposeFailedBody": "{host} · {step} failed (exit {code})",
+  "@notifComposeFailedBody": {
+    "placeholders": {
+      "host": {
+        "type": "String"
+      },
+      "step": {
+        "type": "String"
+      },
+      "code": {
+        "type": "String"
+      }
+    }
+  },
+  "notifClaudeScheduledTitle": "Scheduled task started: {name}",
+  "@notifClaudeScheduledTitle": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "notifClaudeScheduleSkippedTitle": "Scheduled task skipped: {name}",
+  "@notifClaudeScheduleSkippedTitle": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "notifClaudeScheduleSkippedBody": "The previous run is still going",
+  "notifClaudeScheduleFailedTitle": "Scheduled task couldn't start: {name}",
+  "@notifClaudeScheduleFailedTitle": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "sessionViewDiff": "Show diff",
+  "sessionCommitPush": "Commit + push",
+  "sessionCommitFiles": "Only the {count} files this session changed are committed; other changes stay out.",
+  "@sessionCommitFiles": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "sessionWorktreeWarning": "This session runs on a separate worktree branch ({branch}). Push sends this branch to the remote; it does not merge into your main branch.",
+  "@sessionWorktreeWarning": {
+    "placeholders": {
+      "branch": {
+        "type": "String"
+      }
+    }
+  },
+  "sessionNoUpstream": "No upstream yet (created on first push)",
+  "sessionFileUnchanged": "No changes now (committed or reverted)",
+  "sessionFileOutside": "Outside the repository; not included in commit or revert",
+  "sessionPushed": "Committed and pushed",
+  "sessionRevertTitle": "Revert changes?",
+  "sessionRevertBody": "{count} files changed by this session go back to their last committed state. This cannot be undone.",
+  "@sessionRevertBody": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "sessionRevertDeleteNew": "Also delete the {count} new files this session created",
+  "@sessionRevertDeleteNew": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "sessionRevertNewTag": "new",
+  "sessionReverted": "Changes reverted",
+  "gitNoUpstreamConfirm": "Branch {branch} does not exist on the remote yet. Publish and track it?",
+  "@gitNoUpstreamConfirm": {
+    "placeholders": {
+      "branch": {
+        "type": "String"
+      }
+    }
+  },
+  "gitPublishBranch": "Publish branch",
+  "gitNoUpstream": "The branch has no upstream",
+  "gitNoRemote": "No remote is configured for this repository",
+  "gitAuthFailed": "Authentication with the remote failed. The PC needs an SSH key or stored credentials (the agent cannot prompt for a password).",
+  "gitPushRejected": "The remote has new commits; pull first",
+  "gitNewFilesNeedConfirm": "New files are only deleted after a separate confirmation",
+  "notifClipboardTitle": "Copied on PC",
+  "notifGitCommittedTitle": "Commit: {repo} · {branch}",
+  "@notifGitCommittedTitle": {
+    "placeholders": {
+      "repo": {
+        "type": "String"
+      },
+      "branch": {
+        "type": "String"
+      }
+    }
+  },
+  "notifGitPushedTitle": "Push: {repo}",
+  "@notifGitPushedTitle": {
+    "placeholders": {
+      "repo": {
+        "type": "String"
+      }
+    }
+  },
+  "notifyClipboardFromPc": "Notify when something is copied on the PC",
+  "clipboardSyncToPc": "Sync clipboard to PC",
+  "clipboardSyncHint": "Text copied on the PC arrives as a silent notification; \"Copy\" puts it on the phone clipboard without opening the app. With sync on, the phone clipboard is sent to the PC when the app comes to the foreground and it has changed (Android does not allow reading the clipboard in the background). Password manager content and text over 3 KB are not sent from the PC.",
+  "clipboardSyncHost": "PC to sync with",
+  "clipboardHostAuto": "Automatic ({name})",
+  "@clipboardHostAuto": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "clipboardCopyFailed": "Could not copy to the clipboard",
+  "agentClipboardSync": "Clipboard sync (PC → phone)",
+  "agentClipboardSyncHint": "Text copied on the PC goes to the phone as a silent notification. Password manager content and text over 3 KB are not sent; the text is never logged. No restart needed.",
+  "noteTitle": "Quick note",
+  "noteTooLong": "The note is too long (max {max} characters)",
+  "@noteTooLong": {
+    "placeholders": {
+      "max": {
+        "type": "int"
+      }
+    }
+  },
+  "noteObsidianMissing": "Obsidian could not be opened. Is the Obsidian app installed on this phone?",
+  "noteSent": "Sent to Obsidian",
+  "noteSetupTitle": "Set up Obsidian first",
+  "noteSetupBody": "Enter the name of your vault exactly as it appears in the Obsidian app. Notes are written by Obsidian itself, so LiveSync keeps them end-to-end encrypted.",
+  "noteSetupAction": "Obsidian settings",
+  "noteModeNew": "New note",
+  "noteModeDaily": "Append to daily note",
+  "noteTarget": "{vault} › {path}",
+  "@noteTarget": {
+    "placeholders": {
+      "vault": {
+        "type": "String"
+      },
+      "path": {
+        "type": "String"
+      }
+    }
+  },
+  "noteTitleField": "Title",
+  "noteTitleHelper": "Empty: the first line (or the time) is used",
+  "noteText": "Note",
+  "noteVoice": "Dictate",
+  "noteSave": "Save to Obsidian",
+  "noteExplain": "Obsidian opens briefly and saves the note; you can return to Tiphys right away.",
+  "obsidianExplain": "Quick notes are handed to the Obsidian app on this phone through an obsidian:// link. Tiphys never writes to the vault itself, so LiveSync's end-to-end encryption stays intact.",
+  "obsidianVault": "Vault name",
+  "obsidianVaultHelper": "Exactly as shown in Obsidian's vault switcher",
+  "obsidianFolder": "Folder for new notes",
+  "obsidianDailyPath": "Daily note path",
+  "obsidianDailyPathHelper": "YYYY, MM and DD are replaced with today's date",
+  "obsidianMode": "Default",
+  "mediaTitle": "Media",
+  "mediaNothingPlaying": "Nothing is playing on the PC",
+  "mediaNothingHint": "Players that support MPRIS (Spotify, browsers, VLC, mpv…) appear here.",
+  "mediaMute": "Mute",
+  "mediaUnmute": "Unmute",
+  "mediaVolume": "Volume",
+  "mediaMuted": "Muted",
+  "mediaUnknownTitle": "Unknown track",
+  "mediaPositionOf": "{position} of {length}",
+  "@mediaPositionOf": {
+    "placeholders": {
+      "position": {
+        "type": "String"
+      },
+      "length": {
+        "type": "String"
+      }
+    }
+  },
+  "mediaPrevious": "Previous",
+  "mediaNext": "Next",
+  "mediaPause": "Pause",
+  "mediaPlay": "Play",
+  "mediaBack10": "Back 10 seconds",
+  "mediaForward10": "Forward 10 seconds",
+  "mediaArt": "Cover art",
+  "mediaFailed": "The player did not accept the command",
+  "mediaVolumeFailed": "Could not read or change the volume (wpctl)",
+  "homeCardsNowPlaying": "Now playing",
+  "openOnPc": "Open on PC",
+  "openOnPcOn": "Open on {host}",
+  "@openOnPcOn": {
+    "placeholders": {
+      "host": {
+        "type": "String"
+      }
+    }
+  },
+  "openOnPcClipboardHint": "Opens the link in the phone's clipboard in the PC browser",
+  "openOnPcDone": "Opened on {host}",
+  "@openOnPcDone": {
+    "placeholders": {
+      "host": {
+        "type": "String"
+      }
+    }
+  },
+  "openOnPcNoUrl": "There is no link in the clipboard",
+  "openOnPcConfirm": "Open this link on {host}?\n\n{url}",
+  "@openOnPcConfirm": {
+    "placeholders": {
+      "url": {
+        "type": "String"
+      },
+      "host": {
+        "type": "String"
+      }
+    }
+  },
+  "openOnPcBadUrl": "Only http(s) links can be opened",
+  "logSearchTitle": "Log search",
+  "logSearchHint": "Text to search (not a regex)",
+  "logSearchRun": "Search",
+  "logSearchMinutes": "{n} min",
+  "@logSearchMinutes": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "logSearchHours": "{n} h",
+  "@logSearchHours": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "logSearchExplain": "Searches the systemd journal (system + user) and running containers' logs over SSH on the selected hosts. Case-insensitive.",
+  "logSearchSearching": "Searching…",
+  "logSearchHitCount": "{count, plural, =0{No matches} =1{1 match} other{{count} matches}}",
+  "@logSearchHitCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "logSearchUserOnly": "user journal only (not in adm / systemd-journal group)",
+  "logSearchTruncated": "output limit reached, results may be incomplete",
+  "logSearchNoDocker": "no Docker",
+  "logSearchDockerError": "Docker unreadable",
+  "logSearchAllSources": "All sources",
+  "logSearchNoHits": "No match for \"{pattern}\" in the last {range}.",
+  "@logSearchNoHits": {
+    "placeholders": {
+      "pattern": {
+        "type": "String"
+      },
+      "range": {
+        "type": "String"
+      }
+    }
+  },
+  "logSearchMore": "Show more ({count})",
+  "@logSearchMore": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "logSearchLineActions": "copy, ask Claude, save to Obsidian",
+  "logSearchAskClaudeHint": "New session with this line and earlier matches from the same source",
+  "logSearchClaudeIntro": "I searched the logs on host {host} for \"{pattern}\" and found this line from {source}. What does it mean, and if something is wrong, how do I fix it?",
+  "@logSearchClaudeIntro": {
+    "placeholders": {
+      "host": {
+        "type": "String"
+      },
+      "source": {
+        "type": "String"
+      },
+      "pattern": {
+        "type": "String"
+      }
+    }
+  },
+  "logSearchClaudeBefore": "Earlier matches from the same source:",
+  "vaultTitle": "Password vault",
+  "vaultSubtitle": "Encrypted on this device; opens with PIN / fingerprint",
+  "vaultSecurityFooter": "The vault asks for the app lock again even when the app is unlocked, locks after inactivity and in the background, and blocks screenshots. It is included only in the encrypted profile backup.",
+  "vaultLocked": "Vault locked",
+  "vaultLockedHint": "Confirm with your PIN or fingerprint to open it.",
+  "vaultNeedsLock": "Turn on the PIN or fingerprint lock first (Settings › Security). The vault cannot be opened without it.",
+  "vaultUnlock": "Open vault",
+  "vaultLock": "Lock vault",
+  "vaultAdd": "New entry",
+  "vaultImport": "Import",
+  "vaultEmpty": "The vault is empty",
+  "vaultEmptyHint": "Add an entry or import the password list on your PC.",
+  "vaultSearchHint": "Search title, user, address, tag",
+  "vaultFooter": "{count, plural, =1{1 entry} other{{count} entries}}. Locks after {minutes} min of inactivity.",
+  "@vaultFooter": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      },
+      "minutes": {
+        "type": "int"
+      }
+    }
+  },
+  "vaultUsername": "Username",
+  "vaultPassword": "Password",
+  "vaultUrl": "Address",
+  "vaultTags": "Tags",
+  "vaultTagsHint": "Comma separated",
+  "vaultNotes": "Notes",
+  "vaultEntryTitle": "Title",
+  "vaultReveal": "Show password",
+  "vaultHide": "Hide password",
+  "vaultCopyUsername": "Copy username",
+  "vaultCopyPassword": "Copy password",
+  "vaultPasswordCopied": "Password copied; the clipboard is cleared in {seconds} s",
+  "@vaultPasswordCopied": {
+    "placeholders": {
+      "seconds": {
+        "type": "int"
+      }
+    }
+  },
+  "vaultDeleteConfirm": "Delete \"{title}\"? This cannot be undone.",
+  "@vaultDeleteConfirm": {
+    "placeholders": {
+      "title": {
+        "type": "String"
+      }
+    }
+  },
+  "vaultUpdated": "Updated {date}",
+  "@vaultUpdated": {
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "vaultGenerate": "Generate password",
+  "vaultRegenerate": "Generate again",
+  "vaultLength": "Length {n}",
+  "@vaultLength": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "vaultSymbols": "Symbols",
+  "vaultUse": "Use",
+  "vaultImportExplain": "Reads a Markdown password list from a host over SFTP. Tables become entries, \"## Group\" headings become tags. Nothing is saved until you confirm.",
+  "vaultImportHost": "Host",
+  "vaultImportPath": "File",
+  "vaultImportRead": "Read file",
+  "vaultImportNone": "No table rows found in the file.",
+  "vaultImportPreview": "{count, plural, =1{1 row found} other{{count} rows found}}",
+  "@vaultImportPreview": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "vaultImportFooter": "Rows without a password are not selected by default. An entry with the same title and username is updated instead of duplicated.",
+  "vaultNoPassword": "no password",
+  "vaultWillUpdate": "will update",
+  "vaultSelectAll": "Select all",
+  "vaultSelectNone": "Select none",
+  "vaultImportCount": "{count, plural, =1{Import 1 entry} other{Import {count} entries}}",
+  "@vaultImportCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "vaultImported": "{added} added, {updated} updated",
+  "@vaultImported": {
+    "placeholders": {
+      "added": {
+        "type": "int"
+      },
+      "updated": {
+        "type": "int"
+      }
+    }
+  },
+  "vaultDeleteSourceConfirm": "Delete {path} on {host} too? It is overwritten with shred (if available) and cannot be recovered. Keep it if you are not sure.",
+  "@vaultDeleteSourceConfirm": {
+    "placeholders": {
+      "path": {
+        "type": "String"
+      },
+      "host": {
+        "type": "String"
+      }
+    }
+  },
+  "vaultDeleteSource": "Delete file",
+  "vaultSourceDeleted": "File deleted",
+  "composeHide": "Hide (keeps running)",
+  "homeLayout": "Layout",
+  "homeLayoutCards": "Cards",
+  "homeLayoutCardsDesc": "Today's bento cards",
+  "homeLayoutGrid": "Shortcuts",
+  "homeLayoutGridDesc": "Summary strip and shortcut grid",
+  "homeLayoutFocus": "Focus",
+  "homeLayoutFocusDesc": "Status card and shortcut list",
+  "homeCardsTitle": "Cards",
+  "homeCardsLayoutNote": "In the Shortcuts and Focus layouts shortcuts are shown at the top; the Quick access card is used only in the Cards layout.",
+  "homeShortcuts": "Shortcuts",
+  "homeShortcutsFooter": "Only enabled and available shortcuts appear on the home screen. A shortcut whose requirement (integration, agent, SSH) isn't set up stays hidden; what's missing is shown here.",
+  "homeStatus": "Status",
+  "homeOnline": "online",
+  "shortcutWake": "Wake PC",
+  "shortcutSites": "Sites",
+  "shortcutNeedsAgent": "Needs a host with the agent",
+  "shortcutNeedsDesktop": "Needs the agent's desktop feature",
+  "shortcutNeedsSsh": "Needs a host with SSH",
+  "shortcutNeedsWake": "Needs a host with Wake-on-LAN",
+  "shortcutNeedsObsidian": "Obsidian vault not set up",
+  "shortcutNeedsIntegration": "Integration not set up",
+  "desktopTitle": "Desktop",
+  "desktopWorkspaces": "Workspaces",
+  "desktopWorkspace": "Workspace {n}",
+  "@desktopWorkspace": {
+    "placeholders": {
+      "n": {
+        "type": "String"
+      }
+    }
+  },
+  "desktopWindowCount": "{count, plural, =0{empty} =1{1 window} other{{count} windows}}",
+  "@desktopWindowCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "desktopWindows": "Windows",
+  "desktopNoWindows": "No open windows",
+  "desktopNoWindowsHint": "Open an app below; it appears here.",
+  "desktopWindowHint": "Tap: bring to front · swipe: close · hold: more",
+  "desktopApps": "Apps",
+  "desktopAppsSearch": "Search apps",
+  "desktopAppsEmpty": "No apps found",
+  "desktopRecent": "Recent",
+  "desktopCatAll": "All",
+  "desktopCatNetwork": "Internet",
+  "desktopCatDevelopment": "Development",
+  "desktopCatOffice": "Office",
+  "desktopCatGraphics": "Graphics",
+  "desktopCatMedia": "Sound & video",
+  "desktopCatGame": "Games",
+  "desktopCatSystem": "System",
+  "desktopCatUtility": "Utilities",
+  "desktopCatOther": "Other",
+  "desktopFocus": "Bring to front",
+  "desktopCloseWindow": "Close window",
+  "desktopCloseConfirm": "Close \"{title}\"? Unsaved work in it may be lost.",
+  "@desktopCloseConfirm": {
+    "placeholders": {
+      "title": {
+        "type": "String"
+      }
+    }
+  },
+  "desktopFullscreen": "Fullscreen",
+  "desktopFloat": "Float / tile",
+  "desktopPin": "Pin on all workspaces",
+  "desktopMoveTo": "Move to workspace",
+  "desktopFocused": "Active",
+  "desktopLaunched": "Opening {name}",
+  "@desktopLaunched": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "desktopScreenOff": "Turn the screen off",
+  "desktopScreenOn": "Turn the screen on",
+  "desktopControlOn": "Control on · {time}",
+  "@desktopControlOn": {
+    "placeholders": {
+      "time": {
+        "type": "String"
+      }
+    }
+  },
+  "desktopControlStop": "Stop",
+  "desktopControlExtend": "Extend by 15 min",
+  "desktopControlAuthTitle": "Desktop control",
+  "desktopControlNeedsLock": "Set up the app lock (PIN or fingerprint) first to control the PC.",
+  "desktopControlOffHint": "Read-only: to manage windows and open apps, turn on \"Remote control\" in the agent settings.",
+  "desktopControlEnded": "The control session ended; try again.",
+  "desktopControlBusy": "Another device ({device}) is controlling the PC.",
+  "@desktopControlBusy": {
+    "placeholders": {
+      "device": {
+        "type": "String"
+      }
+    }
+  },
+  "desktopControlRateLimited": "Too fast; wait a moment.",
+  "desktopControlIndicatorFailed": "Could not show the control sign on the PC.",
+  "desktopFeatureOff": "The desktop feature is off on this agent",
+  "desktopFeatureOffHint": "Turn on \"Desktop\" in Settings › Hosts › {host} › Agent settings (and \"Remote control\" to manage windows). It applies after the agent restarts.",
+  "@desktopFeatureOffHint": {
+    "placeholders": {
+      "host": {
+        "type": "String"
+      }
+    }
+  },
+  "desktopNoHyprland": "Hyprland is not running",
+  "desktopNoHyprlandHint": "No one is logged in on the PC, or another desktop is in use. The app list still works.",
+  "desktopWindowGone": "The window is no longer there",
+  "desktopBadAddress": "Invalid window address",
+  "desktopHyprctlFailed": "Hyprland rejected the command",
+  "agentFeatControl": "Remote control (windows, opening apps)",
+  "notifControlStartedTitle": "Remote control started",
+  "notifControlEndedTitle": "Remote control ended",
+  "notifControlExpired": "time ran out",
+  "desktopWindowMenu": "Window actions",
+  "liveTitle": "Live screen",
+  "liveShowWindow": "Show this window",
+  "liveConnecting": "Connecting…",
+  "liveReconnecting": "Connection lost, reconnecting…",
+  "liveReconnectingShort": "Reconnecting…",
+  "liveStats": "{fps} fps · {ms} ms",
+  "@liveStats": {
+    "placeholders": {
+      "fps": {
+        "type": "String"
+      },
+      "ms": {
+        "type": "String"
+      }
+    }
+  },
+  "liveStatsFps": "{fps} fps",
+  "@liveStatsFps": {
+    "placeholders": {
+      "fps": {
+        "type": "String"
+      }
+    }
+  },
+  "liveFallback": "Slow mode: wf-recorder is not installed on the PC, so the image updates at most 4 times a second.",
+  "liveQuality": "Quality",
+  "liveQualityAuto": "Automatic",
+  "liveQualityHigh": "High",
+  "liveQualityMedium": "Medium",
+  "liveQualityLow": "Low",
+  "liveCodecAuto": "Codec: Automatic",
+  "liveCodecH264": "Codec: H.264",
+  "liveCodecJpeg": "Codec: JPEG",
+  "liveCodecFallback": "H.264 is unavailable, switched to JPEG.",
+  "liveBitrate": "{value} Mbit/s",
+  "@liveBitrate": {
+    "placeholders": {
+      "value": {
+        "type": "String"
+      }
+    }
+  },
+  "liveModeDirect": "Direct touch (tap to switch to touchpad)",
+  "liveModeTouchpad": "Touchpad (tap to switch to direct touch)",
+  "liveHideBar": "Hide controls",
+  "liveShowBar": "Show controls",
+  "liveSessionLeft": "Control session: {time} left",
+  "@liveSessionLeft": {
+    "placeholders": {
+      "time": {
+        "type": "String"
+      }
+    }
+  },
+  "liveEnded": "Live screen stopped",
+  "liveRestart": "Start again",
+  "liveResetZoom": "Reset zoom",
+  "liveKeyboard": "Keyboard",
+  "liveMoreKeys": "F keys and more",
+  "liveKeyLeft": "Left arrow",
+  "liveKeyRight": "Right arrow",
+  "liveKeyUp": "Up arrow",
+  "liveKeyDown": "Down arrow",
+  "liveKeySpace": "Space",
+  "liveCopy": "Copy",
+  "livePaste": "Paste",
+  "liveUndo": "Undo",
+  "liveSwitchWindow": "Switch window",
+  "liveErrStreamFailed": "The PC screen could not be captured.",
+  "liveErrReplaced": "The live screen was opened in another connection.",
+  "liveErrWindowNotVisible": "That window is not on screen right now (another workspace).",
+  "liveErrMonitorNotFound": "Monitor not found.",
+  "liveErrBadKey": "This key is not allowed.",
+  "liveErrBadText": "The text contains characters that can't be typed.",
+  "liveErrInputFailed": "The PC did not accept the input (ydotool / wtype).",
+  "shortcutNeedsControl": "Needs the agent's remote control feature",
+  "claudePcUse": "Use the PC",
+  "claudePcHint": "Claude looks at your screen and works with the mouse and keyboard. It asks for approval on your phone before risky steps; you can stop it at any time. The app lock is asked again to start.",
+  "claudePcPromptHint": "What should it do? (e.g. open tomorrow's weather in Firefox)",
+  "claudePcStart": "Unlock and start",
+  "claudePcEnded": "Control ended · Claude can't use the PC",
+  "claudePcExpired": "Control time ran out · Claude was stopped",
+  "claudePcReconnect": "Reopen control",
+  "claudePcExpand": "Expand the live screen",
+  "claudePcConfirmTitle": "Claude asks for approval",
+  "claudePcShot": "Screenshot",
+  "claudePcUnavailable": "Claude can't use this computer: desktop and remote control must be on.",
+  "pcOngoingTitle": "Claude is using the PC",
+  "pcOngoingBody": "{title} · control ends at {time}",
+  "@pcOngoingBody": {
+    "placeholders": {
+      "title": {
+        "type": "String"
+      },
+      "time": {
+        "type": "String"
+      }
+    }
+  },
+  "notifPcEndedTitle": "Claude stopped",
+  "notifPcEndedExpired": "{title} · control time ran out",
+  "@notifPcEndedExpired": {
+    "placeholders": {
+      "title": {
+        "type": "String"
+      }
+    }
+  },
+  "notifPcEndedOther": "{title} · remote control ended",
+  "@notifPcEndedOther": {
+    "placeholders": {
+      "title": {
+        "type": "String"
+      }
+    }
+  },
+  "notifPcExpiringTitle": "PC control ends in {minutes} min",
+  "@notifPcExpiringTitle": {
+    "placeholders": {
+      "minutes": {
+        "type": "int"
+      }
+    }
+  },
+  "pcExtend": "Extend",
+  "pcActionFailedTitle": "Couldn't reach the Tiphys agent",
+  "pcActionFailedBody": "Open the app and try again.",
+  "moonlightEntry": "High quality (Moonlight)",
+  "moonlightSubtitle": "60 fps hardware-encoded stream via Sunshine",
+  "sunshineNotInstalledTitle": "Sunshine is not installed",
+  "sunshineNotInstalledBody": "High quality mode streams {host} to the Moonlight app with Sunshine (NVENC on the GPU). Run these once in a terminal on {host}:",
+  "@sunshineNotInstalledBody": {
+    "placeholders": {
+      "host": {
+        "type": "String"
+      }
+    }
+  },
+  "sunshineInstallNote": "On Hyprland, capture = wlr needs no extra permission. If the picture stays black, try capture = kms (the package already gave Sunshine the needed permission). Then enter the same user name and password under Agent settings › Sunshine.",
+  "sunshineCopyAll": "Copy commands",
+  "sunshineStoppedTitle": "Sunshine is stopped",
+  "sunshineStoppedBody": "Start it on {host} so Moonlight can connect.",
+  "@sunshineStoppedBody": {
+    "placeholders": {
+      "host": {
+        "type": "String"
+      }
+    }
+  },
+  "sunshineStart": "Start Sunshine",
+  "sunshineStop": "Stop Sunshine",
+  "sunshineStarted": "Sunshine started",
+  "sunshineStoppedDone": "Sunshine stopped",
+  "sunshineRunning": "Sunshine is running",
+  "sunshineInfo": "Capture {capture} · encoder {encoder} · paired devices {paired}",
+  "@sunshineInfo": {
+    "placeholders": {
+      "capture": {
+        "type": "String"
+      },
+      "encoder": {
+        "type": "String"
+      },
+      "paired": {
+        "type": "String"
+      }
+    }
+  },
+  "sunshineDefault": "default",
+  "moonlightMissingTitle": "Moonlight is not on this phone",
+  "moonlightMissingBody": "Install the free Moonlight app, then come back here.",
+  "moonlightOpen": "Open Moonlight",
+  "moonlightOpenFailed": "Moonlight could not be opened",
+  "moonlightEnterPin": "Enter Moonlight PIN",
+  "moonlightFirstTime": "First time: in Moonlight tap + and add {address}. Then tap the PC; Moonlight shows a 4-digit PIN. Enter it here with “Enter Moonlight PIN”.",
+  "@moonlightFirstTime": {
+    "placeholders": {
+      "address": {
+        "type": "String"
+      }
+    }
+  },
+  "sunshineNoCredentials": "To pair from here, enter Sunshine's web user name and password in Agent settings.",
+  "sunshineUnauthorized": "Sunshine rejected the user name or password saved in Agent settings.",
+  "sunshineSetupRequired": "Sunshine has no web user yet. On the PC run: sunshine --creds USER PASSWORD",
+  "sunshineUnreachable": "Sunshine's web interface (port 47990) is not reachable.",
+  "sunshineCertMismatch": "Sunshine's certificate does not match its own file; the request was blocked.",
+  "sunshineUnitFailed": "The Sunshine service could not be started or stopped.",
+  "sunshineNoPending": "Sunshine is not waiting for a PIN. In Moonlight tap the PC first and keep the PIN window open.",
+  "sunshinePairFailed": "Pairing failed: wrong PIN, or Moonlight stopped waiting. Try again.",
+  "sunshineBadPin": "The PIN must be 4 digits.",
+  "sunshineBadRequest": "Sunshine rejected the request: {message}",
+  "@sunshineBadRequest": {
+    "placeholders": {
+      "message": {
+        "type": "String"
+      }
+    }
+  },
+  "moonlightPinTitle": "Moonlight PIN",
+  "moonlightPinHint": "In Moonlight, tap the PC; it shows a 4-digit PIN. Type it here and Tiphys sends it to Sunshine, no browser needed.",
+  "moonlightPair": "Pair",
+  "moonlightPairing": "Waiting for Moonlight…",
+  "moonlightPaired": "Paired. Moonlight can connect now.",
+  "agentSunshine": "Sunshine (Moonlight)",
+  "agentSunshineHint": "Sunshine web user name and password. Stored only on the agent and used to pass Moonlight PINs.",
+  "agentPasswordRequired": "Password required: enter it again (new address or first setup)",
+  "remoteAddress": "Address / search",
+  "remoteBack": "Back",
+  "remoteForward": "Forward",
+  "remoteReload": "Reload",
+  "remoteNewTab": "New tab",
+  "remoteCloseTab": "Close tab",
+  "remoteReopenTab": "Reopen closed tab",
+  "remoteNextTab": "Next tab",
+  "remotePrevTab": "Previous tab",
+  "remoteFind": "Find",
+  "remoteZoomIn": "Zoom in",
+  "remoteZoomOut": "Zoom out",
+  "remoteZoomReset": "Actual size",
+  "remoteFullscreen": "Full screen",
+  "remoteReader": "Reader view",
+  "remoteScrollDown": "Scroll down",
+  "remoteScrollUp": "Scroll up",
+  "remoteTop": "To top",
+  "remotePalette": "Command palette",
+  "remoteGoToFile": "Go to file",
+  "remoteSave": "Save",
+  "remoteTerminal": "Terminal",
+  "remoteReplace": "Replace",
+  "remoteGoToLine": "Go to line",
+  "remoteRedo": "Redo",
+  "remoteComment": "Toggle comment",
+  "remoteSidebar": "Sidebar",
+  "remoteInterrupt": "Interrupt (Ctrl+C)",
+  "remoteEof": "End input (Ctrl+D)",
+  "remoteHistory": "Previous command",
+  "remoteCut": "Cut",
+  "remoteParent": "Parent folder",
+  "remotePath": "Type a path",
+  "remoteRename": "Rename",
+  "remoteNewFolder": "New folder",
+  "remoteHidden": "Show hidden",
+  "remotePlayPause": "Play / pause",
+  "remoteSeekBack": "Rewind",
+  "remoteSeekForward": "Fast forward",
+  "remoteVolumeDown": "Volume down",
+  "remoteVolumeUp": "Volume up",
+  "remoteMute": "Mute",
+  "remoteSubtitles": "Subtitles",
+  "remoteSelectAll": "Select all",
+  "remoteCloseWindow": "Close window",
+  "remotePromptAddress": "Address or search",
+  "remotePromptFind": "Text to find",
+  "remotePromptCommand": "Command",
+  "remotePromptFile": "File name",
+  "remotePromptLine": "Line number",
+  "remotePromptPath": "Folder path",
+  "remotePromptText": "Text",
+  "remoteMore": "All controls",
+  "remoteHide": "Hide app controls",
+  "remoteShow": "Show app controls",
+  "remoteStripLabel": "{app} controls",
+  "@remoteStripLabel": {
+    "placeholders": {
+      "app": {
+        "type": "String"
+      }
+    }
+  },
+  "remoteConfirm": "Send “{name}” to the PC?",
+  "@remoteConfirm": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "remoteConfirmHint": "Asks for confirmation first",
+  "remoteFocusChanged": "Focus moved to another window; nothing was sent.",
+  "remoteSend": "Send",
+  "remoteDesktop": "Desktop",
+  "remoteMine": "Your buttons",
+  "settingsDesktop": "Desktop",
+  "settingsRemotes": "App controls",
+  "settingsRemotesHint": "Your own live screen buttons per app",
+  "remotesEmpty": "No buttons of your own yet. Built-in controls already cover Firefox, VS Code, Zed, kitty, file managers, mpv, VLC and Mousepad.",
+  "remoteClass": "Window class",
+  "remoteClassHelper": "The Hyprland window class, e.g. firefox, code, kitty",
+  "remoteName": "Name",
+  "remoteIconTitle": "Icon",
+  "remoteActionTitle": "Action",
+  "remoteKindCombo": "Shortcut",
+  "remoteKindSequence": "Sequence",
+  "remoteKindPrompt": "Ask for text",
+  "remoteKindScroll": "Scroll",
+  "remoteComboHelper": "e.g. ctrl+shift+t, F5, alt+Left",
+  "remoteComboInvalid": "This shortcut can't be sent: letters and digits need Ctrl, Alt or Super, and punctuation keys aren't allowed.",
+  "remoteAddStep": "Add step",
+  "remoteRemoveStep": "Remove step",
+  "remotePromptBefore": "Shortcut first (optional)",
+  "remoteSubmit": "Press Enter afterwards",
+  "remoteScrollAmount": "Notches (down +, up −)",
+  "remoteScrollInvalid": "A non-zero number from −20 to 20",
+  "remoteConfirmSetting": "Ask before sending",
+  "remoteIconZap": "Lightning",
+  "remoteIconStar": "Star",
+  "remoteIconPlay": "Play",
+  "remoteIconSearch": "Search",
+  "remoteIconSave": "Save",
+  "remoteIconCopy": "Copy",
+  "remoteIconRefresh": "Refresh",
+  "remoteIconClose": "Close",
+  "remoteIconPlus": "Plus",
+  "remoteIconFolder": "Folder",
+  "remoteIconTerminal": "Terminal",
+  "remoteIconGlobe": "Globe",
+  "browserTitle": "Browser",
+  "browserTabs": "Tabs",
+  "browserRowConnected": "Firefox connected · tabs, reader view",
+  "browserRowSetup": "Firefox bridge not set up · setup steps",
+  "browserSearch": "Search tabs",
+  "browserNoTabs": "No open tabs.",
+  "browserNoMatch": "No tabs match the search.",
+  "browserWindow": "Window {n}",
+  "@browserWindow": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "browserTabCount": "{count, plural, =1{1 tab} other{{count} tabs}}",
+  "@browserTabCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "browserTabsHint": "Tap = switch to tab · swipe = close · long-press = select",
+  "browserTabHint": "switches to the tab",
+  "browserSelectHint": "toggles selection",
+  "browserTabMenu": "Tab actions",
+  "browserSelect": "Select",
+  "browserSelected": "{count} selected",
+  "@browserSelected": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "browserActive": "active tab",
+  "browserPinnedBadge": "pinned",
+  "browserAudible": "playing sound",
+  "browserMutedBadge": "muted",
+  "browserActivate": "Switch to this tab",
+  "browserActivated": "Switched to the tab",
+  "browserToPhone": "Open on phone",
+  "browserNotWebUrl": "This tab's address can't be opened on the phone (http/https only).",
+  "browserReader": "Reader view",
+  "browserPageControls": "Page controls",
+  "browserPin": "Pin",
+  "browserUnpin": "Unpin",
+  "browserPinned": "Tab pinned",
+  "browserUnpinned": "Tab unpinned",
+  "browserMute": "Mute",
+  "browserUnmute": "Unmute",
+  "browserMutedDone": "Tab muted",
+  "browserUnmuted": "Tab unmuted",
+  "browserSent": "Sent",
+  "browserCloseTabs": "Close tabs",
+  "browserCloseConfirm": "Close {count} tabs?",
+  "@browserCloseConfirm": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "browserClosed": "Tab closed",
+  "browserRestore": "Reopen closed tab",
+  "browserRestored": "Reopened the last closed tab",
+  "browserOpen": "Open",
+  "browserOpened": "New tab opened",
+  "browserBadUrl": "Enter a valid http/https address",
+  "browserNeedsControl": "Seeing tabs needs a control session (addresses are browsing history).",
+  "browserSetupTitle": "Firefox bridge not connected",
+  "browserSetupIntro": "Set it up once on the PC to manage tabs from the phone:",
+  "browserSetupStep1": "On the PC, register the helper in a terminal; the command prints the add-on (XPI) path:",
+  "browserSetupStep2": "In Firefox open about:config and set xpinstall.signatures.required to false:",
+  "browserSetupStep3": "In about:addons › gear icon › \"Install Add-on From File…\" pick the XPI file the command printed:",
+  "browserSetupStep4": "For reader view and page controls (optional): Tiphys Bridge icon in the toolbar › \"Sayfa içeriği iznini ver\" (grant page content permission).",
+  "browserSetupWarning": "Turning off signature checks allows any unsigned add-on; only install add-ons you know.",
+  "browserPermissionTitle": "Page content permission needed",
+  "browserPermissionHint": "On the PC, open the Tiphys Bridge icon in Firefox (or about:addons › Tiphys Bridge › Options) and press \"Sayfa içeriği iznini ver\" (grant page content permission); Firefox will ask to confirm.",
+  "browserSummarize": "Summarize with Claude",
+  "browserSummaryIntro": "Briefly summarize this web page; list the key points as bullets.",
+  "browserTruncated": "The text was shortened because it is long.",
+  "browserFontSmaller": "Smaller text",
+  "browserFontLarger": "Larger text",
+  "browserMediaTitle": "Media on the page",
+  "browserMediaHint": "Video or audio on the page",
+  "browserMediaVideo": "Video",
+  "browserMediaAudio": "Audio",
+  "browserRate": "Playback speed",
+  "browserScrollTitle": "Scroll the page",
+  "browserScrollPercent": "{percent} percent down the page",
+  "@browserScrollPercent": {
+    "placeholders": {
+      "percent": {
+        "type": "int"
+      }
+    }
+  },
+  "browserBottom": "To the bottom",
+  "browserTextTitle": "Send to text field",
+  "browserTextHint": "Text for the focused (or first visible) field",
+  "browserTextSent": "Text sent to the field",
+  "browserPageHint": "Reading and typing are off on pages with a password field.",
+  "browserErrNotConnected": "The Firefox bridge isn't connected (Firefox closed or add-on not installed).",
+  "browserErrPermission": "Page content permission hasn't been granted.",
+  "browserErrBadUrl": "This address can't be opened (http/https only).",
+  "browserErrTabNotFound": "The tab is gone (it may have been closed).",
+  "browserErrPassword": "This page has a password field; for safety it isn't read or typed into.",
+  "browserErrNoMedia": "There's no video or audio on this page.",
+  "browserErrNoInput": "No text field found on the page.",
+  "browserErrNoArticle": "No readable article found on this page.",
+  "browserErrUnsupported": "Firefox doesn't allow add-ons on this page (Firefox's own pages, the add-on store).",
+  "browserErrTimeout": "Firefox didn't respond.",
+  "browserErrFailed": "Firefox couldn't do that.",
+  "uiTitle": "Mobile view",
+  "uiSearch": "Search controls",
+  "uiPartial": "Partial: the window is large, some controls aren't shown. Use search or the live screen.",
+  "uiNeedsControl": "Mobile view needs a control session.",
+  "uiUnsupportedTitle": "This app doesn't share its controls",
+  "uiUnsupportedText": "Terminals, games and some apps (like kitty or Steam) don't expose an accessibility tree. Use the live screen and the app remote instead.",
+  "uiOpenLive": "Open live screen",
+  "uiHelperMissingTitle": "Accessibility helper missing on the PC",
+  "uiHelperMissingText": "Mobile view needs the python3-gi and gir1.2-atspi-2.0 packages on the PC.",
+  "uiEmpty": "No controls to show in this window.",
+  "uiNoMatch": "No matching controls.",
+  "uiToolbar": "Toolbar",
+  "uiMenuBar": "Menu",
+  "uiWebContent": "Page content",
+  "uiTab": "Tab {n}",
+  "@uiTab": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "uiField": "Text field",
+  "uiPasswordHint": "Typed into the PC's password field, not stored here",
+  "uiPasswordConfirm": "Type into the \"{name}\" password field? The text is sent to the PC.",
+  "@uiPasswordConfirm": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "uiPasswordSend": "Send password",
+  "uiUnnamed": "Unnamed",
+  "uiMoreActions": "More actions",
+  "uiFocus": "Focus",
+  "uiSelect": "Select",
+  "uiPreview": "Window preview",
+  "uiShowPreview": "Show preview",
+  "uiHidePreview": "Hide preview",
+  "uiDecrease": "Decrease",
+  "uiIncrease": "Increase",
+  "uiActClick": "Click",
+  "uiActPress": "Press",
+  "uiActActivate": "Activate",
+  "uiActToggle": "Toggle",
+  "uiActJump": "Follow link",
+  "uiActExpand": "Expand / collapse",
+  "uiActSwitch": "Switch to tab",
+  "uiActOpen": "Open",
+  "uiErrUnsupported": "This window doesn't expose its controls; use the live screen.",
+  "uiErrStale": "The window changed; the view was refreshed, try again.",
+  "uiErrTimeout": "The app didn't respond in time.",
+  "uiErrHelperMissing": "Accessibility helper missing on the PC (python3-gi, gir1.2-atspi-2.0).",
+  "uiErrHelperFailed": "The accessibility helper failed; try again.",
+  "uiErrConfirm": "Typing into a password field needs confirmation.",
+  "uiErrNoAction": "This control has no such action.",
+  "uiErrA11yBus": "The PC's accessibility bus is off.",
+  "uiErrFailed": "The app couldn't do that.",
+  "notifUiOpenedTitle": "Mobile view opened",
+  "claudePcBrowserTabs": "Listed tabs",
+  "claudePcBrowserOpen": "Opened a tab",
+  "claudePcBrowserActivate": "Switched tab",
+  "claudePcBrowserClose": "Closed tabs",
+  "claudePcPageText": "Read the page",
+  "claudePcUiTree": "Read the controls",
+  "claudePcUiPress": "Pressed",
+  "claudePcUiSetText": "Typed into a field",
+  "claudePcUiSetValue": "Set a value"
 }

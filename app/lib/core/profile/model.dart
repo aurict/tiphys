@@ -1,11 +1,14 @@
-// .tiphys.json profilinin Dart modeli. Tek doğru tanım: agent/src/profile/schema.ts
-// (JSON Schema: schema/tiphys.schema.json). Varsayılanlar şemadakiyle birebir aynıdır.
+// Dart model of the .tiphys.json profile. Single source of truth: agent/src/profile/schema.ts
+// (JSON Schema: schema/tiphys.schema.json). Defaults match the schema exactly.
 //
-// Gizli bilgiler modelde asla tutulmaz; sadece "secret:<id>" başvuruları bulunur.
+// Secrets are never held in the model; only "secret:<id>" references are.
 
 typedef Json = Map<String, dynamic>;
 
-const schemaVersion = 1;
+/// 2: root-level `desktopRemotes` (11.1). Since the root has `additionalProperties: false`, an old version that knows
+/// 1 would consider the new file "invalid"; with the version bump it says "newer schema". The 1 → 2 migration only
+/// bumps the number.
+const schemaVersion = 2;
 const profileFormat = 'tiphys-profile';
 
 final idPattern = RegExp(r'^[a-z0-9][a-z0-9-]{0,62}$');
@@ -20,14 +23,42 @@ Json? _obj(Json j, String k) => j[k] == null ? null : Map<String, dynamic>.from(
 List<String> _strings(Json j, String k, [List<String> def = const []]) =>
     j[k] == null ? List.of(def) : (j[k] as List).map((e) => e as String).toList();
 
-// ───────────────────────── Uygulama ─────────────────────────
+// ───────────────────────── App ─────────────────────────
 
 enum ThemePref { system, light, dark }
 
 enum LanguagePref { system, tr, en }
 
-const allHomeCards = ['infra', 'claude', 'system', 'grafana', 'dozzle', 'quickAccess'];
+/// Default home screen cards; "Recent events" (events) and "Now playing" (nowPlaying) are optional,
+/// enabled from Settings › Home screen.
+const defaultHomeCards = ['infra', 'claude', 'system', 'grafana', 'dozzle', 'quickAccess'];
+const allHomeCards = [...defaultHomeCards, 'events', 'nowPlaying'];
 const allTabs = ['home', 'claude', 'terminal', 'files', 'system'];
+
+/// Home screen layout: cards (default bento), shortcut grid, focus (large status card + shortcut list).
+enum HomeLayout { cards, grid, focus }
+
+/// Home screen shortcuts (Settings › Home screen › Shortcuts). The default set matches the rows of the old
+/// "Quick access" card: in existing profiles the Cards layout looks exactly the same.
+const defaultShortcuts = ['terminal', 'files', 'quickNote', 'homepage'];
+const allShortcuts = [
+  ...defaultShortcuts,
+  'vault',
+  'desktop',
+  'liveScreen',
+  'media',
+  'openOnPc',
+  'newClaude',
+  'schedules',
+  'events',
+  'compose',
+  'logs',
+  'backups',
+  'dozzle',
+  'grafana',
+  'sites',
+  'wake',
+];
 
 class LockSettings {
   const LockSettings({this.biometric = true, this.pin = true, this.autoLockSeconds = 60});
@@ -53,14 +84,20 @@ class AppSettings {
     this.theme = ThemePref.system,
     this.language = LanguagePref.system,
     this.lock = const LockSettings(),
-    this.cards = allHomeCards,
+    this.cards = defaultHomeCards,
     this.tabs = allTabs,
+    this.layout = HomeLayout.cards,
+    this.shortcuts = defaultShortcuts,
   });
   final ThemePref theme;
   final LanguagePref language;
   final LockSettings lock;
   final List<String> cards;
   final List<String> tabs;
+  final HomeLayout layout;
+
+  /// Enabled shortcuts, in display order.
+  final List<String> shortcuts;
 
   factory AppSettings.fromJson(Json j) {
     final home = _obj(j, 'home') ?? {};
@@ -68,27 +105,39 @@ class AppSettings {
       theme: ThemePref.values.byName(_get(j, 'theme', 'system')),
       language: LanguagePref.values.byName(_get(j, 'language', 'system')),
       lock: LockSettings.fromJson(_obj(j, 'lock') ?? {}),
-      cards: _strings(home, 'cards', allHomeCards),
+      cards: _strings(home, 'cards', defaultHomeCards),
       tabs: _strings(home, 'tabs', allTabs),
+      layout: HomeLayout.values.byName(_get(home, 'layout', 'cards')),
+      shortcuts: _strings(home, 'shortcuts', defaultShortcuts),
     );
   }
   Json toJson() => {
         'theme': theme.name,
         'language': language.name,
         'lock': lock.toJson(),
-        'home': {'cards': cards, 'tabs': tabs},
+        'home': {'cards': cards, 'tabs': tabs, 'layout': layout.name, 'shortcuts': shortcuts},
       };
-  AppSettings copyWith({ThemePref? theme, LanguagePref? language, LockSettings? lock, List<String>? cards, List<String>? tabs}) =>
+  AppSettings copyWith({
+    ThemePref? theme,
+    LanguagePref? language,
+    LockSettings? lock,
+    List<String>? cards,
+    List<String>? tabs,
+    HomeLayout? layout,
+    List<String>? shortcuts,
+  }) =>
       AppSettings(
         theme: theme ?? this.theme,
         language: language ?? this.language,
         lock: lock ?? this.lock,
         cards: cards ?? this.cards,
         tabs: tabs ?? this.tabs,
+        layout: layout ?? this.layout,
+        shortcuts: shortcuts ?? this.shortcuts,
       );
 }
 
-// ───────────────────────── Hostlar ─────────────────────────
+// ───────────────────────── Hosts ─────────────────────────
 
 sealed class SshAuth {
   const SshAuth();
@@ -147,7 +196,7 @@ class WakeConfig {
   const WakeConfig({required this.mac, this.viaHostId});
   final String mac;
 
-  /// null: telefon aynı yerel ağdaysa paketi kendisi gönderir.
+  /// null: the phone sends the packet itself if it is on the same local network.
   final String? viaHostId;
   factory WakeConfig.fromJson(Json j) => WakeConfig(mac: j['mac'] as String, viaHostId: j['viaHostId'] as String?);
   Json toJson() => {'mac': mac, 'viaHostId': viaHostId};
@@ -163,6 +212,7 @@ class Host {
     this.agent,
     this.wake,
     this.tags = const [],
+    this.composeRoots = const ['~/stack'],
   });
   final String id;
   final String name;
@@ -173,6 +223,9 @@ class Host {
   final WakeConfig? wake;
   final List<String> tags;
 
+  /// Root folders searched for Compose stacks (over SSH; compose files in each root's subfolders).
+  final List<String> composeRoots;
+
   factory Host.fromJson(Json j) => Host(
         id: j['id'] as String,
         name: j['name'] as String,
@@ -182,6 +235,7 @@ class Host {
         agent: _obj(j, 'agent') == null ? null : AgentRef.fromJson(_obj(j, 'agent')!),
         wake: _obj(j, 'wake') == null ? null : WakeConfig.fromJson(_obj(j, 'wake')!),
         tags: _strings(j, 'tags'),
+        composeRoots: _strings(j, 'composeRoots', const ['~/stack']),
       );
   Json toJson() => {
         'id': id,
@@ -192,6 +246,7 @@ class Host {
         'agent': agent?.toJson(),
         'wake': wake?.toJson(),
         'tags': tags,
+        'composeRoots': composeRoots,
       };
 }
 
@@ -300,7 +355,7 @@ class ClaudeSettings {
       );
 }
 
-// ───────────────────────── Entegrasyonlar ─────────────────────────
+// ───────────────────────── Integrations ─────────────────────────
 
 class GrafanaConfig {
   const GrafanaConfig({
@@ -317,7 +372,7 @@ class GrafanaConfig {
   final String name;
   final String url;
 
-  /// null: kimlik doğrulama yok.
+  /// null: no authentication.
   final String? tokenRef;
   final String? defaultDashboardUid;
   final List<String> favorites;
@@ -432,8 +487,8 @@ class UptimeKumaConfig {
       };
 }
 
-/// ntfy: bildirimleri telefondaki ntfy uygulaması alır (giriş bilgileri orada). Burada yalnız sunucu ve
-/// "ntfy'da aç" kısayolları için konular durur. Eski dosyalardaki `tokenRef` okunur ama yok sayılır.
+/// ntfy: notifications are received by the ntfy app on the phone (credentials live there). Only the server and
+/// topics for the "open in ntfy" shortcuts are kept here. `tokenRef` in old files is read but ignored.
 class NtfyConfig {
   const NtfyConfig({required this.url, this.topics = const []});
   final String url;
@@ -442,8 +497,8 @@ class NtfyConfig {
   Json toJson() => {'url': url, 'topics': topics};
 }
 
-/// Ses → yazı tercihleri. Çeviri PC'deki ajan üzerinden yapılır (Scriberr anahtarı ajanda);
-/// eski dosyalardaki `url`/`apiKeyRef` okunur ama yok sayılır.
+/// Speech-to-text preferences. Transcription is done via the agent on the PC (the Scriberr key is on the agent);
+/// `url`/`apiKeyRef` in old files are read but ignored.
 class ScriberrConfig {
   const ScriberrConfig({this.language = 'tr', this.model = 'small'});
 
@@ -456,6 +511,32 @@ class ScriberrConfig {
   Json toJson() => {'language': language, 'model': model};
 }
 
+/// Quick note to Obsidian: the note is written by the Obsidian app on the phone via an `obsidian://new` link
+/// (LiveSync end-to-end encryption is preserved; Tiphys doesn't write to the vault directly).
+class ObsidianConfig {
+  const ObsidianConfig({required this.vault, this.folder = 'Gelen kutusu', this.mode = 'newNote', this.dailyNotePath = 'Günlük/YYYY-MM-DD'});
+
+  /// Vault name (or id) in Obsidian.
+  final String vault;
+
+  /// Folder for new notes (relative to the vault root; empty: root).
+  final String folder;
+
+  /// newNote | dailyNote (append to the daily note)
+  final String mode;
+
+  /// Daily note path; YYYY, MM, DD are replaced with the date.
+  final String dailyNotePath;
+
+  factory ObsidianConfig.fromJson(Json j) => ObsidianConfig(
+        vault: j['vault'] as String,
+        folder: _get(j, 'folder', 'Gelen kutusu'),
+        mode: _get(j, 'mode', 'newNote'),
+        dailyNotePath: _get(j, 'dailyNotePath', 'Günlük/YYYY-MM-DD'),
+      );
+  Json toJson() => {'vault': vault, 'folder': folder, 'mode': mode, 'dailyNotePath': dailyNotePath};
+}
+
 class Integrations {
   const Integrations({
     this.grafana = const [],
@@ -464,6 +545,7 @@ class Integrations {
     this.uptimeKuma,
     this.ntfy,
     this.scriberr,
+    this.obsidian,
   });
   final List<GrafanaConfig> grafana;
   final List<DozzleConfig> dozzle;
@@ -471,6 +553,7 @@ class Integrations {
   final UptimeKumaConfig? uptimeKuma;
   final NtfyConfig? ntfy;
   final ScriberrConfig? scriberr;
+  final ObsidianConfig? obsidian;
 
   factory Integrations.fromJson(Json j) => Integrations(
         grafana: _list(j, 'grafana', (e) => GrafanaConfig.fromJson(Map<String, dynamic>.from(e as Map))),
@@ -479,6 +562,7 @@ class Integrations {
         uptimeKuma: _obj(j, 'uptimeKuma') == null ? null : UptimeKumaConfig.fromJson(_obj(j, 'uptimeKuma')!),
         ntfy: _obj(j, 'ntfy') == null ? null : NtfyConfig.fromJson(_obj(j, 'ntfy')!),
         scriberr: _obj(j, 'scriberr') == null ? null : ScriberrConfig.fromJson(_obj(j, 'scriberr')!),
+        obsidian: _obj(j, 'obsidian') == null ? null : ObsidianConfig.fromJson(_obj(j, 'obsidian')!),
       );
   Json toJson() => {
         'grafana': grafana.map((g) => g.toJson()).toList(),
@@ -487,6 +571,7 @@ class Integrations {
         'uptimeKuma': uptimeKuma?.toJson(),
         'ntfy': ntfy?.toJson(),
         'scriberr': scriberr?.toJson(),
+        'obsidian': obsidian?.toJson(),
       };
   Integrations copyWith({
     List<GrafanaConfig>? grafana,
@@ -495,6 +580,7 @@ class Integrations {
     UptimeKumaConfig? Function()? uptimeKuma,
     NtfyConfig? Function()? ntfy,
     ScriberrConfig? Function()? scriberr,
+    ObsidianConfig? Function()? obsidian,
   }) =>
       Integrations(
         grafana: grafana ?? this.grafana,
@@ -503,10 +589,11 @@ class Integrations {
         uptimeKuma: uptimeKuma != null ? uptimeKuma() : this.uptimeKuma,
         ntfy: ntfy != null ? ntfy() : this.ntfy,
         scriberr: scriberr != null ? scriberr() : this.scriberr,
+        obsidian: obsidian != null ? obsidian() : this.obsidian,
       );
 }
 
-// ───────────────────────── Terminal, dosyalar, işlemler ─────────────────────────
+// ───────────────────────── Terminal, files, operations ─────────────────────────
 
 const defaultExtraKeys = ['esc', 'tab', 'ctrl', 'alt', 'up', 'down', 'left', 'right', '|', '~', '/'];
 
@@ -592,6 +679,10 @@ class NotificationSettings {
     this.pcOffline = true,
     this.grafanaAlerts = true,
     this.siteDown = true,
+    this.backupAlerts = true,
+    this.clipboardFromPc = true,
+    this.clipboardToPc = false,
+    this.clipboardHostId,
   });
   final int longCommandSeconds;
   final bool serviceDown;
@@ -599,6 +690,16 @@ class NotificationSettings {
   final bool pcOffline;
   final bool grafanaAlerts;
   final bool siteDown;
+  final bool backupAlerts;
+
+  /// Silent "Copy" notification when the PC clipboard changes.
+  final bool clipboardFromPc;
+
+  /// When the app comes to the foreground, the phone clipboard is sent to the PC if it changed (off by default).
+  final bool clipboardToPc;
+
+  /// PC whose clipboard is synced; null: the Claude host or the first host with an agent ([clipboardHost]).
+  final String? clipboardHostId;
   factory NotificationSettings.fromJson(Json j) => NotificationSettings(
         longCommandSeconds: _get(j, 'longCommandSeconds', 60),
         serviceDown: _get(j, 'serviceDown', true),
@@ -606,6 +707,10 @@ class NotificationSettings {
         pcOffline: _get(j, 'pcOffline', true),
         grafanaAlerts: _get(j, 'grafanaAlerts', true),
         siteDown: _get(j, 'siteDown', true),
+        backupAlerts: _get(j, 'backupAlerts', true),
+        clipboardFromPc: _get(j, 'clipboardFromPc', true),
+        clipboardToPc: _get(j, 'clipboardToPc', false),
+        clipboardHostId: j['clipboardHostId'] as String?,
       );
   Json toJson() => {
         'longCommandSeconds': longCommandSeconds,
@@ -614,6 +719,10 @@ class NotificationSettings {
         'pcOffline': pcOffline,
         'grafanaAlerts': grafanaAlerts,
         'siteDown': siteDown,
+        'backupAlerts': backupAlerts,
+        'clipboardFromPc': clipboardFromPc,
+        'clipboardToPc': clipboardToPc,
+        'clipboardHostId': clipboardHostId,
       };
   NotificationSettings copyWith({
     int? longCommandSeconds,
@@ -622,6 +731,10 @@ class NotificationSettings {
     bool? pcOffline,
     bool? grafanaAlerts,
     bool? siteDown,
+    bool? backupAlerts,
+    bool? clipboardFromPc,
+    bool? clipboardToPc,
+    String? Function()? clipboardHostId,
   }) =>
       NotificationSettings(
         longCommandSeconds: longCommandSeconds ?? this.longCommandSeconds,
@@ -630,10 +743,95 @@ class NotificationSettings {
         pcOffline: pcOffline ?? this.pcOffline,
         grafanaAlerts: grafanaAlerts ?? this.grafanaAlerts,
         siteDown: siteDown ?? this.siteDown,
+        backupAlerts: backupAlerts ?? this.backupAlerts,
+        clipboardFromPc: clipboardFromPc ?? this.clipboardFromPc,
+        clipboardToPc: clipboardToPc ?? this.clipboardToPc,
+        clipboardHostId: clipboardHostId == null ? this.clipboardHostId : clipboardHostId(),
       );
 }
 
-// ───────────────────────── Profil ─────────────────────────
+// ───────────────────────── Live screen remotes (11.1) ─────────────────────────
+
+/// Icon set for user remotes (`remoteIcon` in the schema).
+const remoteIcons = ['zap', 'star', 'play', 'search', 'save', 'copy', 'refresh', 'close', 'plus', 'folder', 'terminal', 'globe'];
+
+enum RemoteKind { combo, sequence, prompt, scroll }
+
+/// Sequence step: a shortcut ("ctrl+l", "Enter") or text to type.
+class RemoteStep {
+  const RemoteStep.combo(String this.combo) : text = null;
+  const RemoteStep.text(String this.text) : combo = null;
+  final String? combo;
+  final String? text;
+  factory RemoteStep.fromJson(Json j) => j['combo'] != null ? RemoteStep.combo(j['combo'] as String) : RemoteStep.text(j['text'] as String);
+  Json toJson() => combo != null ? {'combo': combo} : {'text': text};
+}
+
+/// Remote action: shortcut, sequence, ask for text (first an optional shortcut, then the text, Enter if [submit]),
+/// wheel.
+class RemoteAction {
+  const RemoteAction.combo(String this.combo)
+      : kind = RemoteKind.combo,
+        steps = const [],
+        submit = true,
+        dy = 0;
+  const RemoteAction.sequence(this.steps)
+      : kind = RemoteKind.sequence,
+        combo = null,
+        submit = true,
+        dy = 0;
+  const RemoteAction.prompt({this.combo, this.submit = true})
+      : kind = RemoteKind.prompt,
+        steps = const [],
+        dy = 0;
+  const RemoteAction.scroll(this.dy)
+      : kind = RemoteKind.scroll,
+        combo = null,
+        steps = const [],
+        submit = true;
+  final RemoteKind kind;
+  final String? combo;
+  final List<RemoteStep> steps;
+  final bool submit;
+
+  /// Wheel notches; > 0 is down.
+  final int dy;
+
+  factory RemoteAction.fromJson(Json j) => switch (j['kind']) {
+        'sequence' => RemoteAction.sequence(_list(j, 'steps', (e) => RemoteStep.fromJson(Map<String, dynamic>.from(e as Map)))),
+        'prompt' => RemoteAction.prompt(combo: j['combo'] as String?, submit: _get(j, 'submit', true)),
+        'scroll' => RemoteAction.scroll((j['dy'] as num).toInt()),
+        _ => RemoteAction.combo(j['combo'] as String),
+      };
+  Json toJson() => switch (kind) {
+        RemoteKind.combo => {'kind': 'combo', 'combo': combo},
+        RemoteKind.sequence => {'kind': 'sequence', 'steps': steps.map((s) => s.toJson()).toList()},
+        RemoteKind.prompt => {'kind': 'prompt', 'combo': ?combo, 'submit': submit},
+        RemoteKind.scroll => {'kind': 'scroll', 'dy': dy},
+      };
+}
+
+/// A button the user added for a window class (Settings › Desktop › Remotes).
+class DesktopRemote {
+  const DesktopRemote({required this.id, required this.windowClass, required this.name, this.icon = 'zap', required this.action, this.confirm = false});
+  final String id;
+  final String windowClass;
+  final String name;
+  final String icon;
+  final RemoteAction action;
+  final bool confirm;
+  factory DesktopRemote.fromJson(Json j) => DesktopRemote(
+        id: j['id'] as String,
+        windowClass: j['windowClass'] as String,
+        name: j['name'] as String,
+        icon: _get(j, 'icon', 'zap'),
+        action: RemoteAction.fromJson(Map<String, dynamic>.from(j['action'] as Map)),
+        confirm: _get(j, 'confirm', false),
+      );
+  Json toJson() => {'id': id, 'windowClass': windowClass, 'name': name, 'icon': icon, 'action': action.toJson(), 'confirm': confirm};
+}
+
+// ───────────────────────── Profile ─────────────────────────
 
 class Profile {
   const Profile({
@@ -645,6 +843,7 @@ class Profile {
     this.terminal = const TerminalSettings(),
     this.files = const FileSettings(),
     this.quickActions = const [],
+    this.desktopRemotes = const [],
     this.notifications = const NotificationSettings(),
     this.agentConfigs = const {},
   });
@@ -657,6 +856,7 @@ class Profile {
   final TerminalSettings terminal;
   final FileSettings files;
   final List<QuickAction> quickActions;
+  final List<DesktopRemote> desktopRemotes;
   final NotificationSettings notifications;
   final Map<String, Json> agentConfigs;
 
@@ -664,7 +864,7 @@ class Profile {
 
   Host? host(String? id) => id == null ? null : hosts.where((h) => h.id == id).firstOrNull;
 
-  /// Tam profil için JSON (eksik bölümler varsayılanlarla doldurulmuş olarak).
+  /// JSON for the full profile (missing sections filled with defaults).
   factory Profile.fromJson(Json j) => Profile(
         app: AppSettings.fromJson(_obj(j, 'app') ?? {}),
         hosts: _list(j, 'hosts', (e) => Host.fromJson(Map<String, dynamic>.from(e as Map))),
@@ -674,6 +874,7 @@ class Profile {
         terminal: TerminalSettings.fromJson(_obj(j, 'terminal') ?? {}),
         files: FileSettings.fromJson(_obj(j, 'files') ?? {}),
         quickActions: _list(j, 'quickActions', (e) => QuickAction.fromJson(Map<String, dynamic>.from(e as Map))),
+        desktopRemotes: _list(j, 'desktopRemotes', (e) => DesktopRemote.fromJson(Map<String, dynamic>.from(e as Map))),
         notifications: NotificationSettings.fromJson(_obj(j, 'notifications') ?? {}),
         agentConfigs: ((j['agentConfigs'] as Map?) ?? {})
             .map((k, v) => MapEntry(k as String, Map<String, dynamic>.from(v as Map))),
@@ -690,6 +891,7 @@ class Profile {
         'terminal': terminal.toJson(),
         'files': files.toJson(),
         'quickActions': quickActions.map((q) => q.toJson()).toList(),
+        'desktopRemotes': desktopRemotes.map((r) => r.toJson()).toList(),
         'notifications': notifications.toJson(),
         'agentConfigs': agentConfigs,
       };
@@ -703,6 +905,7 @@ class Profile {
     TerminalSettings? terminal,
     FileSettings? files,
     List<QuickAction>? quickActions,
+    List<DesktopRemote>? desktopRemotes,
     NotificationSettings? notifications,
     Map<String, Json>? agentConfigs,
   }) =>
@@ -715,11 +918,12 @@ class Profile {
         terminal: terminal ?? this.terminal,
         files: files ?? this.files,
         quickActions: quickActions ?? this.quickActions,
+        desktopRemotes: desktopRemotes ?? this.desktopRemotes,
         notifications: notifications ?? this.notifications,
         agentConfigs: agentConfigs ?? this.agentConfigs,
       );
 
-  /// Profilin başvurduğu tüm gizli bilgi kimlikleri.
+  /// All secret ids the profile references.
   Set<String> get secretIds {
     final refs = <String>{};
     for (final h in hosts) {
@@ -736,7 +940,7 @@ class Profile {
   }
 }
 
-/// Liste içinde kimliğe göre ekle ya da değiştir (sıra korunur).
+/// Add or replace by id within a list (order is preserved).
 List<T> upsertBy<T>(List<T> list, T item, String Function(T) id) {
   final i = list.indexWhere((e) => id(e) == id(item));
   if (i < 0) return [...list, item];

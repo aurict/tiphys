@@ -1,5 +1,5 @@
-// Git (ajan üzerinden): dal, ileri/geri, değişiklikler (stage/unstage/geri al), diff, commit, push/pull/fetch,
-// geçmiş ve dal değiştirme. Dosyalar'daki klasörden açılır.
+// Git (via the agent): branch, ahead/behind, changes (stage/unstage/revert), diff, commit, push/pull/fetch,
+// history and branch switching. Opened from a folder in Files.
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
@@ -34,7 +34,7 @@ class GitScreen extends ConsumerStatefulWidget {
 class _GitScreenState extends ConsumerState<GitScreen> {
   final _message = TextEditingController();
   int _tab = 0;
-  String? _busy; // çalışan işlem (push, pull, …)
+  String? _busy; // running operation (push, pull, …)
 
   GitKey get _k => (widget.hostId, widget.path);
 
@@ -85,7 +85,7 @@ class _GitScreenState extends ConsumerState<GitScreen> {
   Future<void> _branches(String? current) async {
     final l = AppLocalizations.of(context);
     final picked = await showModalBottomSheet<(String, bool)>(
-      useRootNavigator: true, // alt sekme barının üstünde açılsın; yoksa bar sayfanın altını örter
+      useRootNavigator: true, // open above the bottom tab bar; otherwise the bar covers the bottom of the page
       context: context,
       isScrollControlled: true,
       builder: (c) => _BranchSheet(hostId: widget.hostId, path: widget.path, current: current),
@@ -119,7 +119,7 @@ class _GitScreenState extends ConsumerState<GitScreen> {
           final unstaged = files.where((f) => f['worktree'] != '.' || f['conflicted'] == true).toList();
           final ahead = s['ahead'] as int? ?? 0, behind = s['behind'] as int? ?? 0;
           return [
-            // Dal ve uzak depo işlemleri
+            // Branch and remote operations
             TCard(
               padding: const EdgeInsets.fromLTRB(14, 10, 10, 10),
               child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
@@ -257,13 +257,6 @@ class _FileRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final t = context.tokens;
-    final color = switch (code) {
-      'A' || 'U' => t.success,
-      'D' => t.danger,
-      '!' => t.warning,
-      'R' || 'C' => const Color(0xFF5E5CE6),
-      _ => t.accent,
-    };
     final path = '${file['path']}';
     final slash = path.lastIndexOf('/');
     return InkWell(
@@ -272,13 +265,7 @@ class _FileRow extends StatelessWidget {
       child: Padding(
         padding: const EdgeInsets.fromLTRB(14, 6, 4, 6),
         child: Row(children: [
-          Container(
-            width: 24,
-            height: 24,
-            alignment: Alignment.center,
-            decoration: BoxDecoration(color: color.withValues(alpha: 0.15), borderRadius: BorderRadius.circular(7)),
-            child: Text(code, style: TextStyle(color: color, fontWeight: FontWeight.w800, fontSize: 12, fontFamily: 'JetBrainsMono')),
-          ),
+          GitCodeChip(code),
           const SizedBox(width: 12),
           Expanded(
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
@@ -289,6 +276,40 @@ class _FileRow extends StatelessWidget {
           action,
         ]),
       ),
+    );
+  }
+}
+
+/// File status badge (M, A, D, U, R, !); shared by the Git screen and Claude session changes.
+class GitCodeChip extends StatelessWidget {
+  const GitCodeChip(this.code, {super.key});
+  final String code;
+
+  /// Badge letter from the status line: untracked U, conflict !, otherwise working tree first, then staged status.
+  static String of(Map<String, dynamic> f) => f['untracked'] == true
+      ? 'U'
+      : f['conflicted'] == true
+          ? '!'
+          : '${f['worktree']}' != '.'
+              ? '${f['worktree']}'
+              : '${f['index']}';
+
+  @override
+  Widget build(BuildContext context) {
+    final t = context.tokens;
+    final color = switch (code) {
+      'A' || 'U' => t.success,
+      'D' => t.danger,
+      '!' => t.warning,
+      'R' || 'C' => const Color(0xFF5E5CE6),
+      _ => t.accent,
+    };
+    return Container(
+      width: 24,
+      height: 24,
+      alignment: Alignment.center,
+      decoration: BoxDecoration(color: color.withValues(alpha: 0.15), borderRadius: BorderRadius.circular(7)),
+      child: Text(code, style: TextStyle(color: color, fontWeight: FontWeight.w800, fontSize: 12, fontFamily: 'JetBrainsMono')),
     );
   }
 }
@@ -382,7 +403,7 @@ class _BranchSheetState extends ConsumerState<_BranchSheet> {
             ListTile(
               leading: const Icon(LucideIcons.cloud, size: 18),
               title: Text('${b['name']}'),
-              // origin/özellik → yerel "özellik" dalına geçilir (git switch uzaktakini izleyerek oluşturur).
+              // origin/feature → switches to the local "feature" branch (git switch creates it tracking the remote).
               onTap: () => Navigator.pop(context, ('${b['name']}'.split('/').skip(1).join('/'), false)),
             ),
           const SizedBox(height: 8),
@@ -404,12 +425,15 @@ class _BranchSheetState extends ConsumerState<_BranchSheet> {
 }
 
 class GitDiffScreen extends ConsumerStatefulWidget {
-  const GitDiffScreen({super.key, required this.hostId, required this.path, required this.title, this.file, this.staged = false, this.commit});
+  const GitDiffScreen({super.key, required this.hostId, required this.path, required this.title, this.file, this.staged = false, this.head = false, this.commit});
   final String hostId;
   final String path;
   final String title;
   final String? file;
   final bool staged;
+
+  /// Relative to HEAD (staged + unstaged together; Claude session changes).
+  final bool head;
   final String? commit;
   @override
   ConsumerState<GitDiffScreen> createState() => _GitDiffScreenState();
@@ -427,6 +451,7 @@ class _GitDiffScreenState extends ConsumerState<GitDiffScreen> {
       'path': widget.path,
       if (widget.file != null) 'file': widget.file!,
       if (widget.staged) 'staged': 'true',
+      if (widget.head) 'head': 'true',
       if (widget.commit != null) 'commit': widget.commit!,
     };
     agentCall(ref, widget.hostId, 'GET', Uri(path: '/v1/git/diff', queryParameters: q).toString()).then(
@@ -456,7 +481,7 @@ class _GitDiffScreenState extends ConsumerState<GitDiffScreen> {
   }
 }
 
-/// Birleşik diff metnini renkli satırlarla gösterir (yatay kaydırılabilir, satırlar kırpılmaz).
+/// Shows unified diff text with colored lines (horizontally scrollable, lines aren't clipped).
 class DiffView extends StatelessWidget {
   const DiffView({super.key, required this.text, this.truncated = false});
   final String text;
@@ -511,6 +536,11 @@ String gitErrorText(AppLocalizations l, Object e) {
     'agent.git.pushFailed' => l.gitPushFailed,
     'agent.git.pullFailed' => l.gitPullFailed,
     'agent.git.fetchFailed' => l.gitPullFailed,
+    'agent.git.noUpstream' => l.gitNoUpstream,
+    'agent.git.noRemote' => l.gitNoRemote,
+    'agent.git.authFailed' => l.gitAuthFailed,
+    'agent.git.pushRejected' => l.gitPushRejected,
+    'agent.git.newFilesNeedConfirm' => l.gitNewFilesNeedConfirm,
     'agent.path.notAllowed' => l.agentPathNotAllowed,
     _ => agentErrorText(l, e),
   };

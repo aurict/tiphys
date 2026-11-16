@@ -1,4 +1,4 @@
-// Claude sekmesi: açık oturumlar + geçmiş; yeni oturum sayfası (klasör, mod, model, düşünme, profil).
+// Claude tab: open sessions + history; new session page (folder, mode, model, thinking, profile).
 import 'dart:async';
 
 import 'package:flutter/material.dart';
@@ -14,15 +14,16 @@ import '../../state/providers.dart';
 import '../../theme/tokens.dart';
 import '../../widgets/floating_tab_bar.dart';
 import '../../widgets/surfaces.dart';
+import '../desktop/desktop_data.dart' show controlHeader, controlProvider;
 import '../system/agent_providers.dart';
 
-/// Claude'u çalıştıran host (Ayarlar › Claude; yoksa ajanlı ilk host).
+/// Host that runs Claude (Settings › Claude; otherwise the first agent host).
 final claudeHostProvider = Provider<Host?>((ref) {
   final p = ref.watch(profileProvider);
   return p.host(p.claude.agentHostId) ?? p.hosts.where((h) => h.agent != null).firstOrNull;
 });
 
-/// Gönderim kutusu klasörü (widget testlerinde null: kutu yalnız bellekte, gerçek disk G/Ç yok).
+/// Outbox folder (null in widget tests: the box is in memory only, no real disk I/O).
 final outboxDirProvider = Provider<Future<String?> Function()>((ref) => () async => (await getApplicationDocumentsDirectory()).path);
 
 final claudeSessionsProvider = FutureProvider.autoDispose<Map<String, dynamic>>((ref) async {
@@ -88,7 +89,13 @@ class _ClaudeScreenState extends ConsumerState<ClaudeScreen> {
           LargeTitleHeader(
             overline: host?.name,
             title: 'Claude',
-            action: host == null ? null : RoundIconButton(icon: LucideIcons.plus, tooltip: l.homeNewClaudeSession, onPressed: () => showNewSession(context, ref)),
+            action: host == null
+                ? null
+                : Row(mainAxisSize: MainAxisSize.min, children: [
+                    RoundIconButton(icon: LucideIcons.alarmClock, tooltip: l.claudeSchedules, onPressed: () => context.push('/claude/schedules')),
+                    const SizedBox(width: 10),
+                    RoundIconButton(icon: LucideIcons.plus, tooltip: l.homeNewClaudeSession, onPressed: () => showNewSession(context, ref)),
+                  ]),
           ),
           const SizedBox(height: 12),
           if (host == null)
@@ -108,9 +115,9 @@ class _ClaudeScreenState extends ConsumerState<ClaudeScreen> {
                       for (final s in live)
                         GroupedRow(
                           title: '${s['title']}'.isEmpty ? l.claudeUntitled : '${s['title']}',
-                          subtitle: '${_folder('${s['cwd']}')} · '
+                          subtitle: '${s['kind'] == 'pc' ? l.claudePcUse : _folder('${s['cwd']}')} · '
                               '${(s['pendingPermissions'] as int) > 0 ? l.homeClaudeWaiting(s['pendingPermissions'] as int) : claudeStatusText(l, '${s['status']}')}',
-                          icon: LucideIcons.asterisk,
+                          icon: s['kind'] == 'pc' ? LucideIcons.monitor : LucideIcons.asterisk,
                           iconBackground: statusColor('${s['status']}'),
                           trailingText: '\$${(s['costUsd'] as num).toStringAsFixed(2)}',
                           onTap: () => context.push('/claude/session/${s['id']}'),
@@ -172,22 +179,25 @@ String claudeStatusText(AppLocalizations l, String s) => switch (s) {
       _ => l.claudeStatusStopped,
     };
 
-/// Yeni oturum: klasör + ilk mesaj + ayarlar. Başarılı olursa sohbet ekranına geçer.
-Future<void> showNewSession(BuildContext context, WidgetRef ref, {String? cwd, String? resume, String? title}) async {
+/// New session: folder + first message + settings. On success, switches to the chat screen.
+Future<void> showNewSession(BuildContext context, WidgetRef ref, {String? cwd, String? resume, String? title, String? prompt}) async {
   await showModalBottomSheet<void>(
-      useRootNavigator: true, // alt sekme barının üstünde açılsın; yoksa bar sayfanın altını örter
+      useRootNavigator: true, // open above the bottom tab bar; otherwise the bar covers the bottom of the page
     context: context,
     isScrollControlled: true,
     builder: (c) => Padding(
       padding: EdgeInsets.only(bottom: MediaQuery.viewInsetsOf(c).bottom),
-      child: _NewSessionSheet(initialCwd: cwd, resume: resume, title: title),
+      child: _NewSessionSheet(initialCwd: cwd, resume: resume, title: title, initialPrompt: prompt),
     ),
   );
 }
 
 class _NewSessionSheet extends ConsumerStatefulWidget {
-  const _NewSessionSheet({this.initialCwd, this.resume, this.title});
+  const _NewSessionSheet({this.initialCwd, this.resume, this.title, this.initialPrompt});
   final String? initialCwd;
+
+  /// First message prepared from another screen (e.g. "Ask Claude" in Dozzle).
+  final String? initialPrompt;
   final String? resume;
   final String? title;
   @override
@@ -195,7 +205,7 @@ class _NewSessionSheet extends ConsumerStatefulWidget {
 }
 
 class _NewSessionSheetState extends ConsumerState<_NewSessionSheet> {
-  final _prompt = TextEditingController();
+  late final _prompt = TextEditingController(text: widget.initialPrompt);
   late String _cwd;
   late String _mode;
   late String _effort;
@@ -204,6 +214,9 @@ class _NewSessionSheetState extends ConsumerState<_NewSessionSheet> {
   bool _worktree = false;
   bool _busy = false;
   String? _error;
+
+  /// "Use the PC" mode: no folder/permission/worktree; a control session (lock again) opens at start.
+  bool _pc = false;
 
   @override
   void initState() {
@@ -219,11 +232,48 @@ class _NewSessionSheetState extends ConsumerState<_NewSessionSheet> {
   Future<void> _pickFolder() async {
     final host = ref.read(claudeHostProvider);
     if (host == null) return;
-    final picked = await Navigator.of(context).push<String>(MaterialPageRoute(builder: (_) => _FolderPicker(hostId: host.id, start: _cwd)));
+    final picked = await Navigator.of(context).push<String>(MaterialPageRoute(builder: (_) => ClaudeFolderPicker(hostId: host.id, start: _cwd)));
     if (picked != null) setState(() => _cwd = picked);
   }
 
+  /// PC session: first the control session (app lock asked again), then the Claude session with the token.
+  Future<void> _startPc() async {
+    final l = AppLocalizations.of(context);
+    final host = ref.read(claudeHostProvider);
+    if (host == null) return;
+    setState(() {
+      _busy = true;
+      _error = null;
+    });
+    try {
+      final s = await ref.read(controlProvider.notifier).ensure(context, host.id, fresh: true);
+      if (s == null) {
+        if (mounted) setState(() => _busy = false);
+        return;
+      }
+      final res = await agentCall(ref, host.id, 'POST', '/v1/claude/sessions', {
+        'cwd': '~',
+        'kind': 'pc',
+        'prompt': _prompt.text.trim(),
+        'effort': _effort,
+        if (_model.isNotEmpty) 'model': _model,
+        'profileId': _profile,
+      }, {controlHeader: s.token}) as Map;
+      if (!mounted) return;
+      ref.invalidate(claudeSessionsProvider);
+      Navigator.pop(context);
+      context.push('/claude/session/${res['id']}');
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _busy = false;
+        _error = agentErrorText(l, e);
+      });
+    }
+  }
+
   Future<void> _start() async {
+    if (_pc) return _startPc();
     final l = AppLocalizations.of(context);
     final host = ref.read(claudeHostProvider);
     if (host == null) return;
@@ -259,6 +309,11 @@ class _NewSessionSheetState extends ConsumerState<_NewSessionSheet> {
     final l = AppLocalizations.of(context);
     final t = context.tokens;
     final c = ref.watch(profileProvider.select((p) => p.claude));
+    // Use the PC only if desktop + remote control are enabled on the Claude host.
+    final host = ref.watch(claudeHostProvider);
+    final features = host == null ? null : (ref.watch(healthProvider(host.id)).value?['features'] as Map?);
+    final pcAvailable = widget.resume == null && features != null && features['desktop'] == true && features['control'] == true;
+    final pc = _pc && pcAvailable;
     Widget chips<T>(String label, List<(T, String)> opts, T value, ValueChanged<T> set) => Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Padding(padding: const EdgeInsets.only(top: 10, bottom: 6), child: Text(label, style: Theme.of(context).textTheme.labelMedium)),
           Wrap(spacing: 8, runSpacing: 8, children: [
@@ -277,9 +332,30 @@ class _NewSessionSheetState extends ConsumerState<_NewSessionSheet> {
       child: SingleChildScrollView(
         padding: const EdgeInsets.fromLTRB(18, 0, 18, 18),
         child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-          Text(widget.resume == null ? l.homeNewClaudeSession : l.claudeContinue, style: Theme.of(context).textTheme.titleLarge),
+          Row(children: [
+            Expanded(child: Text(pc ? l.claudePcUse : (widget.resume == null ? l.homeNewClaudeSession : l.claudeContinue), style: Theme.of(context).textTheme.titleLarge)),
+            if (pcAvailable)
+              FilterChip(
+                avatar: Icon(LucideIcons.monitor, size: 16, color: pc ? (t.isDark ? Colors.black : Colors.white) : t.accent),
+                label: Text(l.claudePcUse),
+                selected: pc,
+                showCheckmark: false,
+                onSelected: _busy ? null : (v) => setState(() => _pc = v),
+                selectedColor: t.isDark ? t.tabActive : const Color(0xFF111114),
+                labelStyle: TextStyle(color: pc ? (t.isDark ? Colors.black : Colors.white) : t.text, fontWeight: FontWeight.w600),
+              ),
+          ]),
           if (widget.title != null) Text(widget.title!, style: Theme.of(context).textTheme.bodySmall, maxLines: 2),
           const SizedBox(height: 12),
+          if (pc)
+            TCard(
+              child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Icon(LucideIcons.monitor, color: t.accent),
+                const SizedBox(width: 10),
+                Expanded(child: Text(l.claudePcHint, style: const TextStyle(fontSize: 13.5, height: 1.35))),
+              ]),
+            )
+          else
           TCard(
             onTap: widget.resume == null ? _pickFolder : null,
             semanticLabel: l.claudeFolder,
@@ -290,7 +366,7 @@ class _NewSessionSheetState extends ConsumerState<_NewSessionSheet> {
               if (widget.resume == null) Icon(LucideIcons.chevronRight, color: t.textSecondary),
             ]),
           ),
-          if (c.favoriteFolders.isNotEmpty && widget.resume == null)
+          if (c.favoriteFolders.isNotEmpty && widget.resume == null && !pc)
             Padding(
               padding: const EdgeInsets.only(top: 8),
               child: Wrap(spacing: 6, runSpacing: 6, children: [
@@ -299,13 +375,14 @@ class _NewSessionSheetState extends ConsumerState<_NewSessionSheet> {
               ]),
             ),
           const SizedBox(height: 12),
-          // İlk mesaj isteğe bağlı: boş başlatılan oturum sohbet ekranında ilk mesajı bekler.
+          // The first message is optional: a session started empty waits for the first message on the chat screen.
           TextField(
             controller: _prompt,
             minLines: 2,
             maxLines: 8,
-            decoration: InputDecoration(hintText: l.claudePromptOptional, errorText: _error),
+            decoration: InputDecoration(hintText: pc ? l.claudePcPromptHint : l.claudePromptOptional, errorText: _error),
           ),
+          if (!pc)
           chips<String>(l.claudePermissionMode, [
             ('bypassPermissions', l.claudeModeBypassShort),
             ('acceptEdits', l.claudeModeAcceptShort),
@@ -314,7 +391,7 @@ class _NewSessionSheetState extends ConsumerState<_NewSessionSheet> {
           ], _mode, (v) => setState(() => _mode = v)),
           chips<String>(l.claudeEffort, [for (final e in claudeEfforts) (e, e)], _effort, (v) => setState(() => _effort = v)),
           if (c.profiles.length > 1) chips<String>(l.claudeProfiles, [for (final p in c.profiles) (p.id, p.name)], _profile, (v) => setState(() => _profile = v)),
-          if (widget.resume == null)
+          if (widget.resume == null && !pc)
             Padding(
               padding: const EdgeInsets.only(top: 8),
               child: SwitchListTile.adaptive(
@@ -332,8 +409,8 @@ class _NewSessionSheetState extends ConsumerState<_NewSessionSheet> {
           const SizedBox(height: 16),
           FilledButton.icon(
             onPressed: _busy ? null : _start,
-            icon: _busy ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2)) : const Icon(LucideIcons.arrowUp),
-            label: Text(widget.resume == null ? l.claudeStart : l.claudeContinue),
+            icon: _busy ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2)) : Icon(pc ? LucideIcons.lockKeyhole : LucideIcons.arrowUp),
+            label: Text(pc ? l.claudePcStart : (widget.resume == null ? l.claudeStart : l.claudeContinue)),
           ),
         ]),
       ),
@@ -341,15 +418,16 @@ class _NewSessionSheetState extends ConsumerState<_NewSessionSheet> {
   }
 }
 
-class _FolderPicker extends ConsumerStatefulWidget {
-  const _FolderPicker({required this.hostId, required this.start});
+/// Folder picker under the agent's allowed roots (new session and scheduled task).
+class ClaudeFolderPicker extends ConsumerStatefulWidget {
+  const ClaudeFolderPicker({super.key, required this.hostId, required this.start});
   final String hostId;
   final String start;
   @override
-  ConsumerState<_FolderPicker> createState() => _FolderPickerState();
+  ConsumerState<ClaudeFolderPicker> createState() => _ClaudeFolderPickerState();
 }
 
-class _FolderPickerState extends ConsumerState<_FolderPicker> {
+class _ClaudeFolderPickerState extends ConsumerState<ClaudeFolderPicker> {
   Map<String, dynamic>? _d;
   Object? _err;
 

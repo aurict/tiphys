@@ -1,5 +1,5 @@
-// Ajanın kendi ayarları (agent.json), telefondan: özellikler, izinli klasörler, Homepage dosyası,
-// Uptime Kuma girişi, eşleşmiş cihazlar ve "her şeyi kilitle".
+// The agent's own settings (agent.json), from the phone: features, allowed folders, Homepage file,
+// Uptime Kuma login, paired devices and "lock everything".
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -12,12 +12,13 @@ import '../../theme/tokens.dart';
 import '../../widgets/forms.dart';
 import '../../widgets/surfaces.dart';
 import 'agent_providers.dart';
+import 'backups.dart';
 
 final agentConfigProvider = FutureProvider.autoDispose.family<Map<String, dynamic>, String>((ref, hostId) {
   return withAgent(ref, hostId, (c) => c.get('/v1/config'));
 });
 
-const agentFeatures = ['system', 'services', 'docker', 'power', 'git', 'desktop', 'ports', 'transcribe', 'alerts', 'homepage', 'claude', 'uptime', 'wake', 'watch'];
+const agentFeatures = ['system', 'services', 'docker', 'power', 'git', 'desktop', 'control', 'ports', 'transcribe', 'alerts', 'backups', 'homepage', 'claude', 'uptime', 'wake', 'watch'];
 
 class AgentSettingsScreen extends ConsumerStatefulWidget {
   const AgentSettingsScreen({super.key, required this.hostId});
@@ -42,10 +43,20 @@ class _AgentSettingsState extends ConsumerState<AgentSettingsScreen> {
   final _gfToken = TextEditingController();
   final _gfDs = TextEditingController();
   bool _gfHasToken = false;
+  /// Backup checks; null = this agent version doesn't know about backup checks (field not sent).
+  List<Map<String, dynamic>>? _checks;
+  /// PC → phone clipboard sync; null = the agent doesn't know this setting (field not sent).
+  bool? _clipboardSync;
+  /// Sunshine web login (for the Moonlight PIN); if the agent doesn't know this setting the field isn't sent.
+  bool _sunKnown = false;
+  bool _sunHasPassword = false;
+  final _sunUrl = TextEditingController();
+  final _sunUser = TextEditingController();
+  final _sunPass = TextEditingController();
 
   @override
   void dispose() {
-    for (final c in [_roots, _hpPath, _ukUrl, _ukUser, _ukPass, _diskPct, _alertEvery, _gfUrl, _gfToken, _gfDs]) {
+    for (final c in [_roots, _hpPath, _ukUrl, _ukUser, _ukPass, _diskPct, _alertEvery, _gfUrl, _gfToken, _gfDs, _sunUrl, _sunUser, _sunPass]) {
       c.dispose();
     }
     super.dispose();
@@ -68,9 +79,17 @@ class _AgentSettingsState extends ConsumerState<AgentSettingsScreen> {
     _gfUrl.text = gf?['url'] as String? ?? '';
     _gfDs.text = ((gf?['datasourceUids'] as List?) ?? const []).join(', ');
     _gfHasToken = gf?['hasToken'] == true;
+    final bk = c['backups'] as Map?;
+    _checks = bk == null ? null : [for (final x in (bk['checks'] as List)) Map<String, dynamic>.from(x as Map)];
+    _clipboardSync = (c['desktop'] as Map?)?['clipboardSync'] as bool?;
+    _sunKnown = c.containsKey('sunshine');
+    final sun = c['sunshine'] as Map?;
+    _sunUrl.text = sun?['url'] as String? ?? '';
+    _sunUser.text = sun?['username'] as String? ?? '';
+    _sunHasPassword = sun?['hasPassword'] == true;
   }
 
-  /// Profildeki ilk Grafana tanımının adresini ve token'ını (kasadan) alanlara kopyalar.
+  /// Copies the URL and token (from the vault) of the first Grafana definition in the profile into the fields.
   Future<void> _useProfileGrafana() async {
     final g = ref.read(profileProvider).integrations.grafana.firstOrNull;
     if (g == null) return;
@@ -102,9 +121,20 @@ class _AgentSettingsState extends ConsumerState<AgentSettingsScreen> {
                   'datasourceUids': _gfDs.text.split(RegExp(r'[,\s]+')).where((x) => x.isNotEmpty).toList(),
                 },
         },
+        if (_checks != null) 'backups': {'checks': _checks},
+        if (_clipboardSync != null) 'desktop': {'clipboardSync': _clipboardSync},
+        // If the username is empty the login is removed; if the password is left empty the agent keeps the old one.
+        if (_sunKnown && (_sunUser.text.trim().isNotEmpty || _sunHasPassword))
+          'sunshine': _sunUser.text.trim().isEmpty
+              ? null
+              : {
+                  if (_sunUrl.text.trim().isNotEmpty) 'url': _sunUrl.text.trim(),
+                  'username': _sunUser.text.trim(),
+                  if (_sunPass.text.isNotEmpty) 'password': _sunPass.text,
+                },
       };
       final res = await agentCall(ref, widget.hostId, 'PATCH', '/v1/config', body) as Map;
-      // Ajan ayarlarının kopyası profile de yazılır (dışa aktarmada yer alsın).
+      // A copy of the agent settings is also written to the profile (so it's included in exports).
       final copy = Map<String, dynamic>.from(res['config'] as Map)..remove('devices')..remove('push');
       await ref.read(profileProvider.notifier).update((p) => p.copyWith(agentConfigs: {...p.agentConfigs, widget.hostId: copy}));
       ref.invalidate(agentConfigProvider(widget.hostId));
@@ -177,6 +207,45 @@ class _AgentSettingsState extends ConsumerState<AgentSettingsScreen> {
                     child: TextButton.icon(onPressed: _useProfileGrafana, icon: const Icon(LucideIcons.copy, size: 16), label: Text(l.agentAlertsUseProfileGrafana)),
                   ),
               ],
+              if (_features!['desktop'] == true && _clipboardSync != null)
+                GroupedSection(footer: l.agentClipboardSyncHint, children: [
+                  SwitchRow(title: l.agentClipboardSync, value: _clipboardSync!, onChanged: (v) => setState(() => _clipboardSync = v)),
+                ]),
+              if (_features!['desktop'] == true && _sunKnown)
+                FieldCard(title: l.agentSunshine, children: [
+                  TField(controller: _sunUrl, label: 'URL', hint: 'https://127.0.0.1:47990', mono: true),
+                  TField(controller: _sunUser, label: l.hostSshUser),
+                  TField(controller: _sunPass, label: l.hostSshPassword, obscure: true, helper: _sunHasPassword ? l.secretStoredSafely : l.agentSunshineHint),
+                ]),
+              if (_features!['backups'] == true && _checks != null)
+                GroupedSection(title: l.agentBackupChecks, footer: l.agentBackupChecksHint, children: [
+                  for (final b in _checks!)
+                    GroupedRow(
+                      title: '${b['name']}',
+                      subtitle: '${b['path'] ?? b['unit']} · ${l.backupsMaxAge('${b['maxAgeHours']}')}',
+                      icon: b['kind'] == 'unit' ? LucideIcons.timer : LucideIcons.archive,
+                      iconBackground: const Color(0xFF0A84FF),
+                      showChevron: false,
+                      trailing: IconButton(
+                        tooltip: l.agentBackupRemove,
+                        icon: Icon(LucideIcons.trash2, color: t.danger, size: 20),
+                        onPressed: () async {
+                          if (!await confirmDialog(context, message: l.agentBackupRemoveConfirm('${b['name']}'), confirmLabel: l.commonDelete, destructive: true)) return;
+                          setState(() => _checks!.remove(b));
+                        },
+                      ),
+                    ),
+                  GroupedRow(
+                    title: l.agentBackupAdd,
+                    icon: LucideIcons.plus,
+                    iconBackground: t.accent,
+                    onTap: () async {
+                      final added = await Navigator.of(context).push<Map<String, dynamic>>(
+                          MaterialPageRoute(builder: (_) => BackupCheckEditPage(takenIds: [for (final c in _checks!) '${c['id']}'])));
+                      if (added != null && mounted) setState(() => _checks!.add(added));
+                    },
+                  ),
+                ]),
               GroupedSection(title: l.agentDevices, children: [
                 for (final d in devices)
                   GroupedRow(
@@ -235,13 +304,15 @@ String agentFeatureName(AppLocalizations l, String f) => switch (f) {
       'wake' => 'Wake-on-LAN',
       'git' => 'Git',
       'desktop' => l.agentFeatDesktop,
+      'control' => l.agentFeatControl,
       'ports' => l.toolsPorts,
       'transcribe' => l.agentFeatTranscribe,
       'alerts' => l.agentAlerts,
+      'backups' => l.agentFeatBackups,
       _ => l.agentFeatWatch,
     };
 
-/// Host düzenleme ekranından ajan ayarlarına geçiş satırı.
+/// Row on the host edit screen that leads to the agent settings.
 class AgentSettingsLink extends StatelessWidget {
   const AgentSettingsLink({super.key, required this.host});
   final Host host;

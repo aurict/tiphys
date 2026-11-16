@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Tiphys uyarlanabilir ikonu (kaynak: tools/logo/logo.mjs). Android 13+ temalı ikon için monochrome. -->
+<!-- Tiphys adaptive icon (source: tools/logo/logo.mjs). monochrome is for the Android 13+ themed icon. -->
 <adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android">
     <background android:drawable="@mipmap/ic_launcher_background" />
     <foreground android:drawable="@mipmap/ic_launcher_foreground" />

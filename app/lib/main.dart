@@ -13,6 +13,7 @@ import 'core/profile/repository.dart';
 import 'core/push/push_service.dart';
 import 'core/secrets/secret_store.dart';
 import 'core/security/app_lock.dart';
+import 'features/claude/pc_ongoing.dart';
 import 'features/files/share_to_pc.dart';
 import 'features/settings/push_section.dart';
 import 'state/providers.dart';
@@ -36,7 +37,7 @@ Future<void> main(List<String> args) async {
 
   final push = PushService(vault: const SecureVault(), loadProfile: loadProfile, secrets: secrets);
 
-  // UnifiedPush mesajı uygulama kapalıyken geldiyse: sadece bildirimi göster, arayüzü açma.
+  // If a UnifiedPush message arrived while the app was closed: only show the notification, don't open the UI.
   final background = args.contains('--unifiedpush-bg');
   await push.init(background: background);
   if (background) return;
@@ -48,7 +49,7 @@ Future<void> main(List<String> args) async {
   try {
     initial = await repo.load();
   } catch (_) {
-    // Bozuk dosya: kenara al, boş profille başla (kullanıcı yedeğini içe aktarabilir).
+    // Corrupt file: set it aside, start with an empty profile (the user can import their backup).
     final f = File('${docs.path}/profile.json');
     if (await f.exists()) await f.rename('${docs.path}/profile.broken-${DateTime.now().millisecondsSinceEpoch}.json');
     initial = Profile.empty;
@@ -61,14 +62,17 @@ Future<void> main(List<String> args) async {
     pushServiceProvider.overrideWithValue(push),
   ]);
 
-  // Bildirime dokununca ilgili ekran.
+  // Tapping a notification opens the related screen.
   push.onOpen = (route) => container.read(routerProvider).push(route);
+  // Claude using the PC: notification buttons and the agent's "control finished" notification run off UI state.
+  push.onPcAction = (action) => container.read(pcOngoingProvider.notifier).action(action);
+  push.onPcEnded = (sessionId) => container.read(pcOngoingProvider.notifier).ended(sessionId);
   final launch = await push.launchRoute();
-  // Uç nokta değişmiş ya da ajan yeni eşlenmiş olabilir: açılışta ajanlara tekrar bildir.
+  // The endpoint may have changed or an agent may be newly paired: notify the agents again on startup.
   push.registerWithAgents();
 
   runApp(UncontrolledProviderScope(container: container, child: const TiphysApp()));
-  // Android "Paylaş" menüsünden gelen dosya/metin → PC'ye gönder ekranı.
+  // File/text from the Android "Share" menu → send-to-PC screen.
   WidgetsBinding.instance.addPostFrameCallback((_) {
     ShareIntake().start((items) => container.read(routerProvider).push('/share', extra: items));
   });

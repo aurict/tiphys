@@ -1,4 +1,4 @@
-// .tiphys.json okuma/yazma: biçim kontrolü → sürüm taşıma → JSON Schema doğrulaması → model.
+// .tiphys.json read/write: format check → version migration → JSON Schema validation → model.
 import 'dart:convert';
 
 import 'package:json_schema/json_schema.dart';
@@ -29,7 +29,7 @@ class InvalidProfile extends ProfileError {
   String toString() => 'InvalidProfile(${issues.join('; ')})';
 }
 
-/// Okunmuş, doğrulanmış (ama varsayılanlarla doldurulmamış) dosya. Kısmi olabilir.
+/// A read and validated (but not defaults-filled) file. May be partial.
 class ProfileFile {
   const ProfileFile(this.json);
   final Json json;
@@ -38,7 +38,7 @@ class ProfileFile {
   Map<String, dynamic>? get encryptedSecrets =>
       json['encryptedSecrets'] == null ? null : Map<String, dynamic>.from(json['encryptedSecrets'] as Map);
 
-  /// Dosyadaki bölümleri varsayılanlarla doldurulmuş tam profile çevirir.
+  /// Converts the file's sections into a full profile filled with defaults.
   Profile toProfile() => Profile.fromJson(json);
 }
 
@@ -46,8 +46,11 @@ class ProfileCodec {
   ProfileCodec(String schemaJson) : _schema = JsonSchema.create(jsonDecode(schemaJson));
   final JsonSchema _schema;
 
-  /// Sürüm taşımaları: schemaVersion N → N+1. Şimdilik sadece sürüm 1 var.
-  static final Map<int, Json Function(Json)> migrations = {};
+  /// Version migrations: schemaVersion N → N+1.
+  static final Map<int, Json Function(Json)> migrations = {
+    // 2 only added a new section (desktopRemotes); a version 1 file is valid as is.
+    1: (j) => {...j, 'schemaVersion': 2},
+  };
 
   ProfileFile decode(String text) {
     final Object? raw;
@@ -76,7 +79,7 @@ class ProfileCodec {
     return ProfileFile(json);
   }
 
-  /// Şemanın göremediği tutarlılıklar: yinelenen kimlikler, var olmayan hostlara başvuru.
+  /// Consistency checks the schema can't express: duplicate ids, references to nonexistent hosts.
   void _checkReferences(Json json) {
     final issues = <String>[];
     void unique(String path, List? list) {
@@ -91,11 +94,12 @@ class ProfileCodec {
     unique('/hosts', hosts);
     unique('/keys', json['keys'] as List?);
     unique('/quickActions', json['quickActions'] as List?);
+    unique('/desktopRemotes', json['desktopRemotes'] as List?);
     final integ = json['integrations'] as Map?;
     unique('/integrations/grafana', integ?['grafana'] as List?);
     unique('/integrations/dozzle', integ?['dozzle'] as List?);
 
-    // Host başvuruları sadece dosya host listesini içeriyorsa kontrol edilir (kısmi dosya mevcut hostlara başvurabilir).
+    // Host references are checked only if the file contains a host list (a partial file may reference existing hosts).
     if (hosts != null) {
       final hostIds = hosts.map((h) => (h as Map)['id'] as String).toSet();
       void ref(String path, Object? id) {
@@ -118,7 +122,7 @@ class ProfileCodec {
     if (issues.isNotEmpty) throw InvalidProfile(issues);
   }
 
-  /// Profili dosya metnine çevirir. Gizli bilgi bölümü sadece şifreli yedekte eklenir.
+  /// Converts the profile to file text. The secrets section is added only in an encrypted backup.
   String encode(Profile p, {Json? encryptedSecrets, String? exportedFrom, DateTime? now}) {
     final json = <String, dynamic>{
       r'$schema': './schema/tiphys.schema.json',

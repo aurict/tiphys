@@ -1,7 +1,8 @@
-// Gerçek Grafana ve Dozzle'a karşı istemci testleri (sunucu). Hedefler: real_env.dart.
+// Client tests against real Grafana and Dozzle (server). Targets: real_env.dart.
 @Tags(['real'])
 library;
 
+import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
@@ -111,6 +112,28 @@ void main() {
       final logs = await d.history(pg, window: const Duration(hours: 12));
       expect(logs, isA<List<DozzleLog>>());
       if (logs.isNotEmpty) expect(logs.first.text, isNotEmpty);
+    });
+
+    test('işlem ayarı arayüzün gömülü ayarlarından okunur', () async {
+      // false if DOZZLE_ENABLE_ACTIONS isn't set on the server's Dozzle; being readable is enough.
+      expect(await d.actionsEnabled(), isA<bool>());
+    });
+
+    test('birleşik akış: iki container aynı anda canlı izlenir', () async {
+      final cs = (await d.containers()).where((c) => c.running).take(2).toList();
+      expect(cs, hasLength(2));
+      final subs = <StreamSubscription<DozzleLog>>[];
+      final opened = <String>{};
+      final errors = <Object>[];
+      for (final c in cs) {
+        subs.add(d.stream(c).listen((_) => opened.add(c.id), onError: errors.add));
+      }
+      // Streams must stay open for 3 s without errors (a quiet container may produce no lines).
+      await Future<void>.delayed(const Duration(seconds: 3));
+      for (final s in subs) {
+        await s.cancel();
+      }
+      expect(errors, isEmpty);
     });
   });
 }

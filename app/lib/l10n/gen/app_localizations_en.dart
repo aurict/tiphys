@@ -235,7 +235,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get settingsHome => 'Home screen';
 
   @override
-  String get settingsHomeHint => 'Cards and their order';
+  String get settingsHomeHint => 'Layout, cards and shortcuts';
 
   @override
   String get settingsAppearance => 'Appearance';
@@ -745,9 +745,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get notifyClaudeError => 'When it fails';
 
   @override
-  String get notifySiteDown => 'Site outages';
-
-  @override
   String get notifyPcOffline => 'PC goes offline';
 
   @override
@@ -755,9 +752,6 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get notifyGrafana => 'Grafana alerts';
-
-  @override
-  String get notifyDiskFull => 'Disk almost full warning at';
 
   @override
   String get notifyLongCommand => 'Tell me when a long command finishes';
@@ -871,11 +865,6 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get filesUpload => 'Upload here';
-
-  @override
-  String filesUploaded(String name) {
-    return 'Uploaded $name';
-  }
 
   @override
   String get filesUp => 'Parent folder';
@@ -1293,9 +1282,6 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get dozzleStopped => 'stopped or unhealthy';
-
-  @override
-  String get notifClaudeDoneTitle => 'Claude finished';
 
   @override
   String get notifClaudeWaitingTitle => 'Claude needs your approval';
@@ -2059,4 +2045,2639 @@ class AppLocalizationsEn extends AppLocalizations {
   String sessionEditCount(int count) {
     return '$count edits';
   }
+
+  @override
+  String notifClaudeDoneTitleWith(String title) {
+    return 'Claude finished: $title';
+  }
+
+  @override
+  String notifFilesChanged(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count files changed',
+      one: '1 file changed',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get notifyAgentSideHint =>
+      'Site outages come straight to the ntfy app (siteler topic). The disk-full threshold is set per host under Settings › Hosts › Agent settings.';
+
+  @override
+  String get pushSetupHint =>
+      'In the ntfy app: set the default server to your own ntfy server, sign in with the phone user, then turn notifications on here.';
+
+  @override
+  String pushNotRegistered(String hosts) {
+    return 'Could not register with: $hosts. Is the agent running? Tap the row above to retry.';
+  }
+
+  @override
+  String get pushBatteryHint =>
+      'On Xiaomi/Redmi phones set ntfy\'s battery saver to \"No restrictions\" and allow autostart, or notifications arrive late.';
+
+  @override
+  String dozzleSelected(int count) {
+    return '$count selected';
+  }
+
+  @override
+  String get dozzleMerge => 'Watch several together';
+
+  @override
+  String dozzleMergeHint(int max) {
+    return 'Pick the containers to follow in one stream (up to $max).';
+  }
+
+  @override
+  String dozzleSelectProject(String project) {
+    return 'Select all of $project';
+  }
+
+  @override
+  String dozzleWatchTogether(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'Watch $count containers together',
+      one: 'Watch 1 container',
+      zero: 'Pick containers',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String dozzleMergedTitle(int count) {
+    return '$count containers';
+  }
+
+  @override
+  String get dozzleLevels => 'Log levels';
+
+  @override
+  String get dozzleActionsOffTitle => 'Container actions are off';
+
+  @override
+  String get dozzleActionsOffBody =>
+      'Start/stop/restart is disabled on this Dozzle server. To allow it, restart Dozzle with DOZZLE_ENABLE_ACTIONS=true.';
+
+  @override
+  String get dozzleActionsOffShort => 'Off in Dozzle';
+
+  @override
+  String dozzleActionConfirm(String action, String name) {
+    return '$action $name?';
+  }
+
+  @override
+  String dozzleActionDone(String action) {
+    return '$action: done';
+  }
+
+  @override
+  String get dozzleStart => 'Start';
+
+  @override
+  String get dozzleStop => 'Stop';
+
+  @override
+  String get dozzleRestart => 'Restart';
+
+  @override
+  String get dozzleAskClaude => 'Ask Claude';
+
+  @override
+  String get dozzleAskClaudeHint =>
+      'New session with this line and the lines before it';
+
+  @override
+  String get dozzleNoClaudeHost =>
+      'No host with an agent is set for Claude (Settings › Claude).';
+
+  @override
+  String dozzleClaudeIntro(String name, String image) {
+    return 'In Dozzle, the log of container \"$name\" ($image) shows the line below. What does it mean, what is the likely cause and how do I fix it?';
+  }
+
+  @override
+  String get dozzleClaudeBefore => 'Lines before it:';
+
+  @override
+  String get terminalFullscreen => 'Full screen (rotates to landscape)';
+
+  @override
+  String get terminalExitFullscreen => 'Exit full screen';
+
+  @override
+  String get terminalInFullscreen => 'This session is open in full screen';
+
+  @override
+  String terminalFontSizeValue(String size) {
+    return '$size pt';
+  }
+
+  @override
+  String get transfersTitle => 'Transfers';
+
+  @override
+  String transfersRunning(int count) {
+    return 'Transfers ($count running)';
+  }
+
+  @override
+  String get transfersEmpty =>
+      'No uploads or downloads yet. Interrupted transfers continue where they left off.';
+
+  @override
+  String get transfersClear => 'Clear finished';
+
+  @override
+  String get transfersArchiving => 'Compressing the folder on the server…';
+
+  @override
+  String get transfersPaused => 'paused';
+
+  @override
+  String get transfersFailed =>
+      'Interrupted, tap resume to continue where it stopped';
+
+  @override
+  String get transfersUploaded => 'Uploaded';
+
+  @override
+  String get transfersDownloaded => 'Downloaded';
+
+  @override
+  String get transfersPause => 'Pause';
+
+  @override
+  String get transfersResume => 'Resume';
+
+  @override
+  String get transfersUnknownSize =>
+      'The file size could not be read; pick the file again.';
+
+  @override
+  String get filesDownloadFolder => 'Compress and download';
+
+  @override
+  String get eventsTitle => 'Events';
+
+  @override
+  String get eventsEmpty => 'No events yet';
+
+  @override
+  String get eventsEmptyFiltered => 'No events match the filter';
+
+  @override
+  String get eventsNoAgents =>
+      'Events come from hosts with the Tiphys agent. Add an agent to a host first.';
+
+  @override
+  String get eventsAllHosts => 'All hosts';
+
+  @override
+  String get eventsAllTypes => 'All types';
+
+  @override
+  String get eventsTypeSystem => 'System';
+
+  @override
+  String get eventsTypeBackup => 'Backups';
+
+  @override
+  String get eventsTypeCommand => 'Commands';
+
+  @override
+  String get eventsTypeOther => 'Other';
+
+  @override
+  String get eventsToday => 'Today';
+
+  @override
+  String get eventsYesterday => 'Yesterday';
+
+  @override
+  String get eventsFromPhone => 'from phone';
+
+  @override
+  String eventsHostFailed(String host) {
+    return '$host: events could not be loaded';
+  }
+
+  @override
+  String get homeCardsEvents => 'Recent events';
+
+  @override
+  String get homeEventsAll => 'All';
+
+  @override
+  String notifDockerDiedTitle(String host) {
+    return 'Container crashed · $host';
+  }
+
+  @override
+  String notifDockerDiedBody(String container, int code) {
+    return '$container (exit code $code)';
+  }
+
+  @override
+  String notifDockerOomTitle(String host) {
+    return 'Container out of memory · $host';
+  }
+
+  @override
+  String notifDockerRestartedTitle(String host) {
+    return 'Container restarted · $host';
+  }
+
+  @override
+  String notifBackupStaleTitle(String name) {
+    return 'Backup is stale: $name';
+  }
+
+  @override
+  String notifBackupStaleBody(String host, int hours) {
+    return '$host · last backup $hours h ago';
+  }
+
+  @override
+  String notifBackupFailedTitle(String name) {
+    return 'Backup failed: $name';
+  }
+
+  @override
+  String notifBackupOkTitle(String name) {
+    return 'Backup OK again: $name';
+  }
+
+  @override
+  String get notifyBackups => 'Backup alerts';
+
+  @override
+  String get backupsTitle => 'Backups';
+
+  @override
+  String get backupsCheckNow => 'Check now';
+
+  @override
+  String backupsChecked(String status) {
+    return 'Checked: $status';
+  }
+
+  @override
+  String get backupsStatusOk => 'Up to date';
+
+  @override
+  String get backupsStatusStale => 'Stale';
+
+  @override
+  String get backupsStatusFailed => 'Failed';
+
+  @override
+  String get backupsStatusMissing => 'Missing';
+
+  @override
+  String get backupsStatusUnknown => 'Not checked yet';
+
+  @override
+  String backupsLast(String time) {
+    return 'Last backup $time';
+  }
+
+  @override
+  String get backupsNever => 'No backup yet';
+
+  @override
+  String get backupsRunning => 'running now';
+
+  @override
+  String backupsMaxAge(String hours) {
+    return 'max. $hours h old';
+  }
+
+  @override
+  String get backupsReasonTooSmall => 'file is too small';
+
+  @override
+  String get backupsReasonNoMatch => 'no matching file';
+
+  @override
+  String get backupsReasonNotFound => 'unit not found';
+
+  @override
+  String get backupsReasonNeverRan => 'never ran';
+
+  @override
+  String backupsReasonUnit(String result) {
+    return 'unit result: $result';
+  }
+
+  @override
+  String get backupsEmpty =>
+      'No backup checks. Turn on the “Backups” feature in a host\'s agent settings and add a check.';
+
+  @override
+  String get backupsHostNoChecks => 'No checks on this host';
+
+  @override
+  String backupsEveryMinutes(int minutes) {
+    return 'Checked every $minutes min. Changes are notified.';
+  }
+
+  @override
+  String get agentFeatBackups => 'Backup status';
+
+  @override
+  String get agentBackupChecks => 'Backup checks';
+
+  @override
+  String get agentBackupChecksHint =>
+      'Changes are sent to the agent with Save; no restart needed.';
+
+  @override
+  String get agentBackupAdd => 'Add check';
+
+  @override
+  String get agentBackupName => 'Name';
+
+  @override
+  String get agentBackupKindFile => 'Newest file';
+
+  @override
+  String get agentBackupKindUnit => 'systemd unit';
+
+  @override
+  String get agentBackupPath => 'File pattern';
+
+  @override
+  String get agentBackupPathHint =>
+      '* and ? only in the last part, e.g. ~/backups/obsidian/*.json.gz';
+
+  @override
+  String get agentBackupUnit => 'Unit';
+
+  @override
+  String get agentBackupUnitHint => 'User unit first, then system unit';
+
+  @override
+  String get agentBackupMaxAge => 'Max. age (hours)';
+
+  @override
+  String get agentBackupMinBytes => 'Min. size (bytes)';
+
+  @override
+  String get agentBackupRemove => 'Remove check';
+
+  @override
+  String agentBackupRemoveConfirm(String name) {
+    return 'Remove the backup check “$name”?';
+  }
+
+  @override
+  String get agentBackupInvalidPath =>
+      'Wildcards are allowed only in the last part';
+
+  @override
+  String get claudeFolderNotFound => 'Folder not found';
+
+  @override
+  String get claudeSchedules => 'Scheduled tasks';
+
+  @override
+  String get claudeSchedulesEmpty =>
+      'No scheduled tasks yet. For example, let Claude summarize a repository\'s status every morning.';
+
+  @override
+  String claudeSchedulesHint(String host) {
+    return 'Times use $host\'s time zone. If $host is off at the scheduled minute the run is skipped, not made up later; a run is also skipped while the previous one is still going.';
+  }
+
+  @override
+  String get claudeScheduleAdd => 'New task';
+
+  @override
+  String get claudeScheduleEdit => 'Edit task';
+
+  @override
+  String get claudeScheduleName => 'Name';
+
+  @override
+  String get claudeScheduleNameHint => 'Morning report';
+
+  @override
+  String get claudeSchedulePrompt => 'What should Claude do?';
+
+  @override
+  String get claudeSchedulePromptHint =>
+      'Summarize yesterday\'s commits and open TODOs';
+
+  @override
+  String get claudeScheduleWhen => 'When';
+
+  @override
+  String get claudeScheduleDaily => 'Daily';
+
+  @override
+  String get claudeScheduleWeekly => 'Weekly';
+
+  @override
+  String get claudeScheduleInterval => 'Interval';
+
+  @override
+  String get claudeScheduleTime => 'Time';
+
+  @override
+  String get claudeScheduleDays => 'Days';
+
+  @override
+  String get claudeScheduleEveryLabel => 'Run every';
+
+  @override
+  String claudeScheduleDailyAt(String time) {
+    return 'Daily at $time';
+  }
+
+  @override
+  String claudeScheduleEveryMinutes(int minutes) {
+    return 'Every $minutes min';
+  }
+
+  @override
+  String claudeScheduleEveryHours(int hours) {
+    String _temp0 = intl.Intl.pluralLogic(
+      hours,
+      locale: localeName,
+      other: 'Every $hours h',
+      one: 'Every hour',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String claudeScheduleToday(String time) {
+    return 'today $time';
+  }
+
+  @override
+  String claudeScheduleTomorrow(String time) {
+    return 'tomorrow $time';
+  }
+
+  @override
+  String claudeScheduleYesterday(String time) {
+    return 'yesterday $time';
+  }
+
+  @override
+  String claudeScheduleNext(String when) {
+    return 'next: $when';
+  }
+
+  @override
+  String get claudeScheduleOff => 'off';
+
+  @override
+  String get claudeScheduleEnabled => 'enabled';
+
+  @override
+  String claudeScheduleLast(String when) {
+    return 'Last run $when';
+  }
+
+  @override
+  String get claudeScheduleNever => 'Hasn\'t run yet';
+
+  @override
+  String get claudeScheduleRunning => 'running';
+
+  @override
+  String get claudeScheduleOk => 'succeeded';
+
+  @override
+  String get claudeScheduleFailed => 'failed';
+
+  @override
+  String get claudeScheduleNoResult => 'no result';
+
+  @override
+  String get claudeScheduleRunNow => 'Run now';
+
+  @override
+  String get claudeScheduleBusy => 'The previous run is still going';
+
+  @override
+  String get claudeScheduleManual => 'Started by hand';
+
+  @override
+  String claudeScheduleDeleteConfirm(String name) {
+    return 'Delete \"$name\"?';
+  }
+
+  @override
+  String get claudeScheduleNeedsNameAndPrompt => 'Name and task are required';
+
+  @override
+  String get claudeScheduleNeedsDays => 'Pick at least one day';
+
+  @override
+  String get claudeScheduleAskHint =>
+      'Nobody may be watching when it runs: tool requests will wait for your approval.';
+
+  @override
+  String get composeTitle => 'Compose stacks';
+
+  @override
+  String get composeNoSshHosts =>
+      'No host with SSH. Add SSH in Settings › Hosts.';
+
+  @override
+  String composeEmpty(String roots) {
+    return 'No compose file found under $roots.';
+  }
+
+  @override
+  String composeRootsFooter(String roots) {
+    return 'Searched in $roots (change in Settings › Hosts).';
+  }
+
+  @override
+  String composeRunningCount(int running, int total) {
+    return '$running/$total running';
+  }
+
+  @override
+  String get composeUnhealthy => 'unhealthy';
+
+  @override
+  String get composeStopped => 'Stopped';
+
+  @override
+  String get composeNotCreated => 'No containers';
+
+  @override
+  String get composeError => 'Couldn\'t be read';
+
+  @override
+  String get composeStackGone => 'This stack is no longer there.';
+
+  @override
+  String get composeContainers => 'Containers';
+
+  @override
+  String get composeActions => 'Actions';
+
+  @override
+  String get composeActionsHint =>
+      'Check pulls the images and compares them with the running containers; Update then recreates only the services that changed.';
+
+  @override
+  String get composeCheck => 'Check for updates';
+
+  @override
+  String get composeUpdate => 'Update';
+
+  @override
+  String get composeRestart => 'Restart';
+
+  @override
+  String get composeStop => 'Stop';
+
+  @override
+  String get composeStart => 'Start';
+
+  @override
+  String get composeLogs => 'Logs (last 200 lines)';
+
+  @override
+  String composeUpdateConfirm(String stack) {
+    return 'Update $stack? Images are pulled; services with a new image are recreated.';
+  }
+
+  @override
+  String get composeForce => 'Recreate even if nothing changed';
+
+  @override
+  String composeRestartConfirm(String stack) {
+    return 'Restart $stack? Its services will be briefly unavailable.';
+  }
+
+  @override
+  String composeStopConfirm(String stack) {
+    return 'Stop $stack? Its containers stay stopped until started again.';
+  }
+
+  @override
+  String get composeWorking => 'Working…';
+
+  @override
+  String get composeOutput => 'Command output';
+
+  @override
+  String get composeNoUpdates => 'No new images.';
+
+  @override
+  String composeUpdatesAvailable(int count, String services) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'New images for $count services: $services',
+      one: 'New image for 1 service: $services',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String composeUpdated(int count, String services) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count services updated: $services',
+      one: '1 service updated: $services',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get composeUpToDate => 'Already up to date; nothing was restarted.';
+
+  @override
+  String get composeRecreated => 'Recreated';
+
+  @override
+  String get composeDone => 'Done.';
+
+  @override
+  String composeFailed(String step, String code) {
+    return 'Failed: $step (exit $code)';
+  }
+
+  @override
+  String get composeEventFailed => '(Couldn\'t record the event.)';
+
+  @override
+  String get hostComposeRoots => 'Compose folders';
+
+  @override
+  String get hostComposeRootsHint =>
+      'Comma separated; compose files are looked up one level below each folder.';
+
+  @override
+  String eventsUnknownTitle(String type) {
+    return '$type event';
+  }
+
+  @override
+  String notifComposeUpdatedTitle(String stack) {
+    return '$stack updated';
+  }
+
+  @override
+  String notifComposeFailedTitle(String stack) {
+    return '$stack update failed';
+  }
+
+  @override
+  String notifComposeFailedBody(String host, String step, String code) {
+    return '$host · $step failed (exit $code)';
+  }
+
+  @override
+  String notifClaudeScheduledTitle(String name) {
+    return 'Scheduled task started: $name';
+  }
+
+  @override
+  String notifClaudeScheduleSkippedTitle(String name) {
+    return 'Scheduled task skipped: $name';
+  }
+
+  @override
+  String get notifClaudeScheduleSkippedBody =>
+      'The previous run is still going';
+
+  @override
+  String notifClaudeScheduleFailedTitle(String name) {
+    return 'Scheduled task couldn\'t start: $name';
+  }
+
+  @override
+  String get sessionViewDiff => 'Show diff';
+
+  @override
+  String get sessionCommitPush => 'Commit + push';
+
+  @override
+  String sessionCommitFiles(int count) {
+    return 'Only the $count files this session changed are committed; other changes stay out.';
+  }
+
+  @override
+  String sessionWorktreeWarning(String branch) {
+    return 'This session runs on a separate worktree branch ($branch). Push sends this branch to the remote; it does not merge into your main branch.';
+  }
+
+  @override
+  String get sessionNoUpstream => 'No upstream yet (created on first push)';
+
+  @override
+  String get sessionFileUnchanged => 'No changes now (committed or reverted)';
+
+  @override
+  String get sessionFileOutside =>
+      'Outside the repository; not included in commit or revert';
+
+  @override
+  String get sessionPushed => 'Committed and pushed';
+
+  @override
+  String get sessionRevertTitle => 'Revert changes?';
+
+  @override
+  String sessionRevertBody(int count) {
+    return '$count files changed by this session go back to their last committed state. This cannot be undone.';
+  }
+
+  @override
+  String sessionRevertDeleteNew(int count) {
+    return 'Also delete the $count new files this session created';
+  }
+
+  @override
+  String get sessionRevertNewTag => 'new';
+
+  @override
+  String get sessionReverted => 'Changes reverted';
+
+  @override
+  String gitNoUpstreamConfirm(String branch) {
+    return 'Branch $branch does not exist on the remote yet. Publish and track it?';
+  }
+
+  @override
+  String get gitPublishBranch => 'Publish branch';
+
+  @override
+  String get gitNoUpstream => 'The branch has no upstream';
+
+  @override
+  String get gitNoRemote => 'No remote is configured for this repository';
+
+  @override
+  String get gitAuthFailed =>
+      'Authentication with the remote failed. The PC needs an SSH key or stored credentials (the agent cannot prompt for a password).';
+
+  @override
+  String get gitPushRejected => 'The remote has new commits; pull first';
+
+  @override
+  String get gitNewFilesNeedConfirm =>
+      'New files are only deleted after a separate confirmation';
+
+  @override
+  String get notifClipboardTitle => 'Copied on PC';
+
+  @override
+  String notifGitCommittedTitle(String repo, String branch) {
+    return 'Commit: $repo · $branch';
+  }
+
+  @override
+  String notifGitPushedTitle(String repo) {
+    return 'Push: $repo';
+  }
+
+  @override
+  String get notifyClipboardFromPc =>
+      'Notify when something is copied on the PC';
+
+  @override
+  String get clipboardSyncToPc => 'Sync clipboard to PC';
+
+  @override
+  String get clipboardSyncHint =>
+      'Text copied on the PC arrives as a silent notification; \"Copy\" puts it on the phone clipboard without opening the app. With sync on, the phone clipboard is sent to the PC when the app comes to the foreground and it has changed (Android does not allow reading the clipboard in the background). Password manager content and text over 3 KB are not sent from the PC.';
+
+  @override
+  String get clipboardSyncHost => 'PC to sync with';
+
+  @override
+  String clipboardHostAuto(String name) {
+    return 'Automatic ($name)';
+  }
+
+  @override
+  String get clipboardCopyFailed => 'Could not copy to the clipboard';
+
+  @override
+  String get agentClipboardSync => 'Clipboard sync (PC → phone)';
+
+  @override
+  String get agentClipboardSyncHint =>
+      'Text copied on the PC goes to the phone as a silent notification. Password manager content and text over 3 KB are not sent; the text is never logged. No restart needed.';
+
+  @override
+  String get noteTitle => 'Quick note';
+
+  @override
+  String noteTooLong(int max) {
+    return 'The note is too long (max $max characters)';
+  }
+
+  @override
+  String get noteObsidianMissing =>
+      'Obsidian could not be opened. Is the Obsidian app installed on this phone?';
+
+  @override
+  String get noteSent => 'Sent to Obsidian';
+
+  @override
+  String get noteSetupTitle => 'Set up Obsidian first';
+
+  @override
+  String get noteSetupBody =>
+      'Enter the name of your vault exactly as it appears in the Obsidian app. Notes are written by Obsidian itself, so LiveSync keeps them end-to-end encrypted.';
+
+  @override
+  String get noteSetupAction => 'Obsidian settings';
+
+  @override
+  String get noteModeNew => 'New note';
+
+  @override
+  String get noteModeDaily => 'Append to daily note';
+
+  @override
+  String noteTarget(String vault, String path) {
+    return '$vault › $path';
+  }
+
+  @override
+  String get noteTitleField => 'Title';
+
+  @override
+  String get noteTitleHelper => 'Empty: the first line (or the time) is used';
+
+  @override
+  String get noteText => 'Note';
+
+  @override
+  String get noteVoice => 'Dictate';
+
+  @override
+  String get noteSave => 'Save to Obsidian';
+
+  @override
+  String get noteExplain =>
+      'Obsidian opens briefly and saves the note; you can return to Tiphys right away.';
+
+  @override
+  String get obsidianExplain =>
+      'Quick notes are handed to the Obsidian app on this phone through an obsidian:// link. Tiphys never writes to the vault itself, so LiveSync\'s end-to-end encryption stays intact.';
+
+  @override
+  String get obsidianVault => 'Vault name';
+
+  @override
+  String get obsidianVaultHelper =>
+      'Exactly as shown in Obsidian\'s vault switcher';
+
+  @override
+  String get obsidianFolder => 'Folder for new notes';
+
+  @override
+  String get obsidianDailyPath => 'Daily note path';
+
+  @override
+  String get obsidianDailyPathHelper =>
+      'YYYY, MM and DD are replaced with today\'s date';
+
+  @override
+  String get obsidianMode => 'Default';
+
+  @override
+  String get mediaTitle => 'Media';
+
+  @override
+  String get mediaNothingPlaying => 'Nothing is playing on the PC';
+
+  @override
+  String get mediaNothingHint =>
+      'Players that support MPRIS (Spotify, browsers, VLC, mpv…) appear here.';
+
+  @override
+  String get mediaMute => 'Mute';
+
+  @override
+  String get mediaUnmute => 'Unmute';
+
+  @override
+  String get mediaVolume => 'Volume';
+
+  @override
+  String get mediaMuted => 'Muted';
+
+  @override
+  String get mediaUnknownTitle => 'Unknown track';
+
+  @override
+  String mediaPositionOf(String position, String length) {
+    return '$position of $length';
+  }
+
+  @override
+  String get mediaPrevious => 'Previous';
+
+  @override
+  String get mediaNext => 'Next';
+
+  @override
+  String get mediaPause => 'Pause';
+
+  @override
+  String get mediaPlay => 'Play';
+
+  @override
+  String get mediaBack10 => 'Back 10 seconds';
+
+  @override
+  String get mediaForward10 => 'Forward 10 seconds';
+
+  @override
+  String get mediaArt => 'Cover art';
+
+  @override
+  String get mediaFailed => 'The player did not accept the command';
+
+  @override
+  String get mediaVolumeFailed => 'Could not read or change the volume (wpctl)';
+
+  @override
+  String get homeCardsNowPlaying => 'Now playing';
+
+  @override
+  String get openOnPc => 'Open on PC';
+
+  @override
+  String openOnPcOn(String host) {
+    return 'Open on $host';
+  }
+
+  @override
+  String get openOnPcClipboardHint =>
+      'Opens the link in the phone\'s clipboard in the PC browser';
+
+  @override
+  String openOnPcDone(String host) {
+    return 'Opened on $host';
+  }
+
+  @override
+  String get openOnPcNoUrl => 'There is no link in the clipboard';
+
+  @override
+  String openOnPcConfirm(String url, String host) {
+    return 'Open this link on $host?\n\n$url';
+  }
+
+  @override
+  String get openOnPcBadUrl => 'Only http(s) links can be opened';
+
+  @override
+  String get logSearchTitle => 'Log search';
+
+  @override
+  String get logSearchHint => 'Text to search (not a regex)';
+
+  @override
+  String get logSearchRun => 'Search';
+
+  @override
+  String logSearchMinutes(int n) {
+    return '$n min';
+  }
+
+  @override
+  String logSearchHours(int n) {
+    return '$n h';
+  }
+
+  @override
+  String get logSearchExplain =>
+      'Searches the systemd journal (system + user) and running containers\' logs over SSH on the selected hosts. Case-insensitive.';
+
+  @override
+  String get logSearchSearching => 'Searching…';
+
+  @override
+  String logSearchHitCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count matches',
+      one: '1 match',
+      zero: 'No matches',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get logSearchUserOnly =>
+      'user journal only (not in adm / systemd-journal group)';
+
+  @override
+  String get logSearchTruncated =>
+      'output limit reached, results may be incomplete';
+
+  @override
+  String get logSearchNoDocker => 'no Docker';
+
+  @override
+  String get logSearchDockerError => 'Docker unreadable';
+
+  @override
+  String get logSearchAllSources => 'All sources';
+
+  @override
+  String logSearchNoHits(String pattern, String range) {
+    return 'No match for \"$pattern\" in the last $range.';
+  }
+
+  @override
+  String logSearchMore(int count) {
+    return 'Show more ($count)';
+  }
+
+  @override
+  String get logSearchLineActions => 'copy, ask Claude, save to Obsidian';
+
+  @override
+  String get logSearchAskClaudeHint =>
+      'New session with this line and earlier matches from the same source';
+
+  @override
+  String logSearchClaudeIntro(String host, String source, String pattern) {
+    return 'I searched the logs on host $host for \"$pattern\" and found this line from $source. What does it mean, and if something is wrong, how do I fix it?';
+  }
+
+  @override
+  String get logSearchClaudeBefore => 'Earlier matches from the same source:';
+
+  @override
+  String get vaultTitle => 'Password vault';
+
+  @override
+  String get vaultSubtitle =>
+      'Encrypted on this device; opens with PIN / fingerprint';
+
+  @override
+  String get vaultSecurityFooter =>
+      'The vault asks for the app lock again even when the app is unlocked, locks after inactivity and in the background, and blocks screenshots. It is included only in the encrypted profile backup.';
+
+  @override
+  String get vaultLocked => 'Vault locked';
+
+  @override
+  String get vaultLockedHint =>
+      'Confirm with your PIN or fingerprint to open it.';
+
+  @override
+  String get vaultNeedsLock =>
+      'Turn on the PIN or fingerprint lock first (Settings › Security). The vault cannot be opened without it.';
+
+  @override
+  String get vaultUnlock => 'Open vault';
+
+  @override
+  String get vaultLock => 'Lock vault';
+
+  @override
+  String get vaultAdd => 'New entry';
+
+  @override
+  String get vaultImport => 'Import';
+
+  @override
+  String get vaultEmpty => 'The vault is empty';
+
+  @override
+  String get vaultEmptyHint =>
+      'Add an entry or import the password list on your PC.';
+
+  @override
+  String get vaultSearchHint => 'Search title, user, address, tag';
+
+  @override
+  String vaultFooter(int count, int minutes) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count entries',
+      one: '1 entry',
+    );
+    return '$_temp0. Locks after $minutes min of inactivity.';
+  }
+
+  @override
+  String get vaultUsername => 'Username';
+
+  @override
+  String get vaultPassword => 'Password';
+
+  @override
+  String get vaultUrl => 'Address';
+
+  @override
+  String get vaultTags => 'Tags';
+
+  @override
+  String get vaultTagsHint => 'Comma separated';
+
+  @override
+  String get vaultNotes => 'Notes';
+
+  @override
+  String get vaultEntryTitle => 'Title';
+
+  @override
+  String get vaultReveal => 'Show password';
+
+  @override
+  String get vaultHide => 'Hide password';
+
+  @override
+  String get vaultCopyUsername => 'Copy username';
+
+  @override
+  String get vaultCopyPassword => 'Copy password';
+
+  @override
+  String vaultPasswordCopied(int seconds) {
+    return 'Password copied; the clipboard is cleared in $seconds s';
+  }
+
+  @override
+  String vaultDeleteConfirm(String title) {
+    return 'Delete \"$title\"? This cannot be undone.';
+  }
+
+  @override
+  String vaultUpdated(String date) {
+    return 'Updated $date';
+  }
+
+  @override
+  String get vaultGenerate => 'Generate password';
+
+  @override
+  String get vaultRegenerate => 'Generate again';
+
+  @override
+  String vaultLength(int n) {
+    return 'Length $n';
+  }
+
+  @override
+  String get vaultSymbols => 'Symbols';
+
+  @override
+  String get vaultUse => 'Use';
+
+  @override
+  String get vaultImportExplain =>
+      'Reads a Markdown password list from a host over SFTP. Tables become entries, \"## Group\" headings become tags. Nothing is saved until you confirm.';
+
+  @override
+  String get vaultImportHost => 'Host';
+
+  @override
+  String get vaultImportPath => 'File';
+
+  @override
+  String get vaultImportRead => 'Read file';
+
+  @override
+  String get vaultImportNone => 'No table rows found in the file.';
+
+  @override
+  String vaultImportPreview(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count rows found',
+      one: '1 row found',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get vaultImportFooter =>
+      'Rows without a password are not selected by default. An entry with the same title and username is updated instead of duplicated.';
+
+  @override
+  String get vaultNoPassword => 'no password';
+
+  @override
+  String get vaultWillUpdate => 'will update';
+
+  @override
+  String get vaultSelectAll => 'Select all';
+
+  @override
+  String get vaultSelectNone => 'Select none';
+
+  @override
+  String vaultImportCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'Import $count entries',
+      one: 'Import 1 entry',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String vaultImported(int added, int updated) {
+    return '$added added, $updated updated';
+  }
+
+  @override
+  String vaultDeleteSourceConfirm(String path, String host) {
+    return 'Delete $path on $host too? It is overwritten with shred (if available) and cannot be recovered. Keep it if you are not sure.';
+  }
+
+  @override
+  String get vaultDeleteSource => 'Delete file';
+
+  @override
+  String get vaultSourceDeleted => 'File deleted';
+
+  @override
+  String get composeHide => 'Hide (keeps running)';
+
+  @override
+  String get homeLayout => 'Layout';
+
+  @override
+  String get homeLayoutCards => 'Cards';
+
+  @override
+  String get homeLayoutCardsDesc => 'Today\'s bento cards';
+
+  @override
+  String get homeLayoutGrid => 'Shortcuts';
+
+  @override
+  String get homeLayoutGridDesc => 'Summary strip and shortcut grid';
+
+  @override
+  String get homeLayoutFocus => 'Focus';
+
+  @override
+  String get homeLayoutFocusDesc => 'Status card and shortcut list';
+
+  @override
+  String get homeCardsTitle => 'Cards';
+
+  @override
+  String get homeCardsLayoutNote =>
+      'In the Shortcuts and Focus layouts shortcuts are shown at the top; the Quick access card is used only in the Cards layout.';
+
+  @override
+  String get homeShortcuts => 'Shortcuts';
+
+  @override
+  String get homeShortcutsFooter =>
+      'Only enabled and available shortcuts appear on the home screen. A shortcut whose requirement (integration, agent, SSH) isn\'t set up stays hidden; what\'s missing is shown here.';
+
+  @override
+  String get homeStatus => 'Status';
+
+  @override
+  String get homeOnline => 'online';
+
+  @override
+  String get shortcutWake => 'Wake PC';
+
+  @override
+  String get shortcutSites => 'Sites';
+
+  @override
+  String get shortcutNeedsAgent => 'Needs a host with the agent';
+
+  @override
+  String get shortcutNeedsDesktop => 'Needs the agent\'s desktop feature';
+
+  @override
+  String get shortcutNeedsSsh => 'Needs a host with SSH';
+
+  @override
+  String get shortcutNeedsWake => 'Needs a host with Wake-on-LAN';
+
+  @override
+  String get shortcutNeedsObsidian => 'Obsidian vault not set up';
+
+  @override
+  String get shortcutNeedsIntegration => 'Integration not set up';
+
+  @override
+  String get desktopTitle => 'Desktop';
+
+  @override
+  String get desktopWorkspaces => 'Workspaces';
+
+  @override
+  String desktopWorkspace(String n) {
+    return 'Workspace $n';
+  }
+
+  @override
+  String desktopWindowCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count windows',
+      one: '1 window',
+      zero: 'empty',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get desktopWindows => 'Windows';
+
+  @override
+  String get desktopNoWindows => 'No open windows';
+
+  @override
+  String get desktopNoWindowsHint => 'Open an app below; it appears here.';
+
+  @override
+  String get desktopWindowHint =>
+      'Tap: bring to front · swipe: close · hold: more';
+
+  @override
+  String get desktopApps => 'Apps';
+
+  @override
+  String get desktopAppsSearch => 'Search apps';
+
+  @override
+  String get desktopAppsEmpty => 'No apps found';
+
+  @override
+  String get desktopRecent => 'Recent';
+
+  @override
+  String get desktopCatAll => 'All';
+
+  @override
+  String get desktopCatNetwork => 'Internet';
+
+  @override
+  String get desktopCatDevelopment => 'Development';
+
+  @override
+  String get desktopCatOffice => 'Office';
+
+  @override
+  String get desktopCatGraphics => 'Graphics';
+
+  @override
+  String get desktopCatMedia => 'Sound & video';
+
+  @override
+  String get desktopCatGame => 'Games';
+
+  @override
+  String get desktopCatSystem => 'System';
+
+  @override
+  String get desktopCatUtility => 'Utilities';
+
+  @override
+  String get desktopCatOther => 'Other';
+
+  @override
+  String get desktopFocus => 'Bring to front';
+
+  @override
+  String get desktopCloseWindow => 'Close window';
+
+  @override
+  String desktopCloseConfirm(String title) {
+    return 'Close \"$title\"? Unsaved work in it may be lost.';
+  }
+
+  @override
+  String get desktopFullscreen => 'Fullscreen';
+
+  @override
+  String get desktopFloat => 'Float / tile';
+
+  @override
+  String get desktopPin => 'Pin on all workspaces';
+
+  @override
+  String get desktopMoveTo => 'Move to workspace';
+
+  @override
+  String get desktopFocused => 'Active';
+
+  @override
+  String desktopLaunched(String name) {
+    return 'Opening $name';
+  }
+
+  @override
+  String get desktopScreenOff => 'Turn the screen off';
+
+  @override
+  String get desktopScreenOn => 'Turn the screen on';
+
+  @override
+  String desktopControlOn(String time) {
+    return 'Control on · $time';
+  }
+
+  @override
+  String get desktopControlStop => 'Stop';
+
+  @override
+  String get desktopControlExtend => 'Extend by 15 min';
+
+  @override
+  String get desktopControlAuthTitle => 'Desktop control';
+
+  @override
+  String get desktopControlNeedsLock =>
+      'Set up the app lock (PIN or fingerprint) first to control the PC.';
+
+  @override
+  String get desktopControlOffHint =>
+      'Read-only: to manage windows and open apps, turn on \"Remote control\" in the agent settings.';
+
+  @override
+  String get desktopControlEnded => 'The control session ended; try again.';
+
+  @override
+  String desktopControlBusy(String device) {
+    return 'Another device ($device) is controlling the PC.';
+  }
+
+  @override
+  String get desktopControlRateLimited => 'Too fast; wait a moment.';
+
+  @override
+  String get desktopControlIndicatorFailed =>
+      'Could not show the control sign on the PC.';
+
+  @override
+  String get desktopFeatureOff => 'The desktop feature is off on this agent';
+
+  @override
+  String desktopFeatureOffHint(String host) {
+    return 'Turn on \"Desktop\" in Settings › Hosts › $host › Agent settings (and \"Remote control\" to manage windows). It applies after the agent restarts.';
+  }
+
+  @override
+  String get desktopNoHyprland => 'Hyprland is not running';
+
+  @override
+  String get desktopNoHyprlandHint =>
+      'No one is logged in on the PC, or another desktop is in use. The app list still works.';
+
+  @override
+  String get desktopWindowGone => 'The window is no longer there';
+
+  @override
+  String get desktopBadAddress => 'Invalid window address';
+
+  @override
+  String get desktopHyprctlFailed => 'Hyprland rejected the command';
+
+  @override
+  String get agentFeatControl => 'Remote control (windows, opening apps)';
+
+  @override
+  String get notifControlStartedTitle => 'Remote control started';
+
+  @override
+  String get notifControlEndedTitle => 'Remote control ended';
+
+  @override
+  String get notifControlExpired => 'time ran out';
+
+  @override
+  String get desktopWindowMenu => 'Window actions';
+
+  @override
+  String get liveTitle => 'Live screen';
+
+  @override
+  String get liveShowWindow => 'Show this window';
+
+  @override
+  String get liveConnecting => 'Connecting…';
+
+  @override
+  String get liveReconnecting => 'Connection lost, reconnecting…';
+
+  @override
+  String get liveReconnectingShort => 'Reconnecting…';
+
+  @override
+  String liveStats(String fps, String ms) {
+    return '$fps fps · $ms ms';
+  }
+
+  @override
+  String liveStatsFps(String fps) {
+    return '$fps fps';
+  }
+
+  @override
+  String get liveFallback =>
+      'Slow mode: wf-recorder is not installed on the PC, so the image updates at most 4 times a second.';
+
+  @override
+  String get liveQuality => 'Quality';
+
+  @override
+  String get liveQualityAuto => 'Automatic';
+
+  @override
+  String get liveQualityHigh => 'High';
+
+  @override
+  String get liveQualityMedium => 'Medium';
+
+  @override
+  String get liveQualityLow => 'Low';
+
+  @override
+  String get liveCodecAuto => 'Codec: Automatic';
+
+  @override
+  String get liveCodecH264 => 'Codec: H.264';
+
+  @override
+  String get liveCodecJpeg => 'Codec: JPEG';
+
+  @override
+  String get liveCodecFallback => 'H.264 is unavailable, switched to JPEG.';
+
+  @override
+  String liveBitrate(String value) {
+    return '$value Mbit/s';
+  }
+
+  @override
+  String get liveModeDirect => 'Direct touch (tap to switch to touchpad)';
+
+  @override
+  String get liveModeTouchpad => 'Touchpad (tap to switch to direct touch)';
+
+  @override
+  String get liveHideBar => 'Hide controls';
+
+  @override
+  String get liveShowBar => 'Show controls';
+
+  @override
+  String liveSessionLeft(String time) {
+    return 'Control session: $time left';
+  }
+
+  @override
+  String get liveEnded => 'Live screen stopped';
+
+  @override
+  String get liveRestart => 'Start again';
+
+  @override
+  String get liveResetZoom => 'Reset zoom';
+
+  @override
+  String get liveKeyboard => 'Keyboard';
+
+  @override
+  String get liveMoreKeys => 'F keys and more';
+
+  @override
+  String get liveKeyLeft => 'Left arrow';
+
+  @override
+  String get liveKeyRight => 'Right arrow';
+
+  @override
+  String get liveKeyUp => 'Up arrow';
+
+  @override
+  String get liveKeyDown => 'Down arrow';
+
+  @override
+  String get liveKeySpace => 'Space';
+
+  @override
+  String get liveCopy => 'Copy';
+
+  @override
+  String get livePaste => 'Paste';
+
+  @override
+  String get liveUndo => 'Undo';
+
+  @override
+  String get liveSwitchWindow => 'Switch window';
+
+  @override
+  String get liveErrStreamFailed => 'The PC screen could not be captured.';
+
+  @override
+  String get liveErrReplaced =>
+      'The live screen was opened in another connection.';
+
+  @override
+  String get liveErrWindowNotVisible =>
+      'That window is not on screen right now (another workspace).';
+
+  @override
+  String get liveErrMonitorNotFound => 'Monitor not found.';
+
+  @override
+  String get liveErrBadKey => 'This key is not allowed.';
+
+  @override
+  String get liveErrBadText =>
+      'The text contains characters that can\'t be typed.';
+
+  @override
+  String get liveErrInputFailed =>
+      'The PC did not accept the input (ydotool / wtype).';
+
+  @override
+  String get shortcutNeedsControl =>
+      'Needs the agent\'s remote control feature';
+
+  @override
+  String get claudePcUse => 'Use the PC';
+
+  @override
+  String get claudePcHint =>
+      'Claude looks at your screen and works with the mouse and keyboard. It asks for approval on your phone before risky steps; you can stop it at any time. The app lock is asked again to start.';
+
+  @override
+  String get claudePcPromptHint =>
+      'What should it do? (e.g. open tomorrow\'s weather in Firefox)';
+
+  @override
+  String get claudePcStart => 'Unlock and start';
+
+  @override
+  String get claudePcEnded => 'Control ended · Claude can\'t use the PC';
+
+  @override
+  String get claudePcExpired => 'Control time ran out · Claude was stopped';
+
+  @override
+  String get claudePcReconnect => 'Reopen control';
+
+  @override
+  String get claudePcExpand => 'Expand the live screen';
+
+  @override
+  String get claudePcConfirmTitle => 'Claude asks for approval';
+
+  @override
+  String get claudePcShot => 'Screenshot';
+
+  @override
+  String get claudePcUnavailable =>
+      'Claude can\'t use this computer: desktop and remote control must be on.';
+
+  @override
+  String get pcOngoingTitle => 'Claude is using the PC';
+
+  @override
+  String pcOngoingBody(String title, String time) {
+    return '$title · control ends at $time';
+  }
+
+  @override
+  String get notifPcEndedTitle => 'Claude stopped';
+
+  @override
+  String notifPcEndedExpired(String title) {
+    return '$title · control time ran out';
+  }
+
+  @override
+  String notifPcEndedOther(String title) {
+    return '$title · remote control ended';
+  }
+
+  @override
+  String notifPcExpiringTitle(int minutes) {
+    return 'PC control ends in $minutes min';
+  }
+
+  @override
+  String get pcExtend => 'Extend';
+
+  @override
+  String get pcActionFailedTitle => 'Couldn\'t reach the Tiphys agent';
+
+  @override
+  String get pcActionFailedBody => 'Open the app and try again.';
+
+  @override
+  String get moonlightEntry => 'High quality (Moonlight)';
+
+  @override
+  String get moonlightSubtitle => '60 fps hardware-encoded stream via Sunshine';
+
+  @override
+  String get sunshineNotInstalledTitle => 'Sunshine is not installed';
+
+  @override
+  String sunshineNotInstalledBody(String host) {
+    return 'High quality mode streams $host to the Moonlight app with Sunshine (NVENC on the GPU). Run these once in a terminal on $host:';
+  }
+
+  @override
+  String get sunshineInstallNote =>
+      'On Hyprland, capture = wlr needs no extra permission. If the picture stays black, try capture = kms (the package already gave Sunshine the needed permission). Then enter the same user name and password under Agent settings › Sunshine.';
+
+  @override
+  String get sunshineCopyAll => 'Copy commands';
+
+  @override
+  String get sunshineStoppedTitle => 'Sunshine is stopped';
+
+  @override
+  String sunshineStoppedBody(String host) {
+    return 'Start it on $host so Moonlight can connect.';
+  }
+
+  @override
+  String get sunshineStart => 'Start Sunshine';
+
+  @override
+  String get sunshineStop => 'Stop Sunshine';
+
+  @override
+  String get sunshineStarted => 'Sunshine started';
+
+  @override
+  String get sunshineStoppedDone => 'Sunshine stopped';
+
+  @override
+  String get sunshineRunning => 'Sunshine is running';
+
+  @override
+  String sunshineInfo(String capture, String encoder, String paired) {
+    return 'Capture $capture · encoder $encoder · paired devices $paired';
+  }
+
+  @override
+  String get sunshineDefault => 'default';
+
+  @override
+  String get moonlightMissingTitle => 'Moonlight is not on this phone';
+
+  @override
+  String get moonlightMissingBody =>
+      'Install the free Moonlight app, then come back here.';
+
+  @override
+  String get moonlightOpen => 'Open Moonlight';
+
+  @override
+  String get moonlightOpenFailed => 'Moonlight could not be opened';
+
+  @override
+  String get moonlightEnterPin => 'Enter Moonlight PIN';
+
+  @override
+  String moonlightFirstTime(String address) {
+    return 'First time: in Moonlight tap + and add $address. Then tap the PC; Moonlight shows a 4-digit PIN. Enter it here with “Enter Moonlight PIN”.';
+  }
+
+  @override
+  String get sunshineNoCredentials =>
+      'To pair from here, enter Sunshine\'s web user name and password in Agent settings.';
+
+  @override
+  String get sunshineUnauthorized =>
+      'Sunshine rejected the user name or password saved in Agent settings.';
+
+  @override
+  String get sunshineSetupRequired =>
+      'Sunshine has no web user yet. On the PC run: sunshine --creds USER PASSWORD';
+
+  @override
+  String get sunshineUnreachable =>
+      'Sunshine\'s web interface (port 47990) is not reachable.';
+
+  @override
+  String get sunshineCertMismatch =>
+      'Sunshine\'s certificate does not match its own file; the request was blocked.';
+
+  @override
+  String get sunshineUnitFailed =>
+      'The Sunshine service could not be started or stopped.';
+
+  @override
+  String get sunshineNoPending =>
+      'Sunshine is not waiting for a PIN. In Moonlight tap the PC first and keep the PIN window open.';
+
+  @override
+  String get sunshinePairFailed =>
+      'Pairing failed: wrong PIN, or Moonlight stopped waiting. Try again.';
+
+  @override
+  String get sunshineBadPin => 'The PIN must be 4 digits.';
+
+  @override
+  String sunshineBadRequest(String message) {
+    return 'Sunshine rejected the request: $message';
+  }
+
+  @override
+  String get moonlightPinTitle => 'Moonlight PIN';
+
+  @override
+  String get moonlightPinHint =>
+      'In Moonlight, tap the PC; it shows a 4-digit PIN. Type it here and Tiphys sends it to Sunshine, no browser needed.';
+
+  @override
+  String get moonlightPair => 'Pair';
+
+  @override
+  String get moonlightPairing => 'Waiting for Moonlight…';
+
+  @override
+  String get moonlightPaired => 'Paired. Moonlight can connect now.';
+
+  @override
+  String get agentSunshine => 'Sunshine (Moonlight)';
+
+  @override
+  String get agentSunshineHint =>
+      'Sunshine web user name and password. Stored only on the agent and used to pass Moonlight PINs.';
+
+  @override
+  String get agentPasswordRequired =>
+      'Password required: enter it again (new address or first setup)';
+
+  @override
+  String get remoteAddress => 'Address / search';
+
+  @override
+  String get remoteBack => 'Back';
+
+  @override
+  String get remoteForward => 'Forward';
+
+  @override
+  String get remoteReload => 'Reload';
+
+  @override
+  String get remoteNewTab => 'New tab';
+
+  @override
+  String get remoteCloseTab => 'Close tab';
+
+  @override
+  String get remoteReopenTab => 'Reopen closed tab';
+
+  @override
+  String get remoteNextTab => 'Next tab';
+
+  @override
+  String get remotePrevTab => 'Previous tab';
+
+  @override
+  String get remoteFind => 'Find';
+
+  @override
+  String get remoteZoomIn => 'Zoom in';
+
+  @override
+  String get remoteZoomOut => 'Zoom out';
+
+  @override
+  String get remoteZoomReset => 'Actual size';
+
+  @override
+  String get remoteFullscreen => 'Full screen';
+
+  @override
+  String get remoteReader => 'Reader view';
+
+  @override
+  String get remoteScrollDown => 'Scroll down';
+
+  @override
+  String get remoteScrollUp => 'Scroll up';
+
+  @override
+  String get remoteTop => 'To top';
+
+  @override
+  String get remotePalette => 'Command palette';
+
+  @override
+  String get remoteGoToFile => 'Go to file';
+
+  @override
+  String get remoteSave => 'Save';
+
+  @override
+  String get remoteTerminal => 'Terminal';
+
+  @override
+  String get remoteReplace => 'Replace';
+
+  @override
+  String get remoteGoToLine => 'Go to line';
+
+  @override
+  String get remoteRedo => 'Redo';
+
+  @override
+  String get remoteComment => 'Toggle comment';
+
+  @override
+  String get remoteSidebar => 'Sidebar';
+
+  @override
+  String get remoteInterrupt => 'Interrupt (Ctrl+C)';
+
+  @override
+  String get remoteEof => 'End input (Ctrl+D)';
+
+  @override
+  String get remoteHistory => 'Previous command';
+
+  @override
+  String get remoteCut => 'Cut';
+
+  @override
+  String get remoteParent => 'Parent folder';
+
+  @override
+  String get remotePath => 'Type a path';
+
+  @override
+  String get remoteRename => 'Rename';
+
+  @override
+  String get remoteNewFolder => 'New folder';
+
+  @override
+  String get remoteHidden => 'Show hidden';
+
+  @override
+  String get remotePlayPause => 'Play / pause';
+
+  @override
+  String get remoteSeekBack => 'Rewind';
+
+  @override
+  String get remoteSeekForward => 'Fast forward';
+
+  @override
+  String get remoteVolumeDown => 'Volume down';
+
+  @override
+  String get remoteVolumeUp => 'Volume up';
+
+  @override
+  String get remoteMute => 'Mute';
+
+  @override
+  String get remoteSubtitles => 'Subtitles';
+
+  @override
+  String get remoteSelectAll => 'Select all';
+
+  @override
+  String get remoteCloseWindow => 'Close window';
+
+  @override
+  String get remotePromptAddress => 'Address or search';
+
+  @override
+  String get remotePromptFind => 'Text to find';
+
+  @override
+  String get remotePromptCommand => 'Command';
+
+  @override
+  String get remotePromptFile => 'File name';
+
+  @override
+  String get remotePromptLine => 'Line number';
+
+  @override
+  String get remotePromptPath => 'Folder path';
+
+  @override
+  String get remotePromptText => 'Text';
+
+  @override
+  String get remoteMore => 'All controls';
+
+  @override
+  String get remoteHide => 'Hide app controls';
+
+  @override
+  String get remoteShow => 'Show app controls';
+
+  @override
+  String remoteStripLabel(String app) {
+    return '$app controls';
+  }
+
+  @override
+  String remoteConfirm(String name) {
+    return 'Send “$name” to the PC?';
+  }
+
+  @override
+  String get remoteConfirmHint => 'Asks for confirmation first';
+
+  @override
+  String get remoteFocusChanged =>
+      'Focus moved to another window; nothing was sent.';
+
+  @override
+  String get remoteSend => 'Send';
+
+  @override
+  String get remoteDesktop => 'Desktop';
+
+  @override
+  String get remoteMine => 'Your buttons';
+
+  @override
+  String get settingsDesktop => 'Desktop';
+
+  @override
+  String get settingsRemotes => 'App controls';
+
+  @override
+  String get settingsRemotesHint => 'Your own live screen buttons per app';
+
+  @override
+  String get remotesEmpty =>
+      'No buttons of your own yet. Built-in controls already cover Firefox, VS Code, Zed, kitty, file managers, mpv, VLC and Mousepad.';
+
+  @override
+  String get remoteClass => 'Window class';
+
+  @override
+  String get remoteClassHelper =>
+      'The Hyprland window class, e.g. firefox, code, kitty';
+
+  @override
+  String get remoteName => 'Name';
+
+  @override
+  String get remoteIconTitle => 'Icon';
+
+  @override
+  String get remoteActionTitle => 'Action';
+
+  @override
+  String get remoteKindCombo => 'Shortcut';
+
+  @override
+  String get remoteKindSequence => 'Sequence';
+
+  @override
+  String get remoteKindPrompt => 'Ask for text';
+
+  @override
+  String get remoteKindScroll => 'Scroll';
+
+  @override
+  String get remoteComboHelper => 'e.g. ctrl+shift+t, F5, alt+Left';
+
+  @override
+  String get remoteComboInvalid =>
+      'This shortcut can\'t be sent: letters and digits need Ctrl, Alt or Super, and punctuation keys aren\'t allowed.';
+
+  @override
+  String get remoteAddStep => 'Add step';
+
+  @override
+  String get remoteRemoveStep => 'Remove step';
+
+  @override
+  String get remotePromptBefore => 'Shortcut first (optional)';
+
+  @override
+  String get remoteSubmit => 'Press Enter afterwards';
+
+  @override
+  String get remoteScrollAmount => 'Notches (down +, up −)';
+
+  @override
+  String get remoteScrollInvalid => 'A non-zero number from −20 to 20';
+
+  @override
+  String get remoteConfirmSetting => 'Ask before sending';
+
+  @override
+  String get remoteIconZap => 'Lightning';
+
+  @override
+  String get remoteIconStar => 'Star';
+
+  @override
+  String get remoteIconPlay => 'Play';
+
+  @override
+  String get remoteIconSearch => 'Search';
+
+  @override
+  String get remoteIconSave => 'Save';
+
+  @override
+  String get remoteIconCopy => 'Copy';
+
+  @override
+  String get remoteIconRefresh => 'Refresh';
+
+  @override
+  String get remoteIconClose => 'Close';
+
+  @override
+  String get remoteIconPlus => 'Plus';
+
+  @override
+  String get remoteIconFolder => 'Folder';
+
+  @override
+  String get remoteIconTerminal => 'Terminal';
+
+  @override
+  String get remoteIconGlobe => 'Globe';
+
+  @override
+  String get browserTitle => 'Browser';
+
+  @override
+  String get browserTabs => 'Tabs';
+
+  @override
+  String get browserRowConnected => 'Firefox connected · tabs, reader view';
+
+  @override
+  String get browserRowSetup => 'Firefox bridge not set up · setup steps';
+
+  @override
+  String get browserSearch => 'Search tabs';
+
+  @override
+  String get browserNoTabs => 'No open tabs.';
+
+  @override
+  String get browserNoMatch => 'No tabs match the search.';
+
+  @override
+  String browserWindow(int n) {
+    return 'Window $n';
+  }
+
+  @override
+  String browserTabCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count tabs',
+      one: '1 tab',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get browserTabsHint =>
+      'Tap = switch to tab · swipe = close · long-press = select';
+
+  @override
+  String get browserTabHint => 'switches to the tab';
+
+  @override
+  String get browserSelectHint => 'toggles selection';
+
+  @override
+  String get browserTabMenu => 'Tab actions';
+
+  @override
+  String get browserSelect => 'Select';
+
+  @override
+  String browserSelected(int count) {
+    return '$count selected';
+  }
+
+  @override
+  String get browserActive => 'active tab';
+
+  @override
+  String get browserPinnedBadge => 'pinned';
+
+  @override
+  String get browserAudible => 'playing sound';
+
+  @override
+  String get browserMutedBadge => 'muted';
+
+  @override
+  String get browserActivate => 'Switch to this tab';
+
+  @override
+  String get browserActivated => 'Switched to the tab';
+
+  @override
+  String get browserToPhone => 'Open on phone';
+
+  @override
+  String get browserNotWebUrl =>
+      'This tab\'s address can\'t be opened on the phone (http/https only).';
+
+  @override
+  String get browserReader => 'Reader view';
+
+  @override
+  String get browserPageControls => 'Page controls';
+
+  @override
+  String get browserPin => 'Pin';
+
+  @override
+  String get browserUnpin => 'Unpin';
+
+  @override
+  String get browserPinned => 'Tab pinned';
+
+  @override
+  String get browserUnpinned => 'Tab unpinned';
+
+  @override
+  String get browserMute => 'Mute';
+
+  @override
+  String get browserUnmute => 'Unmute';
+
+  @override
+  String get browserMutedDone => 'Tab muted';
+
+  @override
+  String get browserUnmuted => 'Tab unmuted';
+
+  @override
+  String get browserSent => 'Sent';
+
+  @override
+  String get browserCloseTabs => 'Close tabs';
+
+  @override
+  String browserCloseConfirm(int count) {
+    return 'Close $count tabs?';
+  }
+
+  @override
+  String get browserClosed => 'Tab closed';
+
+  @override
+  String get browserRestore => 'Reopen closed tab';
+
+  @override
+  String get browserRestored => 'Reopened the last closed tab';
+
+  @override
+  String get browserOpen => 'Open';
+
+  @override
+  String get browserOpened => 'New tab opened';
+
+  @override
+  String get browserBadUrl => 'Enter a valid http/https address';
+
+  @override
+  String get browserNeedsControl =>
+      'Seeing tabs needs a control session (addresses are browsing history).';
+
+  @override
+  String get browserSetupTitle => 'Firefox bridge not connected';
+
+  @override
+  String get browserSetupIntro =>
+      'Set it up once on the PC to manage tabs from the phone:';
+
+  @override
+  String get browserSetupStep1 =>
+      'On the PC, register the helper in a terminal; the command prints the add-on (XPI) path:';
+
+  @override
+  String get browserSetupStep2 =>
+      'In Firefox open about:config and set xpinstall.signatures.required to false:';
+
+  @override
+  String get browserSetupStep3 =>
+      'In about:addons › gear icon › \"Install Add-on From File…\" pick the XPI file the command printed:';
+
+  @override
+  String get browserSetupStep4 =>
+      'For reader view and page controls (optional): Tiphys Bridge icon in the toolbar › \"Sayfa içeriği iznini ver\" (grant page content permission).';
+
+  @override
+  String get browserSetupWarning =>
+      'Turning off signature checks allows any unsigned add-on; only install add-ons you know.';
+
+  @override
+  String get browserPermissionTitle => 'Page content permission needed';
+
+  @override
+  String get browserPermissionHint =>
+      'On the PC, open the Tiphys Bridge icon in Firefox (or about:addons › Tiphys Bridge › Options) and press \"Sayfa içeriği iznini ver\" (grant page content permission); Firefox will ask to confirm.';
+
+  @override
+  String get browserSummarize => 'Summarize with Claude';
+
+  @override
+  String get browserSummaryIntro =>
+      'Briefly summarize this web page; list the key points as bullets.';
+
+  @override
+  String get browserTruncated => 'The text was shortened because it is long.';
+
+  @override
+  String get browserFontSmaller => 'Smaller text';
+
+  @override
+  String get browserFontLarger => 'Larger text';
+
+  @override
+  String get browserMediaTitle => 'Media on the page';
+
+  @override
+  String get browserMediaHint => 'Video or audio on the page';
+
+  @override
+  String get browserMediaVideo => 'Video';
+
+  @override
+  String get browserMediaAudio => 'Audio';
+
+  @override
+  String get browserRate => 'Playback speed';
+
+  @override
+  String get browserScrollTitle => 'Scroll the page';
+
+  @override
+  String browserScrollPercent(int percent) {
+    return '$percent percent down the page';
+  }
+
+  @override
+  String get browserBottom => 'To the bottom';
+
+  @override
+  String get browserTextTitle => 'Send to text field';
+
+  @override
+  String get browserTextHint => 'Text for the focused (or first visible) field';
+
+  @override
+  String get browserTextSent => 'Text sent to the field';
+
+  @override
+  String get browserPageHint =>
+      'Reading and typing are off on pages with a password field.';
+
+  @override
+  String get browserErrNotConnected =>
+      'The Firefox bridge isn\'t connected (Firefox closed or add-on not installed).';
+
+  @override
+  String get browserErrPermission =>
+      'Page content permission hasn\'t been granted.';
+
+  @override
+  String get browserErrBadUrl =>
+      'This address can\'t be opened (http/https only).';
+
+  @override
+  String get browserErrTabNotFound =>
+      'The tab is gone (it may have been closed).';
+
+  @override
+  String get browserErrPassword =>
+      'This page has a password field; for safety it isn\'t read or typed into.';
+
+  @override
+  String get browserErrNoMedia => 'There\'s no video or audio on this page.';
+
+  @override
+  String get browserErrNoInput => 'No text field found on the page.';
+
+  @override
+  String get browserErrNoArticle => 'No readable article found on this page.';
+
+  @override
+  String get browserErrUnsupported =>
+      'Firefox doesn\'t allow add-ons on this page (Firefox\'s own pages, the add-on store).';
+
+  @override
+  String get browserErrTimeout => 'Firefox didn\'t respond.';
+
+  @override
+  String get browserErrFailed => 'Firefox couldn\'t do that.';
+
+  @override
+  String get uiTitle => 'Mobile view';
+
+  @override
+  String get uiSearch => 'Search controls';
+
+  @override
+  String get uiPartial =>
+      'Partial: the window is large, some controls aren\'t shown. Use search or the live screen.';
+
+  @override
+  String get uiNeedsControl => 'Mobile view needs a control session.';
+
+  @override
+  String get uiUnsupportedTitle => 'This app doesn\'t share its controls';
+
+  @override
+  String get uiUnsupportedText =>
+      'Terminals, games and some apps (like kitty or Steam) don\'t expose an accessibility tree. Use the live screen and the app remote instead.';
+
+  @override
+  String get uiOpenLive => 'Open live screen';
+
+  @override
+  String get uiHelperMissingTitle => 'Accessibility helper missing on the PC';
+
+  @override
+  String get uiHelperMissingText =>
+      'Mobile view needs the python3-gi and gir1.2-atspi-2.0 packages on the PC.';
+
+  @override
+  String get uiEmpty => 'No controls to show in this window.';
+
+  @override
+  String get uiNoMatch => 'No matching controls.';
+
+  @override
+  String get uiToolbar => 'Toolbar';
+
+  @override
+  String get uiMenuBar => 'Menu';
+
+  @override
+  String get uiWebContent => 'Page content';
+
+  @override
+  String uiTab(int n) {
+    return 'Tab $n';
+  }
+
+  @override
+  String get uiField => 'Text field';
+
+  @override
+  String get uiPasswordHint =>
+      'Typed into the PC\'s password field, not stored here';
+
+  @override
+  String uiPasswordConfirm(String name) {
+    return 'Type into the \"$name\" password field? The text is sent to the PC.';
+  }
+
+  @override
+  String get uiPasswordSend => 'Send password';
+
+  @override
+  String get uiUnnamed => 'Unnamed';
+
+  @override
+  String get uiMoreActions => 'More actions';
+
+  @override
+  String get uiFocus => 'Focus';
+
+  @override
+  String get uiSelect => 'Select';
+
+  @override
+  String get uiPreview => 'Window preview';
+
+  @override
+  String get uiShowPreview => 'Show preview';
+
+  @override
+  String get uiHidePreview => 'Hide preview';
+
+  @override
+  String get uiDecrease => 'Decrease';
+
+  @override
+  String get uiIncrease => 'Increase';
+
+  @override
+  String get uiActClick => 'Click';
+
+  @override
+  String get uiActPress => 'Press';
+
+  @override
+  String get uiActActivate => 'Activate';
+
+  @override
+  String get uiActToggle => 'Toggle';
+
+  @override
+  String get uiActJump => 'Follow link';
+
+  @override
+  String get uiActExpand => 'Expand / collapse';
+
+  @override
+  String get uiActSwitch => 'Switch to tab';
+
+  @override
+  String get uiActOpen => 'Open';
+
+  @override
+  String get uiErrUnsupported =>
+      'This window doesn\'t expose its controls; use the live screen.';
+
+  @override
+  String get uiErrStale =>
+      'The window changed; the view was refreshed, try again.';
+
+  @override
+  String get uiErrTimeout => 'The app didn\'t respond in time.';
+
+  @override
+  String get uiErrHelperMissing =>
+      'Accessibility helper missing on the PC (python3-gi, gir1.2-atspi-2.0).';
+
+  @override
+  String get uiErrHelperFailed => 'The accessibility helper failed; try again.';
+
+  @override
+  String get uiErrConfirm => 'Typing into a password field needs confirmation.';
+
+  @override
+  String get uiErrNoAction => 'This control has no such action.';
+
+  @override
+  String get uiErrA11yBus => 'The PC\'s accessibility bus is off.';
+
+  @override
+  String get uiErrFailed => 'The app couldn\'t do that.';
+
+  @override
+  String get notifUiOpenedTitle => 'Mobile view opened';
+
+  @override
+  String get claudePcBrowserTabs => 'Listed tabs';
+
+  @override
+  String get claudePcBrowserOpen => 'Opened a tab';
+
+  @override
+  String get claudePcBrowserActivate => 'Switched tab';
+
+  @override
+  String get claudePcBrowserClose => 'Closed tabs';
+
+  @override
+  String get claudePcPageText => 'Read the page';
+
+  @override
+  String get claudePcUiTree => 'Read the controls';
+
+  @override
+  String get claudePcUiPress => 'Pressed';
+
+  @override
+  String get claudePcUiSetText => 'Typed into a field';
+
+  @override
+  String get claudePcUiSetValue => 'Set a value';
 }

@@ -1,6 +1,6 @@
-// Gerçek sunuculara karşı SSH/SFTP testleri (PC'den çalışır, Tailscale gerekir).
-// Çalıştırma: flutter test test/integration --tags real
-// Anahtar: TIPHYS_TEST_KEY (varsayılan real-test.json sshKey), kullanıcı real-test.json sshUser.
+// SSH/SFTP tests against real servers (run from the PC, requires Tailscale).
+// Run: flutter test test/integration --tags real
+// Key: TIPHYS_TEST_KEY (default real-test.json sshKey), user real-test.json sshUser.
 @Tags(['real'])
 library;
 
@@ -87,19 +87,76 @@ void main() {
         await conn.exec(r'rm -f ~/.local/share/Trash/files/c\ d*e.txt*; grep -l tiphys-test ~/.local/share/Trash/info/*.trashinfo | xargs -r rm -f');
         files.close();
       });
+
+      test('aktarım: yarıda durur, kaldığı yerden devam eder; klasör arşivlenip indirilir', () async {
+        final files = await RemoteFiles.open(conn);
+        final dir = '~/tiphys-test-xfer-${DateTime.now().millisecondsSinceEpoch}';
+        final local = await Directory.systemTemp.createTemp('tiphys-xfer');
+        try {
+          await files.mkdir(dir);
+          // 3 MB of random data: upload, pause at 30%, resume
+          final data = Uint8List.fromList(List.generate(3 * 1024 * 1024, (i) => (i * 7919 + i ~/ 1000) & 0xff));
+          final src = File('${local.path}/kaynak.bin')..writeAsBytesSync(data);
+          Stream<List<int>> source(int skip) => src.openRead(skip);
+          var up = 0;
+          final first = await files.upload(dir, 'veri.bin', data.length, source, onProgress: (d, _) => up = d, stop: () => up > data.length * 0.3);
+          expect(first, isFalse);
+          final partSize = (await files.list(dir, showHidden: true)).singleWhere((e) => e.name.endsWith('.tiphys-part')).size;
+          expect(partSize, inExclusiveRange(0, data.length));
+          final resumedFrom = <int>[];
+          final second = await files.upload(dir, 'veri.bin', data.length, (skip) {
+            resumedFrom.add(skip);
+            return source(skip);
+          }, onProgress: (d, _) {}, stop: () => false);
+          expect(second, isTrue);
+          expect(resumedFrom.single, partSize); // resumed from the partial file, not from the start
+          final names = (await files.list(dir, showHidden: true)).map((e) => e.name);
+          expect(names, ['veri.bin']); // partial file moved to the target
+          expect((await conn.exec('sha256sum ${shellQuote(files.resolve('$dir/veri.bin'))}')).stdout.split(' ').first,
+              (Process.runSync('sha256sum', [src.path]).stdout as String).split(' ').first);
+
+          // Download: pause at 40%, resume, must be byte-identical
+          final dl = File('${local.path}/indirilen.part');
+          var got = 0;
+          expect(await files.download('$dir/veri.bin', dl, onProgress: (d, _) => got = d, stop: () => got > data.length * 0.4), isFalse);
+          final mid = dl.lengthSync();
+          expect(mid, inExclusiveRange(0, data.length));
+          int? startedAt;
+          expect(await files.download('$dir/veri.bin', dl, onProgress: (d, _) => startedAt ??= d, stop: () => false), isTrue);
+          expect(startedAt, mid);
+          expect(dl.readAsBytesSync(), data);
+
+          // Folder archive
+          await files.mkdir('$dir/alt');
+          await files.write('$dir/alt/not.txt', Uint8List.fromList(utf8.encode('arşiv içi')));
+          final base = RemoteFiles.archiveBase(files.resolve(dir), DateTime.now());
+          final archive = await files.archive(dir, base);
+          expect(archive, matches(RegExp(r'^/tmp/tiphys-\d+-tiphys-test-xfer-\d+\.(zip|tar\.gz)$')));
+          final az = File('${local.path}/arsiv');
+          expect(await files.download(archive, az, onProgress: (_, _) {}, stop: () => false), isTrue);
+          expect(az.lengthSync(), greaterThan(1000));
+          // Cleanup: deletes the archive without killing its own shell (pattern [/]tmp...)
+          await files.discardArchive(base);
+          expect((await conn.exec('ls ${shellQuote(archive)} 2>/dev/null | wc -l')).stdout.trim(), '0');
+        } finally {
+          await files.deleteForever(dir);
+          files.close();
+          local.deleteSync(recursive: true);
+        }
+      });
     });
   }
 
   test('telefonda üretilen anahtar: sunucuya eklenir, onunla bağlanılır, sonra kaldırılır', () async {
     final key = await generateEd25519('tiphys-test-${DateTime.now().millisecondsSinceEpoch}');
     expect(key.publicLine, startsWith('ssh-ed25519 AAAA'));
-    // Üretilen PEM tekrar okunabilmeli.
+    // The generated PEM must be readable again.
     expect(parsePrivateKey(key.unencryptedPem).publicLine.split(' ').take(2), key.publicLine.split(' ').take(2));
 
     final admin = await SshConnection.open(server(real.server, real.host(real.server)), secrets);
     final r = await admin.exec(installKeyCommand(key.publicLine));
     expect(r.stdout, contains('TIPHYS_KEY_OK'));
-    // İkinci kez eklemek satırı çoğaltmaz.
+    // Adding it a second time doesn't duplicate the line.
     await admin.exec(installKeyCommand(key.publicLine));
     final count = await admin.exec('grep -cF ${shellQuote(key.publicLine)} ~/.ssh/authorized_keys');
     expect(count.stdout.trim(), '1');

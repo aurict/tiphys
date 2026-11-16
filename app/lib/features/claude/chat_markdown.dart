@@ -1,5 +1,5 @@
-// Claude cevaplarının Markdown görünümü (GFM: tablo, üstü çizili, görev listesi, otomatik bağlantı).
-// Kod blokları dil etiketi + kopyala düğmesiyle, tablolar yatay kaydırmalı; renkler tema token'larından.
+// Markdown view of Claude replies (GFM: tables, strikethrough, task lists, autolinks).
+// Code blocks with a language label + copy button, tables scroll horizontally; colors from theme tokens.
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_markdown_plus/flutter_markdown_plus.dart';
@@ -14,8 +14,11 @@ import '../../widgets/forms.dart';
 const _mono = 'JetBrainsMono';
 
 class ChatMarkdown extends StatelessWidget {
-  const ChatMarkdown(this.data, {super.key});
+  const ChatMarkdown(this.data, {super.key, this.onSaveNote});
   final String data;
+
+  /// If given, "Save to Obsidian" is added to the text selection menu (long press); the whole message is saved.
+  final VoidCallback? onSaveNote;
 
   @override
   Widget build(BuildContext context) {
@@ -41,12 +44,12 @@ class ChatMarkdown extends StatelessWidget {
       listBullet: body.copyWith(color: t.textSecondary),
       listBulletPadding: const EdgeInsets.only(right: 6),
       checkbox: body.copyWith(color: t.accent),
-      // Satır içi kod: `böyle`. Ligatürler kapalı (!= → ≠ olmasın).
+      // Inline code: `like this`. Ligatures off (so != doesn't become ≠).
       code: TextStyle(
         fontFamily: _mono,
         fontSize: 13,
         color: t.text,
-        // açık temada sayfa zemini chipBackground ile aynı renk: ayrışsın diye ayraç tonu
+        // in light theme the page background is the same color as chipBackground: use the divider tone to set it apart
         backgroundColor: t.isDark ? t.chipBackground : t.separator,
         fontFeatures: const [FontFeature.disable('calt'), FontFeature.disable('liga')],
       ),
@@ -59,7 +62,7 @@ class ChatMarkdown extends StatelessWidget {
       tableBorder: TableBorder.all(color: t.separator, width: 1, borderRadius: BorderRadius.circular(8)),
       tableHeadAlign: TextAlign.start,
       tableCellsPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-      // Doğal genişlik: dar ekranda sütunlar ezilmez, tablo yatay kaydırılır.
+      // Natural width: columns don't get squashed on narrow screens; the table scrolls horizontally.
       tableColumnWidth: const IntrinsicColumnWidth(),
     );
     return MarkdownBody(
@@ -68,6 +71,21 @@ class ChatMarkdown extends StatelessWidget {
       styleSheet: sheet,
       extensionSet: md.ExtensionSet.gitHubFlavored,
       builders: {'pre': _CodeBlockBuilder()},
+      contextMenuBuilder: onSaveNote == null
+          ? (context, state) => AdaptiveTextSelectionToolbar.editableText(editableTextState: state)
+          : (context, state) => AdaptiveTextSelectionToolbar.buttonItems(
+                anchors: state.contextMenuAnchors,
+                buttonItems: [
+                  ...state.contextMenuButtonItems,
+                  ContextMenuButtonItem(
+                    label: AppLocalizations.of(context).noteSave,
+                    onPressed: () {
+                      ContextMenuController.removeAny();
+                      onSaveNote!();
+                    },
+                  ),
+                ],
+              ),
       onTapLink: (text, href, title) {
         final uri = href == null ? null : Uri.tryParse(href);
         if (uri != null && (uri.scheme == 'https' || uri.scheme == 'http')) {
@@ -78,7 +96,7 @@ class ChatMarkdown extends StatelessWidget {
   }
 }
 
-/// ```dil … ``` blokları: başlıkta dil adı + kopyala, içerik yatay kaydırmalı ve seçilebilir.
+/// ```lang … ``` blocks: language name + copy in the header, content scrolls horizontally and is selectable.
 class _CodeBlockBuilder extends MarkdownElementBuilder {
   @override
   bool isBlockElement() => true;
@@ -104,7 +122,7 @@ class CodeBlock extends StatelessWidget {
     return Container(
       width: double.infinity,
       margin: const EdgeInsets.symmetric(vertical: 4),
-      // açık temada beyaz kart (sayfa zemini gri), koyu temada yarı saydam yüzey
+      // white card in light theme (page background is grey), translucent surface in dark theme
       decoration: BoxDecoration(
         color: t.isDark ? t.chipBackground : t.card,
         borderRadius: BorderRadius.circular(12),

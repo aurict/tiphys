@@ -1,4 +1,4 @@
-// Uygulama açılırken ve arka planda belirlenen süreden uzun kalınca kilit ekranını gösterir.
+// Shows the lock screen when the app opens and after it stays in the background longer than the set time.
 import 'dart:async';
 
 import 'package:flutter/material.dart';
@@ -15,7 +15,7 @@ import '../../widgets/surfaces.dart';
 final appLockProvider = Provider<AppLock>((ref) => AppLock(const SecureVault()));
 final biometricsProvider = Provider<Biometrics>((ref) => DeviceBiometrics());
 
-/// Kilit gerekli mi? (PIN kurulu ya da parmak izi açık ve cihazda var)
+/// Is a lock needed? (PIN set, or fingerprint enabled and available on the device)
 final lockRequiredProvider = FutureProvider<bool>((ref) async {
   final lock = ref.watch(profileProvider.select((p) => p.app.lock));
   final hasPin = lock.pin && await ref.read(appLockProvider).hasPin();
@@ -70,8 +70,12 @@ class _LockGateState extends ConsumerState<LockGate> with WidgetsBindingObserver
 }
 
 class LockScreen extends ConsumerStatefulWidget {
-  const LockScreen({super.key, required this.onUnlocked});
+  const LockScreen({super.key, required this.onUnlocked, this.title, this.onCancel});
   final VoidCallback onUnlocked;
+
+  /// Title and cancel button for re-authentication while the app is open (e.g. password vault).
+  final String? title;
+  final VoidCallback? onCancel;
 
   @override
   ConsumerState<LockScreen> createState() => _LockScreenState();
@@ -133,7 +137,7 @@ class _LockScreenState extends ConsumerState<LockScreen> {
       widget.onUnlocked();
       return;
     }
-    // 6 haneden uzun PIN'ler için otomatik denemede yanlış sayılmasın diye sadece tam uzunlukta değerlendir.
+    // Only evaluate at full length so PINs longer than 6 digits don't count as wrong in auto-attempts.
     setState(() {
       _busy = false;
       if (!auto || res.waitSeconds > 0 || _pin.length >= 12) {
@@ -188,7 +192,7 @@ class _LockScreenState extends ConsumerState<LockScreen> {
                   child: Image.asset('assets/brand/icon.png', width: 64, height: 64, semanticLabel: l.appName),
                 ),
                 const SizedBox(height: 14),
-                Text(l.lockTitle, style: tt.titleLarge),
+                Text(widget.title ?? l.lockTitle, style: tt.titleLarge),
                 const SizedBox(height: 8),
                 SizedBox(
                   height: 22,
@@ -246,6 +250,10 @@ class _LockScreenState extends ConsumerState<LockScreen> {
                 ] else if (_bio) ...[
                   const SizedBox(height: 24),
                   FilledButton.icon(onPressed: _biometric, icon: const Icon(LucideIcons.fingerprint), label: Text(l.lockUnlock)),
+                ],
+                if (widget.onCancel != null) ...[
+                  const SizedBox(height: 12),
+                  TextButton(onPressed: widget.onCancel, child: Text(l.commonCancel)),
                 ],
               ]),
             ),

@@ -1,4 +1,4 @@
-// İçe aktarma: değişiklik önizlemesi ve birleştir / tamamen değiştir.
+// Import: change preview and merge / replace entirely.
 import 'dart:convert';
 
 import 'codec.dart';
@@ -9,11 +9,11 @@ enum ChangeKind { added, changed, removed }
 class Change {
   const Change(this.section, this.kind, [this.id]);
 
-  /// ör. "hosts", "integrations.grafana", "app"
+  /// e.g. "hosts", "integrations.grafana", "app"
   final String section;
   final ChangeKind kind;
 
-  /// Liste öğeleri için kimlik; tekil bölümler için null.
+  /// Id for list items; null for singular sections.
   final String? id;
 
   @override
@@ -28,7 +28,7 @@ enum ImportMode { merge, replace }
 
 bool _same(Object? a, Object? b) => jsonEncode(a) == jsonEncode(b);
 
-/// Kimlikli listeler: (bölüm adı, profilden okuma, profile yazma, öğe kimliği, JSON'a çevirme)
+/// Lists with ids: (section name, read from profile, write to profile, item id, convert to JSON)
 class _ListSection<T> {
   const _ListSection(this.name, this.read, this.write, this.idOf, this.toJson);
   final String name;
@@ -62,7 +62,7 @@ class _ObjSection {
   const _ObjSection(this.name, this.fileKey, this.read, this.write);
   final String name;
 
-  /// Bu bölümün dosyada var olup olmadığını anlamak için JSON yolu.
+  /// JSON path used to tell whether this section exists in the file.
   final List<String> fileKey;
   final Object? Function(Profile) read;
   final Profile Function(Profile cur, Profile inc) write;
@@ -72,6 +72,7 @@ final _lists = <_ListSection>[
   _ListSection<Host>('hosts', (p) => p.hosts, (p, l) => p.copyWith(hosts: l), (e) => e.id, (e) => e.toJson()),
   _ListSection<KeyInfo>('keys', (p) => p.keys, (p, l) => p.copyWith(keys: l), (e) => e.id, (e) => e.toJson()),
   _ListSection<QuickAction>('quickActions', (p) => p.quickActions, (p, l) => p.copyWith(quickActions: l), (e) => e.id, (e) => e.toJson()),
+  _ListSection<DesktopRemote>('desktopRemotes', (p) => p.desktopRemotes, (p, l) => p.copyWith(desktopRemotes: l), (e) => e.id, (e) => e.toJson()),
   _ListSection<GrafanaConfig>('integrations.grafana', (p) => p.integrations.grafana,
       (p, l) => p.copyWith(integrations: p.integrations.copyWith(grafana: l)), (e) => e.id, (e) => e.toJson()),
   _ListSection<DozzleConfig>('integrations.dozzle', (p) => p.integrations.dozzle,
@@ -92,6 +93,8 @@ final _objects = <_ObjSection>[
       (c, i) => c.copyWith(integrations: c.integrations.copyWith(ntfy: () => i.integrations.ntfy))),
   _ObjSection('integrations.scriberr', ['integrations', 'scriberr'], (p) => p.integrations.scriberr?.toJson(),
       (c, i) => c.copyWith(integrations: c.integrations.copyWith(scriberr: () => i.integrations.scriberr))),
+  _ObjSection('integrations.obsidian', ['integrations', 'obsidian'], (p) => p.integrations.obsidian?.toJson(),
+      (c, i) => c.copyWith(integrations: c.integrations.copyWith(obsidian: () => i.integrations.obsidian))),
 ];
 
 bool _fileHas(Json json, List<String> path) {
@@ -154,6 +157,6 @@ class ImportPlan {
     return out;
   }
 
-  /// Sonuç profilin ihtiyaç duyup elde olmayan gizli bilgileri.
+  /// Secrets the resulting profile needs but that aren't available.
   Set<String> missingSecrets(Set<String> available) => result.secretIds.difference(available);
 }

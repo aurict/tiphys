@@ -1,4 +1,4 @@
-// Hostlar: liste + düzenleme (adres, SSH, ajan, uyandırma, renk).
+// Hosts: list + editing (address, SSH, agent, wake, color).
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -67,6 +67,7 @@ class _HostEditScreenState extends ConsumerState<HostEditScreen> {
   final _agentUrl = TextEditingController();
   final _mac = TextEditingController();
   final _tags = TextEditingController();
+  final _composeRoots = TextEditingController(text: '~/stack');
   late SecretInput _sshSecret;
   late SecretInput _agentToken;
   String _color = hostPalette.first;
@@ -93,6 +94,7 @@ class _HostEditScreenState extends ConsumerState<HostEditScreen> {
       _address.text = h.address;
       _color = h.color;
       _tags.text = h.tags.join(', ');
+      _composeRoots.text = h.composeRoots.join(', ');
       _ssh = h.ssh != null;
       if (h.ssh != null) {
         _port.text = '${h.ssh!.port}';
@@ -121,7 +123,7 @@ class _HostEditScreenState extends ConsumerState<HostEditScreen> {
 
   @override
   void dispose() {
-    for (final c in [_id, _name, _address, _port, _user, _tmux, _agentUrl, _mac, _tags]) {
+    for (final c in [_id, _name, _address, _port, _user, _tmux, _agentUrl, _mac, _tags, _composeRoots]) {
       c.dispose();
     }
     _sshSecret.dispose();
@@ -154,6 +156,7 @@ class _HostEditScreenState extends ConsumerState<HostEditScreen> {
       agent: _agent ? AgentRef(url: _agentUrl.text.trim(), tokenRef: _agentToken.ref) : null,
       wake: _wake ? WakeConfig(mac: _mac.text.trim().toUpperCase(), viaHostId: _wakeVia) : null,
       tags: _tags.text.split(',').map((s) => s.trim()).where((s) => s.isNotEmpty).toList(),
+      composeRoots: _composeRoots.text.split(',').map((s) => s.trim()).where((s) => s.isNotEmpty).take(10).toList(),
     );
     await ref.read(profileProvider.notifier).update((p) {
       return p.copyWith(hosts: upsertBy(p.hosts, host, (h) => h.id));
@@ -189,7 +192,7 @@ class _HostEditScreenState extends ConsumerState<HostEditScreen> {
               label: l.hostId,
               hint: l.hostIdHint,
               mono: true,
-              enabled: _original == null, // kimlik değişirse başvurular kopar; sadece yeni hostta düzenlenir
+              enabled: _original == null, // changing the id breaks references; editable only on a new host
               validator: (v) => idV(l)(v) ?? (otherIds.contains(v) ? '"$v" ✕' : null),
             ),
             TField(controller: _address, label: l.hostAddress, hint: l.hostAddressHint, keyboardType: TextInputType.url, validator: requiredV(l)),
@@ -245,6 +248,7 @@ class _HostEditScreenState extends ConsumerState<HostEditScreen> {
               else
                 SecretFieldView(input: _sshSecret, label: l.hostSshPassword),
               TField(controller: _tmux, label: l.hostTmux, mono: true),
+              TField(controller: _composeRoots, label: l.hostComposeRoots, hint: '~/stack, /srv/compose', helper: l.hostComposeRootsHint, mono: true),
             ]),
           ],
           GroupedSection(title: l.hostAgent, children: [SwitchRow(title: l.hostAgent, value: _agent, onChanged: (v) => setState(() => _agent = v))]),

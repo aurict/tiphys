@@ -1,4 +1,4 @@
-// Ajan verileri için sağlayıcılar (host başına). Metrikler 5 sn'de bir yenilenir.
+// Providers for agent data (per host). Metrics refresh every 5 s.
 import 'dart:async';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -9,7 +9,7 @@ import '../../core/profile/model.dart';
 import '../../l10n/gen/app_localizations.dart';
 import '../../state/providers.dart';
 
-/// Testlerde değiştirilir.
+/// Overridden in tests.
 final agentClientFactoryProvider = Provider<Future<AgentClient> Function(Host)>((ref) {
   final secrets = ref.watch(secretStoreProvider);
   return (h) => AgentClient.forHost(h, secrets);
@@ -26,13 +26,13 @@ Future<T> withAgent<T>(Ref ref, String hostId, Future<T> Function(AgentClient c)
   }
 }
 
-/// Bir kerelik çağrı (butonlar için).
-Future<dynamic> agentCall(WidgetRef ref, String hostId, String method, String path, [Object? body]) async {
+/// One-off call (for buttons).
+Future<dynamic> agentCall(WidgetRef ref, String hostId, String method, String path, [Object? body, Map<String, String>? headers]) async {
   final host = ref.read(profileProvider).host(hostId);
   if (host == null) throw const AgentError('agent.notConfigured');
   final c = await ref.read(agentClientFactoryProvider)(host);
   try {
-    return await c.request(method, path, body: body);
+    return await c.request(method, path, body: body, headers: headers);
   } finally {
     c.close();
   }
@@ -55,13 +55,13 @@ final containersProvider = FutureProvider.autoDispose.family<List<Map<String, dy
   return (j['containers'] as List).cast<Map<String, dynamic>>();
 });
 
-/// Ajanın kendi durumu: sürüm, açık kalma süresi, bellek, beklenmedik yeniden başlamalar (0.3.0+).
+/// The agent's own status: version, uptime, memory, unexpected restarts (0.3.0+).
 final agentStatusProvider = FutureProvider.autoDispose.family<Map<String, dynamic>, String>((ref, hostId) async {
   autoRefresh(ref, const Duration(seconds: 30));
   return withAgent(ref, hostId, (c) => c.get('/v1/agent/status'));
 });
 
-/// Token'sız sağlık kontrolü (testlerde değiştirilir).
+/// Tokenless health check (overridden in tests).
 final agentHealthFnProvider = Provider<Future<Map<String, dynamic>> Function(String url)>((ref) => AgentClient.health);
 
 final healthProvider = FutureProvider.autoDispose.family<Map<String, dynamic>, String>((ref, hostId) async {
@@ -70,7 +70,7 @@ final healthProvider = FutureProvider.autoDispose.family<Map<String, dynamic>, S
   return ref.read(agentHealthFnProvider)(h!.agent!.url);
 });
 
-/// Ana ekran için PC metrikleri (Claude ajanı hostu ya da ajanlı ilk host).
+/// PC metrics for the home screen (the Claude agent host or the first agent host).
 final homeMetricsProvider = FutureProvider.autoDispose<(double, double)?>((ref) async {
   final p = ref.watch(profileProvider);
   final host = p.host(p.claude.agentHostId) ?? p.hosts.where((h) => h.agent != null).firstOrNull;
@@ -100,7 +100,64 @@ String agentErrorText(AppLocalizations l, Object e) {
     'agent.claude.terminalStuck' => l.claudeTerminalStuck,
     'agent.claude.historyNotFound' || 'agent.claude.session.notFound' => l.claudeSessionGone,
     'agent.path.notAllowed' || 'agent.claude.folderNotAllowed' => l.agentPathNotAllowed,
+    'agent.claude.folderNotFound' => l.claudeFolderNotFound,
+    'agent.claude.scheduleRunning' => l.claudeScheduleBusy,
     'agent.desktop.noDisplay' => l.agentNoDisplay,
+    'agent.desktop.noHyprland' => l.desktopNoHyprland,
+    'agent.desktop.windowNotFound' => l.desktopWindowGone,
+    'agent.desktop.badAddress' => l.desktopBadAddress,
+    'agent.desktop.hyprctlFailed' => l.desktopHyprctlFailed,
+    'agent.desktop.appNotFound' => l.desktopAppsEmpty,
+    'agent.config.passwordRequired' => l.agentPasswordRequired,
+    'agent.control.disabled' => l.desktopControlOffHint,
+    'agent.claude.pcUnavailable' => l.claudePcUnavailable,
+    'agent.control.sessionRequired' => l.desktopControlEnded,
+    'agent.control.busy' => l.desktopControlBusy('${e.params['device'] ?? ''}'),
+    'agent.control.rateLimited' => l.desktopControlRateLimited,
+    'agent.control.indicatorFailed' => l.desktopControlIndicatorFailed,
+    'agent.desktop.badUrl' => l.openOnPcBadUrl,
+    'agent.desktop.streamFailed' || 'agent.desktop.screenshotFailed' => l.liveErrStreamFailed,
+    'agent.desktop.streamReplaced' => l.liveErrReplaced,
+    'agent.desktop.windowNotVisible' => l.liveErrWindowNotVisible,
+    'agent.desktop.monitorNotFound' => l.liveErrMonitorNotFound,
+    'agent.desktop.badKey' => l.liveErrBadKey,
+    'agent.desktop.badText' => l.liveErrBadText,
+    'agent.desktop.inputFailed' => l.liveErrInputFailed,
+    'agent.desktop.streamFallback' => l.liveFallback,
+    'agent.browser.notConnected' => l.browserErrNotConnected,
+    'agent.browser.permissionRequired' => l.browserErrPermission,
+    'agent.browser.badUrl' => l.browserErrBadUrl,
+    'agent.browser.tabNotFound' => l.browserErrTabNotFound,
+    'agent.browser.passwordField' => l.browserErrPassword,
+    'agent.browser.noMedia' => l.browserErrNoMedia,
+    'agent.browser.noInput' => l.browserErrNoInput,
+    'agent.browser.noArticle' => l.browserErrNoArticle,
+    'agent.browser.unsupported' => l.browserErrUnsupported,
+    'agent.browser.timeout' => l.browserErrTimeout,
+    'agent.browser.failed' || 'agent.browser.badRequest' => l.browserErrFailed,
+    'agent.ui.unsupported' => l.uiErrUnsupported,
+    'agent.ui.stale' => l.uiErrStale,
+    'agent.ui.timeout' => l.uiErrTimeout,
+    'agent.ui.helperMissing' => l.uiErrHelperMissing,
+    'agent.ui.helperFailed' => l.uiErrHelperFailed,
+    'agent.ui.confirmRequired' => l.uiErrConfirm,
+    'agent.ui.noAction' => l.uiErrNoAction,
+    'agent.ui.a11yBus' => l.uiErrA11yBus,
+    'agent.ui.failed' => l.uiErrFailed,
+    'agent.sunshine.noCredentials' => l.sunshineNoCredentials,
+    'agent.sunshine.unauthorized' => l.sunshineUnauthorized,
+    'agent.sunshine.setupRequired' => l.sunshineSetupRequired,
+    'agent.sunshine.noPendingPairing' => l.sunshineNoPending,
+    'agent.sunshine.pairFailed' => l.sunshinePairFailed,
+    'agent.sunshine.badPin' => l.sunshineBadPin,
+    'agent.sunshine.badRequest' => l.sunshineBadRequest('${e.params['message'] ?? ''}'),
+    'agent.sunshine.notInstalled' => l.sunshineNotInstalledTitle,
+    'agent.sunshine.unitFailed' => l.sunshineUnitFailed,
+    'agent.sunshine.certMismatch' => l.sunshineCertMismatch,
+    'agent.sunshine.unreachable' || 'agent.sunshine.timeout' || 'agent.sunshine.apiFailed' || 'agent.sunshine.forbidden' => l.sunshineUnreachable,
+    'agent.media.noPlayer' => l.mediaNothingPlaying,
+    'agent.media.failed' => l.mediaFailed,
+    'agent.media.volumeFailed' => l.mediaVolumeFailed,
     'agent.ports.alreadyPublic' => l.agentPortPublic,
     'agent.processes.permissionDenied' => l.agentPermissionDenied,
     _ => '${l.commonError} (${e.code})',

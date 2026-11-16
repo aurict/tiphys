@@ -1,5 +1,5 @@
-// Terminal oturumları: her sekme bir SSH bağlantısı + tmux'lu kabuk. Uygulama açık kaldıkça yaşar;
-// bağlantı koparsa tmux oturumu sunucuda sürer, "yeniden bağlan" kaldığı yerden devam eder.
+// Terminal sessions: each tab is an SSH connection + a shell in tmux. Lives as long as the app stays open;
+// if the connection drops the tmux session keeps running on the server, and "reconnect" resumes where it left off.
 import 'dart:async';
 import 'dart:convert';
 
@@ -22,17 +22,20 @@ class TermSession extends ChangeNotifier {
   final String? startDir;
   final Terminal terminal;
 
+  /// The view's selection (e.g. "Save to Obsidian" takes the selected text).
+  final TerminalController view = TerminalController();
+
   TermStatus status = TermStatus.connecting;
   SshFailure? failure;
   SshConnection? _conn;
   SSHSession? _shell;
   StreamSubscription<String>? _out;
 
-  /// Her bağlantının numarası: eski bağlantının geç gelen kapanışı yeni bağlantıyı "kopuk" göstermesin.
+  /// Number of each connection: a late close of an old connection must not show the new one as "disconnected".
   int _gen = 0;
   Timer? _watchdog;
 
-  /// Ek tuş çubuğundaki yapışkan Ctrl/Alt.
+  /// Sticky Ctrl/Alt on the extra key bar.
   bool ctrl = false;
   bool alt = false;
 
@@ -52,7 +55,7 @@ class TermSession extends ChangeNotifier {
     try {
       final conn = await open(host);
       if (gen != _gen) {
-        conn.close(); // bu arada başka bir bağlantı başladı ya da sekme kapandı
+        conn.close(); // meanwhile another connection started or the tab was closed
         return;
       }
       _conn = conn;
@@ -69,7 +72,7 @@ class TermSession extends ChangeNotifier {
       _set(TermStatus.connected);
       unawaited(shell.done.then((_) => lost(), onError: (_) => lost()));
       unawaited(conn.client.done.then((_) => lost(), onError: (_) => lost()));
-      // dartssh2'nin keepalive'ı cevap gelmezse sonsuza dek bekler; ölü bağlantıyı kendimiz yakalarız.
+      // dartssh2's keepalive waits forever if no reply comes; we detect dead connections ourselves.
       _watchdog?.cancel();
       _watchdog = Timer.periodic(const Duration(seconds: 30), (_) async {
         if (gen == _gen && status == TermStatus.connected && !await isAlive()) lost();
@@ -81,7 +84,7 @@ class TermSession extends ChangeNotifier {
     }
   }
 
-  /// Bağlantı gerçekten cevap veriyor mu (mobil ağ değişince/Doze'da TCP sessizce ölebilir).
+  /// Whether the connection really responds (TCP can silently die on mobile network changes / in Doze).
   Future<bool> isAlive() async {
     final c = _conn;
     if (c == null || c.client.isClosed) return false;
@@ -111,7 +114,7 @@ class TermSession extends ChangeNotifier {
 
   void _send(String data) => _shell?.write(Uint8List.fromList(utf8.encode(data)));
 
-  /// Ek tuş çubuğundan gelen özel tuşlar.
+  /// Special keys from the extra key bar.
   void sendKey(String key) {
     switch (key) {
       case 'ctrl':
@@ -131,7 +134,7 @@ class TermSession extends ChangeNotifier {
     }
   }
 
-  /// Komut parçacığı: metni yazar ve Enter'a basar.
+  /// Command snippet: types the text and presses Enter.
   void runCommand(String command) => _send('$command\r');
 
   void dispose_() {
@@ -145,6 +148,7 @@ class TermSession extends ChangeNotifier {
   @override
   void dispose() {
     dispose_();
+    view.dispose();
     super.dispose();
   }
 }
@@ -164,7 +168,7 @@ String keySequence(String key) => switch (key) {
       _ => key,
     };
 
-/// SSH bağlantısı açıcı (testlerde değiştirilir).
+/// SSH connection opener (replaced in tests).
 final sshOpenerProvider = Provider<Future<SshConnection> Function(Host)>((ref) {
   final secrets = ref.watch(secretStoreProvider);
   final known = SecretKnownHosts(secrets);
@@ -192,8 +196,8 @@ class TerminalSessions extends Notifier<List<TermSession>> {
     final s = TermSession(id: '${host.id}-${++_seq}', host: host, startDir: startDir);
     _all.add(s);
     state = [...state, s];
-    // Kopunca (ön plandaysa) 2 sn sonra bir kez kendiliğinden yeniden bağlan; bağlanamazsa "başarısız"da
-    // kalır ve kullanıcıya bırakılır (sonsuz deneme döngüsü yok).
+    // On disconnect (if in foreground) reconnect automatically once after 2 s; if that fails it stays "failed"
+    // and is left to the user (no endless retry loop).
     var last = s.status;
     s.addListener(() {
       if (s.status == TermStatus.disconnected && last == TermStatus.connected && appVisible.value) {
@@ -208,13 +212,13 @@ class TerminalSessions extends Notifier<List<TermSession>> {
   }
 
   Future<void> reconnect(TermSession s) async {
-    if (s.status == TermStatus.connecting) return; // çift dokunuş ikinci bağlantı açmasın
+    if (s.status == TermStatus.connecting) return; // a double tap must not open a second connection
     s.dispose_();
     await s.connect(ref.read(sshOpenerProvider));
   }
 
-  /// Uygulama öne gelince: kopmuş ya da sessizce ölmüş sekmeler kendiliğinden yeniden bağlanır
-  /// (tmux oturumu sunucuda sürdüğü için kaldığın yerden devam eder).
+  /// When the app comes to the foreground: dropped or silently dead tabs reconnect automatically
+  /// (the tmux session keeps running on the server, so you resume where you left off).
   Future<void> _onVisible() async {
     if (!appVisible.value) return;
     for (final s in [..._all]) {
@@ -233,7 +237,7 @@ class TerminalSessions extends Notifier<List<TermSession>> {
 
 final terminalSessionsProvider = NotifierProvider<TerminalSessions, List<TermSession>>(TerminalSessions.new);
 
-/// Seçili sekme kimliği.
+/// Selected tab ID.
 class ActiveTerminal extends Notifier<String?> {
   @override
   String? build() => null;
@@ -241,3 +245,13 @@ class ActiveTerminal extends Notifier<String?> {
 }
 
 final activeTerminalProvider = NotifierProvider<ActiveTerminal, String?>(ActiveTerminal.new);
+
+/// Session open full screen (landscape-rotatable). Meanwhile the tab's view doesn't draw the terminal: two views
+/// must not keep resizing the same terminal to different sizes and constantly resize the SSH window.
+class FullscreenTerminal extends Notifier<String?> {
+  @override
+  String? build() => null;
+  void set(String? id) => state = id;
+}
+
+final fullscreenTerminalProvider = NotifierProvider<FullscreenTerminal, String?>(FullscreenTerminal.new);
