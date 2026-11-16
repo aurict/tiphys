@@ -1,5 +1,5 @@
-// Uptime Kuma köprüsü: Uptime Kuma'nın resmi REST API'si yok (arayüzü Socket.IO kullanır). Ajan sürekli
-// bağlı kalır, olayları önbellekler ve telefona düz REST sunar. Kullanıcı adı/şifre sadece ajanda durur.
+// Uptime Kuma bridge: Uptime Kuma has no official REST API (its UI uses Socket.IO). The agent stays connected,
+// caches events and serves plain REST to the phone. The username/password live only in the agent.
 import type { FastifyInstance } from "fastify";
 import { io, type Socket } from "socket.io-client";
 import { z } from "zod";
@@ -9,7 +9,7 @@ import type { Notifier } from "../notify.ts";
 import type { Ctx } from "../server.ts";
 
 export interface Beat {
-  status: number; // 0 kapalı, 1 açık, 2 bekliyor, 3 bakım
+  status: number; // 0 down, 1 up, 2 pending, 3 maintenance
   time: string;
   msg: string;
   ping: number | null;
@@ -107,12 +107,12 @@ export class UptimeBridge {
           issuer: info.certInfo?.issuerCertificate?.subject?.O ?? null,
         });
       } catch {
-        /* bozuk sertifika bilgisi yok sayılır */
+        /* malformed certificate info is ignored */
       }
     });
   }
 
-  /** Yeni bağlantıda son 2 saatin atışlarını çeker (listedeki mini grafikler hemen dolsun). */
+  /** On a new connection fetches the last 2 hours of heartbeats (so the mini charts in the list fill right away). */
   #prefill() {
     for (const id of this.monitors.keys()) {
       if ((this.beats.get(id)?.length ?? 0) > 5) continue;
@@ -193,7 +193,7 @@ export class UptimeBridge {
   async edit(id: number, input: Partial<MonitorInput>) {
     const cur = this.monitors.get(id);
     if (!cur) throw notFound("uptime.monitor", { id });
-    // editMonitor tüm nesneyi bekler: mevcut kayıt + değişen alanlar.
+    // editMonitor expects the whole object: the existing record + the changed fields.
     const merged = { ...cur, ...monitorPatch(input) } as Record<string, unknown>;
     if (typeof merged.accepted_statuscodes_json === "string" && !merged.accepted_statuscodes) {
       merged.accepted_statuscodes = JSON.parse(merged.accepted_statuscodes_json as string);
@@ -210,7 +210,7 @@ export class UptimeBridge {
     this.#check(await this.#emit(paused ? "pauseMonitor" : "resumeMonitor", id));
   }
 
-  /** Tek seferlik bakım penceresi: bu sürede seçili sitelerin kesintisi bildirilmez. Saatler UTC. */
+  /** One-off maintenance window: downtime of the selected sites isn't notified during it. Times are UTC. */
   async addMaintenance(m: MaintenanceInput): Promise<number> {
     const fmt = (iso: string) => new Date(iso).toISOString().slice(0, 19).replace("T", " ");
     const res = await this.#emit<{ ok: boolean; msg?: string; maintenanceID?: number }>("addMaintenance", {
@@ -290,7 +290,7 @@ export const maintenanceInputSchema = z
   .refine((m) => Date.parse(m.end) > Date.parse(m.start), { message: "end must be after start", path: ["end"] });
 export type MaintenanceInput = z.infer<typeof maintenanceInputSchema>;
 
-/** "x saniye kapalı kalınca uyar" → yeniden deneme sayısı (her deneme bir aralık). */
+/** "alert after x seconds down" → retry count (each retry is one interval). */
 function retries(i: { interval: number; alertAfterSeconds: number }) {
   return Math.max(0, Math.round(i.alertAfterSeconds / i.interval) - 1);
 }

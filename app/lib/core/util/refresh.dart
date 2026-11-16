@@ -1,11 +1,11 @@
-// Periyodik yenileme: uygulama arka plandayken (ekran kapalı, başka uygulama açık) sorgu atılmaz;
-// süre o arada dolduysa uygulama öne gelince bir kez yenilenir. Pil ve mobil veri tasarrufu.
+// Periodic refresh: no queries while the app is in the background (screen off, another app open);
+// if the interval elapsed meanwhile, it refreshes once on return to the foreground. Saves battery and mobile data.
 import 'dart:async';
 
 import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-/// Uygulama görünür mü (resumed/inactive). İlk erişimde yaşam döngüsünü dinlemeye başlar.
+/// Whether the app is visible (resumed/inactive). Starts listening to the lifecycle on first access.
 final ValueNotifier<bool> appVisible = () {
   final v = ValueNotifier<bool>(true);
   AppLifecycleListener(
@@ -14,8 +14,8 @@ final ValueNotifier<bool> appVisible = () {
   return v;
 }();
 
-/// [every] sonra [onDue]'yu çağırır; uygulama o an arka plandaysa öne gelene kadar bekletir.
-/// Dönen fonksiyon zamanlayıcıyı iptal eder.
+/// Calls [onDue] after [every]; if the app is in the background at that moment, waits until it comes to the foreground.
+/// The returned function cancels the timer.
 VoidCallback whenVisibleAfter(Duration every, VoidCallback onDue) {
   void Function()? waiting;
   final t = Timer(every, () {
@@ -34,5 +34,5 @@ VoidCallback whenVisibleAfter(Duration every, VoidCallback onDue) {
   };
 }
 
-/// Sağlayıcıyı [every] aralıkla yeniler (yalnızca uygulama görünürken).
+/// Refreshes the provider every [every] (only while the app is visible).
 void autoRefresh(Ref ref, Duration every) => ref.onDispose(whenVisibleAfter(every, ref.invalidateSelf));

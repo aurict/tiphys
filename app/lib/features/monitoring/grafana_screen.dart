@@ -1,5 +1,5 @@
-// Grafana: dashboard listesi (favoriler önce) ve mobil düzende dashboard (tek sütun).
-// Değişkenler, zaman aralığı, otomatik yenileme; stat / zaman serisi / tablo / log panelleri uygulamada çizilir.
+// Grafana: dashboard list (favorites first) and dashboards in a mobile layout (single column).
+// Variables, time range, auto refresh; stat / time series / table / log panels are drawn in the app.
 import 'dart:async';
 
 import 'package:fl_chart/fl_chart.dart';
@@ -118,7 +118,7 @@ class _GrafanaDashboardState extends ConsumerState<GrafanaDashboardScreen> {
   List<GrafanaPanel> _panels = [];
   late String _range = widget.config.defaultRange;
   Object? _error;
-  int _tick = 0; // paneller bu değer değişince yeniden sorgular
+  int _tick = 0; // panels re-query when this value changes
   VoidCallback? _cancelRefresh;
   final _collapsed = <String>{};
 
@@ -129,7 +129,7 @@ class _GrafanaDashboardState extends ConsumerState<GrafanaDashboardScreen> {
     _scheduleRefresh();
   }
 
-  /// Panelleri aralıkla yeniler; uygulama arka plandayken bekler.
+  /// Refreshes panels on an interval; waits while the app is in the background.
   void _scheduleRefresh() {
     if (widget.config.refreshSeconds <= 0) return;
     _cancelRefresh = whenVisibleAfter(Duration(seconds: widget.config.refreshSeconds), () {
@@ -187,7 +187,7 @@ class _GrafanaDashboardState extends ConsumerState<GrafanaDashboardScreen> {
       return;
     }
     final picked = await showModalBottomSheet<List<String>>(
-      useRootNavigator: true, // alt sekme barının üstünde açılsın; yoksa bar sayfanın altını örter
+      useRootNavigator: true, // open above the bottom tab bar; otherwise the bar covers the bottom of the page
       context: context,
       builder: (c) => _VarSheet(variable: v),
     );
@@ -289,7 +289,7 @@ class _GrafanaDashboardState extends ConsumerState<GrafanaDashboardScreen> {
     );
   }
 
-  /// Stat panelleri ikili ızgara, diğerleri tam genişlik.
+  /// Stat panels in a two-column grid, others full width.
   List<Widget> _layout(List<GrafanaPanel> panels) {
     final out = <Widget>[];
     final stats = <GrafanaPanel>[];
@@ -380,7 +380,7 @@ class _VarSheetState extends State<_VarSheet> {
   }
 }
 
-/// Hızlı sorgu (Explore benzeri): veri kaynağı seç, PromQL/LogQL yaz, zaman aralığında çiz.
+/// Quick query (Explore-like): pick a data source, write PromQL/LogQL, plot over the time range.
 class GrafanaExploreScreen extends ConsumerStatefulWidget {
   const GrafanaExploreScreen({super.key, required this.config});
   final GrafanaConfig config;
@@ -800,7 +800,7 @@ LineChart seriesChart(BuildContext context, GrafanaPanel p, List<Series> series,
   ));
 }
 
-/// Panele dokununca tam ekran; yatay döndürmeye izin verilir.
+/// Tapping a panel opens it full screen; landscape rotation is allowed.
 class _FullChart extends StatefulWidget {
   const _FullChart({required this.panel, required this.data});
   final GrafanaPanel panel;

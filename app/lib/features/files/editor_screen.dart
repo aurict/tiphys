@@ -1,5 +1,5 @@
-// Basit metin düzenleyici (SFTP): dosyayı açar, düzenler, kaydeder. Kaydetmeden önce dosya başka biri
-// tarafından değiştirildiyse sorar. UTF-8 olmayan (ikili) dosyalar açılmaz.
+// Simple text editor (SFTP): opens, edits and saves a file. Asks before saving if the file was changed by
+// someone else in the meantime. Non-UTF-8 (binary) files are not opened.
 import 'dart:convert';
 import 'dart:typed_data';
 
@@ -17,7 +17,7 @@ class TextEditorScreen extends StatefulWidget {
   final String path;
   final String name;
 
-  /// Düzenlenebilecek en büyük dosya.
+  /// Largest file that can be edited.
   static const maxBytes = 1024 * 1024;
 
   @override
@@ -51,7 +51,7 @@ class _TextEditorScreenState extends State<TextEditorScreen> {
     try {
       final data = await widget.files.read(widget.path, maxBytes: TextEditorScreen.maxBytes + 1);
       if (data.length > TextEditorScreen.maxBytes) throw const FormatException('too large');
-      final text = utf8.decode(data); // ikili dosyada FormatException
+      final text = utf8.decode(data); // FormatException on binary files
       if (!mounted) return;
       setState(() {
         _original = data;

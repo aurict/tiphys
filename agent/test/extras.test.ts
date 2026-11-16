@@ -95,7 +95,7 @@ describe("uyarılar", () => {
     const m = new AlertMonitor({ store, notifier });
     const base = { disks: [{ mount: "/", percent: 95 }], failed: [], grafana: [] };
     expect(await m.evaluate(base)).toEqual(["disk:/"]);
-    expect(sent).toEqual([]); // ajan açılırken zaten dolu olan disk bildirilmez
+    expect(sent).toEqual([]); // a disk that is already full when the agent starts isn't reported
     await m.evaluate({ ...base, failed: ["user/foo.service"], grafana: [{ name: "BackupStale", state: "firing", severity: "critical" }] });
     expect(sent.map((n) => (n as { key: string }).key).sort()).toEqual(["grafana.alert", "service.failed"]);
     expect(sent.find((n) => (n as { key: string }).key === "service.failed")).toMatchObject({ params: { unit: "foo.service", scope: "user", host: "test" } });
@@ -190,7 +190,7 @@ describe("ses → yazı", () => {
   it("telefonun seçtiği model ve dil komuta geçer, yoksa ajanın varsayılan modeli", async () => {
     const dir = await mkdtemp(join(tmpdir(), "tiphys-tr-"));
     const cmd = join(dir, "transcribe");
-    // Sahte transcribe: aldığı -m/-l bayraklarını yazar.
+    // Fake transcribe: writes out the -m/-l flags it received.
     await writeFile(cmd, '#!/bin/sh\nshift\necho "$@"\n', { mode: 0o755 });
     const { app, auth } = await testApp((c) => {
       c.features.transcribe = true;
@@ -211,12 +211,12 @@ describe("ajanın kendi sağlığı", () => {
     const a = new RunLog(file);
     await a.begin();
     expect(a.previousCrashed).toBeNull();
-    await a.end(); // güncelleme/yeniden başlatma: düzgün
+    await a.end(); // update/restart: clean
 
     const b = new RunLog(file);
     await b.begin();
     expect(b.previousCrashed).toBeNull();
-    // b kapanmadan süreç öldü (OOM / çökme) → c açılışta bunu görür
+    // The process died before b shut down (OOM / crash) → c sees this on startup
     const c = new RunLog(file);
     await c.begin();
     expect(c.previousCrashed?.start).toBe(b.startedAt.toISOString());

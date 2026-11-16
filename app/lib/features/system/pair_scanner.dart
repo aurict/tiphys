@@ -1,4 +1,4 @@
-// Ajan eşleştirme: `tiphys-agent pair` komutunun bastığı QR kodu okutulur.
+// Agent pairing: scans the QR code printed by the `tiphys-agent pair` command.
 import 'package:flutter/material.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 

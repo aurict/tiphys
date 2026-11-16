@@ -1,5 +1,5 @@
-// Gizli bilgi alanı: değer asla gösterilmez; "kayıtlı" durumu ipucunda görünür.
-// Kaydedilirken alan boşsa mevcut değer korunur.
+// Secret field: the value is never shown; the "saved" state appears in the hint.
+// If the field is empty on save, the existing value is kept.
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -15,7 +15,7 @@ class SecretInput {
 
   String get ref => refOf(secretId);
 
-  /// Yeni değer girildiyse kasaya yazar.
+  /// Writes to the vault if a new value was entered.
   Future<void> commit(SecretStore store) async {
     final v = controller.text;
     if (v.isNotEmpty) await store.write(secretId, v);

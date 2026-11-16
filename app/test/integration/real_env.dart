@@ -1,5 +1,6 @@
-// Gerçek sunucu testlerinin hedefleri (yalnız `--tags real`): ~/.config/tiphys/real-test.json — repoda değil.
-// Biçim için bkz. real-test.example.json. Dosya yoksa bu testler hata verir (varsayılan test koşusunda çalışmazlar).
+// Targets for real-server tests (only `--tags real`): ~/.config/tiphys/real-test.json — not in the repo.
+// See real-test.example.json for the format. Without the file these tests fail (they don't run in the default test
+// run).
 import 'dart:convert';
 import 'dart:io';
 
@@ -17,10 +18,10 @@ class RealEnv {
   String _s(String k) => _j[k] as String? ?? (throw StateError('real-test.json: "$k" eksik'));
   String _path(String k) => _s(k).replaceFirst('~', _home);
 
-  /// Tailnet alan adı, ör. example.ts.net
+  /// Tailnet domain, e.g. example.ts.net
   String get tailnet => _s('tailnet');
 
-  /// Ajanlı PC, ajanlı sunucu, ajansız sunucu (yalnız SSH).
+  /// PC with agent, server with agent, server without agent (SSH only).
   String get pc => _s('pc');
   String get server => _s('server');
   String get server2 => _s('server2');
@@ -34,7 +35,7 @@ class RealEnv {
   String get serverToken => _path('serverTokenFile');
   String get grafanaToken => _path('grafanaTokenFile');
 
-  /// Uptime Kuma'da bulunması beklenen bir site adı.
+  /// A site name expected to exist in Uptime Kuma.
   String get uptimeSite => _s('uptimeSite');
 }
 

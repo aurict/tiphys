@@ -6,8 +6,8 @@ plugins {
     id("dev.flutter.flutter-gradle-plugin")
 }
 
-// Release imzası: anahtar deposu ve parolaları proje dışında, ~/.config/tiphys/release/key.properties
-// (ya da TIPHYS_KEY_PROPERTIES). Dosya yoksa debug anahtarıyla imzalanır ve uyarı basılır.
+// Release signing: keystore and passwords live outside the project, in ~/.config/tiphys/release/key.properties
+// (or TIPHYS_KEY_PROPERTIES). If the file is missing, the build is signed with the debug key and a warning is printed.
 val releaseKeyFile = file(System.getenv("TIPHYS_KEY_PROPERTIES") ?: "${System.getProperty("user.home")}/.config/tiphys/release/key.properties")
 val releaseKey = Properties().apply { if (releaseKeyFile.exists()) releaseKeyFile.inputStream().use { load(it) } }
 
@@ -19,7 +19,7 @@ android {
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
-        // flutter_local_notifications kütüphane desugaring ister
+        // flutter_local_notifications requires library desugaring
         isCoreLibraryDesugaringEnabled = true
     }
 
@@ -46,8 +46,8 @@ android {
         }
     }
 
-    // Uygulama yalnız arm64 için derleniyor (libflutter/libapp sadece arm64); eklentilerin getirdiği
-    // armeabi-v7a/x86_64 kopyaları (~9 MB) zaten çalışamaz. Emülatör kullanılmıyor.
+    // The app is built for arm64 only (libflutter/libapp are arm64 only); the armeabi-v7a/x86_64 copies
+    // pulled in by plugins (~9 MB) could not run anyway. No emulator is used.
     packaging {
         jniLibs {
             excludes += listOf("lib/armeabi-v7a/**", "lib/x86_64/**", "lib/x86/**")
@@ -82,8 +82,8 @@ dependencies {
     coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.4")
 }
 
-// UnifiedPush bağlayıcısı JVM sürümü "tink"i, flutter_secure_storage "tink-android"i getiriyor; aynı sınıflar
-// iki kez gelmesin diye JVM sürümü çıkarılır (tink-android aynı paketleri içerir).
+// The UnifiedPush connector brings the JVM "tink", flutter_secure_storage brings "tink-android"; the JVM one is
+// excluded so the same classes don't arrive twice (tink-android contains the same packages).
 configurations.all {
     exclude(group = "com.google.crypto.tink", module = "tink")
 }

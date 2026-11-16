@@ -1,4 +1,4 @@
-// Profil dosyası: dışa aktar (gizlisiz / şifreli), içe aktar (önizleme + birleştir/değiştir), sıfırla.
+// Profile file: export (without secrets / encrypted), import (preview + merge/replace), reset.
 import 'dart:convert';
 import 'dart:io';
 
@@ -105,7 +105,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     try {
       const mode = ImportMode.merge;
       String? pass;
-      // Şifreli bölüm varsa parola sor.
+      // Ask for the password if there's an encrypted section.
       if (repo.codec.decode(text).encryptedSecrets != null) {
         pass = await _askPassphrase(confirm: false);
         if (pass == null) return;
@@ -115,7 +115,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
       setState(() => _busy = false);
       if (!mounted) return;
       final result = await showModalBottomSheet<ImportMode>(
-      useRootNavigator: true, // alt sekme barının üstünde açılsın; yoksa bar sayfanın altını örter
+      useRootNavigator: true, // open above the bottom tab bar; otherwise the bar covers the bottom of the page
         context: context,
         isScrollControlled: true,
         builder: (c) => _PreviewSheet(

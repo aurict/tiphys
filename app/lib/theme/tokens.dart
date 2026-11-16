@@ -1,5 +1,5 @@
-// Tasarım tokenları: "6 · Porselen × Bento" (açık) ve koyu/cam teması.
-// Kaynak: https://claude.ai/artifact/DKZjow6F3R9nsRgQDJuura (Karma.dc.html, KarmaKoyu.dc.html)
+// Design tokens: "6 · Porselen × Bento" (light) and the dark/glass theme.
+// Source: https://claude.ai/artifact/DKZjow6F3R9nsRgQDJuura (Karma.dc.html, KarmaKoyu.dc.html)
 import 'package:flutter/material.dart';
 
 @immutable
@@ -60,7 +60,7 @@ class TiphysTokens extends ThemeExtension<TiphysTokens> {
   final Color rowIconFiles;
   final Color rowIconHomepage;
 
-  /// Koyu temada kartlar cam görünümünde (yarı saydam dolgu + kenar + ışık çizgisi) çizilir.
+  /// In the dark theme cards are drawn as glass (translucent fill + border + light line).
   final bool glass;
   final Color chipBackground;
 
@@ -129,7 +129,7 @@ class TiphysTokens extends ThemeExtension<TiphysTokens> {
     chipBackground: Color(0x14FFFFFF),
   );
 
-  /// Host rengi koyu temada biraz açılır (yığın ve noktalar siyah zeminde öne çıksın).
+  /// Host color is lightened a bit in the dark theme (so the stack and dots stand out on the black background).
   Color hostColor(Color base) => isDark ? Color.lerp(base, Colors.white, 0.18)! : base;
 
   @override

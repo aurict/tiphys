@@ -1,5 +1,5 @@
-// Homepage'in services.yaml dosyasını okur, gruplara ayırır ve siteMonitor adreslerini kontrol eder.
-// Bir gruba yeni servis de ekleyebilir (yorumlar ve düzen korunur).
+// Reads Homepage's services.yaml, splits it into groups and checks the siteMonitor addresses.
+// It can also add a new service to a group (comments and layout are preserved).
 import { readFile, rename, writeFile } from "node:fs/promises";
 import type { FastifyInstance } from "fastify";
 import { isMap, isSeq, parse, parseDocument, type YAMLMap, type YAMLSeq } from "yaml";
@@ -34,7 +34,7 @@ function toGroup(name: string, items: unknown): HpGroup {
       } else if (value && typeof value === "object") {
         const v = value as Raw;
         const str = (k: string) => (typeof v[k] === "string" ? (v[k] as string) : null);
-        // Bağlantısı olmayan kartlar (ör. sadece Glances widget'ı) listede gösterilmez.
+        // Cards without a link (e.g. just a Glances widget) aren't shown in the list.
         if (!str("href")) continue;
         g.services.push({
           name: key,
@@ -64,7 +64,7 @@ export async function check(url: string, timeoutMs: number): Promise<{ status: S
   try {
     const res = await fetch(url, { method: "GET", redirect: "manual", signal: AbortSignal.timeout(timeoutMs) });
     await res.body?.cancel();
-    // Homepage'in siteMonitor'ı gibi: 5xx dışındaki her yanıt "ayakta" sayılır.
+    // Like Homepage's siteMonitor: any response other than 5xx counts as "up".
     return { status: res.status < 500 ? "up" : "down", httpStatus: res.status, ms: Date.now() - started };
   } catch {
     return { status: "down", httpStatus: null, ms: null };
@@ -82,7 +82,7 @@ export const newService = z.object({
   siteMonitor: z.url().optional(),
 });
 
-/** Üst düzey gruba servis ekler (grup yoksa sona oluşturur). Aynı adlı servis varsa hata verir. */
+/** Adds a service to a top-level group (creating the group at the end if missing). Errors if a same-named service exists. */
 export function addService(yamlText: string, s: z.infer<typeof newService>): string {
   const doc = parseDocument(yamlText);
   if (!isSeq(doc.contents)) throw new AppError("agent.homepage.invalidFile", 500);
@@ -157,7 +157,7 @@ export function homepageRoutes(app: FastifyInstance, ctx: Ctx) {
       throw new AppError("agent.homepage.fileNotFound", 404, { path: ctx.store.get().homepage.servicesPath });
     }
     const next = addService(text, body);
-    // Homepage dosyayı izliyor; yarım yazılmış dosya görmesin diye geçici dosya + rename.
+    // Homepage watches the file; temp file + rename so it never sees a half-written file.
     const tmp = `${file}.tiphys.tmp`;
     await writeFile(tmp, next);
     await rename(tmp, file);

@@ -1,4 +1,4 @@
-// Süreçler: en çok işlemci/bellek kullananlar, sinyal gönderme (onaylı). "system" özelliğiyle gelir.
+// Processes: top CPU/memory users, sending signals (with confirmation). Comes with the "system" feature.
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 import { run } from "../exec.ts";

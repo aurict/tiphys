@@ -1,5 +1,5 @@
-// İşlem kaydı: değişiklik yapan her istek (GET dışı) cihaz, yol ve sonuçla birlikte JSONL dosyasına yazılır.
-// Dosya ajan ayar dosyasının yanında durur (audit.jsonl); 1 MB'ı geçince bir önceki kopya olarak saklanır.
+// Audit log: every mutating request (non-GET) is written to a JSONL file with device, path and result.
+// The file sits next to the agent settings file (audit.jsonl); past 1 MB it's kept as the previous copy.
 import { appendFile, readFile, rename, stat } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import type { FastifyInstance } from "fastify";
@@ -29,7 +29,7 @@ export function auditRoutes(app: FastifyInstance, ctx: Ctx) {
       path: req.url.split("?")[0]!,
       status: reply.statusCode,
     };
-    // Yazmalar sırayla yapılır; kayıt hatası isteği bozmaz.
+    // Writes are serialized; a logging error doesn't break the request.
     chain = chain
       .then(async () => {
         const size = await stat(file).then((s) => s.size, () => 0);

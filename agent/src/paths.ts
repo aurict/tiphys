@@ -1,4 +1,4 @@
-// İzinli kökler (allowedRoots) kontrolü: yol, sembolik bağlar çözüldükten sonra köklerden birinin içinde olmalı.
+// Allowed roots (allowedRoots) check: after resolving symlinks, the path must be inside one of the roots.
 import { realpath } from "node:fs/promises";
 import { sep } from "node:path";
 import { expandHome, type AgentConfig } from "./config.ts";

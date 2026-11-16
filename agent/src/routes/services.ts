@@ -1,4 +1,4 @@
-// systemd servisleri (kullanıcı + sistem): liste, başlat/durdur/yeniden başlat, günlük.
+// systemd services (user + system): list, start/stop/restart, logs.
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 import { run } from "../exec.ts";

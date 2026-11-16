@@ -1,4 +1,4 @@
-// Ayarlar formları için ortak parçalar: sayfa iskeleti, metin alanı, seçim satırları, onay diyaloğu.
+// Shared pieces for settings forms: page scaffold, text field, choice rows, confirm dialog.
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
@@ -7,7 +7,7 @@ import '../l10n/gen/app_localizations.dart';
 import '../theme/tokens.dart';
 import 'surfaces.dart';
 
-/// Ayarlar alt sayfaları: geri butonlu başlık + kaydırılabilir içerik + isteğe bağlı kaydet butonu.
+/// Settings subpages: header with back button + scrollable content + optional save button.
 class SettingsPage extends StatelessWidget {
   const SettingsPage({super.key, required this.title, required this.children, this.onSave, this.saving = false, this.actions});
   final String title;
@@ -56,7 +56,7 @@ class SettingsPage extends StatelessWidget {
   }
 }
 
-/// Kart içinde etiketli metin alanı.
+/// Labeled text field inside a card.
 class FieldCard extends StatelessWidget {
   const FieldCard({super.key, required this.children, this.title});
   final List<Widget> children;
@@ -110,7 +110,7 @@ class TField extends StatelessWidget {
         keyboardType: keyboardType,
         autocorrect: false,
         enableSuggestions: !obscure && !mono,
-        // Bitişik harfler kapalı: kodda "!=" ≠ olarak görünmesin.
+        // Ligatures off: so "!=" in code doesn't render as ≠.
         style: mono
             ? const TextStyle(fontFamily: 'JetBrainsMono', fontSize: 13, fontFeatures: [FontFeature.disable('calt'), FontFeature.disable('liga')])
             : null,
@@ -142,7 +142,7 @@ class SwitchRow extends StatelessWidget {
       );
 }
 
-/// Seçeneklerden biri (radyo gibi) — iOS tarzı onay işaretli satırlar.
+/// One of several options (like a radio) — iOS-style rows with a checkmark.
 class ChoiceSection<T> extends StatelessWidget {
   const ChoiceSection({super.key, this.title, required this.options, required this.value, required this.onChanged});
   final String? title;
@@ -188,7 +188,7 @@ Future<bool> confirmDialog(BuildContext context, {required String message, Strin
 void toast(BuildContext context, String message) =>
     ScaffoldMessenger.of(context)..hideCurrentSnackBar()..showSnackBar(SnackBar(content: Text(message)));
 
-// Doğrulayıcılar
+// Validators
 String? Function(String) requiredV(AppLocalizations l) => (v) => v.trim().isEmpty ? l.commonRequired : null;
 String? Function(String) idV(AppLocalizations l) =>
     (v) => RegExp(r'^[a-z0-9][a-z0-9-]{0,62}$').hasMatch(v) ? null : l.hostIdHint;
@@ -201,7 +201,7 @@ String? Function(String) intV(int min, int max) => (v) {
       return n != null && n >= min && n <= max ? null : '$min–$max';
     };
 
-/// Kimlik önerisi: ad → kebab-case (Türkçe harfler sadeleştirilir).
+/// Id suggestion: name → kebab-case (Turkish letters are simplified).
 String slugify(String s) {
   const map = {'ç': 'c', 'ğ': 'g', 'ı': 'i', 'İ': 'i', 'ö': 'o', 'ş': 's', 'ü': 'u', 'Ç': 'c', 'Ğ': 'g', 'Ö': 'o', 'Ş': 's', 'Ü': 'u'};
   final out = s.split('').map((c) => map[c] ?? c).join().toLowerCase().replaceAll(RegExp(r'[^a-z0-9]+'), '-');

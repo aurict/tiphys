@@ -44,7 +44,7 @@ void main() {
       expect(p.secretIds, isNot(contains('scriberr')));
       expect(p.integrations.scriberr!.language, 'en');
       expect(p.integrations.scriberr!.model, 'large-v3');
-      // yeniden yazılan dosyada artık yer almazlar
+      // they no longer appear in the rewritten file
       expect(codec.encode(p), isNot(contains('apiKeyRef')));
     });
 

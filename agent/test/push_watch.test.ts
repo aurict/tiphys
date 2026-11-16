@@ -1,8 +1,8 @@
 import { createECDH, randomBytes } from "node:crypto";
 import { createServer } from "node:http";
 import type { AddressInfo } from "node:net";
-// web-push'un bağımlılığı olan http_ece ile, telefonun yapacağı gibi çözüyoruz.
-// @ts-expect-error tip tanımı yok
+// We decrypt with http_ece, a dependency of web-push, the same way the phone would.
+// @ts-expect-error no type definitions
 import ece from "http_ece";
 import { describe, expect, it } from "vitest";
 import type { Notifier } from "../src/notify.ts";

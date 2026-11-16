@@ -1,4 +1,4 @@
-// Gizli bilgi kasası. Üretimde Android Keystore (flutter_secure_storage), testlerde bellek.
+// Secret store. Android Keystore (flutter_secure_storage) in production, in-memory in tests.
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 abstract class SecretStore {
@@ -37,7 +37,7 @@ class KeystoreSecretStore extends SecretStore {
   KeystoreSecretStore([FlutterSecureStorage? storage]) : _s = storage ?? const FlutterSecureStorage();
   final FlutterSecureStorage _s;
 
-  // Uygulamanın kendi kayıtları (PIN özeti vb.) "app:" ile, profil gizli bilgileri "secret:" ile başlar.
+  // The app's own entries (PIN hash etc.) start with "app:", profile secrets with "secret:".
   static const _prefix = 'secret:';
 
   @override

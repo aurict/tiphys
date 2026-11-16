@@ -1,4 +1,4 @@
-// Şifreli yedek: parola → Argon2id → anahtar; gizli bilgiler XChaCha20-Poly1305 ile şifrelenir.
+// Encrypted backup: password → Argon2id → key; secrets are encrypted with XChaCha20-Poly1305.
 import 'dart:convert';
 import 'dart:math';
 
@@ -7,7 +7,7 @@ import 'package:cryptography/cryptography.dart' as c;
 class Argon2Params {
   const Argon2Params({this.memoryKiB = 19456, this.iterations = 2, this.parallelism = 1});
 
-  /// OWASP önerisi: m=19 MiB, t=2, p=1.
+  /// OWASP recommendation: m=19 MiB, t=2, p=1.
   static const standard = Argon2Params();
   final int memoryKiB;
   final int iterations;
@@ -32,7 +32,7 @@ class SecretSeal {
     return kdf.deriveKey(secretKey: c.SecretKey(utf8.encode(passphrase)), nonce: salt);
   }
 
-  /// Gizli bilgileri ({kimlik: değer}) şifreler ve profil dosyasındaki `encryptedSecrets` nesnesini döner.
+  /// Encrypts secrets ({id: value}) and returns the `encryptedSecrets` object for the profile file.
   static Future<Map<String, dynamic>> seal(
     Map<String, String> secrets,
     String passphrase, {

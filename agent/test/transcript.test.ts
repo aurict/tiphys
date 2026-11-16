@@ -1,4 +1,4 @@
-// Claude Code kaydı okuyucu: sondan geriye, sıkıştırmayı geçerek, sayfalı.
+// Claude Code transcript reader: backwards from the end, skipping past compaction, paged.
 import { mkdtemp, mkdir, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -16,14 +16,14 @@ async function fixture() {
     prev = uuid;
     return uuid;
   };
-  // Sıkıştırmadan önceki kısım: m1..m4
+  // Part before compaction: m1..m4
   for (let i = 1; i <= 4; i++) push({ type: "user", message: { role: "user", content: `m${i}` } });
   const beforeCompact = prev;
-  // Sıkıştırma sınırı (parentUuid null, logicalParentUuid önceki kısma bağlar) + özet (gösterilmez)
+  // Compaction boundary (parentUuid null, logicalParentUuid links to the previous part) + summary (not shown)
   prev = null;
   push({ type: "system", subtype: "compact_boundary", logicalParentUuid: beforeCompact });
   push({ type: "user", isCompactSummary: true, message: { role: "user", content: "ÖZET" } });
-  // Sonraki kısım: komut sarmalayıcısı, meta satırı, alt ajan satırı, araç çağrısı ve sonucu
+  // Later part: command wrapper, meta line, subagent line, tool call and its result
   push({ type: "user", message: { role: "user", content: "<command-name>/review</command-name><command-args>src</command-args>" } });
   push({ type: "user", isMeta: true, message: { role: "user", content: "gizli meta" } });
   push({ type: "assistant", message: { role: "assistant", content: [{ type: "tool_use", id: "t1", name: "Bash", input: { command: "ls" } }] } });

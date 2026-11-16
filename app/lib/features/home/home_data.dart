@@ -1,5 +1,5 @@
-// Ana ekranın gösterdiği canlı veriler. Her kaynak kendi fazında bağlanır;
-// bağlı olmayan kaynak null döner ve kart "bağlı değil" durumunu gösterir.
+// Live data shown on the home screen. Each source is wired up in its own phase;
+// an unconnected source returns null and the card shows the "not connected" state.
 import 'dart:io';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -41,7 +41,7 @@ class HomeData {
   final int terminalTabs;
 }
 
-/// Ajanı olmayan hostlar için: SSH portu açık mı (testlerde değiştirilir).
+/// For hosts without an agent: is the SSH port open (replaced in tests).
 final tcpProbeProvider = Provider<Future<bool> Function(String host, int port)>((ref) => (host, port) async {
       try {
         final s = await Socket.connect(host, port, timeout: const Duration(seconds: 5));
@@ -52,7 +52,7 @@ final tcpProbeProvider = Provider<Future<bool> Function(String host, int port)>(
       }
     });
 
-/// Host ayakta mı: önce ajanın token'sız sağlık ucu (eşleşme gerekmez), olmazsa SSH portu.
+/// Is the host up: first the agent's tokenless health endpoint (no pairing needed), otherwise the SSH port.
 final hostStateProvider = FutureProvider.autoDispose.family<HostState, String>((ref, hostId) async {
   autoRefresh(ref, const Duration(seconds: 30));
   final h = ref.watch(profileProvider.select((p) => p.host(hostId)));
@@ -62,14 +62,14 @@ final hostStateProvider = FutureProvider.autoDispose.family<HostState, String>((
       await ref.read(agentHealthFnProvider)(h.agent!.url).timeout(const Duration(seconds: 8));
       return HostState.online;
     } catch (_) {
-      // ajan kapalı olabilir; host yine de SSH'tan erişilebilir mi bakılır
+      // the agent may be down; check whether the host is still reachable over SSH
     }
   }
   if (h.ssh != null && await ref.read(tcpProbeProvider)(h.address, h.ssh!.port)) return HostState.online;
   return HostState.offline;
 });
 
-/// Kaynakların birleşimi. Fazlar ilerledikçe buradaki parçalar gerçek sağlayıcılara bağlanır.
+/// Combination of the sources. As phases progress, the pieces here are wired to real providers.
 final homeDataProvider = Provider<HomeData>((ref) {
   final m = ref.watch(homeMetricsProvider).value;
   final claude = ref.watch(claudeSessionsProvider).value;

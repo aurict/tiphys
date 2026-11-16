@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Profil şemasını ajandaki Zod tanımından üretir ve uygulamaya kopyalar.
+# Generates the profile schema from the agent's Zod definition and copies it into the app.
 set -euo pipefail
 cd "$(dirname "$0")/.."
 (cd agent && npm run -s build && node dist/cli.js schema > ../schema/tiphys.schema.json)

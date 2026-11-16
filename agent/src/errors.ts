@@ -1,5 +1,5 @@
-// Ajan kullanıcıya metin göndermez, kod gönderir. Metni telefondaki uygulama seçili dile çevirir.
-// Yanıt biçimi: { "error": { "code": "agent.auth.missingToken", "params": { ... } } }
+// The agent doesn't send text to the user, it sends codes. The app on the phone translates them to the selected language.
+// Response format: { "error": { "code": "agent.auth.missingToken", "params": { ... } } }
 
 export class AppError extends Error {
   readonly code: string;

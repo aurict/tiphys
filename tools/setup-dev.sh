@@ -1,14 +1,14 @@
 #!/usr/bin/env bash
-# Tiphys geliştirme araçlarını sudo gerektirmeden ~/opt altına kurar.
-# Emülatör ve sistem imajı KURULMAZ (PC'de emülatör çalıştırılmıyor).
-# Her şey 2 çekirdekle sınırlı çalışır: taskset -c 0,1 nice -n 10 ionice -c2 -n7 ./setup-dev.sh
+# Installs Tiphys dev tools under ~/opt without sudo.
+# The emulator and system image are NOT installed (no emulator runs on the PC).
+# Run everything limited to 2 cores: taskset -c 0,1 nice -n 10 ionice -c2 -n7 ./setup-dev.sh
 set -euo pipefail
 
 OPT="$HOME/opt"
 DL="$OPT/.downloads"
 mkdir -p "$OPT" "$DL"
 
-fetch() { # url dosya algoritma özet
+fetch() { # url file algorithm digest
   local url=$1 out=$2 algo=$3 sum=$4
   if [ ! -f "$out" ] || ! echo "$sum  $out" | "${algo}sum" -c --status; then
     curl -fL --retry 3 --max-time 3600 -o "$out" "$url"
@@ -32,7 +32,7 @@ if [ ! -x "$OPT/flutter/bin/flutter" ]; then
   tar -xJf "$DL/flutter.tar.xz" -C "$OPT"
 fi
 
-# Android komut satırı araçları
+# Android command-line tools
 export ANDROID_HOME="$OPT/android-sdk"
 if [ ! -x "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" ]; then
   fetch "https://dl.google.com/android/repository/commandlinetools-linux-16111833_latest.zip" \
@@ -56,7 +56,7 @@ flutter precache --android
 yes | flutter doctor --android-licenses >/dev/null || true
 flutter doctor -v
 
-# Ortam dosyası: kabukta `source ~/opt/tiphys-env.sh`
+# Env file: in the shell `source ~/opt/tiphys-env.sh`
 cat > "$OPT/tiphys-env.sh" <<EOF
 export JAVA_HOME="$JAVA_HOME"
 export ANDROID_HOME="$ANDROID_HOME"

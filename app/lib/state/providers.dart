@@ -5,7 +5,7 @@ import '../core/profile/model.dart';
 import '../core/profile/repository.dart';
 import '../core/secrets/secret_store.dart';
 
-/// main.dart'ta gerçek örneklerle değiştirilir (testlerde bellek örnekleri).
+/// Replaced with real instances in main.dart (in-memory instances in tests).
 final secretStoreProvider = Provider<SecretStore>((ref) => throw UnimplementedError());
 final repositoryProvider = Provider<ProfileRepository>((ref) => throw UnimplementedError());
 final initialProfileProvider = Provider<Profile>((ref) => Profile.empty);
@@ -14,14 +14,14 @@ class ProfileNotifier extends Notifier<Profile> {
   @override
   Profile build() => ref.read(initialProfileProvider);
 
-  /// Profili değiştirir ve kalıcı olarak kaydeder.
+  /// Changes the profile and saves it persistently.
   Future<void> update(Profile Function(Profile) change) async {
     final next = change(state);
     await ref.read(repositoryProvider).save(next);
     state = next;
   }
 
-  /// İçe aktarma ya da sıfırlama sonrası doğrudan değiştirir (kaydetme işini çağıran yapmıştır).
+  /// Replaces directly after an import or reset (the caller has already done the saving).
   void replace(Profile p) => state = p;
 }
 
@@ -43,10 +43,10 @@ final localeProvider = Provider<Locale?>((ref) {
   };
 });
 
-/// Saat (testlerde sabitlenir; ekran görüntüleri her gün değişmesin).
+/// Clock (fixed in tests so screenshots don't change every day).
 final clockProvider = Provider<DateTime Function()>((ref) => DateTime.now);
 
-/// Saklanan gizli bilgi kimlikleri (Ayarlar ekranlarında "eksik" uyarısı için).
+/// Stored secret ids (for the "missing" warning on Settings screens).
 final secretIdsProvider = FutureProvider<Set<String>>((ref) {
   ref.watch(profileProvider);
   return ref.read(secretStoreProvider).ids();

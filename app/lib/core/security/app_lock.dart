@@ -1,4 +1,4 @@
-// Uygulama kilidi: PIN (Argon2id özeti Keystore'da) + parmak izi. Yanlış denemelerde artan bekleme.
+// App lock: PIN (Argon2id hash in Keystore) + fingerprint. Increasing delay after wrong attempts.
 import 'dart:convert';
 import 'dart:math';
 
@@ -98,7 +98,7 @@ class AppLock {
     await _vault.delete(_untilKey);
   }
 
-  /// PIN'i kontrol eder. 5 yanlıştan sonra her yanlışta bekleme süresi ikiye katlanır (30 sn'den başlar).
+  /// Checks the PIN. After 5 wrong attempts, the delay doubles on each wrong attempt (starting at 30 s).
   Future<PinCheck> verify(String pin, {DateTime? now}) async {
     final t = now ?? DateTime.now();
     final until = int.tryParse(await _vault.read(_untilKey) ?? '');

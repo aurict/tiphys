@@ -1,4 +1,4 @@
-// "Bağlantıyı test et" butonları için basit HTTP denemesi (zaman aşımlı).
+// Simple HTTP probe (with timeout) for the "Test connection" buttons.
 import 'dart:async';
 import 'dart:io';
 
@@ -27,7 +27,7 @@ Future<TestResult> testHttp(String url, {String? bearer, bool acceptRedirect = f
   } on HandshakeException {
     return const TestResult(false, 'TLS');
   } catch (e) {
-    // Sınıf adı değil mesaj: release derleme sınıf adlarını karıştırır (--obfuscate).
+    // Message, not class name: release builds obfuscate class names (--obfuscate).
     final m = '$e'.split('\n').first;
     return TestResult(false, m.length > 120 ? '${m.substring(0, 120)}…' : m);
   } finally {
