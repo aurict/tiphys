@@ -67,10 +67,13 @@ describe("ayarlar", () => {
       method: "PATCH",
       url: "/v1/config",
       headers: auth,
-      payload: { uptimeKuma: { url: "https://uk2.example", username: "owner" }, allowedRoots: ["~/Desktop"] },
+      payload: { uptimeKuma: { url: "https://uk.example", username: "sahip" }, allowedRoots: ["~/Desktop"] },
     });
     expect(res.statusCode).toBe(200);
-    expect(store.get().uptimeKuma).toEqual({ url: "https://uk2.example", username: "owner", password: "eski" });
+    expect(store.get().uptimeKuma).toEqual({ url: "https://uk.example", username: "sahip", password: "eski" });
+    // When the address changes, the stored password isn't sent to the new address: it is asked for again.
+    const moved = await app.inject({ method: "PATCH", url: "/v1/config", headers: auth, payload: { uptimeKuma: { url: "https://uk2.example", username: "owner" } } });
+    expect(moved.json().error.code).toBe("agent.config.passwordRequired");
     expect(store.get().allowedRoots).toEqual(["~/Desktop"]);
     expect((await stat(store.path)).mode & 0o777).toBe(0o600);
   });
@@ -136,7 +139,7 @@ describe("ayrıştırıcılar", () => {
 
   it("gerçek Homepage dosyasını hatasız okur", async () => {
     const text = await readFile(`${process.env.HOME}/homepage/homepage/services.yaml`, "utf8").catch(() => null);
-    if (text === null) return; // dosya yoksa (başka makinede) atla
+    if (text === null) return; // skip if the file is missing (on another machine)
     const groups = parseServices(text);
     expect(groups.length).toBeGreaterThan(1);
   });

@@ -1,5 +1,5 @@
-// Ajanın kendi ayarları: ~/.config/tiphys/agent.json (ya da TIPHYS_AGENT_CONFIG).
-// Dosya 600 izinle, atomik olarak (geçici dosya + rename) yazılır.
+// The agent's own settings: ~/.config/tiphys/agent.json (or TIPHYS_AGENT_CONFIG).
+// The file is written with mode 600, atomically (temp file + rename).
 import { mkdir, readFile, rename, writeFile, chmod } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { homedir } from "node:os";
@@ -14,6 +14,22 @@ export const deviceSchema = z.object({
   createdAt: z.string(),
 });
 
+/** Backup check: "file" = age/size of the newest file matching the glob, "unit" = last result of a systemd unit. */
+export const backupCheckSchema = z
+  .object({
+    id,
+    name: z.string().min(1).max(80),
+    kind: z.enum(["file", "unit"]),
+    /** Only the last segment may contain * and ?, e.g. ~/backups/obsidian/*.json.gz */
+    path: z.string().min(1).max(1024).optional(),
+    /** e.g. obsidian-backup.service (user unit first, then system unit) */
+    unit: z.string().regex(/^[A-Za-z0-9@_.:][A-Za-z0-9@_.:\\-]{0,199}$/).optional(),
+    maxAgeHours: z.number().positive().max(24 * 366).default(26),
+    minBytes: z.number().int().min(0).default(0),
+  })
+  .refine((c) => (c.kind === "file" ? !!c.path : !!c.unit), { message: "file için path, unit için unit gerekli" })
+  .refine((c) => !c.path || !/[*?[]/.test(c.path.slice(0, c.path.lastIndexOf("/") + 1)), { message: "joker karakter yalnız son parçada olabilir", path: ["path"] });
+
 export const agentConfigSchema = z.object({
   version: z.literal(1),
   name: z.string().min(1).max(80),
@@ -21,7 +37,7 @@ export const agentConfigSchema = z.object({
     host: z.string().default("127.0.0.1"),
     port: z.number().int().min(1).max(65535).default(7443),
   }),
-  /** Tailscale serve'in eklediği Tailscale-User-Login başlığı bu hesaba eşit olmalı (null = kontrol yok). */
+  /** The Tailscale-User-Login header added by Tailscale serve must equal this account (null = no check). */
   requireTailscaleLogin: z.string().nullable().default(null),
   features: z.object({
     system: z.boolean().default(true),
@@ -35,9 +51,12 @@ export const agentConfigSchema = z.object({
     watch: z.boolean().default(false),
     git: z.boolean().default(false),
     desktop: z.boolean().default(false),
+    /** Endpoints that change the desktop (window actions, app launch, later live screen input); needs "desktop". */
+    control: z.boolean().default(false),
     ports: z.boolean().default(false),
     transcribe: z.boolean().default(false),
     alerts: z.boolean().default(false),
+    backups: z.boolean().default(false),
   }),
   devices: z.array(deviceSchema).default([]),
   allowedRoots: z.array(z.string()).default(["~"]),
@@ -53,7 +72,7 @@ export const agentConfigSchema = z.object({
       checkTimeoutMs: z.number().int().min(500).max(30000).default(5000),
     })
     .default({ servicesPath: "~/homepage/homepage/services.yaml", checkTimeoutMs: 5000 }),
-  /** UnifiedPush uç noktaları (her eşleşmiş cihaz bir tane kaydeder) ve ntfy erişim token'ı. */
+  /** UnifiedPush endpoints (each paired device registers one) and the ntfy access token. */
   push: z
     .object({
       endpoints: z.array(z.object({ deviceId: id, url: z.url(), pubKey: z.string().optional(), auth: z.string().optional() })).default([]),
@@ -92,7 +111,7 @@ export const agentConfigSchema = z.object({
         .default([]),
     })
     .default({ hosts: [] }),
-  /** Yerel uyarılar (disk dolu, çöken servis) ve Grafana alarmları; "alerts" özelliği açıkken çalışır. */
+  /** Local alerts (disk full, crashed service) and Grafana alerts; run while the "alerts" feature is on. */
   alerts: z
     .object({
       intervalSeconds: z.number().int().min(30).default(300),
@@ -104,6 +123,26 @@ export const agentConfigSchema = z.object({
         .default(null),
     })
     .default({ intervalSeconds: 300, diskFullPercent: 90, failedServices: true, grafana: null }),
+  /** Backup checks; evaluated every 15 min while the "backups" feature is on. */
+  backups: z
+    .object({
+      checks: z
+        .array(backupCheckSchema)
+        .max(50)
+        .refine((a) => new Set(a.map((c) => c.id)).size === a.length, { message: "denetim kimlikleri benzersiz olmalı" })
+        .default([]),
+    })
+    .default({ checks: [] }),
+  /**
+   * Sunshine web UI (10.2 Phase B, Moonlight pairing): username/password are stored only in the agent.
+   * A self-signed certificate is accepted only on a loopback address (see routes/sunshine.ts).
+   */
+  sunshine: z
+    .object({ url: z.url({ protocol: /^https$/ }).default("https://127.0.0.1:47990"), username: z.string().min(1).max(128), password: z.string().min(1).max(256) })
+    .nullable()
+    .default(null),
+  /** Desktop ("desktop" feature): silent notification to the phone when the PC clipboard changes (text only). */
+  desktop: z.object({ clipboardSync: z.boolean().default(true) }).default({ clipboardSync: true }),
   transcribe: z
     .object({ command: z.string().default("~/.local/bin/transcribe"), model: z.enum(["small", "large-v3"]).default("small") })
     .default({ command: "~/.local/bin/transcribe", model: "small" }),

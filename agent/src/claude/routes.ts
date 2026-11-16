@@ -1,13 +1,17 @@
-// Claude HTTP + WebSocket uçları.
+// Claude HTTP + WebSocket endpoints.
 import { readdir } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { listSessions, type SDKUserMessage } from "@anthropic-ai/claude-agent-sdk";
-import type { FastifyInstance } from "fastify";
+import type { FastifyInstance, FastifyRequest } from "fastify";
 import { z } from "zod";
 import { expandHome } from "../config.ts";
 import { AppError } from "../errors.ts";
 import type { Ctx } from "../server.ts";
-import { ClaudeManager, type ClaudeEvent, type QueryFn } from "./manager.ts";
+import { requireControlFeature, tokenOf } from "../control.ts";
+import { realStreamIo } from "../routes/stream.ts";
+import { ClaudeManager, type ClaudeEvent, type ControlBinding, type QueryFn } from "./manager.ts";
+import { createPcSupport, type PcSupportOpts } from "./pc.ts";
+import { ClaudeScheduler, scheduleRoutes } from "./schedules.ts";
 import { stopTerminalSession, terminalSessions } from "./terminal.ts";
 import { findTranscript, transcriptPage } from "./transcript.ts";
 
@@ -20,11 +24,13 @@ const startSchema = z.strictObject({
   effort: z.enum(["low", "medium", "high", "xhigh", "max"]).optional(),
   permissionMode: z.enum(["default", "acceptEdits", "plan", "bypassPermissions"]).optional(),
   resume: z.string().uuid().optional(),
-  /** Oturum ayrı bir git worktree'de (yeni dal) çalışsın; ana çalışma alanı etkilenmez. */
+  /** Run the session in a separate git worktree (new branch); the main working tree is unaffected. */
   worktree: z.boolean().optional(),
+  /** "pc": Claude uses the PC (desktop + control + X-Tiphys-Control control session token). */
+  kind: z.enum(["code", "pc"]).optional(),
 });
 
-/** Terminaldeki oturumu telefona devralma: oturum ayarları (yeni oturumdakiyle aynı) + açık onay. */
+/** Taking over a terminal session on the phone: session settings (same as for a new session) + explicit confirmation. */
 const takeoverSchema = z.strictObject({
   confirm: z.literal(true),
   profileId: startSchema.shape.profileId,
@@ -36,15 +42,15 @@ const takeoverSchema = z.strictObject({
 const messageSchema = z.strictObject({
   text: z.string().min(1).max(200_000),
   images: startSchema.shape.images,
-  /** Telefonun mesaja verdiği kimlik: aynı mesaj (zaman aşımı sonrası yeniden gönderim) iki kez işlenmez. */
+  /** Id the phone gives the message: the same message (resent after a timeout) isn't processed twice. */
   clientId: z.string().min(8).max(64).optional(),
 });
 
-/** Profilin yapılandırma klasörüyle (CLAUDE_CONFIG_DIR) geçmiş okuma. */
+/** History reading with the profile's config folder (CLAUDE_CONFIG_DIR). */
 let profileLock: Promise<unknown> = Promise.resolve();
 async function withProfile<T>(mgr: ClaudeManager, profileId: string, fn: () => Promise<T>): Promise<T> {
-  // SDK'nın listSessions'ı klasörü ortam değişkeninden okur; değişken süreç genelinde olduğundan bu
-  // çağrılar sırayla çalışır (iki profil aynı anda okunursa birinin listesi ötekinin hesabından gelmesin).
+  // The SDK's listSessions reads the folder from an environment variable; since the variable is process-wide these
+  // calls run sequentially (if two profiles were read at once, one's list could come from the other's account).
   const run = profileLock.then(async () => {
     const env = mgr.profileEnv(profileId);
     const prev = process.env.CLAUDE_CONFIG_DIR;
@@ -61,13 +67,48 @@ async function withProfile<T>(mgr: ClaudeManager, profileId: string, fn: () => P
   return run;
 }
 
-export function claudeRoutes(queryFn: QueryFn, opts: { persist?: boolean } = {}) {
+export function claudeRoutes(
+  queryFn: QueryFn,
+  opts: {
+    persist?: boolean;
+    /** Scheduler clock (tests); if given, the scheduler doesn't tick on its own, tests call tick(). */
+    now?: () => Date;
+    onScheduler?: (s: ClaudeScheduler) => void;
+    /** PC tools (fake input/screen and shortcut list in tests). */
+    pc?: Partial<PcSupportOpts>;
+    onPc?: (pc: ReturnType<typeof createPcSupport>) => void;
+    /** Tests: manager (pcTick is called manually with a fake clock; if given, no timer is set up). */
+    onManager?: (m: ClaudeManager) => void;
+  } = {},
+) {
   return async (app: FastifyInstance, ctx: Ctx) => {
-    // Canlı oturum listesi agent.json'ın yanında: ajan yeniden başlayınca (güncelleme, çökme) oturumlar geri gelir.
+    // Live session list sits next to agent.json: sessions come back when the agent restarts (update, crash).
     const statePath = opts.persist === false ? null : join(dirname(ctx.store.path), "claude-sessions.json");
-    const mgr = new ClaudeManager(() => ctx.store.get(), ctx.notifier, queryFn, statePath);
+    // PC sessions (10.3): if the desktop panel (hyprRoutes) set up the control session and the Hyprland adapter.
+    const pc = ctx.control
+      ? createPcSupport(ctx, { io: realStreamIo, shotsDir: join(dirname(ctx.store.path), "claude-shots"), ...opts.pc })
+      : null;
+    if (pc) opts.onPc?.(pc);
+    const mgr = new ClaudeManager(() => ctx.store.get(), ctx.notifier, queryFn, statePath, pc);
+    // When the control session ends (stop, expiry, agent shutdown), attached PC sessions stop immediately.
+    const offControl = ctx.control?.onEnd((info) => mgr.controlEnded(info.device, info.reason));
+    // "Extend" notification 2 min before control time runs out (PC sessions).
+    const pcTimer = pc && !opts.onManager ? setInterval(() => mgr.pcTick(), 10_000) : null;
+    pcTimer?.unref();
+    opts.onManager?.(mgr);
     await mgr.restore();
-    app.addHook("onClose", async () => mgr.dispose());
+    // Scheduled tasks: claude-schedules.json (in memory only if persistence is off).
+    const scheduler = new ClaudeScheduler(mgr, ctx, statePath && join(dirname(ctx.store.path), "claude-schedules.json"), opts.now);
+    await scheduler.load();
+    if (!opts.now) scheduler.start();
+    opts.onScheduler?.(scheduler);
+    scheduleRoutes(app, scheduler);
+    app.addHook("onClose", async () => {
+      offControl?.();
+      if (pcTimer) clearInterval(pcTimer);
+      scheduler.stop();
+      await mgr.dispose();
+    });
     const commandCache = new Map<string, { at: number; value: unknown }>();
 
     app.get("/v1/claude/sessions", async (req) => {
@@ -76,7 +117,7 @@ export function claudeRoutes(queryFn: QueryFn, opts: { persist?: boolean } = {})
       const live = [...mgr.sessions.values()].map((s) => s.summary());
       const liveIds = new Set(live.map((s) => s.sdkSessionId));
       const past = await withProfile(mgr, profileId, () => listSessions({ limit: 40 })).catch(() => []);
-      // Tiphys dışında (terminalde) açık oturumlar: geçmişten ayrılıp kendi listesinde gösterilir.
+      // Sessions open outside Tiphys (in a terminal): separated from history and shown in their own list.
       const configDir = mgr.profileEnv(profileId).CLAUDE_CONFIG_DIR ?? expandHome("~/.claude");
       const titles = new Map(past.map((p) => [p.sessionId, p.customTitle ?? p.summary ?? p.firstPrompt ?? ""]));
       const terminal = (await terminalSessions(configDir))
@@ -99,14 +140,45 @@ export function claudeRoutes(queryFn: QueryFn, opts: { persist?: boolean } = {})
       };
     });
 
+    /** Control binding for a PC session: features must be enabled and the phone's control session token valid. */
+    const controlBinding = async (req: FastifyRequest): Promise<ControlBinding> => {
+      if (!pc?.available() || !ctx.control) throw new AppError("agent.claude.pcUnavailable", 403);
+      requireControlFeature(ctx);
+      const token = tokenOf(req);
+      const device = req.device!.id;
+      await ctx.control.check(token, device);
+      return { token: token!, device };
+    };
+
+    /** A PC session is managed only by the device holding control (messages, permission decisions, mode). */
+    const pcOwner = (req: FastifyRequest, s: { kind: string; control: ControlBinding | null }) => {
+      if (s.kind === "pc" && s.control && s.control.device !== req.device!.id) throw new AppError("agent.control.sessionRequired", 403);
+    };
+
     app.post("/v1/claude/sessions", async (req) => {
       const body = startSchema.parse(req.body);
-      const s = await mgr.start(body);
+      const control = body.kind === "pc" ? await controlBinding(req) : undefined;
+      const s = await mgr.start({ ...body, control });
       return s.summary();
     });
 
-    // Terminalde açık oturumu telefona devral: terminaldeki Claude kapatılır, aynı oturum burada sürdürülür.
-    // Yalnız boştayken (Claude o an çalışmıyorken); PC'de `claude --resume <id>` ile geri alınır.
+    // Bind the PC session to the new (or renewed) control session: the phone re-asked the lock and opened a session.
+    app.post("/v1/claude/sessions/:id/control", async (req) => {
+      const s = mgr.get((req.params as { id: string }).id);
+      if (s.kind !== "pc") throw new AppError("agent.claude.notPcSession", 400);
+      mgr.bindControl(s, await controlBinding(req));
+      return s.summary();
+    });
+
+    // Screenshots of the PC session (thumbnails in the chat; last 60 on disk).
+    app.get("/v1/claude/shots/:shotId", async (req, reply) => {
+      const body = await pc?.shots.read((req.params as { shotId: string }).shotId);
+      if (!body) throw new AppError("agent.claude.shotNotFound", 404);
+      return reply.header("content-type", "image/jpeg").header("cache-control", "private, max-age=86400").send(body);
+    });
+
+    // Take over a terminal session on the phone: the Claude in the terminal is closed, the same session continues here.
+    // Only while idle (Claude not running at the moment); taken back on the PC with `claude --resume <id>`.
     app.post("/v1/claude/terminal/:sessionId/takeover", async (req) => {
       const sessionId = (req.params as { sessionId: string }).sessionId;
       const parsed = takeoverSchema.safeParse(req.body ?? {});
@@ -130,6 +202,7 @@ export function claudeRoutes(queryFn: QueryFn, opts: { persist?: boolean } = {})
 
     app.post("/v1/claude/sessions/:id/messages", async (req) => {
       const s = mgr.get((req.params as { id: string }).id);
+      pcOwner(req, s);
       const body = messageSchema.parse(req.body);
       const accepted = mgr.send(s, body.text, body.images, body.clientId);
       return { ok: true, duplicate: !accepted };
@@ -143,12 +216,15 @@ export function claudeRoutes(queryFn: QueryFn, opts: { persist?: boolean } = {})
     app.post("/v1/claude/sessions/:id/permissions/:requestId", async (req) => {
       const p = req.params as { id: string; requestId: string };
       const body = z.strictObject({ allow: z.boolean(), message: z.string().max(2000).optional() }).parse(req.body);
-      mgr.resolvePermission(mgr.get(p.id), p.requestId, body.allow, body.message);
+      const s = mgr.get(p.id);
+      pcOwner(req, s);
+      mgr.resolvePermission(s, p.requestId, body.allow, body.message);
       return { ok: true };
     });
 
     app.post("/v1/claude/sessions/:id/mode", async (req) => {
       const s = mgr.get((req.params as { id: string }).id);
+      pcOwner(req, s);
       const { permissionMode } = z.object({ permissionMode: startSchema.shape.permissionMode.unwrap() }).parse(req.body);
       await mgr.setMode(s, permissionMode);
       return s.summary();
@@ -160,7 +236,7 @@ export function claudeRoutes(queryFn: QueryFn, opts: { persist?: boolean } = {})
       return { ok: true };
     });
 
-    // Canlı akış: önce `after`dan sonraki birikmiş olaylar, sonra yeniler.
+    // Live stream: first the events accumulated after `after`, then new ones.
     app.get("/v1/claude/sessions/:id/stream", { websocket: true }, (socket, req) => {
       let s;
       try {
@@ -170,14 +246,14 @@ export function claudeRoutes(queryFn: QueryFn, opts: { persist?: boolean } = {})
         return;
       }
       const after = Number((req.query as { after?: string }).after ?? 0);
-      // Birikmiş olaylar bir sonraki turda gönderilir: istemci dinlemeye başlamadan gelenler kaybolmasın.
+      // Accumulated events are sent on the next tick: so ones arriving before the client starts listening aren't lost.
       const live = s;
       const queued: ClaudeEvent[] = [];
       let ready = false;
       const listener = (e: ClaudeEvent) => (ready ? socket.send(JSON.stringify(e)) : queued.push(e));
       live.listeners.add(listener);
       setImmediate(() => {
-        // İlk mesaj: bu örneğin kimliği. Telefon farklı bir epoch biliyorsa (ajan yeniden başladı) yeniden yükler.
+        // First message: this instance's id. If the phone knows a different epoch (agent restarted), it reloads.
         socket.send(JSON.stringify({ kind: "hello", seq: 0, epoch: live.epoch, lastSeq: live.events.at(-1)?.seq ?? 0 }));
         for (const e of live.events) if (e.seq > after && !queued.includes(e)) socket.send(JSON.stringify(e));
         for (const e of queued) if (e.seq > after) socket.send(JSON.stringify(e));
@@ -190,7 +266,7 @@ export function claudeRoutes(queryFn: QueryFn, opts: { persist?: boolean } = {})
       });
     });
 
-    // Geçmiş bir oturumun mesajları (devam etmeden önce okumak için).
+    // Messages of a past session (to read before resuming).
     app.get("/v1/claude/history/:sdkSessionId", async (req) => {
       const id = z.string().uuid().parse((req.params as { sdkSessionId: string }).sdkSessionId);
       const profileId = (req.query as { profileId?: string }).profileId ?? ctx.store.get().claude.defaultProfile;
@@ -203,7 +279,7 @@ export function claudeRoutes(queryFn: QueryFn, opts: { persist?: boolean } = {})
       return await transcriptPage(file, limit, skip);
     });
 
-    // Slash komutları: o klasör ve profil için Claude'un gerçekten tanıdığı komutlar (API çağrısı yapmadan).
+    // Slash commands: the commands Claude actually recognizes for that folder and profile (without an API call).
     app.get("/v1/claude/commands", async (req) => {
       const q = req.query as { cwd?: string; profileId?: string };
       const cwd = await mgr.checkCwd(q.cwd ?? "~");
@@ -226,7 +302,7 @@ export function claudeRoutes(queryFn: QueryFn, opts: { persist?: boolean } = {})
       }
     });
 
-    // Klasör seçici: izinli kökler altındaki alt klasörler.
+    // Folder picker: subfolders under the allowed roots.
     app.get("/v1/fs/dirs", async (req) => {
       const path = (req.query as { path?: string }).path ?? "~";
       const real = await mgr.checkCwd(path);

@@ -1,11 +1,13 @@
-// Claude oturumları: Claude Agent SDK ile, ajanda yaşar. Telefon bağlantısı kopsa da çalışmaya devam eder.
-// Her oturum tek bir query() çağrısıdır; mesajlar bir kuyruk üzerinden akar (çalışırken yeni mesaj sıraya girer).
+// Claude sessions: run in the agent via the Claude Agent SDK. They keep running even if the phone disconnects.
+// Each session is a single query() call; messages flow through a queue (a new message is queued while one runs).
 import { randomUUID } from "node:crypto";
+import { homedir } from "node:os";
 import { readFile, realpath, rename, writeFile } from "node:fs/promises";
 import { basename, dirname, join, relative, resolve, sep } from "node:path";
 import type {
   CanUseTool,
   EffortLevel,
+  McpServerConfig,
   Options,
   PermissionMode,
   PermissionResult,
@@ -17,20 +19,49 @@ import { expandHome, type AgentConfig } from "../config.ts";
 import { AppError, notFound } from "../errors.ts";
 import { run } from "../exec.ts";
 import type { Notifier } from "../notify.ts";
+import { PC_DISALLOWED_TOOLS, PC_SERVER, PC_SYSTEM_PROMPT, PC_TOOLS, SHOT_MARK, pcToolName } from "./pc.ts";
 import { findTranscript, transcriptEvents } from "./transcript.ts";
 
 export type QueryFn = (p: { prompt: AsyncIterable<SDKUserMessage>; options: Options }) => Query;
 
 export type SessionStatus = "starting" | "running" | "waiting" | "idle" | "error" | "stopped";
 
-/** Telefona giden sadeleştirilmiş olaylar. */
+/** "code": regular session working in a folder; "pc": Claude uses the PC (10.3, PC tools only). */
+export type SessionKind = "code" | "pc";
+
+/** The control session a PC session is bound to (token kept in memory only; never written to disk). */
+export interface ControlBinding {
+  token: string;
+  device: string;
+}
+
+/** What the PC tools ask of the manager. */
+export interface PcHooks {
+  /** Approval from the phone (permission card + claude.waiting notification); true = allowed. */
+  approve: (reason: string, input: Record<string, unknown>, signal?: AbortSignal) => Promise<boolean>;
+  /** A tool noticed the control session has ended. */
+  lost: () => void;
+}
+
+/** PC support (claude/pc.ts; agent with the "desktop" feature). */
+export interface PcSupport {
+  available(): boolean;
+  server(s: LiveSession, hooks: PcHooks): McpServerConfig;
+  /** End time of the bound control session, if it is valid. */
+  controlUntil(s: LiveSession): string | null;
+  /** Clock (same as the control sessions'; fake in tests). */
+  now(): number;
+  forget(id: string): void;
+}
+
+/** Simplified events sent to the phone. */
 export type ClaudeEvent = { seq: number; at: string } & (
   | { kind: "user"; text: string; images: number }
   | { kind: "text"; text: string }
   | { kind: "delta"; text: string }
   | { kind: "thinking"; text: string }
   | { kind: "tool_use"; id: string; name: string; input: unknown }
-  | { kind: "tool_result"; toolUseId: string; text: string; isError: boolean }
+  | { kind: "tool_result"; toolUseId: string; text: string; isError: boolean; shot?: string }
   | { kind: "init"; model: string; cwd: string; permissionMode: string; slashCommands: string[] }
   | {
       kind: "result";
@@ -45,11 +76,13 @@ export type ClaudeEvent = { seq: number; at: string } & (
     }
   | { kind: "permission"; requestId: string; toolName: string; input: unknown; reason: string | null }
   | { kind: "permissionResolved"; requestId: string; allow: boolean }
+  /** The PC session's control binding opened/closed (reason: stopped | expired | shutdown | lost). */
+  | { kind: "control"; active: boolean; expiresAt: string | null; reason: string | null }
   | { kind: "status"; status: SessionStatus }
   | { kind: "error"; message: string }
-  /** Ajan yeniden başladı; oturum diskteki kayıttan geri yüklendi, kaldığı yerden sürer. */
+  /** The agent restarted; the session was restored from the on-disk record and continues where it left off. */
   | { kind: "restored" }
-  /** Geçmişte sıkıştırma (compact) noktası. */
+  /** A compaction (compact) point in the history. */
   | { kind: "compacted" }
 );
 
@@ -65,11 +98,16 @@ export interface StartRequest {
   permissionMode?: PermissionMode;
   resume?: string;
   worktree?: boolean;
+  /** Session title (scheduled task: "⏰ name"); defaults to the first message. */
+  title?: string;
+  kind?: SessionKind;
+  /** "pc": the control session opened by the phone (lock re-prompted). */
+  control?: ControlBinding;
 }
 
 const MAX_EVENTS = 3000;
 
-/** Diskte tutulan canlı oturum bilgisi (sohbet içeriği değil; o Claude'un kendi kaydında). */
+/** Live session info kept on disk (not the chat content; that lives in Claude's own transcript). */
 interface PersistedSession {
   id: string;
   sdkSessionId: string | null;
@@ -81,10 +119,11 @@ interface PersistedSession {
   title: string;
   createdAt: string;
   costUsd: number;
+  kind?: SessionKind;
 }
 const MAX_TEXT = 20000;
 
-/** Basit itilebilir async kuyruk (query'ye giden kullanıcı mesajları). */
+/** Simple pushable async queue (user messages going to query()). */
 class Inbox implements AsyncIterable<SDKUserMessage> {
   #items: SDKUserMessage[] = [];
   #wake: (() => void) | null = null;
@@ -112,10 +151,10 @@ class Inbox implements AsyncIterable<SDKUserMessage> {
 }
 
 export class LiveSession {
-  readonly id: string; // telefonun bildiği kimlik (ajan yeniden başlasa da aynı kalır)
+  readonly id: string; // the id the phone knows (stays the same even if the agent restarts)
   /**
-   * Bu bellek içi örneğin kimliği. Ajan yeniden başlayınca oturum aynı `id` ile geri gelir ama olay sıra
-   * numaraları baştan başlar; telefon `epoch` değişince olaylarını sıfırlayıp yeniden yükler.
+   * Id of this in-memory instance. When the agent restarts the session comes back with the same `id`, but event
+   * sequence numbers start over; when `epoch` changes the phone resets and reloads its events.
    */
   readonly epoch = randomUUID();
   sdkSessionId: string | null = null;
@@ -129,19 +168,30 @@ export class LiveSession {
   createdAt = new Date().toISOString();
   lastActivity = Date.now();
   costUsd = 0;
-  /** Son model çağrısının girdi boyutu (bağlam doluluğu) ve modelin bağlam penceresi. */
+  /** Last cumulative cost reported by the current Claude process (the SDK accumulates per process; 0 in a new one). */
+  processCostUsd = 0;
+  /** Input size of the last model call (context fill) and the model's context window. */
   contextTokens: number | null = null;
   contextWindow: number | null = null;
   events: ClaudeEvent[] = [];
   #seq = 0;
   readonly inbox = new Inbox();
   query: Query | null = null;
-  /** Claude süreci ilk mesajda başlatılır (boş/geri yüklenen oturum bellek harcamasın). */
+  /** The Claude process is started on the first message (so empty/restored sessions don't use memory). */
   options: Options | null = null;
   readonly pending = new Map<string, (r: PermissionResult) => void>();
   readonly listeners = new Set<(e: ClaudeEvent) => void>();
-  /** Son alınan mesaj kimlikleri (tekrar gönderimi ayıklamak için; en fazla 200). */
+  /** Recently received message ids (to filter out resends; at most 200). */
   readonly seenClientIds = new Set<string>();
+  kind: SessionKind = "code";
+  /** "pc": bound control session; null once it ends (tools don't work). */
+  control: ControlBinding | null = null;
+  /** Stopped because control ended: the result doesn't count as an "error" and no notification is sent. */
+  controlStopped = false;
+  /** The "control ends in 2 min" notification was sent for this end time (re-sent after an extension). */
+  pcWarnedFor: string | null = null;
+  /** End of the bound control session (set by the manager). */
+  controlUntil: () => string | null = () => null;
 
   constructor(cwd: string, profileId: string, model: string, permissionMode: PermissionMode, title: string, id?: string) {
     this.id = id ?? randomUUID();
@@ -154,7 +204,7 @@ export class LiveSession {
 
   emit(body: EventBody) {
     const e = { ...body, seq: ++this.#seq, at: new Date().toISOString() } as ClaudeEvent;
-    // Akan metin parçaları geçmişte tutulmaz (tam metin "text" olayıyla gelir).
+    // Streamed text chunks are not kept in the history (the full text arrives with the "text" event).
     if (e.kind !== "delta") {
       this.events.push(e);
       if (this.events.length > MAX_EVENTS) this.events.splice(0, this.events.length - MAX_EVENTS);
@@ -163,7 +213,7 @@ export class LiveSession {
     for (const l of this.listeners) l(e);
   }
 
-  /** Diskteki kayıttan gelen geçmiş olayları (geri yüklemede). */
+  /** History events from the on-disk transcript (on restore). */
   loadHistory(events: Array<Record<string, unknown>>) {
     for (const e of events) {
       const { seq: _seq, ...body } = e;
@@ -195,8 +245,35 @@ export class LiveSession {
       lastActivity: new Date(this.lastActivity).toISOString(),
       pendingPermissions: this.pending.size,
       live: true,
+      kind: this.kind,
+      ...(this.kind === "pc" ? { control: { active: this.control !== null && this.controlUntil() !== null, expiresAt: this.controlUntil() } } : {}),
     };
   }
+}
+
+const EDIT_TOOLS = new Set(["Edit", "Write", "MultiEdit", "NotebookEdit"]);
+
+/**
+ * Summary of what happened since the last user message (for the done notification): number of changed files and
+ * the first meaningful line of the reply (Markdown markup stripped, at most 160 characters).
+ */
+export function turnSummary(s: LiveSession, resultText: string): { files: number; summary: string } {
+  const files = new Set<string>();
+  for (let i = s.events.length - 1; i >= 0; i--) {
+    const e = s.events[i]!;
+    if (e.kind === "user") break;
+    if (e.kind === "tool_use" && EDIT_TOOLS.has(e.name) && e.input && typeof e.input === "object") {
+      const inp = e.input as { file_path?: unknown; notebook_path?: unknown };
+      const p = typeof inp.file_path === "string" ? inp.file_path : typeof inp.notebook_path === "string" ? inp.notebook_path : null;
+      if (p) files.add(p);
+    }
+  }
+  const line =
+    resultText
+      .split("\n")
+      .map((l) => l.replace(/^[\s#>*\-+`|]+/, "").replace(/[*`_]/g, "").trim())
+      .find((l) => l.length > 0) ?? "";
+  return { files: files.size, summary: line.length > 160 ? `${line.slice(0, 159)}…` : line };
 }
 
 function clip(s: string) {
@@ -213,7 +290,7 @@ function blockText(content: unknown): string {
   return "";
 }
 
-/** SDK mesajını telefon olaylarına çevirir. Testlerde de kullanılır. */
+/** Converts an SDK message into phone events. Also used in tests. */
 export function translate(s: LiveSession, m: SDKMessage) {
   switch (m.type) {
     case "system":
@@ -224,7 +301,7 @@ export function translate(s: LiveSession, m: SDKMessage) {
       }
       return;
     case "assistant": {
-      if (m.parent_tool_use_id) return; // alt ajan içerikleri ana akışa karışmasın
+      if (m.parent_tool_use_id) return; // keep subagent content out of the main stream
       const u = m.message.usage;
       if (u) s.contextTokens = (u.input_tokens ?? 0) + (u.cache_read_input_tokens ?? 0) + (u.cache_creation_input_tokens ?? 0);
       for (const b of m.message.content) {
@@ -240,7 +317,11 @@ export function translate(s: LiveSession, m: SDKMessage) {
       if (Array.isArray(content)) {
         for (const b of content) {
           if (b.type === "tool_result") {
-            s.emit({ kind: "tool_result", toolUseId: b.tool_use_id, text: clip(blockText(b.content)), isError: b.is_error === true });
+            const text = clip(blockText(b.content));
+            // PC screenshot: the image doesn't go into the event stream; the id of its on-disk copy does.
+            const hasImage = Array.isArray(b.content) && b.content.some((x) => x && typeof x === "object" && (x as { type?: unknown }).type === "image");
+            const shot = hasImage ? SHOT_MARK.exec(text)?.[1] : undefined;
+            s.emit({ kind: "tool_result", toolUseId: b.tool_use_id, text, isError: b.is_error === true, ...(shot ? { shot } : {}) });
           }
         }
       }
@@ -284,16 +365,19 @@ export class ClaudeManager {
   #notifier: Notifier;
   #query: QueryFn;
   #sweep: NodeJS.Timeout;
-  /** Canlı oturumların listesi (ajan yeniden başlayınca geri yüklenir). null: kalıcılık yok (testler). */
+  /** List of live sessions (restored when the agent restarts). null: no persistence (tests). */
   #statePath: string | null;
   #saveTimer: NodeJS.Timeout | null = null;
+  /** PC sessions (without it the "pc" kind can't be opened). */
+  readonly pc: PcSupport | null;
 
-  constructor(getConfig: () => AgentConfig, notifier: Notifier, queryFn: QueryFn, statePath: string | null = null) {
+  constructor(getConfig: () => AgentConfig, notifier: Notifier, queryFn: QueryFn, statePath: string | null = null, pc: PcSupport | null = null) {
     this.#getConfig = getConfig;
     this.#notifier = notifier;
     this.#query = queryFn;
     this.#statePath = statePath;
-    // 6 saattir hareketsiz ve boşta olan oturumlar kapatılır (geçmiş diskte kalır, devam edilebilir).
+    this.pc = pc;
+    // Sessions inactive and idle for 6 hours are closed (history stays on disk and can be resumed).
     this.#sweep = setInterval(() => {
       const cutoff = Date.now() - 6 * 3600_000;
       for (const s of this.sessions.values()) {
@@ -309,7 +393,7 @@ export class ClaudeManager {
     return s;
   }
 
-  /** Klasör izinli köklerden birinin içinde mi? (sembolik bağlar çözülerek) */
+  /** Is the folder inside one of the allowed roots? (symlinks resolved) */
   async checkCwd(cwd: string): Promise<string> {
     let real: string;
     try {
@@ -328,14 +412,14 @@ export class ClaudeManager {
     const dir = c.profiles[profileId];
     if (!dir) throw new AppError("agent.claude.unknownProfile", 400, { profileId });
     const env: Record<string, string | undefined> = { ...process.env };
-    // Varsayılan ~/.claude için değişken olmamalı (Claude kendi varsayılanını kullanır). Açıkça silinir:
-    // ortamda başka bir profilden kalmış değer olsa bile oturum yanlış hesapla açılmasın.
+    // For the default ~/.claude the variable must not be set (Claude uses its own default). It is removed explicitly:
+    // even if a value from another profile lingers in the environment, the session must not open on the wrong account.
     if (resolve(expandHome(dir)) !== resolve(expandHome("~/.claude"))) env.CLAUDE_CONFIG_DIR = expandHome(dir);
     else delete env.CLAUDE_CONFIG_DIR;
     return env;
   }
 
-  /** Klasörün git deposunda kardeş bir worktree açar (dal: tiphys/<kısa-id>); aynı alt klasöre karşılık gelen yolu döner. */
+  /** Opens a sibling worktree in the folder's git repo (branch: tiphys/<short-id>); returns the same subfolder's path. */
   async createWorktree(cwd: string, shortId: string): Promise<string> {
     const top = await run("git", ["-C", cwd, "rev-parse", "--show-toplevel"], { allowFail: true });
     if (top.code !== 0) throw new AppError("agent.claude.notGitRepo", 400, { cwd });
@@ -353,46 +437,61 @@ export class ClaudeManager {
 
   async start(req: StartRequest): Promise<LiveSession> {
     const cfg = this.#getConfig().claude;
-    let cwd = await this.checkCwd(req.cwd);
-    if (req.worktree) cwd = await this.createWorktree(cwd, randomUUID().slice(0, 8));
+    const pc = req.kind === "pc";
+    if (pc && (!this.pc?.available() || !req.control)) throw new AppError("agent.claude.pcUnavailable", 403);
+    // No file tools in a PC session: the folder is only the process's working directory (home folder).
+    let cwd = pc ? homedir() : await this.checkCwd(req.cwd);
+    if (req.worktree && !pc) cwd = await this.createWorktree(cwd, randomUUID().slice(0, 8));
     const profileId = req.profileId ?? cfg.defaultProfile;
-    // İlk mesajsız (boş) oturum: başlık ilk gönderilen mesajdan alınır.
-    const s = this.#create({ ...req, cwd, profileId }, req.prompt || (req.resume ? "(devam)" : ""));
+    // Session opened without a message (empty): the title is taken from the first message sent.
+    const s = this.#create({ ...req, cwd, profileId }, req.title || req.prompt || (req.resume ? "(devam)" : ""));
     this.sessions.set(s.id, s);
+    if (pc) this.bindControl(s, req.control!);
     if (req.prompt) this.send(s, req.prompt, req.images);
-    // Mesajsız açılan (ya da mesajsız devam ettirilen) oturum ilk mesajı bekler; süreç o zaman başlar.
+    // A session opened (or resumed) without a message waits for the first message; the process starts then.
     else s.setStatus("idle");
     this.#save();
     return s;
   }
 
-  /** Oturum nesnesi + SDK seçenekleri (Claude süreci henüz başlamaz, bkz. #launch). */
+  /** Session object + SDK options (the Claude process doesn't start yet, see #launch). */
+  /**
+   * Asks the phone for permission: event ("permission") + claude.waiting notification (with Allow / Deny buttons).
+   * Claude's tool permissions and the PC session's confirm tool go the same way.
+   */
+  #ask(s: LiveSession, toolName: string, input: unknown, reason: string | null, signal?: AbortSignal, notifyTool = toolName): Promise<PermissionResult> {
+    return new Promise<PermissionResult>((resolvePermission) => {
+      const requestId = randomUUID();
+      const done = (r: PermissionResult) => {
+        if (!s.pending.delete(requestId)) return;
+        s.emit({ kind: "permissionResolved", requestId, allow: r.behavior === "allow" });
+        if (s.status === "waiting" || s.status === "running") s.setStatus(s.pending.size > 0 ? "waiting" : "running");
+        resolvePermission(r);
+      };
+      s.pending.set(requestId, done);
+      if (signal?.aborted) return done({ behavior: "deny", message: "aborted" });
+      signal?.addEventListener("abort", () => done({ behavior: "deny", message: "aborted" }), { once: true });
+      s.emit({ kind: "permission", requestId, toolName, input, reason });
+      s.setStatus("waiting");
+      void this.#notifier.send({
+        key: "claude.waiting",
+        params: { title: s.title, tool: notifyTool, ...(s.kind === "pc" ? { pc: 1 } : {}) }, // pc: the phone hides the buttons on the lock screen
+        link: `tiphys://claude/${s.id}`,
+        priority: "high",
+        // So the phone can decide with the notification's "Allow / Deny" buttons without opening the app.
+        data: { sessionId: s.id, requestId },
+      });
+    });
+  }
+
   #create(req: StartRequest & { profileId: string }, title: string, id?: string): LiveSession {
-    const mode = req.permissionMode ?? "default";
+    const pc = req.kind === "pc";
+    // PC session is "default" only: bypass/plan modes must not change the tool rules.
+    const mode = pc ? "default" : (req.permissionMode ?? "default");
     const s = new LiveSession(req.cwd, req.profileId, req.model ?? "", mode, title, id);
     s.effort = req.effort;
-    const canUseTool: CanUseTool = (toolName, input, opts) =>
-      new Promise<PermissionResult>((resolvePermission) => {
-        const requestId = randomUUID();
-        const done = (r: PermissionResult) => {
-          if (!s.pending.delete(requestId)) return;
-          s.emit({ kind: "permissionResolved", requestId, allow: r.behavior === "allow" });
-          s.setStatus(s.pending.size > 0 ? "waiting" : "running");
-          resolvePermission(r);
-        };
-        s.pending.set(requestId, done);
-        opts.signal.addEventListener("abort", () => done({ behavior: "deny", message: "aborted" }), { once: true });
-        s.emit({ kind: "permission", requestId, toolName, input, reason: opts.decisionReason ?? null });
-        s.setStatus("waiting");
-        void this.#notifier.send({
-          key: "claude.waiting",
-          params: { title: s.title, tool: toolName },
-          link: `tiphys://claude/${s.id}`,
-          priority: "high",
-          // Telefon bildirimdeki "İzin ver / Reddet" düğmeleriyle uygulamayı açmadan karar verebilsin.
-          data: { sessionId: s.id, requestId },
-        });
-      });
+    if (pc) return this.#createPc(s, req);
+    const canUseTool: CanUseTool = (toolName, input, opts) => this.#ask(s, toolName, input, opts.decisionReason ?? null, opts.signal);
     s.options = {
       cwd: req.cwd,
       env: this.profileEnv(req.profileId),
@@ -408,14 +507,112 @@ export class ClaudeManager {
     return s;
   }
 
-  /** Claude sürecini başlatır (ilk mesajla). */
+  /**
+   * "pc" session: built-in tools off (tools: []), user/project settings and MCP servers are not loaded; only the
+   * in-process tiphys_pc tools (auto-allowed). Any other tool requested is denied. Risky steps reach the phone via
+   * the confirm tool.
+   */
+  #createPc(s: LiveSession, req: StartRequest & { profileId: string }): LiveSession {
+    const pc = this.pc;
+    if (!pc) throw new AppError("agent.claude.pcUnavailable", 403);
+    s.kind = "pc";
+    s.controlUntil = () => pc.controlUntil(s);
+    const server = pc.server(s, {
+      approve: async (reason, input, signal) =>
+        (await this.#ask(s, pcToolName("confirm"), input, reason, signal, `PC · ${reason.length > 80 ? `${reason.slice(0, 79)}…` : reason}`)).behavior === "allow",
+      lost: () => this.#unbind(s, "lost"),
+    });
+    const deny: CanUseTool = async (toolName) => ({ behavior: "deny", message: `PC oturumunda yalnız tiphys_pc araçları kullanılabilir (${toolName} kapalı).` });
+    s.options = {
+      cwd: req.cwd,
+      env: this.profileEnv(req.profileId),
+      settingSources: [],
+      strictMcpConfig: true,
+      tools: [],
+      mcpServers: { [PC_SERVER]: server },
+      allowedTools: PC_TOOLS.map(pcToolName),
+      disallowedTools: PC_DISALLOWED_TOOLS,
+      systemPrompt: PC_SYSTEM_PROMPT,
+      includePartialMessages: true,
+      permissionMode: "default",
+      canUseTool: deny,
+      ...(req.model ? { model: req.model } : {}),
+      ...(req.effort ? { effort: req.effort } : {}),
+      ...(req.resume ? { resume: req.resume } : {}),
+      stderr: () => {},
+    };
+    return s;
+  }
+
+  /** (Re)binds a PC session to a control session (the phone re-prompted the lock and opened a session). */
+  bindControl(s: LiveSession, b: ControlBinding) {
+    if (s.kind !== "pc") throw new AppError("agent.claude.notPcSession", 400);
+    s.control = b;
+    s.emit({ kind: "control", active: true, expiresAt: s.controlUntil(), reason: null });
+  }
+
+  /** A control session ended (stop, expiry, agent shutdown): PC sessions bound to that device stop. */
+  controlEnded(device: string, reason: string) {
+    for (const s of this.sessions.values()) if (s.control?.device === device) this.#unbind(s, reason);
+  }
+
+  /** Breaks the binding; if Claude is running it is stopped immediately and the session goes idle. */
+  #unbind(s: LiveSession, reason: string) {
+    if (!s.control) return;
+    s.control = null;
+    s.pcWarnedFor = null;
+    s.emit({ kind: "control", active: false, expiresAt: null, reason });
+    const working = s.status === "running" || s.status === "waiting" || s.status === "starting";
+    if (working) {
+      s.controlStopped = true;
+      void this.interrupt(s).catch(() => {});
+      s.setStatus("idle");
+    }
+    // The phone app may be closed: this clears the persistent "Claude is using the PC" notification; if Claude was
+    // running when stopped, a visible notification (the app doesn't show the "stopped" reason: the user stopped it).
+    void this.#notifier.send({
+      key: "claude.pcEnded",
+      params: { title: s.title, reason, working: working ? 1 : 0 },
+      link: `tiphys://claude/${s.id}`,
+      priority: working ? "high" : "default",
+      data: { sessionId: s.id },
+    });
+  }
+
+  /**
+   * Control time of PC sessions: one notification with an "Extend" button 2 min before the end (again for the new end
+   * time after an extension). Called every 10 s from outside the manager (routes.ts); tests call it with a fake clock.
+   */
+  pcTick() {
+    const pc = this.pc;
+    if (!pc) return;
+    const now = pc.now();
+    for (const s of this.sessions.values()) {
+      if (s.kind !== "pc" || !s.control) continue;
+      const until = s.controlUntil();
+      if (!until || s.pcWarnedFor === until) continue;
+      const left = Date.parse(until) - now;
+      if (left <= 0 || left > 120_000) continue;
+      s.pcWarnedFor = until;
+      void this.#notifier.send({
+        key: "claude.pcExpiring",
+        params: { title: s.title, minutes: Math.max(1, Math.round(left / 60_000)) },
+        link: `tiphys://claude/${s.id}`,
+        priority: "high",
+        data: { sessionId: s.id },
+      });
+    }
+  }
+
+  /** Starts the Claude process (with the first message). */
   #launch(s: LiveSession) {
     if (s.query || !s.options) return;
+    s.processCostUsd = 0;
     s.query = this.#query({ prompt: s.inbox, options: s.options });
     void this.#pump(s);
   }
 
-  /** Ajan yeniden başladıysa önceki canlı oturumları aynı kimlikle, boşta olarak geri getirir. */
+  /** If the agent restarted, brings back the previous live sessions with the same id, as idle. */
   async restore(): Promise<number> {
     if (!this.#statePath) return 0;
     let list: PersistedSession[];
@@ -427,8 +624,10 @@ export class ClaudeManager {
     let n = 0;
     for (const p of list) {
       try {
-        const cwd = await this.checkCwd(p.cwd);
-        const s = this.#create({ cwd, profileId: p.profileId, prompt: "", model: p.model || undefined, effort: p.effort, permissionMode: p.permissionMode, resume: p.sdkSessionId ?? undefined }, p.title, p.id);
+        const pc = p.kind === "pc";
+        if (pc && !this.pc) continue; // desktop off: the PC session doesn't come back
+        // A PC session comes back without a control binding (the token isn't written to disk); the phone rebinds it.
+        const s = this.#create({ cwd: pc ? homedir() : await this.checkCwd(p.cwd), profileId: p.profileId, prompt: "", model: p.model || undefined, effort: p.effort, permissionMode: p.permissionMode, resume: p.sdkSessionId ?? undefined, kind: p.kind }, p.title, p.id);
         s.sdkSessionId = p.sdkSessionId;
         s.createdAt = p.createdAt;
         s.costUsd = p.costUsd;
@@ -442,14 +641,14 @@ export class ClaudeManager {
         this.sessions.set(s.id, s);
         n++;
       } catch {
-        // klasör silinmiş/izin dışı: bu oturum geri gelmez (geçmişi diskte durur)
+        // folder deleted/not allowed: this session doesn't come back (its history stays on disk)
       }
     }
     this.#save();
     return n;
   }
 
-  /** Oturum listesini diske yazar (kısa gecikmeyle, art arda değişiklikler tek yazım). */
+  /** Writes the session list to disk (with a short delay; rapid successive changes become one write). */
   #save() {
     if (!this.#statePath || this.#saveTimer) return;
     this.#saveTimer = setTimeout(() => {
@@ -472,6 +671,7 @@ export class ClaudeManager {
       title: s.title,
       createdAt: s.createdAt,
       costUsd: s.costUsd,
+      ...(s.kind === "pc" ? { kind: s.kind } : {}),
     }));
     const tmp = `${this.#statePath}.tmp`;
     await writeFile(tmp, JSON.stringify(list, null, 1), { mode: 0o600 });
@@ -485,19 +685,32 @@ export class ClaudeManager {
         translate(s, m);
         if (s.sdkSessionId !== before || m.type === "result") this.#save();
         if (m.type === "result") {
+          if (s.controlStopped) {
+            // Stopped because control ended: not an error, no notification either (the control.ended event is enough).
+            s.controlStopped = false;
+            s.processCostUsd = m.total_cost_usd;
+            s.setStatus("idle");
+            continue;
+          }
           const ok = m.subtype === "success" && !m.is_error;
           s.setStatus(ok ? "idle" : "error");
+          // Cost of this turn: the SDK accumulates the total over the Claude process's lifetime; when the process restarts
+          // (agent restarted, process crashed) it counts from zero. So it is compared with the process's previous total,
+          // not with the session's recorded total.
+          const turnCost = Math.max(0, m.total_cost_usd - s.processCostUsd);
+          s.processCostUsd = m.total_cost_usd;
+          const { files, summary } = turnSummary(s, m.subtype === "success" ? m.result : "");
           void this.#notifier.send({
             key: ok ? "claude.done" : "claude.error",
-            params: { title: s.title, cost: Math.round(m.total_cost_usd * 100) / 100 },
+            params: { title: s.title, cost: Math.round(turnCost * 100) / 100, seconds: Math.round(m.duration_ms / 1000), files, summary },
             link: `tiphys://claude/${s.id}`,
           });
         }
       }
       if (s.status !== "error") s.setStatus("stopped");
     } catch (e) {
-      if (!this.sessions.has(s.id)) return; // kullanıcı kapattı: hata bildirimi gönderme
-      // Ölü süreci bırak: sonraki mesaj yeni bir Claude süreci başlatır ve konuşmayı kaldığı yerden sürdürür.
+      if (!this.sessions.has(s.id)) return; // user closed it: don't send an error notification
+      // Drop the dead process: the next message starts a new Claude process and resumes the conversation.
       s.query = null;
       if (s.options && s.sdkSessionId) s.options.resume = s.sdkSessionId;
       s.emit({ kind: "error", message: e instanceof Error ? e.message : String(e) });
@@ -506,7 +719,7 @@ export class ClaudeManager {
     }
   }
 
-  /** Mesajı kuyruğa koyar. Aynı `clientId` daha önce geldiyse hiçbir şey yapmaz ve false döner. */
+  /** Queues the message. If the same `clientId` arrived before, does nothing and returns false. */
   send(s: LiveSession, text: string, images: Array<{ mediaType: string; data: string }> = [], clientId?: string): boolean {
     if (s.status === "stopped") throw new AppError("agent.claude.sessionStopped", 409, { id: s.id });
     if (clientId) {
@@ -541,12 +754,13 @@ export class ClaudeManager {
   }
 
   async setMode(s: LiveSession, mode: PermissionMode) {
+    if (s.kind === "pc" && mode !== "default") throw new AppError("agent.claude.pcModeFixed", 400);
     if (mode === "bypassPermissions" && s.permissionMode !== "bypassPermissions") {
-      // Baştan izinsiz başlatılmamış oturum sonradan izinsize geçemez (SDK güvenlik kuralı).
+      // A session not started with bypassed permissions can't switch to bypass later (SDK security rule).
       throw new AppError("agent.claude.bypassNeedsNewSession", 400);
     }
     if (s.query) await s.query.setPermissionMode(mode);
-    else if (s.options) s.options.permissionMode = mode; // süreç henüz başlamadı
+    else if (s.options) s.options.permissionMode = mode; // process not started yet
     s.permissionMode = mode;
     this.#save();
   }
@@ -560,10 +774,11 @@ export class ClaudeManager {
     s.setStatus("stopped");
     s.listeners.clear();
     this.sessions.delete(id);
+    this.pc?.forget(id);
     this.#save();
   }
 
-  /** Ajan kapanırken: oturum listesi diskte kalır (yeniden başlayınca geri gelir), süreçler kapatılır. */
+  /** On agent shutdown: the session list stays on disk (comes back on restart), processes are closed. */
   async dispose() {
     clearInterval(this.#sweep);
     if (this.#saveTimer) clearTimeout(this.#saveTimer);

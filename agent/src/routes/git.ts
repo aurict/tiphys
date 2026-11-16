@@ -1,5 +1,6 @@
-// Git: durum, diff, geçmiş, dallar, stage, commit, push/pull, dal değiştirme. Yol izinli kökler içinde olmalı.
-// Kimlik bilgisi isteyen işlemler takılmasın diye GIT_TERMINAL_PROMPT=0 ile çalışır.
+// Git: status, diff, log, branches, stage, commit, push/pull, branch switching. The path must be within allowed roots.
+// Runs with GIT_TERMINAL_PROMPT=0 so operations asking for credentials don't hang.
+import { basename } from "node:path";
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 import { run } from "../exec.ts";
@@ -13,7 +14,7 @@ const MAX_DIFF = 512 * 1024;
 async function git(dir: string, args: string[], opts: { timeoutMs?: number; allowFail?: boolean } = {}) {
   const res = await run("git", ["-C", dir, ...args], { env, timeoutMs: opts.timeoutMs ?? 20000, allowFail: true });
   if (res.code !== 0 && !opts.allowFail) {
-    throw new AppError("agent.git.failed", 502, { args: args[0] ?? "", stderr: res.stderr.slice(0, 2000) });
+    throw new AppError("agent.git.failed", 502, { args: args.find((a) => !a.startsWith("-")) ?? "", stderr: res.stderr.slice(0, 2000) });
   }
   return res;
 }
@@ -28,8 +29,8 @@ async function repoRoot(ctx: Ctx, p: string): Promise<string> {
 export interface GitFile {
   path: string;
   origPath: string | null;
-  index: string; // stage alanındaki durum: M, A, D, R, C, U ya da "."
-  worktree: string; // çalışma ağacındaki durum
+  index: string; // status in the staging area: M, A, D, R, C, U or "."
+  worktree: string; // status in the working tree
   untracked: boolean;
   conflicted: boolean;
 }
@@ -74,7 +75,33 @@ export function parseLog(out: string) {
 
 const pathQ = z.object({ path: z.string().min(1) });
 const filesBody = z.object({ path: z.string().min(1), files: z.array(z.string().min(1)).min(1).max(1000), stage: z.boolean() });
-const commitBody = z.object({ path: z.string().min(1), message: z.string().trim().min(1).max(10000), all: z.boolean().default(false) });
+/** File path relative to the repo root (for selected lists such as the files a Claude session changed). */
+const relFile = z.string().min(1).max(4096).refine((f) => !f.startsWith("/") && !f.split("/").includes(".."), { message: "depo içinde göreli yol olmalı" });
+const commitBody = z
+  .object({
+    path: z.string().min(1),
+    message: z.string().trim().min(1).max(10000),
+    all: z.boolean().default(false),
+    /** If given, only these files are staged and committed; other previously staged files are not included. */
+    files: z.array(relFile).min(1).max(1000).optional(),
+  })
+  .refine((b) => !(b.all && b.files), { message: "all ve files birlikte kullanılamaz" });
+/** So file lists aren't interpreted as wildcards/magic pathspecs (":/", "*"). */
+const literal = "--literal-pathspecs";
+
+/** git push/pull error output → readable error code. */
+export function remoteErrorCode(op: string, stderr: string): string {
+  if (/has no upstream branch|no upstream configured/i.test(stderr)) return "agent.git.noUpstream";
+  if (/No configured push destination|does not appear to be a git repository|No such remote/i.test(stderr)) return "agent.git.noRemote";
+  if (/Authentication failed|could not read (Username|Password)|terminal prompts disabled|Permission denied \(publickey|Host key verification failed|403/i.test(stderr)) return "agent.git.authFailed";
+  if (/\[rejected\]|non-fast-forward|fetch first/i.test(stderr)) return "agent.git.pushRejected";
+  return `agent.git.${op}Failed`;
+}
+
+async function currentBranch(root: string): Promise<string | null> {
+  const r = await git(root, ["symbolic-ref", "--short", "-q", "HEAD"], { allowFail: true });
+  return r.code === 0 ? r.stdout.trim() : null;
+}
 const branchName = z.string().regex(/^(?!-)[A-Za-z0-9._/-]{1,200}$/);
 
 export function gitRoutes(app: FastifyInstance, ctx: Ctx) {
@@ -85,14 +112,17 @@ export function gitRoutes(app: FastifyInstance, ctx: Ctx) {
   });
 
   app.get("/v1/git/diff", async (req) => {
-    const q = z.object({ path: z.string().min(1), file: z.string().optional(), staged: z.coerce.boolean().default(false), commit: z.string().regex(/^[0-9a-f]{4,64}$/).optional() }).parse(req.query);
+    // head: sum of staged + unstaged changes (relative to HEAD; session changes screen).
+    const q = z
+      .object({ path: z.string().min(1), file: z.string().optional(), staged: z.coerce.boolean().default(false), head: z.coerce.boolean().default(false), commit: z.string().regex(/^[0-9a-f]{4,64}$/).optional() })
+      .parse(req.query);
     const root = await repoRoot(ctx, q.path);
     let args: string[];
     if (q.commit) args = ["show", "--format=", "--no-color", q.commit];
-    else args = ["diff", "--no-color", ...(q.staged ? ["--cached"] : [])];
+    else args = ["diff", "--no-color", ...(q.head ? ["HEAD"] : q.staged ? ["--cached"] : [])];
     if (q.file) args.push("--", q.file);
     let { stdout } = await git(root, args);
-    // İzlenmeyen dosyanın diff'i yoktur; içeriği "yeni dosya" olarak gösterilir.
+    // An untracked file has no diff; its content is shown as a "new file".
     if (!stdout && q.file && !q.staged && !q.commit) {
       const r = await git(root, ["diff", "--no-color", "--no-index", "--", "/dev/null", q.file], { allowFail: true });
       stdout = r.stdout;
@@ -130,33 +160,85 @@ export function gitRoutes(app: FastifyInstance, ctx: Ctx) {
   });
 
   app.post("/v1/git/discard", async (req) => {
-    const b = z.object({ path: z.string().min(1), files: z.array(z.string().min(1)).min(1).max(1000), confirm: z.literal(true) }).safeParse(req.body);
-    if (!b.success) throw new AppError("agent.git.confirmRequired", 400);
-    const root = await repoRoot(ctx, b.data.path);
-    await git(root, ["checkout", "--", ...b.data.files]);
-    return { ok: true };
+    const confirm = z.object({ confirm: z.literal(true) }).safeParse(req.body);
+    if (!confirm.success) throw new AppError("agent.git.confirmRequired", 400);
+    const b = z
+      .object({
+        path: z.string().min(1),
+        files: z.array(z.string().min(1)).min(1).max(1000),
+        /** "index" (default): unstaged changes are discarded. "head": the file reverts to its HEAD state (including staged). */
+        source: z.enum(["index", "head"]).default("index"),
+        /** head: files not in HEAD (new) are deleted only if this is explicitly true. */
+        deleteNew: z.boolean().default(false),
+      })
+      .parse(req.body);
+    const root = await repoRoot(ctx, b.path);
+    if (b.source === "index") {
+      await git(root, ["checkout", "--", ...b.files]);
+      return { ok: true };
+    }
+    const files = z.array(relFile).parse(b.files);
+    const inHead = new Set(
+      (await git(root, [literal, "ls-tree", "-r", "-z", "--name-only", "HEAD", "--", ...files], { allowFail: true })).stdout.split("\0").filter(Boolean),
+    );
+    const tracked = files.filter((f) => inHead.has(f));
+    const fresh = files.filter((f) => !inHead.has(f));
+    if (fresh.length && !b.deleteNew) throw new AppError("agent.git.newFilesNeedConfirm", 409, { files: fresh.slice(0, 50).join("\n") });
+    if (tracked.length) await git(root, [literal, "restore", "--source=HEAD", "--staged", "--worktree", "--", ...tracked]);
+    if (fresh.length) {
+      // If staged, first remove it from the index, then delete it as an untracked file (.gitignored ones are untouched).
+      await git(root, [literal, "rm", "--cached", "-q", "--ignore-unmatch", "--", ...fresh]);
+      await git(root, [literal, "clean", "-f", "-q", "--", ...fresh]);
+    }
+    return { ok: true, restored: tracked, deleted: fresh };
   });
 
   app.post("/v1/git/commit", async (req) => {
     const b = commitBody.parse(req.body);
     const root = await repoRoot(ctx, b.path);
     if (b.all) await git(root, ["add", "--all"]);
-    const res = await git(root, ["commit", "-m", b.message], { allowFail: true });
+    // Selected files: new and deleted ones are staged too; the commit contains only these paths (--only).
+    if (b.files) await git(root, [literal, "add", "--all", "--", ...b.files]);
+    const res = await git(root, b.files ? [literal, "commit", "-m", b.message, "--only", "--", ...b.files] : ["commit", "-m", b.message], { allowFail: true });
     if (res.code !== 0) {
       const nothing = /nothing (added )?to commit|no changes added/i.test(res.stdout + res.stderr);
       throw new AppError(nothing ? "agent.git.nothingToCommit" : "agent.git.failed", nothing ? 409 : 502, { stderr: (res.stderr || res.stdout).slice(0, 2000) });
     }
-    const head = await git(root, ["rev-parse", "HEAD"]);
-    return { ok: true, hash: head.stdout.trim() };
+    const hash = (await git(root, ["rev-parse", "HEAD"])).stdout.trim();
+    const count = (await git(root, ["diff-tree", "--no-commit-id", "--name-only", "-r", "-z", "--root", "HEAD"], { allowFail: true })).stdout.split("\0").filter(Boolean).length;
+    await ctx.notifier.events?.record(
+      {
+        key: "git.committed",
+        params: { repo: basename(root), branch: (await currentBranch(root)) ?? "", hash: hash.slice(0, 7), files: count, subject: b.message.split("\n")[0]!.slice(0, 120) },
+        device: req.device?.id,
+      },
+      (err) => req.log.warn({ err }, "olay yazılamadı"),
+    );
+    return { ok: true, hash };
   });
 
   for (const op of ["push", "pull", "fetch"] as const) {
     app.post(`/v1/git/${op}`, async (req) => {
-      const b = pathQ.parse(req.body);
+      // setUpstream (push only): if the branch isn't on the remote, push to origin (else the first remote) and track it.
+      const b = z.object({ path: z.string().min(1), setUpstream: z.boolean().default(false) }).parse(req.body);
       const root = await repoRoot(ctx, b.path);
-      const args = op === "pull" ? ["pull", "--ff-only"] : op === "fetch" ? ["fetch", "--all", "--prune"] : ["push"];
+      let args = op === "pull" ? ["pull", "--ff-only"] : op === "fetch" ? ["fetch", "--all", "--prune"] : ["push"];
+      if (op === "push" && b.setUpstream) {
+        const remotes = (await git(root, ["remote"])).stdout.split("\n").filter(Boolean);
+        const remote = remotes.includes("origin") ? "origin" : remotes[0];
+        if (!remote) throw new AppError("agent.git.noRemote", 409);
+        args = ["push", "--set-upstream", remote, "HEAD"];
+      }
       const res = await git(root, args, { timeoutMs: 120000, allowFail: true });
-      if (res.code !== 0) throw new AppError(`agent.git.${op}Failed`, 502, { stderr: res.stderr.slice(0, 2000) });
+      if (res.code !== 0) {
+        const code = remoteErrorCode(op, res.stderr);
+        throw new AppError(code, code === "agent.git.noUpstream" || code === "agent.git.noRemote" ? 409 : 502, { stderr: res.stderr.slice(0, 2000), ...(code === "agent.git.noUpstream" ? { branch: (await currentBranch(root)) ?? "" } : {}) });
+      }
+      if (op === "push") {
+        await ctx.notifier.events?.record({ key: "git.pushed", params: { repo: basename(root), branch: (await currentBranch(root)) ?? "" }, device: req.device?.id }, (err) =>
+          req.log.warn({ err }, "olay yazılamadı"),
+        );
+      }
       return { ok: true, output: (res.stdout + res.stderr).slice(0, 4000) };
     });
   }
