@@ -62,6 +62,9 @@ jobs:
   app:
     name: App (Flutter)
     runs-on: ubuntu-24.04
+    env:
+      # Golden images show local times; they were generated in this time zone.
+      TZ: Europe/Berlin
     defaults:
       run:
         working-directory: app
