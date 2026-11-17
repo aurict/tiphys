@@ -685,6 +685,7 @@ class NotificationSettings {
     this.clipboardHostId,
     this.telegramSent = true,
     this.telegramAlerts = true,
+    this.incidents = true,
   });
   final int longCommandSeconds;
   final bool serviceDown;
@@ -708,6 +709,9 @@ class NotificationSettings {
 
   /// Telegram newsletters: approval requests, failures and "research PC unreachable".
   final bool telegramAlerts;
+
+  /// Incident room: resolved / failed-action notices, site outages, unhealthy containers and restart loops.
+  final bool incidents;
   factory NotificationSettings.fromJson(Json j) => NotificationSettings(
         longCommandSeconds: _get(j, 'longCommandSeconds', 60),
         serviceDown: _get(j, 'serviceDown', true),
@@ -721,6 +725,7 @@ class NotificationSettings {
         clipboardHostId: j['clipboardHostId'] as String?,
         telegramSent: _get(j, 'telegramSent', true),
         telegramAlerts: _get(j, 'telegramAlerts', true),
+        incidents: _get(j, 'incidents', true),
       );
   Json toJson() => {
         'longCommandSeconds': longCommandSeconds,
@@ -735,6 +740,7 @@ class NotificationSettings {
         'clipboardHostId': clipboardHostId,
         'telegramSent': telegramSent,
         'telegramAlerts': telegramAlerts,
+        'incidents': incidents,
       };
   NotificationSettings copyWith({
     int? longCommandSeconds,
@@ -749,6 +755,7 @@ class NotificationSettings {
     String? Function()? clipboardHostId,
     bool? telegramSent,
     bool? telegramAlerts,
+    bool? incidents,
   }) =>
       NotificationSettings(
         longCommandSeconds: longCommandSeconds ?? this.longCommandSeconds,
@@ -763,6 +770,7 @@ class NotificationSettings {
         clipboardHostId: clipboardHostId == null ? this.clipboardHostId : clipboardHostId(),
         telegramSent: telegramSent ?? this.telegramSent,
         telegramAlerts: telegramAlerts ?? this.telegramAlerts,
+        incidents: incidents ?? this.incidents,
       );
 }
 

@@ -14,6 +14,8 @@ import '../../theme/tokens.dart';
 import '../../widgets/floating_tab_bar.dart';
 import '../../widgets/painters.dart';
 import '../../widgets/surfaces.dart';
+import '../incidents/incidents_data.dart' show incidentHostsProvider;
+import '../incidents/incidents_screen.dart' show HomeIncidentsCard;
 import '../system/events.dart';
 import '../system/media.dart';
 import 'home_data.dart';
@@ -65,6 +67,7 @@ class HomeScreen extends ConsumerWidget {
           title: l.appName,
           action: RoundIconButton(icon: LucideIcons.settings, tooltip: l.settingsTitle, onPressed: () => context.push('/settings')),
         ),
+        if (ref.watch(incidentHostsProvider).value?.isNotEmpty == true) const Padding(padding: EdgeInsets.only(top: 12), child: HomeIncidentsCard()),
         for (final s in [...top, ...sections])
           if (s is! SizedBox) Padding(padding: const EdgeInsets.only(top: 12), child: s),
       ],

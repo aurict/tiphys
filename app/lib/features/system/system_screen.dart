@@ -14,6 +14,8 @@ import '../../widgets/floating_tab_bar.dart';
 import '../../widgets/forms.dart';
 import '../../widgets/surfaces.dart';
 import '../files/files_screen.dart' show formatSize;
+import '../configfiles/configfiles_data.dart' show configHostsProvider;
+import '../incidents/incidents_data.dart' show incidentHostsProvider;
 import 'agent_providers.dart';
 import 'agent_section.dart';
 import 'tools.dart';
@@ -78,6 +80,10 @@ class _SystemScreenState extends ConsumerState<SystemScreen> {
           ],
         ],
         GroupedSection(title: l.systemMonitoring, children: [
+          if (ref.watch(incidentHostsProvider).value?.isNotEmpty == true)
+            GroupedRow(title: l.incTitle, icon: LucideIcons.siren, iconBackground: t.danger, onTap: () => context.push('/incidents')),
+          if (ref.watch(configHostsProvider).value?.isNotEmpty == true)
+            GroupedRow(title: l.cfTitle, icon: LucideIcons.keyRound, iconBackground: const Color(0xFF8E6BD8), onTap: () => context.push('/configfiles')),
           GroupedRow(title: l.eventsTitle, icon: LucideIcons.history, iconBackground: const Color(0xFF5E5CE6), onTap: () => context.push('/system/events')),
           GroupedRow(title: l.backupsTitle, icon: LucideIcons.archive, iconBackground: const Color(0xFF0A84FF), onTap: () => context.push('/system/backups')),
           GroupedRow(title: l.composeTitle, icon: LucideIcons.layers, iconBackground: const Color(0xFF1D63ED), onTap: () => context.push('/system/compose')),

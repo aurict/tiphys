@@ -9,12 +9,15 @@ import 'surfaces.dart';
 
 /// Settings subpages: header with back button + scrollable content + optional save button.
 class SettingsPage extends StatelessWidget {
-  const SettingsPage({super.key, required this.title, required this.children, this.onSave, this.saving = false, this.actions});
+  const SettingsPage({super.key, required this.title, required this.children, this.onSave, this.saving = false, this.actions, this.onRefresh});
   final String title;
   final List<Widget> children;
   final Future<void> Function()? onSave;
   final bool saving;
   final List<Widget>? actions;
+
+  /// Pull to refresh (optional).
+  final Future<void> Function()? onRefresh;
 
   @override
   Widget build(BuildContext context) {
@@ -22,7 +25,7 @@ class SettingsPage extends StatelessWidget {
     return Scaffold(
       backgroundColor: Colors.transparent,
       body: AmbientBackground(
-        child: CustomScrollView(slivers: [
+        child: _refreshable(CustomScrollView(physics: onRefresh == null ? null : const AlwaysScrollableScrollPhysics(), slivers: [
           SliverAppBar(
             pinned: true,
             backgroundColor: context.tokens.isDark ? const Color(0xCC000000) : context.tokens.background,
@@ -50,10 +53,12 @@ class SettingsPage extends StatelessWidget {
             padding: EdgeInsets.fromLTRB(TiphysTokens.gutter, 4, TiphysTokens.gutter, MediaQuery.paddingOf(context).bottom + 40),
             sliver: SliverList.list(children: children),
           ),
-        ]),
+        ])),
       ),
     );
   }
+
+  Widget _refreshable(Widget scroll) => onRefresh == null ? scroll : RefreshIndicator(onRefresh: onRefresh!, child: scroll);
 }
 
 /// Labeled text field inside a card.

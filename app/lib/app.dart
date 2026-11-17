@@ -26,6 +26,11 @@ import 'features/system/log_search.dart';
 import 'features/system/media.dart';
 import 'features/desktop/desktop_screen.dart';
 import 'features/desktop/live_screen.dart';
+import 'features/configfiles/config_backups_screen.dart';
+import 'features/configfiles/config_file_screen.dart';
+import 'features/configfiles/configfiles_screen.dart';
+import 'features/incidents/incident_screen.dart';
+import 'features/incidents/incidents_screen.dart';
 import 'features/system/system_screen.dart';
 import 'features/telegram/issue_screen.dart';
 import 'features/telegram/research_screen.dart';
@@ -98,6 +103,11 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(path: '/monitor/sites', builder: (c, s) => const SitesScreen()),
       GoRoute(path: '/monitor/homepage', builder: (c, s) => const HomepageScreen()),
       GoRoute(path: '/system/events', builder: (c, s) => const EventsScreen()),
+      GoRoute(path: '/configfiles', builder: (c, s) => const ConfigFilesScreen()),
+      GoRoute(path: '/configfiles/file', builder: (c, s) => ConfigFileRoute(hostHint: s.uri.queryParameters['host'] ?? '', fileId: s.uri.queryParameters['id'] ?? '')),
+      GoRoute(path: '/configfiles/backups', builder: (c, s) => ConfigBackupsScreen(hostId: s.uri.queryParameters['host'] ?? '', fileId: s.uri.queryParameters['id'] ?? '')),
+      GoRoute(path: '/incidents', builder: (c, s) => const IncidentsScreen()),
+      GoRoute(path: '/incidents/:id', builder: (c, s) => IncidentScreen(incidentId: s.pathParameters['id']!, hostHint: s.uri.queryParameters['host'])),
       GoRoute(path: '/system/backups', builder: (c, s) => const BackupsScreen()),
       GoRoute(path: '/system/compose', builder: (c, s) => const ComposeScreen()),
       GoRoute(path: '/system/logs', builder: (c, s) => LogSearchScreen(initialPattern: s.uri.queryParameters['q'])),

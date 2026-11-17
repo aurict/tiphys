@@ -34,8 +34,12 @@ import 'package:tiphys/core/integrations/dozzle_client.dart';
 import 'package:tiphys/features/terminal/sessions.dart';
 
 import 'png.dart';
+import 'config_fixtures.dart';
+import 'incident_fixtures.dart';
 import 'ui_fixtures.dart';
 
+export 'config_fixtures.dart';
+export 'incident_fixtures.dart';
 export 'ui_fixtures.dart';
 
 final codec = ProfileCodec(File('assets/profile/tiphys.schema.json').readAsStringSync());
@@ -220,6 +224,20 @@ class FakeAgent extends AgentClient {
   /// SSE `GET /v1/desktop/ui/events` events and subscriber count.
   static StreamController<(String, String)> uiEvents = StreamController.broadcast();
   static int uiSubscribers = 0;
+
+  /// Incident room (GET/POST /v1/incidents*): incidents per host id and the knobs of the action routes.
+  static Map<String, List<Map<String, dynamic>>> incidents = sampleIncidents();
+  static FakeIncidentState incident = FakeIncidentState();
+
+  /// Config files and secrets (GET/POST/PUT /v1/config-files*, /v1/secrets/meta).
+  static FakeConfigState config = FakeConfigState();
+
+  static void resetConfig() => config = FakeConfigState();
+
+  static void resetIncidents() {
+    incidents = sampleIncidents();
+    incident = FakeIncidentState();
+  }
 
   /// Called at the start of tests.
   static void resetUi() {
@@ -753,6 +771,8 @@ class FakeAgent extends AgentClient {
         ],
       };
     }
+    if (path.startsWith('/v1/config-files') || path == '/v1/secrets/meta') return fakeConfigRoute(hostId, method, path, body, config);
+    if (path.startsWith('/v1/incidents')) return fakeIncidentRoute(hostId, method, path, body, incidents, incident);
     if (path == '/v1/events' && method == 'POST') {
       return {'event': {'id': 'e1', 'at': '2026-11-14T11:05:00Z', ...(body as Map), 'source': 'app'}};
     }

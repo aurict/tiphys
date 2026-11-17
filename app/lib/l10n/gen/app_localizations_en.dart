@@ -5466,4 +5466,1276 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get notifTgStateCorruptBody =>
       'A corrupt state file was moved aside; recipients and newsletters need to be added again.';
+
+  @override
+  String get incTitle => 'Incidents';
+
+  @override
+  String get incStatusOpen => 'Open';
+
+  @override
+  String get incStatusAck => 'Acknowledged';
+
+  @override
+  String get incStatusResolved => 'Resolved';
+
+  @override
+  String get incSeverityCritical => 'Critical';
+
+  @override
+  String get incSeverityWarning => 'Warning';
+
+  @override
+  String get incAllHosts => 'All hosts';
+
+  @override
+  String get incAllKinds => 'All kinds';
+
+  @override
+  String get incKindContainer => 'Container';
+
+  @override
+  String get incKindService => 'Service';
+
+  @override
+  String get incKindDisk => 'Disk';
+
+  @override
+  String get incKindSite => 'Site';
+
+  @override
+  String get incKindAlert => 'Alert';
+
+  @override
+  String get incKindBackup => 'Backup';
+
+  @override
+  String get incKindHost => 'Host';
+
+  @override
+  String get incKindOther => 'Other';
+
+  @override
+  String get incEmptyOpen => 'No open incidents';
+
+  @override
+  String get incEmptyAck => 'No acknowledged incidents';
+
+  @override
+  String get incEmptyResolved => 'No resolved incidents';
+
+  @override
+  String get incEmptyFiltered => 'No incidents match the filter';
+
+  @override
+  String get incNoAgents =>
+      'Incidents come from hosts whose agent has the incidents feature turned on.';
+
+  @override
+  String incHostFailed(String host) {
+    return 'Could not load incidents of $host';
+  }
+
+  @override
+  String incSignals(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count signals',
+      one: '1 signal',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String incTitleDockerDied(String target) {
+    return 'Container crashed: $target';
+  }
+
+  @override
+  String incTitleDockerOom(String target) {
+    return 'Container out of memory: $target';
+  }
+
+  @override
+  String incTitleUnhealthy(String target) {
+    return 'Container unhealthy: $target';
+  }
+
+  @override
+  String incTitleRestartLoop(String target) {
+    return 'Restart loop: $target';
+  }
+
+  @override
+  String incTitleDisk(String target) {
+    return 'Disk full: $target';
+  }
+
+  @override
+  String incTitleService(String target) {
+    return 'Service failed: $target';
+  }
+
+  @override
+  String incTitleAlert(String target) {
+    return 'Alert: $target';
+  }
+
+  @override
+  String incTitleHost(String target) {
+    return 'Host offline: $target';
+  }
+
+  @override
+  String incTitleBackup(String target) {
+    return 'Backup problem: $target';
+  }
+
+  @override
+  String incTitleSite(String target) {
+    return 'Site down: $target';
+  }
+
+  @override
+  String incTitleOther(String kind, String target) {
+    return '$kind: $target';
+  }
+
+  @override
+  String incOpenedAt(String when) {
+    return 'Opened $when';
+  }
+
+  @override
+  String incResolvedAt(String when) {
+    return 'Resolved $when';
+  }
+
+  @override
+  String get incAck => 'Acknowledge';
+
+  @override
+  String get incResolve => 'Resolve';
+
+  @override
+  String get incReopen => 'Reopen';
+
+  @override
+  String get incNote => 'Note';
+
+  @override
+  String get incResolveTitle => 'Resolve incident';
+
+  @override
+  String get incNoteOptional => 'Note (optional)';
+
+  @override
+  String get incNoteTitle => 'Add a note';
+
+  @override
+  String get incNoteField => 'Note';
+
+  @override
+  String get incActorAuto => 'automatic';
+
+  @override
+  String get incActorAgent => 'agent';
+
+  @override
+  String incActorDevice(String id) {
+    return 'device $id';
+  }
+
+  @override
+  String incResolvedBy(String by) {
+    return 'Resolved by $by';
+  }
+
+  @override
+  String get incWhyTitle => 'Likely cause';
+
+  @override
+  String get incWhyRules => 'rules';
+
+  @override
+  String get incWhyEmpty => 'No rule matched. See the evidence below.';
+
+  @override
+  String get incAnalyze => 'Analyze with AI';
+
+  @override
+  String get incAnalyzeSoon => 'AI analysis coming soon';
+
+  @override
+  String get incHintOom =>
+      'Out of memory: the container was killed for memory or exited with 137.';
+
+  @override
+  String incHintExitCode(String code) {
+    return 'The container exited with code $code.';
+  }
+
+  @override
+  String get incHintRestartLoop =>
+      'Restart loop: the container keeps restarting.';
+
+  @override
+  String incHintRestartLoopCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count restarts',
+      one: '1 restart',
+    );
+    return 'Restart loop: $_temp0 so far.';
+  }
+
+  @override
+  String get incHintUnhealthy => 'The health check is failing.';
+
+  @override
+  String incHintRecentDeploy(String image) {
+    return 'The container was created shortly before the incident (image $image): possibly a recent deployment.';
+  }
+
+  @override
+  String incHintDiskFull(String mount, int percent) {
+    return '$mount is $percent% full.';
+  }
+
+  @override
+  String get incHintPortInUse => 'A port is already in use (see the logs).';
+
+  @override
+  String get incHintPortUnreachable =>
+      'A connection is refused or times out (see the logs).';
+
+  @override
+  String incHintUnknown(String code) {
+    return 'Hint: $code';
+  }
+
+  @override
+  String get incTabLogs => 'Logs';
+
+  @override
+  String get incTabContainer => 'Container';
+
+  @override
+  String get incTabGit => 'Git';
+
+  @override
+  String get incTabEvents => 'Events';
+
+  @override
+  String get incTabSimilar => 'Similar';
+
+  @override
+  String get incTabTimeline => 'Timeline';
+
+  @override
+  String get incEvMetrics => 'Metrics';
+
+  @override
+  String get incActionsTitle => 'Suggested actions';
+
+  @override
+  String get incActionsEmpty => 'No actions offered for this incident.';
+
+  @override
+  String incActionRestart(String target) {
+    return 'Restart container $target';
+  }
+
+  @override
+  String incActionRecreate(String target) {
+    return 'Recreate service $target';
+  }
+
+  @override
+  String incActionUnit(String target) {
+    return 'Restart unit $target';
+  }
+
+  @override
+  String incActionOther(String kind, String target) {
+    return '$kind: $target';
+  }
+
+  @override
+  String get incActionKindRestart => 'Container restart';
+
+  @override
+  String get incActionKindRecreate => 'Service recreate';
+
+  @override
+  String get incActionKindUnit => 'Unit restart';
+
+  @override
+  String get incRiskLow => 'Low risk';
+
+  @override
+  String get incRiskMedium => 'Medium risk';
+
+  @override
+  String get incActionRunning => 'Running…';
+
+  @override
+  String get incActionBusy => 'Another action is running';
+
+  @override
+  String get incPreviewTitle => 'Review action';
+
+  @override
+  String get incPreviewSteps => 'Commands that will run';
+
+  @override
+  String incPreviewCwd(String dir) {
+    return 'in $dir';
+  }
+
+  @override
+  String incPreviewExpiresIn(String time) {
+    return 'Valid for $time';
+  }
+
+  @override
+  String get incPreviewExpired => 'This preview has expired.';
+
+  @override
+  String get incPreviewRefresh => 'Refresh preview';
+
+  @override
+  String get incExecute => 'Run';
+
+  @override
+  String incExecuteConfirm(String action, String host) {
+    return 'Run \"$action\" on $host? It is recorded in the incident timeline.';
+  }
+
+  @override
+  String get incRunning => 'Running…';
+
+  @override
+  String get incResultOk =>
+      'Done. A post-check runs in about a minute and is added to the timeline.';
+
+  @override
+  String incResultFailed(String code) {
+    return 'Failed (exit code $code)';
+  }
+
+  @override
+  String get incLogsSearch => 'Search the logs';
+
+  @override
+  String get incLogsEmpty => 'No log lines were collected.';
+
+  @override
+  String get incLogsNoMatch => 'No line matches.';
+
+  @override
+  String get incLogsTruncated => 'Older lines were cut.';
+
+  @override
+  String incLogsCount(int shown, int total) {
+    return '$shown of $total lines';
+  }
+
+  @override
+  String get incContextPending => 'Context is being collected…';
+
+  @override
+  String incContextFailed(String sections) {
+    return 'Could not collect: $sections';
+  }
+
+  @override
+  String get incInspImage => 'Image';
+
+  @override
+  String get incInspStatus => 'Status';
+
+  @override
+  String get incInspCreated => 'Created';
+
+  @override
+  String get incInspStarted => 'Started';
+
+  @override
+  String get incInspFinished => 'Finished';
+
+  @override
+  String get incInspExit => 'Exit code';
+
+  @override
+  String get incInspOom => 'Killed for memory';
+
+  @override
+  String get incInspRestarts => 'Restarts';
+
+  @override
+  String get incInspPolicy => 'Restart policy';
+
+  @override
+  String get incInspHealth => 'Health';
+
+  @override
+  String get incInspCompose => 'Compose';
+
+  @override
+  String get incYes => 'Yes';
+
+  @override
+  String get incNo => 'No';
+
+  @override
+  String get incGitNone => 'This stack has no git history.';
+
+  @override
+  String get incGitLog => 'Commits in the last 48 hours';
+
+  @override
+  String get incGitNoCommits => 'No commits in the last 48 hours.';
+
+  @override
+  String get incGitStatus => 'Uncommitted changes';
+
+  @override
+  String get incGitClean => 'Working tree is clean.';
+
+  @override
+  String get incEventsEmpty => 'No events on this host in the last 2 hours.';
+
+  @override
+  String get incSimilarEmpty => 'No similar incidents in the last 90 days.';
+
+  @override
+  String incSimilarWorked(String action) {
+    return 'Worked: $action';
+  }
+
+  @override
+  String get incSimilarOpen => 'Still open';
+
+  @override
+  String get incTlOpened => 'Incident opened';
+
+  @override
+  String incTlSignal(String title) {
+    return 'New signal: $title';
+  }
+
+  @override
+  String incTlMerged(String target) {
+    return 'Grouped here: $target';
+  }
+
+  @override
+  String incTlRecovered(String what) {
+    return 'Recovered: $what';
+  }
+
+  @override
+  String get incTlAck => 'Acknowledged';
+
+  @override
+  String get incTlResolved => 'Resolved';
+
+  @override
+  String get incTlReopened => 'Reopened';
+
+  @override
+  String get incTlNote => 'Note';
+
+  @override
+  String incTlContext(int lines) {
+    return 'Context collected ($lines log lines)';
+  }
+
+  @override
+  String get incTlContextFailed => 'Context could not be collected';
+
+  @override
+  String incTlAction(String action) {
+    return 'Action started: $action';
+  }
+
+  @override
+  String incTlActionOk(String action) {
+    return 'Action finished: $action';
+  }
+
+  @override
+  String incTlActionFailed(String action, String code) {
+    return 'Action failed: $action (code $code)';
+  }
+
+  @override
+  String incTlPostOk(String state) {
+    return 'Post-check passed: $state';
+  }
+
+  @override
+  String incTlPostFailed(String state) {
+    return 'Post-check failed: $state';
+  }
+
+  @override
+  String get notifyIncidents => 'Incidents';
+
+  @override
+  String get notifyIncidentsHint =>
+      'Resolved incidents, failed actions, site outages';
+
+  @override
+  String get homeIncidentsTitle => 'Open incidents';
+
+  @override
+  String get homeIncidentsNone => 'No open incidents';
+
+  @override
+  String homeIncidentsCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count open incidents',
+      one: '1 open incident',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get homeIncidentsAll => 'All incidents';
+
+  @override
+  String notifIncidentResolvedTitle(String host) {
+    return 'Incident resolved · $host';
+  }
+
+  @override
+  String notifIncidentActionFailedTitle(String host) {
+    return 'Action failed · $host';
+  }
+
+  @override
+  String notifIncidentActionCommand(String action, String target) {
+    return '$action on $target failed';
+  }
+
+  @override
+  String notifIncidentActionPostCheck(String action, String target) {
+    return '$action ran, but $target is not healthy afterwards';
+  }
+
+  @override
+  String notifUptimeDownTitle(String monitor) {
+    return 'Site down: $monitor';
+  }
+
+  @override
+  String notifUptimeUpTitle(String monitor) {
+    return 'Site back up: $monitor';
+  }
+
+  @override
+  String notifDockerUnhealthyTitle(String host) {
+    return 'Container unhealthy · $host';
+  }
+
+  @override
+  String notifDockerRestartLoopTitle(String host) {
+    return 'Container restart loop · $host';
+  }
+
+  @override
+  String notifDockerRestartLoopBody(String container, int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count restarts',
+      one: '1 restart',
+    );
+    return '$container · $_temp0 in 10 min';
+  }
+
+  @override
+  String get errIncNotFound => 'Incident not found. It may have been deleted.';
+
+  @override
+  String get errIncActionNotFound => 'That action is no longer offered.';
+
+  @override
+  String errIncBadState(String status) {
+    return 'Not possible while the incident is $status.';
+  }
+
+  @override
+  String get errIncConfirmRequired => 'Confirmation is required.';
+
+  @override
+  String get errIncActionRunning =>
+      'Another action of this incident is still running.';
+
+  @override
+  String get errIncActionUnavailable =>
+      'This action can no longer be run (its stack is gone).';
+
+  @override
+  String get errIncRateLimited =>
+      'Too many actions in a minute. Wait a moment.';
+
+  @override
+  String get errPreviewInvalid =>
+      'The preview is no longer valid. Refresh it and confirm again.';
+
+  @override
+  String get incScreenTitle => 'Incident';
+
+  @override
+  String get incTest => 'test';
+
+  @override
+  String get incNothing => 'Nothing collected.';
+
+  @override
+  String get cfTitle => 'Config and secrets';
+
+  @override
+  String get cfNoHosts =>
+      'No connected agent has the config editor turned on (feature configfiles).';
+
+  @override
+  String get cfNoFiles =>
+      'No .env files found. Keep compose stacks under ~/stack, or add paths under configFiles.extraPaths.';
+
+  @override
+  String get cfOtherFiles => 'Other files';
+
+  @override
+  String cfKeysCount(int keys, int secrets) {
+    String _temp0 = intl.Intl.pluralLogic(
+      keys,
+      locale: localeName,
+      other: '$keys keys',
+      one: '1 key',
+    );
+    String _temp1 = intl.Intl.pluralLogic(
+      secrets,
+      locale: localeName,
+      other: '$secrets secrets',
+      one: '1 secret',
+    );
+    return '$_temp0 · $_temp1';
+  }
+
+  @override
+  String get cfWorldReadableShort => 'world-readable';
+
+  @override
+  String cfSkippedTitle(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count skipped files',
+      one: '1 skipped file',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get cfSkipNotRegular =>
+      'Not a regular file (a link, folder or device).';
+
+  @override
+  String get cfSkipNotOwner => 'Owned by another user than the agent.';
+
+  @override
+  String get cfSkipTooLarge => 'Larger than 256 KB.';
+
+  @override
+  String get cfSkipBadName => 'Name isn\'t .env, *.env or .env.*.';
+
+  @override
+  String get cfSkipOutsideRoot =>
+      'Its real path leaves the stack folder (symbolic link).';
+
+  @override
+  String get cfSkipMissing => 'The file doesn\'t exist.';
+
+  @override
+  String get cfSkipMoved => 'The file moved while it was being read.';
+
+  @override
+  String get cfSkipReplaced => 'The file was replaced while it was being read.';
+
+  @override
+  String get cfSkipNotText => 'Not valid UTF-8 text.';
+
+  @override
+  String get cfSkipUnreadable => 'The agent can\'t read it.';
+
+  @override
+  String get cfBackups => 'Backups';
+
+  @override
+  String get cfBackupsHint =>
+      'The agent keeps the last 10 versions, saved right before each write.';
+
+  @override
+  String get cfBackupsEmpty => 'No backups yet.';
+
+  @override
+  String get cfRestore => 'Restore';
+
+  @override
+  String get cfRestored =>
+      'Restored. The version it replaced was backed up too.';
+
+  @override
+  String cfRestoreConfirm(String file) {
+    return 'Restore $file from this backup? The current version is backed up first.';
+  }
+
+  @override
+  String cfSaveConfirm(String file) {
+    return 'Write the changes to $file? The previous version is backed up first.';
+  }
+
+  @override
+  String get cfSaved => 'Saved. The previous version was backed up.';
+
+  @override
+  String get cfSaving => 'Writing…';
+
+  @override
+  String cfBackupMade(String id) {
+    return 'Backup: $id';
+  }
+
+  @override
+  String get cfPreviewTitle => 'Review changes';
+
+  @override
+  String get cfPreviewRestoreTitle => 'Review restore';
+
+  @override
+  String get cfPreviewNoChanges => 'Nothing would change.';
+
+  @override
+  String get cfPreviewOtherLines => 'Other lines of the file change too.';
+
+  @override
+  String get cfAffectedTitle => 'Affected services';
+
+  @override
+  String get cfAffectedNone => 'No service uses these keys.';
+
+  @override
+  String get cfRestartAffected => 'Recreate affected services';
+
+  @override
+  String cfLengthChange(int before, int after) {
+    return 'changed, $before → $after characters';
+  }
+
+  @override
+  String get cfChangeAdded => 'New';
+
+  @override
+  String get cfChangeChanged => 'Changed';
+
+  @override
+  String get cfChangeRemoved => 'To be removed';
+
+  @override
+  String get cfChangeRenamed => 'Renamed';
+
+  @override
+  String get cfReload => 'Reload';
+
+  @override
+  String get cfReloaded => 'File reloaded.';
+
+  @override
+  String cfReloadedDropped(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count staged changes no longer apply and were dropped.',
+      one: '1 staged change no longer applies and was dropped.',
+    );
+    return 'File reloaded. $_temp0';
+  }
+
+  @override
+  String cfTooManyChanges(int max) {
+    return 'At most $max changes per save.';
+  }
+
+  @override
+  String get cfNeedsLock =>
+      'Set an app lock (PIN or fingerprint) first: secret values are only shown after unlocking.';
+
+  @override
+  String get cfRevealMissing => 'Some keys are no longer in the file.';
+
+  @override
+  String cfRevealedNote(int seconds) {
+    return 'Shown values are hidden again after $seconds s.';
+  }
+
+  @override
+  String get cfHideAll => 'Hide all';
+
+  @override
+  String get cfCopy => 'Copy';
+
+  @override
+  String get cfCopied => 'Copied. It is cleared from the clipboard after 30 s.';
+
+  @override
+  String get cfShow => 'Show';
+
+  @override
+  String get cfHide => 'Hide';
+
+  @override
+  String get cfSelect => 'Select';
+
+  @override
+  String cfSelectedCount(int selected, int max) {
+    return '$selected of $max selected';
+  }
+
+  @override
+  String get cfShowSelected => 'Show';
+
+  @override
+  String get cfAddKey => 'Add key';
+
+  @override
+  String get cfEditValue => 'Change value';
+
+  @override
+  String get cfRenameKey => 'Rename key';
+
+  @override
+  String get cfDeleteKey => 'Delete key';
+
+  @override
+  String get cfUndo => 'Undo';
+
+  @override
+  String get cfDiscardNew => 'Discard new key';
+
+  @override
+  String get cfDiscardAll => 'Discard all';
+
+  @override
+  String cfStagedNote(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count changes staged',
+      one: '1 change staged',
+    );
+    return '$_temp0. Tap Save to review.';
+  }
+
+  @override
+  String get cfStage => 'Done';
+
+  @override
+  String get cfKeyName => 'Key name';
+
+  @override
+  String get cfKeyInvalid =>
+      'Letters, digits, _ and . only; it can\'t start with a digit.';
+
+  @override
+  String get cfKeyTaken => 'This key already exists in the file.';
+
+  @override
+  String get cfValue => 'Value';
+
+  @override
+  String get cfNewValue => 'New value';
+
+  @override
+  String get cfSecretNotPrefilled =>
+      'The current value isn\'t shown. What you type replaces it.';
+
+  @override
+  String get cfInherited => '(from the environment)';
+
+  @override
+  String get cfEmptyValue => '(empty)';
+
+  @override
+  String get cfOverridden => 'overridden';
+
+  @override
+  String get cfMarkedSecret => 'marked';
+
+  @override
+  String get cfDuplicateNote =>
+      'A later line with the same key wins; this earlier line can\'t be edited here.';
+
+  @override
+  String get cfNoEntries => 'This file has no entries.';
+
+  @override
+  String cfAgeDays(int days) {
+    return '$days d';
+  }
+
+  @override
+  String cfAgeDue(int days) {
+    return '$days d · rotate';
+  }
+
+  @override
+  String cfWarnWorldReadable(String mode) {
+    return 'Every user on the PC can read this file (mode $mode). Restrict it, e.g. chmod 600.';
+  }
+
+  @override
+  String get cfWarnWorldReadableShort =>
+      'The file is readable by every user on the PC. Consider chmod 600.';
+
+  @override
+  String cfReadOnlyQuote(int line) {
+    return 'Read-only: the quote opened on line $line is never closed, and compose would read the lines below into that value. Fix the file on the PC first.';
+  }
+
+  @override
+  String cfIssueUnterminated(int line) {
+    return 'Line $line: unterminated quote.';
+  }
+
+  @override
+  String cfIssueTrailing(int line) {
+    return 'Line $line: text after a quoted value. It is kept as it is.';
+  }
+
+  @override
+  String cfIssueSyntax(int line) {
+    return 'Line $line couldn\'t be read. It is kept as it is.';
+  }
+
+  @override
+  String get cfSecretSettings => 'Secret settings';
+
+  @override
+  String get cfMarkTitle => 'Treat this key as';
+
+  @override
+  String get cfMarkAuto => 'Automatic';
+
+  @override
+  String get cfMarkSecret => 'Secret';
+
+  @override
+  String get cfMarkPlain => 'Not secret';
+
+  @override
+  String get cfMaxAgeTitle => 'Rotation reminder';
+
+  @override
+  String get cfMaxAgeDays => 'Rotate after (days)';
+
+  @override
+  String get cfMaxAgeInvalid => 'Enter 1 to 3650.';
+
+  @override
+  String get cfMaxAgeHelp =>
+      'Empty = no reminder. The age counts from the last change.';
+
+  @override
+  String cfMaxAgeSuggest(int days) {
+    return 'Suggest $days days';
+  }
+
+  @override
+  String get cfMaxAgeClear => 'No reminder';
+
+  @override
+  String get errCfNotFound => 'That file is no longer offered by the agent.';
+
+  @override
+  String errCfNotEditable(String reason) {
+    return 'This file can\'t be edited: $reason';
+  }
+
+  @override
+  String get errCfFileChanged =>
+      'The file moved or was replaced meanwhile. Nothing was written. Reload it.';
+
+  @override
+  String get errCfConflict =>
+      'The file changed since you opened it. Nothing was written. Reload it and check your changes again.';
+
+  @override
+  String get errCfNotText => 'The file isn\'t valid UTF-8 text.';
+
+  @override
+  String errCfKeyNotFound(String key) {
+    return 'Key $key is no longer in the file.';
+  }
+
+  @override
+  String errCfKeyExists(String key) {
+    return 'A key named $key already exists.';
+  }
+
+  @override
+  String errCfUnterminatedQuote(String line) {
+    return 'Line $line has an unterminated quote; editing is refused.';
+  }
+
+  @override
+  String get errCfNoChange => 'These changes leave the file as it is.';
+
+  @override
+  String get errCfTooLarge => 'The result would be larger than 256 KB.';
+
+  @override
+  String get errCfConfirmRequired => 'Confirmation is required.';
+
+  @override
+  String get errCfRestartUnavailable =>
+      'Recreating services isn\'t available yet.';
+
+  @override
+  String get errCfRateLimited => 'Too many reveals in a minute. Wait a moment.';
+
+  @override
+  String get errCfBackupNotFound => 'That backup no longer exists.';
+
+  @override
+  String get incTabDeploys => 'Deploys';
+
+  @override
+  String get incDeploysEmpty =>
+      'No deploys recorded for this service in the last 7 days. The agent needs the docker feature to track them.';
+
+  @override
+  String get incDeployChanged => 'Updated';
+
+  @override
+  String get incDeploySeen => 'First seen';
+
+  @override
+  String get incDeployRollbackReady => 'Rollback ready';
+
+  @override
+  String get incDeployNoRollback => 'No previous image';
+
+  @override
+  String incDeployMinBefore(int count) {
+    return '$count min before the incident';
+  }
+
+  @override
+  String get incDeployBefore => 'Before the incident';
+
+  @override
+  String get incDeployAfter => 'After the incident opened';
+
+  @override
+  String get incConfigChanges => 'Config changes (last 48 h)';
+
+  @override
+  String get incConfigChangesEmpty =>
+      'No config file was saved through Tiphys in the last 48 hours.';
+
+  @override
+  String incConfigSaved(String file) {
+    return '$file saved';
+  }
+
+  @override
+  String incConfigRestored(String file) {
+    return '$file restored from a backup';
+  }
+
+  @override
+  String get incActionKindRollback => 'Rollback';
+
+  @override
+  String get incActionKindCleanup => 'Disk cleanup';
+
+  @override
+  String incActionRollback(String service) {
+    return 'Roll back $service to the previous image';
+  }
+
+  @override
+  String incActionCleanup(String mount) {
+    return 'Free disk space on $mount';
+  }
+
+  @override
+  String get incRollbackTitle => 'Images';
+
+  @override
+  String get incRollbackCurrent => 'Running now';
+
+  @override
+  String get incRollbackPrevious => 'Will run instead';
+
+  @override
+  String incRollbackBuilt(String date) {
+    return 'Built $date';
+  }
+
+  @override
+  String get incWarnDbMigrations =>
+      'Database migrations are not rolled back. If the newer version changed the schema, the old image may not work with it.';
+
+  @override
+  String get incCleanTitle => 'What to clean';
+
+  @override
+  String get incCleanBuilder => 'Build cache';
+
+  @override
+  String get incCleanImages => 'Dangling images';
+
+  @override
+  String get incCleanContainers => 'Stopped containers';
+
+  @override
+  String get incCleanUserJournal => 'User journal';
+
+  @override
+  String get incCleanSystemJournal => 'System journal';
+
+  @override
+  String get incCleanBuilderHint => 'unused build cache';
+
+  @override
+  String get incCleanImagesHint => 'untagged only; rollback images stay';
+
+  @override
+  String get incCleanContainersHint => 'stopped for over 24 h';
+
+  @override
+  String get incCleanUserJournalHint => 'archives older than 7 days';
+
+  @override
+  String get incCleanNeedsRoot => 'Needs root; the agent can\'t do this';
+
+  @override
+  String get incCleanNoUserJournal => 'There is no user journal';
+
+  @override
+  String get incCleanNoDocker => 'Docker isn\'t available';
+
+  @override
+  String get incCleanUnavailable => 'Not available';
+
+  @override
+  String get incCleanNoEstimate => 'no estimate';
+
+  @override
+  String incCleanReclaim(String size) {
+    return 'frees about $size';
+  }
+
+  @override
+  String incCleanUsage(String size) {
+    return 'now $size';
+  }
+
+  @override
+  String incCleanTotal(String size) {
+    return 'Estimated total: $size';
+  }
+
+  @override
+  String get incCleanPickOne => 'Choose at least one option.';
+
+  @override
+  String errIncCleanupOption(String option) {
+    return '$option can\'t be cleaned on this host any more. Refresh the preview.';
+  }
+
+  @override
+  String get cfRestartHint =>
+      'Runs docker compose up -d --no-deps for them after writing, so the new values take effect. This can take a few minutes.';
+
+  @override
+  String get cfNothingToRestart =>
+      'No service uses these keys, so there is nothing to recreate.';
+
+  @override
+  String get cfRestartPlan => 'Commands that will run';
+
+  @override
+  String get cfRestartConfirm =>
+      'The affected services are recreated right after writing; they restart briefly.';
+
+  @override
+  String get cfRecreating =>
+      'Writing and recreating services… this can take a few minutes.';
+
+  @override
+  String get cfRecreateTitle => 'Recreated services';
+
+  @override
+  String get cfRecreateFailedCommand =>
+      'The file was saved, but docker compose failed. Restore the backup to undo the change.';
+
+  @override
+  String get cfRecreateFailedPostCheck =>
+      'The file was saved and the services were recreated, but they are not running healthy. Restore the backup to undo the change.';
+
+  @override
+  String cfRecreateSkipped(String services) {
+    return 'Skipped (no longer affected): $services';
+  }
+
+  @override
+  String get cfRestoreBackup => 'Restore backup';
+
+  @override
+  String get errCfNothingToRestart =>
+      'No service uses the changed keys, so there is nothing to recreate.';
+
+  @override
+  String errCfRestartRateLimited(String limit, String minutes) {
+    return 'Too many recreates: at most $limit per $minutes min. Save without recreating, or wait.';
+  }
+
+  @override
+  String notifRotationDueTitle(String host) {
+    return 'Secrets to rotate · $host';
+  }
+
+  @override
+  String notifRotationDueBody(String file, String keys) {
+    return '$file · $keys';
+  }
+
+  @override
+  String notifConfigRestartFailedTitle(String host) {
+    return 'Service restart failed · $host';
+  }
+
+  @override
+  String notifConfigRestartFailedBody(String file, String services) {
+    return '$file saved; failed: $services';
+  }
+
+  @override
+  String get evSecretChangedTitle => 'Secret changed outside Tiphys';
+
+  @override
+  String get evConfigSavedTitle => 'Config file saved';
+
+  @override
+  String get evConfigRestoredTitle => 'Config file restored';
 }

@@ -12,6 +12,7 @@ import 'package:intl/intl.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:unifiedpush/unifiedpush.dart';
 
+import '../../features/incidents/incident_texts.dart';
 import '../../l10n/gen/app_localizations.dart';
 import '../agent/agent_client.dart';
 import '../profile/model.dart';
@@ -86,6 +87,24 @@ const _endpointKey = 'app:pushEndpoint';
         telegramReasonText(l, s('reason')),
       ),
     'telegram.pcUnreachable' => (l.notifTgPcUnreachableTitle, l.notifTgPcUnreachableBody(s('feed'))),
+    // Incident room (PLAN.md §13.1): the other incident notifications are the alert notifications themselves.
+    'incident.resolved' => (l.notifIncidentResolvedTitle(s('host')), incidentTitle(l, s('kind'), s('target'))),
+    'incident.actionFailed' => (
+        l.notifIncidentActionFailedTitle(s('host')),
+        s('stage') == 'postCheck'
+            ? l.notifIncidentActionPostCheck(incidentActionName(l, s('action')), s('target'))
+            : l.notifIncidentActionCommand(incidentActionName(l, s('action')), s('target')),
+      ),
+    // Config files and secrets (PLAN.md §13.3): file and key names only.
+    'secret.rotationDue' => (l.notifRotationDueTitle(s('host')), l.notifRotationDueBody(s('file'), s('keys'))),
+    'config.restartFailed' => (l.notifConfigRestartFailedTitle(s('host')), l.notifConfigRestartFailedBody(s('file'), s('services'))),
+    'secret.changedExternally' => (l.evSecretChangedTitle, l.notifRotationDueBody(s('file'), s('keys'))),
+    'config.saved' => (l.evConfigSavedTitle, '${s('file')} · ${s('keys')}'),
+    'config.restored' => (l.evConfigRestoredTitle, '${s('file')} · ${s('keys')}'),
+    'uptime.down' => (l.notifUptimeDownTitle(s('monitor')), s('host')),
+    'uptime.up' => (l.notifUptimeUpTitle(s('monitor')), s('host')),
+    'docker.unhealthy' => (l.notifDockerUnhealthyTitle(s('host')), s('container')),
+    'docker.restartLoop' => (l.notifDockerRestartLoopTitle(s('host')), l.notifDockerRestartLoopBody(s('container'), n('count'))),
     _ => null,
   };
 }
@@ -175,6 +194,7 @@ bool noticeAllowed(Profile p, String key, [Map<String, dynamic> params = const {
       'grafana.alert' || 'grafana.resolved' => p.notifications.grafanaAlerts,
       'docker.died' || 'docker.oom' || 'docker.restarted' => p.notifications.serviceDown,
       'backup.stale' || 'backup.failed' || 'backup.ok' => p.notifications.backupAlerts,
+      'incident.resolved' || 'incident.actionFailed' || 'uptime.down' || 'uptime.up' || 'docker.unhealthy' || 'docker.restartLoop' => p.notifications.incidents,
       // "Long-running command" threshold: 0 = off; successful commands shorter than the threshold aren't notified,
       // a failing command is always notified (if enabled).
       'command.done' => p.notifications.longCommandSeconds > 0 && ((params['seconds'] as num?) ?? 0) >= p.notifications.longCommandSeconds,
@@ -210,7 +230,10 @@ int noticeId(String key, Map<String, dynamic> p, {String? link, String? requestI
     'service.recovered' => 'service|${s('host')}|${s('name')}',
     'grafana.alert' || 'grafana.resolved' => 'grafana|${s('name')}',
     'agent.restarted' => 'agent|${s('host')}',
-    'docker.died' || 'docker.oom' || 'docker.restarted' => 'docker|${s('host')}|${s('container')}',
+    'docker.died' || 'docker.oom' || 'docker.restarted' || 'docker.unhealthy' || 'docker.restartLoop' => 'docker|${s('host')}|${s('container')}',
+    'incident.resolved' || 'incident.actionFailed' => 'incident|${s('incidentId')}',
+    'secret.rotationDue' || 'config.restartFailed' => 'config|${s('host')}|${s('file')}',
+    'uptime.down' || 'uptime.up' => 'uptime|${s('host')}|${s('monitorId')}',
     'backup.stale' || 'backup.failed' || 'backup.ok' => 'backup|${s('host')}|${s('id')}',
     'compose.updated' || 'compose.failed' => 'compose|${s('host')}|${s('stack')}',
     'claude.scheduleFailed' => 'claude-schedule|${s('id')}',
@@ -243,12 +266,38 @@ const actionTgReject = 'telegram-reject';
 String? routeForPayload(String? payload) {
   if (payload != null && payload.startsWith('{')) {
     try {
-      return routeForLink((jsonDecode(payload) as Map)['link'] as String?);
+      final j = jsonDecode(payload) as Map;
+      final route = routeForLink(j['link'] as String?);
+      // Incident notifications also carry the agent's host name; the incident screen maps it to a host.
+      final host = j['host'];
+      // Config notifications: open the file (the host is the agent's name; the screen maps it to a host).
+      if (j['fileId'] is String && host is String && host.isNotEmpty && RegExp(r'^cf-[a-f0-9]{24}$').hasMatch(j['fileId'] as String)) {
+        return '/configfiles/file?host=${Uri.encodeQueryComponent(host)}&id=${j['fileId']}';
+      }
+      return route != null && route.startsWith('/incidents/') && host is String && host.isNotEmpty
+          ? '$route?host=${Uri.encodeQueryComponent(host)}'
+          : route;
     } catch (_) {
       return null;
     }
   }
   return routeForLink(payload);
+}
+
+/// Payload of an incident notification: the link plus the agent's host name (so the app opens the incident on the right
+/// host). null for other links.
+String? incidentPayload(String? link, Map<String, dynamic> params) {
+  final host = params['host'];
+  if (link == null || !link.startsWith('tiphys://incidents/') || host is! String || host.isEmpty) return null;
+  return jsonEncode({'link': link, 'host': host});
+}
+
+/// Payload of a config notification: the link plus the file id and the agent's host name. null for other keys.
+String? configPayload(String key, Map<String, dynamic> params, Map<String, dynamic>? data) {
+  final host = params['host'], fileId = data?['fileId'];
+  if (key != 'secret.rotationDue' && key != 'config.restartFailed') return null;
+  if (host is! String || host.isEmpty || fileId is! String) return null;
+  return jsonEncode({'link': 'tiphys://configfiles', 'host': host, 'fileId': fileId});
 }
 
 /// "Allow / Deny" in the notification: sends the decision to the Claude agent without opening the app. True on
@@ -556,6 +605,10 @@ String? routeForLink(String? link) {
   if (rest == 'monitor/grafana') return '/monitor/grafana';
   if (rest == 'terminal') return '/terminal';
   if (rest == 'telegram') return '/system/telegram';
+  if (rest == 'incidents') return '/incidents';
+  if (rest == 'configfiles') return '/configfiles';
+  final incident = RegExp(r'^incidents/([A-Za-z0-9_-]{1,64})$').firstMatch(rest);
+  if (incident != null) return '/incidents/${incident.group(1)}';
   final issue = RegExp(r'^telegram/issues/([A-Za-z0-9_-]{1,64})$').firstMatch(rest);
   if (issue != null) return '/telegram/issues/${issue.group(1)}';
   return null;
@@ -703,7 +756,7 @@ class PushService {
     final l = lookupAppLocalizations(_localeOf(profile));
     final text = noticeText(l, key, params);
     if (text == null) return;
-    final high = const {'claude.pcExpiring', 'claude.pcEnded', 'claude.waiting', 'host.offline', 'disk.full', 'service.failed', 'grafana.alert', 'agent.restarted', 'docker.died', 'docker.oom', 'backup.stale', 'backup.failed', 'claude.scheduleFailed', 'telegram.approval', 'telegram.pcUnreachable'}.contains(key) ||
+    final high = const {'claude.pcExpiring', 'claude.pcEnded', 'claude.waiting', 'host.offline', 'disk.full', 'service.failed', 'grafana.alert', 'agent.restarted', 'docker.died', 'docker.oom', 'docker.unhealthy', 'docker.restartLoop', 'uptime.down', 'incident.actionFailed', 'config.restartFailed', 'backup.stale', 'backup.failed', 'claude.scheduleFailed', 'telegram.approval', 'telegram.pcUnreachable'}.contains(key) ||
         (key == 'telegram.failed' && params['reason'] != 'agent.telegram.approvalExpired');
     // Telegram issue waiting for approval: "Send / Cancel" buttons (decision without opening the app).
     final tgDecision = key == 'telegram.approval' && data?['issueId'] != null;
@@ -725,7 +778,7 @@ class PushService {
               ? jsonEncode({'link': link, 'sessionId': data!['sessionId']})
               : tgDecision
                   ? jsonEncode({'link': link, 'issueId': data!['issueId'], 'feedId': data['feedId']})
-                  : link,
+                  : incidentPayload(link, params) ?? configPayload(key, params, data) ?? link,
       notificationDetails: NotificationDetails(
         android: AndroidNotificationDetails(
           high ? 'tiphys-urgent' : 'tiphys',

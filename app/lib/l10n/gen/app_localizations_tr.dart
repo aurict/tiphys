@@ -5365,4 +5365,1222 @@ class AppLocalizationsTr extends AppLocalizations {
   @override
   String get notifTgStateCorruptBody =>
       'Bozuk durum dosyası kenara alındı; kişiler ve bültenler yeniden eklenmeli.';
+
+  @override
+  String get incTitle => 'Olaylar';
+
+  @override
+  String get incStatusOpen => 'Açık';
+
+  @override
+  String get incStatusAck => 'Onaylandı';
+
+  @override
+  String get incStatusResolved => 'Çözüldü';
+
+  @override
+  String get incSeverityCritical => 'Kritik';
+
+  @override
+  String get incSeverityWarning => 'Uyarı';
+
+  @override
+  String get incAllHosts => 'Tüm hostlar';
+
+  @override
+  String get incAllKinds => 'Tüm türler';
+
+  @override
+  String get incKindContainer => 'Container';
+
+  @override
+  String get incKindService => 'Servis';
+
+  @override
+  String get incKindDisk => 'Disk';
+
+  @override
+  String get incKindSite => 'Site';
+
+  @override
+  String get incKindAlert => 'Alarm';
+
+  @override
+  String get incKindBackup => 'Yedek';
+
+  @override
+  String get incKindHost => 'Host';
+
+  @override
+  String get incKindOther => 'Diğer';
+
+  @override
+  String get incEmptyOpen => 'Açık olay yok';
+
+  @override
+  String get incEmptyAck => 'Onaylanmış olay yok';
+
+  @override
+  String get incEmptyResolved => 'Çözülmüş olay yok';
+
+  @override
+  String get incEmptyFiltered => 'Süzgece uyan olay yok';
+
+  @override
+  String get incNoAgents =>
+      'Olaylar, ajanında olay odası özelliği açık olan hostlardan gelir.';
+
+  @override
+  String incHostFailed(String host) {
+    return '$host olayları alınamadı';
+  }
+
+  @override
+  String incSignals(int count) {
+    return '$count sinyal';
+  }
+
+  @override
+  String incTitleDockerDied(String target) {
+    return 'Container çöktü: $target';
+  }
+
+  @override
+  String incTitleDockerOom(String target) {
+    return 'Container belleği bitti: $target';
+  }
+
+  @override
+  String incTitleUnhealthy(String target) {
+    return 'Container sağlıksız: $target';
+  }
+
+  @override
+  String incTitleRestartLoop(String target) {
+    return 'Yeniden başlama döngüsü: $target';
+  }
+
+  @override
+  String incTitleDisk(String target) {
+    return 'Disk dolu: $target';
+  }
+
+  @override
+  String incTitleService(String target) {
+    return 'Servis çöktü: $target';
+  }
+
+  @override
+  String incTitleAlert(String target) {
+    return 'Alarm: $target';
+  }
+
+  @override
+  String incTitleHost(String target) {
+    return 'Host kapalı: $target';
+  }
+
+  @override
+  String incTitleBackup(String target) {
+    return 'Yedek sorunu: $target';
+  }
+
+  @override
+  String incTitleSite(String target) {
+    return 'Site kapalı: $target';
+  }
+
+  @override
+  String incTitleOther(String kind, String target) {
+    return '$kind: $target';
+  }
+
+  @override
+  String incOpenedAt(String when) {
+    return 'Açıldı $when';
+  }
+
+  @override
+  String incResolvedAt(String when) {
+    return 'Çözüldü $when';
+  }
+
+  @override
+  String get incAck => 'Onayla';
+
+  @override
+  String get incResolve => 'Çöz';
+
+  @override
+  String get incReopen => 'Yeniden aç';
+
+  @override
+  String get incNote => 'Not';
+
+  @override
+  String get incResolveTitle => 'Olayı çöz';
+
+  @override
+  String get incNoteOptional => 'Not (isteğe bağlı)';
+
+  @override
+  String get incNoteTitle => 'Not ekle';
+
+  @override
+  String get incNoteField => 'Not';
+
+  @override
+  String get incActorAuto => 'otomatik';
+
+  @override
+  String get incActorAgent => 'ajan';
+
+  @override
+  String incActorDevice(String id) {
+    return 'cihaz $id';
+  }
+
+  @override
+  String incResolvedBy(String by) {
+    return 'Çözen: $by';
+  }
+
+  @override
+  String get incWhyTitle => 'Neden tahmini';
+
+  @override
+  String get incWhyRules => 'kurallar';
+
+  @override
+  String get incWhyEmpty =>
+      'Hiçbir kural eşleşmedi. Aşağıdaki kanıtlara bakın.';
+
+  @override
+  String get incAnalyze => 'Yapay zekâyla analiz et';
+
+  @override
+  String get incAnalyzeSoon => 'Yapay zekâ analizi yakında';
+
+  @override
+  String get incHintOom =>
+      'Bellek yetmedi: container bellek yüzünden öldürüldü ya da 137 koduyla çıktı.';
+
+  @override
+  String incHintExitCode(String code) {
+    return 'Container $code koduyla çıktı.';
+  }
+
+  @override
+  String get incHintRestartLoop =>
+      'Yeniden başlama döngüsü: container sürekli yeniden başlıyor.';
+
+  @override
+  String incHintRestartLoopCount(int count) {
+    return 'Yeniden başlama döngüsü: şimdiye kadar $count yeniden başlama.';
+  }
+
+  @override
+  String get incHintUnhealthy => 'Sağlık denetimi başarısız.';
+
+  @override
+  String incHintRecentDeploy(String image) {
+    return 'Container olaydan kısa süre önce oluşturuldu (imaj $image): yakın zamanda dağıtım olmuş olabilir.';
+  }
+
+  @override
+  String incHintDiskFull(String mount, int percent) {
+    return '$mount %$percent dolu.';
+  }
+
+  @override
+  String get incHintPortInUse =>
+      'Bir port zaten kullanımda (günlüklere bakın).';
+
+  @override
+  String get incHintPortUnreachable =>
+      'Bağlantı reddediliyor ya da zaman aşımına uğruyor (günlüklere bakın).';
+
+  @override
+  String incHintUnknown(String code) {
+    return 'İpucu: $code';
+  }
+
+  @override
+  String get incTabLogs => 'Günlükler';
+
+  @override
+  String get incTabContainer => 'Container';
+
+  @override
+  String get incTabGit => 'Git';
+
+  @override
+  String get incTabEvents => 'Olaylar';
+
+  @override
+  String get incTabSimilar => 'Benzer';
+
+  @override
+  String get incTabTimeline => 'Zaman çizelgesi';
+
+  @override
+  String get incEvMetrics => 'Metrikler';
+
+  @override
+  String get incActionsTitle => 'Önerilen eylemler';
+
+  @override
+  String get incActionsEmpty => 'Bu olay için önerilen eylem yok.';
+
+  @override
+  String incActionRestart(String target) {
+    return '$target containerını yeniden başlat';
+  }
+
+  @override
+  String incActionRecreate(String target) {
+    return '$target servisini yeniden oluştur';
+  }
+
+  @override
+  String incActionUnit(String target) {
+    return '$target birimini yeniden başlat';
+  }
+
+  @override
+  String incActionOther(String kind, String target) {
+    return '$kind: $target';
+  }
+
+  @override
+  String get incActionKindRestart => 'Container yeniden başlatma';
+
+  @override
+  String get incActionKindRecreate => 'Servis yeniden oluşturma';
+
+  @override
+  String get incActionKindUnit => 'Birim yeniden başlatma';
+
+  @override
+  String get incRiskLow => 'Düşük risk';
+
+  @override
+  String get incRiskMedium => 'Orta risk';
+
+  @override
+  String get incActionRunning => 'Çalışıyor…';
+
+  @override
+  String get incActionBusy => 'Başka bir eylem çalışıyor';
+
+  @override
+  String get incPreviewTitle => 'Eylemi gözden geçir';
+
+  @override
+  String get incPreviewSteps => 'Çalışacak komutlar';
+
+  @override
+  String incPreviewCwd(String dir) {
+    return '$dir içinde';
+  }
+
+  @override
+  String incPreviewExpiresIn(String time) {
+    return 'Geçerlilik: $time';
+  }
+
+  @override
+  String get incPreviewExpired => 'Önizlemenin süresi doldu.';
+
+  @override
+  String get incPreviewRefresh => 'Önizlemeyi yenile';
+
+  @override
+  String get incExecute => 'Çalıştır';
+
+  @override
+  String incExecuteConfirm(String action, String host) {
+    return '$host üzerinde \"$action\" çalıştırılsın mı? Olayın zaman çizelgesine kaydedilir.';
+  }
+
+  @override
+  String get incRunning => 'Çalışıyor…';
+
+  @override
+  String get incResultOk =>
+      'Tamamlandı. Yaklaşık bir dakika sonra denetim yapılır ve zaman çizelgesine eklenir.';
+
+  @override
+  String incResultFailed(String code) {
+    return 'Başarısız (çıkış kodu $code)';
+  }
+
+  @override
+  String get incLogsSearch => 'Günlüklerde ara';
+
+  @override
+  String get incLogsEmpty => 'Günlük satırı toplanmadı.';
+
+  @override
+  String get incLogsNoMatch => 'Eşleşen satır yok.';
+
+  @override
+  String get incLogsTruncated => 'Eski satırlar kesildi.';
+
+  @override
+  String incLogsCount(int shown, int total) {
+    return '$shown/$total satır';
+  }
+
+  @override
+  String get incContextPending => 'Bağlam toplanıyor…';
+
+  @override
+  String incContextFailed(String sections) {
+    return 'Toplanamadı: $sections';
+  }
+
+  @override
+  String get incInspImage => 'İmaj';
+
+  @override
+  String get incInspStatus => 'Durum';
+
+  @override
+  String get incInspCreated => 'Oluşturuldu';
+
+  @override
+  String get incInspStarted => 'Başladı';
+
+  @override
+  String get incInspFinished => 'Bitti';
+
+  @override
+  String get incInspExit => 'Çıkış kodu';
+
+  @override
+  String get incInspOom => 'Bellek yüzünden öldürüldü';
+
+  @override
+  String get incInspRestarts => 'Yeniden başlama';
+
+  @override
+  String get incInspPolicy => 'Yeniden başlama ilkesi';
+
+  @override
+  String get incInspHealth => 'Sağlık';
+
+  @override
+  String get incInspCompose => 'Compose';
+
+  @override
+  String get incYes => 'Evet';
+
+  @override
+  String get incNo => 'Hayır';
+
+  @override
+  String get incGitNone => 'Bu yığının git geçmişi yok.';
+
+  @override
+  String get incGitLog => 'Son 48 saatteki commit\'ler';
+
+  @override
+  String get incGitNoCommits => 'Son 48 saatte commit yok.';
+
+  @override
+  String get incGitStatus => 'Kaydedilmemiş değişiklikler';
+
+  @override
+  String get incGitClean => 'Çalışma ağacı temiz.';
+
+  @override
+  String get incEventsEmpty => 'Bu hostta son 2 saatte olay yok.';
+
+  @override
+  String get incSimilarEmpty => 'Son 90 günde benzer olay yok.';
+
+  @override
+  String incSimilarWorked(String action) {
+    return 'İşe yarayan: $action';
+  }
+
+  @override
+  String get incSimilarOpen => 'Hâlâ açık';
+
+  @override
+  String get incTlOpened => 'Olay açıldı';
+
+  @override
+  String incTlSignal(String title) {
+    return 'Yeni sinyal: $title';
+  }
+
+  @override
+  String incTlMerged(String target) {
+    return 'Buraya gruplandı: $target';
+  }
+
+  @override
+  String incTlRecovered(String what) {
+    return 'Düzeldi: $what';
+  }
+
+  @override
+  String get incTlAck => 'Onaylandı';
+
+  @override
+  String get incTlResolved => 'Çözüldü';
+
+  @override
+  String get incTlReopened => 'Yeniden açıldı';
+
+  @override
+  String get incTlNote => 'Not';
+
+  @override
+  String incTlContext(int lines) {
+    return 'Bağlam toplandı ($lines günlük satırı)';
+  }
+
+  @override
+  String get incTlContextFailed => 'Bağlam toplanamadı';
+
+  @override
+  String incTlAction(String action) {
+    return 'Eylem başlatıldı: $action';
+  }
+
+  @override
+  String incTlActionOk(String action) {
+    return 'Eylem tamamlandı: $action';
+  }
+
+  @override
+  String incTlActionFailed(String action, String code) {
+    return 'Eylem başarısız: $action (kod $code)';
+  }
+
+  @override
+  String incTlPostOk(String state) {
+    return 'Denetim geçti: $state';
+  }
+
+  @override
+  String incTlPostFailed(String state) {
+    return 'Denetim başarısız: $state';
+  }
+
+  @override
+  String get notifyIncidents => 'Olaylar';
+
+  @override
+  String get notifyIncidentsHint =>
+      'Çözülen olaylar, başarısız eylemler, site kesintileri';
+
+  @override
+  String get homeIncidentsTitle => 'Açık olaylar';
+
+  @override
+  String get homeIncidentsNone => 'Açık olay yok';
+
+  @override
+  String homeIncidentsCount(int count) {
+    return '$count açık olay';
+  }
+
+  @override
+  String get homeIncidentsAll => 'Tüm olaylar';
+
+  @override
+  String notifIncidentResolvedTitle(String host) {
+    return 'Olay çözüldü · $host';
+  }
+
+  @override
+  String notifIncidentActionFailedTitle(String host) {
+    return 'Eylem başarısız · $host';
+  }
+
+  @override
+  String notifIncidentActionCommand(String action, String target) {
+    return '$target: $action başarısız oldu';
+  }
+
+  @override
+  String notifIncidentActionPostCheck(String action, String target) {
+    return '$action çalıştı ama $target sonrasında sağlıklı değil';
+  }
+
+  @override
+  String notifUptimeDownTitle(String monitor) {
+    return 'Site kapalı: $monitor';
+  }
+
+  @override
+  String notifUptimeUpTitle(String monitor) {
+    return 'Site düzeldi: $monitor';
+  }
+
+  @override
+  String notifDockerUnhealthyTitle(String host) {
+    return 'Container sağlıksız · $host';
+  }
+
+  @override
+  String notifDockerRestartLoopTitle(String host) {
+    return 'Container yeniden başlama döngüsünde · $host';
+  }
+
+  @override
+  String notifDockerRestartLoopBody(String container, int count) {
+    return '$container · 10 dk içinde $count yeniden başlama';
+  }
+
+  @override
+  String get errIncNotFound => 'Olay bulunamadı; silinmiş olabilir.';
+
+  @override
+  String get errIncActionNotFound => 'Bu eylem artık önerilmiyor.';
+
+  @override
+  String errIncBadState(String status) {
+    return 'Olay \"$status\" durumundayken yapılamaz.';
+  }
+
+  @override
+  String get errIncConfirmRequired => 'Onay gerekli.';
+
+  @override
+  String get errIncActionRunning =>
+      'Bu olayın başka bir eylemi hâlâ çalışıyor.';
+
+  @override
+  String get errIncActionUnavailable =>
+      'Bu eylem artık çalıştırılamıyor (yığın bulunamıyor).';
+
+  @override
+  String get errIncRateLimited => 'Dakikada çok fazla eylem. Biraz bekleyin.';
+
+  @override
+  String get errPreviewInvalid =>
+      'Önizleme artık geçerli değil. Yenileyip yeniden onaylayın.';
+
+  @override
+  String get incScreenTitle => 'Olay';
+
+  @override
+  String get incTest => 'test';
+
+  @override
+  String get incNothing => 'Toplanan bir şey yok.';
+
+  @override
+  String get cfTitle => 'Ayarlar ve sırlar';
+
+  @override
+  String get cfNoHosts =>
+      'Ayar düzenleyicisi (configfiles özelliği) açık bir ajan yok.';
+
+  @override
+  String get cfNoFiles =>
+      '.env dosyası bulunamadı. Compose yığınlarını ~/stack altında tutun ya da configFiles.extraPaths ile yol ekleyin.';
+
+  @override
+  String get cfOtherFiles => 'Diğer dosyalar';
+
+  @override
+  String cfKeysCount(int keys, int secrets) {
+    return '$keys anahtar · $secrets sır';
+  }
+
+  @override
+  String get cfWorldReadableShort => 'herkes okuyabilir';
+
+  @override
+  String cfSkippedTitle(int count) {
+    return 'Atlanan dosyalar ($count)';
+  }
+
+  @override
+  String get cfSkipNotRegular =>
+      'Normal dosya değil (bağ, klasör ya da aygıt).';
+
+  @override
+  String get cfSkipNotOwner => 'Ajanın kullanıcısına ait değil.';
+
+  @override
+  String get cfSkipTooLarge => '256 KB\'tan büyük.';
+
+  @override
+  String get cfSkipBadName => 'Adı .env, *.env ya da .env.* değil.';
+
+  @override
+  String get cfSkipOutsideRoot =>
+      'Gerçek yolu yığın klasörünün dışına çıkıyor (sembolik bağ).';
+
+  @override
+  String get cfSkipMissing => 'Dosya yok.';
+
+  @override
+  String get cfSkipMoved => 'Dosya okunurken taşındı.';
+
+  @override
+  String get cfSkipReplaced => 'Dosya okunurken değiştirildi.';
+
+  @override
+  String get cfSkipNotText => 'Geçerli UTF-8 metin değil.';
+
+  @override
+  String get cfSkipUnreadable => 'Ajan okuyamıyor.';
+
+  @override
+  String get cfBackups => 'Yedekler';
+
+  @override
+  String get cfBackupsHint =>
+      'Ajan her yazmadan hemen önce kaydedilen son 10 sürümü tutar.';
+
+  @override
+  String get cfBackupsEmpty => 'Henüz yedek yok.';
+
+  @override
+  String get cfRestore => 'Geri yükle';
+
+  @override
+  String get cfRestored => 'Geri yüklendi. Değiştirilen sürüm de yedeklendi.';
+
+  @override
+  String cfRestoreConfirm(String file) {
+    return '$file bu yedekten geri yüklensin mi? Şimdiki sürüm önce yedeklenir.';
+  }
+
+  @override
+  String cfSaveConfirm(String file) {
+    return 'Değişiklikler $file dosyasına yazılsın mı? Önceki sürüm önce yedeklenir.';
+  }
+
+  @override
+  String get cfSaved => 'Kaydedildi. Önceki sürüm yedeklendi.';
+
+  @override
+  String get cfSaving => 'Yazılıyor…';
+
+  @override
+  String cfBackupMade(String id) {
+    return 'Yedek: $id';
+  }
+
+  @override
+  String get cfPreviewTitle => 'Değişiklikleri önizle';
+
+  @override
+  String get cfPreviewRestoreTitle => 'Geri yüklemeyi önizle';
+
+  @override
+  String get cfPreviewNoChanges => 'Hiçbir şey değişmeyecek.';
+
+  @override
+  String get cfPreviewOtherLines => 'Dosyanın diğer satırları da değişiyor.';
+
+  @override
+  String get cfAffectedTitle => 'Etkilenen servisler';
+
+  @override
+  String get cfAffectedNone => 'Bu anahtarları kullanan servis yok.';
+
+  @override
+  String get cfRestartAffected => 'Etkilenen servisleri yeniden oluştur';
+
+  @override
+  String cfLengthChange(int before, int after) {
+    return 'değişti, $before → $after karakter';
+  }
+
+  @override
+  String get cfChangeAdded => 'Yeni';
+
+  @override
+  String get cfChangeChanged => 'Değişti';
+
+  @override
+  String get cfChangeRemoved => 'Silinecek';
+
+  @override
+  String get cfChangeRenamed => 'Adı değişti';
+
+  @override
+  String get cfReload => 'Yeniden yükle';
+
+  @override
+  String get cfReloaded => 'Dosya yeniden yüklendi.';
+
+  @override
+  String cfReloadedDropped(int count) {
+    return 'Dosya yeniden yüklendi. $count hazır değişiklik artık geçerli değil ve atıldı.';
+  }
+
+  @override
+  String cfTooManyChanges(int max) {
+    return 'Her kayıtta en çok $max değişiklik olabilir.';
+  }
+
+  @override
+  String get cfNeedsLock =>
+      'Önce uygulama kilidi (PIN ya da parmak izi) ayarlayın: sır değerleri yalnız kilit açıldıktan sonra gösterilir.';
+
+  @override
+  String get cfRevealMissing => 'Bazı anahtarlar artık dosyada yok.';
+
+  @override
+  String cfRevealedNote(int seconds) {
+    return 'Gösterilen değerler $seconds sn sonra yeniden gizlenir.';
+  }
+
+  @override
+  String get cfHideAll => 'Hepsini gizle';
+
+  @override
+  String get cfCopy => 'Kopyala';
+
+  @override
+  String get cfCopied => 'Kopyalandı. 30 sn sonra panodan silinir.';
+
+  @override
+  String get cfShow => 'Göster';
+
+  @override
+  String get cfHide => 'Gizle';
+
+  @override
+  String get cfSelect => 'Seç';
+
+  @override
+  String cfSelectedCount(int selected, int max) {
+    return '$selected/$max seçili';
+  }
+
+  @override
+  String get cfShowSelected => 'Göster';
+
+  @override
+  String get cfAddKey => 'Anahtar ekle';
+
+  @override
+  String get cfEditValue => 'Değeri değiştir';
+
+  @override
+  String get cfRenameKey => 'Anahtarı yeniden adlandır';
+
+  @override
+  String get cfDeleteKey => 'Anahtarı sil';
+
+  @override
+  String get cfUndo => 'Geri al';
+
+  @override
+  String get cfDiscardNew => 'Yeni anahtarı at';
+
+  @override
+  String get cfDiscardAll => 'Hepsini at';
+
+  @override
+  String cfStagedNote(int count) {
+    return '$count değişiklik hazır. Önizlemek için Kaydet\'e dokunun.';
+  }
+
+  @override
+  String get cfStage => 'Tamam';
+
+  @override
+  String get cfKeyName => 'Anahtar adı';
+
+  @override
+  String get cfKeyInvalid => 'Yalnız harf, rakam, _ ve . ; rakamla başlayamaz.';
+
+  @override
+  String get cfKeyTaken => 'Bu anahtar dosyada zaten var.';
+
+  @override
+  String get cfValue => 'Değer';
+
+  @override
+  String get cfNewValue => 'Yeni değer';
+
+  @override
+  String get cfSecretNotPrefilled =>
+      'Şimdiki değer gösterilmez. Yazdığınız onun yerine geçer.';
+
+  @override
+  String get cfInherited => '(ortamdan alınır)';
+
+  @override
+  String get cfEmptyValue => '(boş)';
+
+  @override
+  String get cfOverridden => 'geçersiz kılındı';
+
+  @override
+  String get cfMarkedSecret => 'işaretli';
+
+  @override
+  String get cfDuplicateNote =>
+      'Aynı anahtarın sonraki satırı geçerli; bu önceki satır buradan düzenlenemez.';
+
+  @override
+  String get cfNoEntries => 'Bu dosyada giriş yok.';
+
+  @override
+  String cfAgeDays(int days) {
+    return '$days g';
+  }
+
+  @override
+  String cfAgeDue(int days) {
+    return '$days g · yenile';
+  }
+
+  @override
+  String cfWarnWorldReadable(String mode) {
+    return 'PC\'deki her kullanıcı bu dosyayı okuyabilir (kip $mode). Kısıtlayın, ör. chmod 600.';
+  }
+
+  @override
+  String get cfWarnWorldReadableShort =>
+      'Dosyayı PC\'deki her kullanıcı okuyabiliyor. chmod 600 düşünün.';
+
+  @override
+  String cfReadOnlyQuote(int line) {
+    return 'Salt okunur: $line. satırda açılan tırnak hiç kapanmıyor; compose alttaki satırları o değere katar. Önce dosyayı PC\'de düzeltin.';
+  }
+
+  @override
+  String cfIssueUnterminated(int line) {
+    return '$line. satır: kapanmamış tırnak.';
+  }
+
+  @override
+  String cfIssueTrailing(int line) {
+    return '$line. satır: tırnaklı değerden sonra metin var. Olduğu gibi korunur.';
+  }
+
+  @override
+  String cfIssueSyntax(int line) {
+    return '$line. satır okunamadı. Olduğu gibi korunur.';
+  }
+
+  @override
+  String get cfSecretSettings => 'Sır ayarları';
+
+  @override
+  String get cfMarkTitle => 'Bu anahtar şöyle ele alınsın';
+
+  @override
+  String get cfMarkAuto => 'Otomatik';
+
+  @override
+  String get cfMarkSecret => 'Sır';
+
+  @override
+  String get cfMarkPlain => 'Sır değil';
+
+  @override
+  String get cfMaxAgeTitle => 'Yenileme hatırlatıcısı';
+
+  @override
+  String get cfMaxAgeDays => 'Kaç günde yenilenmeli (gün)';
+
+  @override
+  String get cfMaxAgeInvalid => '1–3650 arası girin.';
+
+  @override
+  String get cfMaxAgeHelp =>
+      'Boş = hatırlatma yok. Yaş son değişiklikten itibaren sayılır.';
+
+  @override
+  String cfMaxAgeSuggest(int days) {
+    return '$days gün öner';
+  }
+
+  @override
+  String get cfMaxAgeClear => 'Hatırlatma yok';
+
+  @override
+  String get errCfNotFound => 'Bu dosya artık ajan tarafından sunulmuyor.';
+
+  @override
+  String errCfNotEditable(String reason) {
+    return 'Bu dosya düzenlenemez: $reason';
+  }
+
+  @override
+  String get errCfFileChanged =>
+      'Dosya bu arada taşındı ya da değiştirildi. Hiçbir şey yazılmadı. Yeniden yükleyin.';
+
+  @override
+  String get errCfConflict =>
+      'Dosya siz açtıktan sonra değişti. Hiçbir şey yazılmadı. Yeniden yükleyip değişikliklerinizi tekrar gözden geçirin.';
+
+  @override
+  String get errCfNotText => 'Dosya geçerli UTF-8 metin değil.';
+
+  @override
+  String errCfKeyNotFound(String key) {
+    return '$key anahtarı artık dosyada yok.';
+  }
+
+  @override
+  String errCfKeyExists(String key) {
+    return '$key adlı bir anahtar zaten var.';
+  }
+
+  @override
+  String errCfUnterminatedQuote(String line) {
+    return '$line. satırda kapanmamış tırnak var; düzenleme reddedildi.';
+  }
+
+  @override
+  String get errCfNoChange => 'Bu değişiklikler dosyayı olduğu gibi bırakıyor.';
+
+  @override
+  String get errCfTooLarge => 'Sonuç 256 KB\'tan büyük olurdu.';
+
+  @override
+  String get errCfConfirmRequired => 'Onay gerekli.';
+
+  @override
+  String get errCfRestartUnavailable =>
+      'Servisleri yeniden oluşturma henüz yok.';
+
+  @override
+  String get errCfRateLimited =>
+      'Dakikada çok fazla gösterme isteği. Biraz bekleyin.';
+
+  @override
+  String get errCfBackupNotFound => 'Bu yedek artık yok.';
+
+  @override
+  String get incTabDeploys => 'Dağıtımlar';
+
+  @override
+  String get incDeploysEmpty =>
+      'Bu servis için son 7 günde dağıtım kaydı yok. Ajanın izleyebilmesi için docker özelliği açık olmalı.';
+
+  @override
+  String get incDeployChanged => 'Güncellendi';
+
+  @override
+  String get incDeploySeen => 'İlk görüldü';
+
+  @override
+  String get incDeployRollbackReady => 'Geri alınabilir';
+
+  @override
+  String get incDeployNoRollback => 'Önceki imaj yok';
+
+  @override
+  String incDeployMinBefore(int count) {
+    return 'Olaydan $count dk önce';
+  }
+
+  @override
+  String get incDeployBefore => 'Olaydan önce';
+
+  @override
+  String get incDeployAfter => 'Olay açıldıktan sonra';
+
+  @override
+  String get incConfigChanges => 'Ayar değişiklikleri (son 48 sa)';
+
+  @override
+  String get incConfigChangesEmpty =>
+      'Son 48 saatte Tiphys ile kaydedilen ayar dosyası yok.';
+
+  @override
+  String incConfigSaved(String file) {
+    return '$file kaydedildi';
+  }
+
+  @override
+  String incConfigRestored(String file) {
+    return '$file yedekten geri yüklendi';
+  }
+
+  @override
+  String get incActionKindRollback => 'Geri alma';
+
+  @override
+  String get incActionKindCleanup => 'Disk temizliği';
+
+  @override
+  String incActionRollback(String service) {
+    return '$service servisini önceki imaja geri al';
+  }
+
+  @override
+  String incActionCleanup(String mount) {
+    return '$mount üzerinde yer aç';
+  }
+
+  @override
+  String get incRollbackTitle => 'İmajlar';
+
+  @override
+  String get incRollbackCurrent => 'Şimdi çalışan';
+
+  @override
+  String get incRollbackPrevious => 'Yerine çalışacak';
+
+  @override
+  String incRollbackBuilt(String date) {
+    return 'Oluşturulma $date';
+  }
+
+  @override
+  String get incWarnDbMigrations =>
+      'Veritabanı göçleri geri alınmaz. Yeni sürüm şemayı değiştirdiyse eski imaj onunla çalışmayabilir.';
+
+  @override
+  String get incCleanTitle => 'Neler temizlensin';
+
+  @override
+  String get incCleanBuilder => 'Derleme önbelleği';
+
+  @override
+  String get incCleanImages => 'Sarkan imajlar';
+
+  @override
+  String get incCleanContainers => 'Durmuş container\'lar';
+
+  @override
+  String get incCleanUserJournal => 'Kullanıcı journal\'ı';
+
+  @override
+  String get incCleanSystemJournal => 'Sistem journal\'ı';
+
+  @override
+  String get incCleanBuilderHint => 'kullanılmayan derleme önbelleği';
+
+  @override
+  String get incCleanImagesHint => 'yalnız etiketsiz; geri alma imajları kalır';
+
+  @override
+  String get incCleanContainersHint => '24 saatten uzun süredir durmuş';
+
+  @override
+  String get incCleanUserJournalHint => '7 günden eski arşivler';
+
+  @override
+  String get incCleanNeedsRoot => 'root gerekir; ajan yapamaz';
+
+  @override
+  String get incCleanNoUserJournal => 'Kullanıcı journal\'ı yok';
+
+  @override
+  String get incCleanNoDocker => 'Docker kullanılamıyor';
+
+  @override
+  String get incCleanUnavailable => 'Kullanılamıyor';
+
+  @override
+  String get incCleanNoEstimate => 'tahmin yok';
+
+  @override
+  String incCleanReclaim(String size) {
+    return 'yaklaşık $size açar';
+  }
+
+  @override
+  String incCleanUsage(String size) {
+    return 'şimdi $size';
+  }
+
+  @override
+  String incCleanTotal(String size) {
+    return 'Tahmini toplam: $size';
+  }
+
+  @override
+  String get incCleanPickOne => 'En az bir seçenek seçin.';
+
+  @override
+  String errIncCleanupOption(String option) {
+    return '$option bu hostta artık temizlenemiyor. Önizlemeyi yenileyin.';
+  }
+
+  @override
+  String get cfRestartHint =>
+      'Yazdıktan sonra yeni değerler geçerli olsun diye onlar için docker compose up -d --no-deps çalıştırılır. Birkaç dakika sürebilir.';
+
+  @override
+  String get cfNothingToRestart =>
+      'Bu anahtarları kullanan servis yok; yeniden oluşturulacak bir şey yok.';
+
+  @override
+  String get cfRestartPlan => 'Çalışacak komutlar';
+
+  @override
+  String get cfRestartConfirm =>
+      'Etkilenen servisler yazdıktan hemen sonra yeniden oluşturulur; kısa süre yeniden başlarlar.';
+
+  @override
+  String get cfRecreating =>
+      'Yazılıyor ve servisler yeniden oluşturuluyor… birkaç dakika sürebilir.';
+
+  @override
+  String get cfRecreateTitle => 'Yeniden oluşturulan servisler';
+
+  @override
+  String get cfRecreateFailedCommand =>
+      'Dosya kaydedildi ama docker compose başarısız oldu. Değişikliği geri almak için yedeğe dönün.';
+
+  @override
+  String get cfRecreateFailedPostCheck =>
+      'Dosya kaydedildi ve servisler yeniden oluşturuldu ama sağlıklı çalışmıyorlar. Değişikliği geri almak için yedeğe dönün.';
+
+  @override
+  String cfRecreateSkipped(String services) {
+    return 'Atlandı (artık etkilenmiyor): $services';
+  }
+
+  @override
+  String get cfRestoreBackup => 'Yedeğe dön';
+
+  @override
+  String get errCfNothingToRestart =>
+      'Değişen anahtarları kullanan servis yok; yeniden oluşturulacak bir şey yok.';
+
+  @override
+  String errCfRestartRateLimited(String limit, String minutes) {
+    return 'Çok fazla yeniden oluşturma: $minutes dakikada en çok $limit. Yeniden oluşturmadan kaydedin ya da bekleyin.';
+  }
+
+  @override
+  String notifRotationDueTitle(String host) {
+    return 'Yenilenmesi gereken sırlar · $host';
+  }
+
+  @override
+  String notifRotationDueBody(String file, String keys) {
+    return '$file · $keys';
+  }
+
+  @override
+  String notifConfigRestartFailedTitle(String host) {
+    return 'Servis yeniden başlatma başarısız · $host';
+  }
+
+  @override
+  String notifConfigRestartFailedBody(String file, String services) {
+    return '$file kaydedildi; başarısız: $services';
+  }
+
+  @override
+  String get evSecretChangedTitle => 'Sır Tiphys dışında değişti';
+
+  @override
+  String get evConfigSavedTitle => 'Ayar dosyası kaydedildi';
+
+  @override
+  String get evConfigRestoredTitle => 'Ayar dosyası geri yüklendi';
 }

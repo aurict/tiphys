@@ -9397,6 +9397,2004 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'A corrupt state file was moved aside; recipients and newsletters need to be added again.'**
   String get notifTgStateCorruptBody;
+
+  /// No description provided for @incTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Incidents'**
+  String get incTitle;
+
+  /// No description provided for @incStatusOpen.
+  ///
+  /// In en, this message translates to:
+  /// **'Open'**
+  String get incStatusOpen;
+
+  /// No description provided for @incStatusAck.
+  ///
+  /// In en, this message translates to:
+  /// **'Acknowledged'**
+  String get incStatusAck;
+
+  /// No description provided for @incStatusResolved.
+  ///
+  /// In en, this message translates to:
+  /// **'Resolved'**
+  String get incStatusResolved;
+
+  /// No description provided for @incSeverityCritical.
+  ///
+  /// In en, this message translates to:
+  /// **'Critical'**
+  String get incSeverityCritical;
+
+  /// No description provided for @incSeverityWarning.
+  ///
+  /// In en, this message translates to:
+  /// **'Warning'**
+  String get incSeverityWarning;
+
+  /// No description provided for @incAllHosts.
+  ///
+  /// In en, this message translates to:
+  /// **'All hosts'**
+  String get incAllHosts;
+
+  /// No description provided for @incAllKinds.
+  ///
+  /// In en, this message translates to:
+  /// **'All kinds'**
+  String get incAllKinds;
+
+  /// No description provided for @incKindContainer.
+  ///
+  /// In en, this message translates to:
+  /// **'Container'**
+  String get incKindContainer;
+
+  /// No description provided for @incKindService.
+  ///
+  /// In en, this message translates to:
+  /// **'Service'**
+  String get incKindService;
+
+  /// No description provided for @incKindDisk.
+  ///
+  /// In en, this message translates to:
+  /// **'Disk'**
+  String get incKindDisk;
+
+  /// No description provided for @incKindSite.
+  ///
+  /// In en, this message translates to:
+  /// **'Site'**
+  String get incKindSite;
+
+  /// No description provided for @incKindAlert.
+  ///
+  /// In en, this message translates to:
+  /// **'Alert'**
+  String get incKindAlert;
+
+  /// No description provided for @incKindBackup.
+  ///
+  /// In en, this message translates to:
+  /// **'Backup'**
+  String get incKindBackup;
+
+  /// No description provided for @incKindHost.
+  ///
+  /// In en, this message translates to:
+  /// **'Host'**
+  String get incKindHost;
+
+  /// No description provided for @incKindOther.
+  ///
+  /// In en, this message translates to:
+  /// **'Other'**
+  String get incKindOther;
+
+  /// No description provided for @incEmptyOpen.
+  ///
+  /// In en, this message translates to:
+  /// **'No open incidents'**
+  String get incEmptyOpen;
+
+  /// No description provided for @incEmptyAck.
+  ///
+  /// In en, this message translates to:
+  /// **'No acknowledged incidents'**
+  String get incEmptyAck;
+
+  /// No description provided for @incEmptyResolved.
+  ///
+  /// In en, this message translates to:
+  /// **'No resolved incidents'**
+  String get incEmptyResolved;
+
+  /// No description provided for @incEmptyFiltered.
+  ///
+  /// In en, this message translates to:
+  /// **'No incidents match the filter'**
+  String get incEmptyFiltered;
+
+  /// No description provided for @incNoAgents.
+  ///
+  /// In en, this message translates to:
+  /// **'Incidents come from hosts whose agent has the incidents feature turned on.'**
+  String get incNoAgents;
+
+  /// No description provided for @incHostFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not load incidents of {host}'**
+  String incHostFailed(String host);
+
+  /// No description provided for @incSignals.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 signal} other{{count} signals}}'**
+  String incSignals(int count);
+
+  /// No description provided for @incTitleDockerDied.
+  ///
+  /// In en, this message translates to:
+  /// **'Container crashed: {target}'**
+  String incTitleDockerDied(String target);
+
+  /// No description provided for @incTitleDockerOom.
+  ///
+  /// In en, this message translates to:
+  /// **'Container out of memory: {target}'**
+  String incTitleDockerOom(String target);
+
+  /// No description provided for @incTitleUnhealthy.
+  ///
+  /// In en, this message translates to:
+  /// **'Container unhealthy: {target}'**
+  String incTitleUnhealthy(String target);
+
+  /// No description provided for @incTitleRestartLoop.
+  ///
+  /// In en, this message translates to:
+  /// **'Restart loop: {target}'**
+  String incTitleRestartLoop(String target);
+
+  /// No description provided for @incTitleDisk.
+  ///
+  /// In en, this message translates to:
+  /// **'Disk full: {target}'**
+  String incTitleDisk(String target);
+
+  /// No description provided for @incTitleService.
+  ///
+  /// In en, this message translates to:
+  /// **'Service failed: {target}'**
+  String incTitleService(String target);
+
+  /// No description provided for @incTitleAlert.
+  ///
+  /// In en, this message translates to:
+  /// **'Alert: {target}'**
+  String incTitleAlert(String target);
+
+  /// No description provided for @incTitleHost.
+  ///
+  /// In en, this message translates to:
+  /// **'Host offline: {target}'**
+  String incTitleHost(String target);
+
+  /// No description provided for @incTitleBackup.
+  ///
+  /// In en, this message translates to:
+  /// **'Backup problem: {target}'**
+  String incTitleBackup(String target);
+
+  /// No description provided for @incTitleSite.
+  ///
+  /// In en, this message translates to:
+  /// **'Site down: {target}'**
+  String incTitleSite(String target);
+
+  /// No description provided for @incTitleOther.
+  ///
+  /// In en, this message translates to:
+  /// **'{kind}: {target}'**
+  String incTitleOther(String kind, String target);
+
+  /// No description provided for @incOpenedAt.
+  ///
+  /// In en, this message translates to:
+  /// **'Opened {when}'**
+  String incOpenedAt(String when);
+
+  /// No description provided for @incResolvedAt.
+  ///
+  /// In en, this message translates to:
+  /// **'Resolved {when}'**
+  String incResolvedAt(String when);
+
+  /// No description provided for @incAck.
+  ///
+  /// In en, this message translates to:
+  /// **'Acknowledge'**
+  String get incAck;
+
+  /// No description provided for @incResolve.
+  ///
+  /// In en, this message translates to:
+  /// **'Resolve'**
+  String get incResolve;
+
+  /// No description provided for @incReopen.
+  ///
+  /// In en, this message translates to:
+  /// **'Reopen'**
+  String get incReopen;
+
+  /// No description provided for @incNote.
+  ///
+  /// In en, this message translates to:
+  /// **'Note'**
+  String get incNote;
+
+  /// No description provided for @incResolveTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Resolve incident'**
+  String get incResolveTitle;
+
+  /// No description provided for @incNoteOptional.
+  ///
+  /// In en, this message translates to:
+  /// **'Note (optional)'**
+  String get incNoteOptional;
+
+  /// No description provided for @incNoteTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Add a note'**
+  String get incNoteTitle;
+
+  /// No description provided for @incNoteField.
+  ///
+  /// In en, this message translates to:
+  /// **'Note'**
+  String get incNoteField;
+
+  /// No description provided for @incActorAuto.
+  ///
+  /// In en, this message translates to:
+  /// **'automatic'**
+  String get incActorAuto;
+
+  /// No description provided for @incActorAgent.
+  ///
+  /// In en, this message translates to:
+  /// **'agent'**
+  String get incActorAgent;
+
+  /// No description provided for @incActorDevice.
+  ///
+  /// In en, this message translates to:
+  /// **'device {id}'**
+  String incActorDevice(String id);
+
+  /// No description provided for @incResolvedBy.
+  ///
+  /// In en, this message translates to:
+  /// **'Resolved by {by}'**
+  String incResolvedBy(String by);
+
+  /// No description provided for @incWhyTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Likely cause'**
+  String get incWhyTitle;
+
+  /// No description provided for @incWhyRules.
+  ///
+  /// In en, this message translates to:
+  /// **'rules'**
+  String get incWhyRules;
+
+  /// No description provided for @incWhyEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'No rule matched. See the evidence below.'**
+  String get incWhyEmpty;
+
+  /// No description provided for @incAnalyze.
+  ///
+  /// In en, this message translates to:
+  /// **'Analyze with AI'**
+  String get incAnalyze;
+
+  /// No description provided for @incAnalyzeSoon.
+  ///
+  /// In en, this message translates to:
+  /// **'AI analysis coming soon'**
+  String get incAnalyzeSoon;
+
+  /// No description provided for @incHintOom.
+  ///
+  /// In en, this message translates to:
+  /// **'Out of memory: the container was killed for memory or exited with 137.'**
+  String get incHintOom;
+
+  /// No description provided for @incHintExitCode.
+  ///
+  /// In en, this message translates to:
+  /// **'The container exited with code {code}.'**
+  String incHintExitCode(String code);
+
+  /// No description provided for @incHintRestartLoop.
+  ///
+  /// In en, this message translates to:
+  /// **'Restart loop: the container keeps restarting.'**
+  String get incHintRestartLoop;
+
+  /// No description provided for @incHintRestartLoopCount.
+  ///
+  /// In en, this message translates to:
+  /// **'Restart loop: {count, plural, =1{1 restart} other{{count} restarts}} so far.'**
+  String incHintRestartLoopCount(int count);
+
+  /// No description provided for @incHintUnhealthy.
+  ///
+  /// In en, this message translates to:
+  /// **'The health check is failing.'**
+  String get incHintUnhealthy;
+
+  /// No description provided for @incHintRecentDeploy.
+  ///
+  /// In en, this message translates to:
+  /// **'The container was created shortly before the incident (image {image}): possibly a recent deployment.'**
+  String incHintRecentDeploy(String image);
+
+  /// No description provided for @incHintDiskFull.
+  ///
+  /// In en, this message translates to:
+  /// **'{mount} is {percent}% full.'**
+  String incHintDiskFull(String mount, int percent);
+
+  /// No description provided for @incHintPortInUse.
+  ///
+  /// In en, this message translates to:
+  /// **'A port is already in use (see the logs).'**
+  String get incHintPortInUse;
+
+  /// No description provided for @incHintPortUnreachable.
+  ///
+  /// In en, this message translates to:
+  /// **'A connection is refused or times out (see the logs).'**
+  String get incHintPortUnreachable;
+
+  /// No description provided for @incHintUnknown.
+  ///
+  /// In en, this message translates to:
+  /// **'Hint: {code}'**
+  String incHintUnknown(String code);
+
+  /// No description provided for @incTabLogs.
+  ///
+  /// In en, this message translates to:
+  /// **'Logs'**
+  String get incTabLogs;
+
+  /// No description provided for @incTabContainer.
+  ///
+  /// In en, this message translates to:
+  /// **'Container'**
+  String get incTabContainer;
+
+  /// No description provided for @incTabGit.
+  ///
+  /// In en, this message translates to:
+  /// **'Git'**
+  String get incTabGit;
+
+  /// No description provided for @incTabEvents.
+  ///
+  /// In en, this message translates to:
+  /// **'Events'**
+  String get incTabEvents;
+
+  /// No description provided for @incTabSimilar.
+  ///
+  /// In en, this message translates to:
+  /// **'Similar'**
+  String get incTabSimilar;
+
+  /// No description provided for @incTabTimeline.
+  ///
+  /// In en, this message translates to:
+  /// **'Timeline'**
+  String get incTabTimeline;
+
+  /// No description provided for @incEvMetrics.
+  ///
+  /// In en, this message translates to:
+  /// **'Metrics'**
+  String get incEvMetrics;
+
+  /// No description provided for @incActionsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Suggested actions'**
+  String get incActionsTitle;
+
+  /// No description provided for @incActionsEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'No actions offered for this incident.'**
+  String get incActionsEmpty;
+
+  /// No description provided for @incActionRestart.
+  ///
+  /// In en, this message translates to:
+  /// **'Restart container {target}'**
+  String incActionRestart(String target);
+
+  /// No description provided for @incActionRecreate.
+  ///
+  /// In en, this message translates to:
+  /// **'Recreate service {target}'**
+  String incActionRecreate(String target);
+
+  /// No description provided for @incActionUnit.
+  ///
+  /// In en, this message translates to:
+  /// **'Restart unit {target}'**
+  String incActionUnit(String target);
+
+  /// No description provided for @incActionOther.
+  ///
+  /// In en, this message translates to:
+  /// **'{kind}: {target}'**
+  String incActionOther(String kind, String target);
+
+  /// No description provided for @incActionKindRestart.
+  ///
+  /// In en, this message translates to:
+  /// **'Container restart'**
+  String get incActionKindRestart;
+
+  /// No description provided for @incActionKindRecreate.
+  ///
+  /// In en, this message translates to:
+  /// **'Service recreate'**
+  String get incActionKindRecreate;
+
+  /// No description provided for @incActionKindUnit.
+  ///
+  /// In en, this message translates to:
+  /// **'Unit restart'**
+  String get incActionKindUnit;
+
+  /// No description provided for @incRiskLow.
+  ///
+  /// In en, this message translates to:
+  /// **'Low risk'**
+  String get incRiskLow;
+
+  /// No description provided for @incRiskMedium.
+  ///
+  /// In en, this message translates to:
+  /// **'Medium risk'**
+  String get incRiskMedium;
+
+  /// No description provided for @incActionRunning.
+  ///
+  /// In en, this message translates to:
+  /// **'Running…'**
+  String get incActionRunning;
+
+  /// No description provided for @incActionBusy.
+  ///
+  /// In en, this message translates to:
+  /// **'Another action is running'**
+  String get incActionBusy;
+
+  /// No description provided for @incPreviewTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Review action'**
+  String get incPreviewTitle;
+
+  /// No description provided for @incPreviewSteps.
+  ///
+  /// In en, this message translates to:
+  /// **'Commands that will run'**
+  String get incPreviewSteps;
+
+  /// No description provided for @incPreviewCwd.
+  ///
+  /// In en, this message translates to:
+  /// **'in {dir}'**
+  String incPreviewCwd(String dir);
+
+  /// No description provided for @incPreviewExpiresIn.
+  ///
+  /// In en, this message translates to:
+  /// **'Valid for {time}'**
+  String incPreviewExpiresIn(String time);
+
+  /// No description provided for @incPreviewExpired.
+  ///
+  /// In en, this message translates to:
+  /// **'This preview has expired.'**
+  String get incPreviewExpired;
+
+  /// No description provided for @incPreviewRefresh.
+  ///
+  /// In en, this message translates to:
+  /// **'Refresh preview'**
+  String get incPreviewRefresh;
+
+  /// No description provided for @incExecute.
+  ///
+  /// In en, this message translates to:
+  /// **'Run'**
+  String get incExecute;
+
+  /// No description provided for @incExecuteConfirm.
+  ///
+  /// In en, this message translates to:
+  /// **'Run \"{action}\" on {host}? It is recorded in the incident timeline.'**
+  String incExecuteConfirm(String action, String host);
+
+  /// No description provided for @incRunning.
+  ///
+  /// In en, this message translates to:
+  /// **'Running…'**
+  String get incRunning;
+
+  /// No description provided for @incResultOk.
+  ///
+  /// In en, this message translates to:
+  /// **'Done. A post-check runs in about a minute and is added to the timeline.'**
+  String get incResultOk;
+
+  /// No description provided for @incResultFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Failed (exit code {code})'**
+  String incResultFailed(String code);
+
+  /// No description provided for @incLogsSearch.
+  ///
+  /// In en, this message translates to:
+  /// **'Search the logs'**
+  String get incLogsSearch;
+
+  /// No description provided for @incLogsEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'No log lines were collected.'**
+  String get incLogsEmpty;
+
+  /// No description provided for @incLogsNoMatch.
+  ///
+  /// In en, this message translates to:
+  /// **'No line matches.'**
+  String get incLogsNoMatch;
+
+  /// No description provided for @incLogsTruncated.
+  ///
+  /// In en, this message translates to:
+  /// **'Older lines were cut.'**
+  String get incLogsTruncated;
+
+  /// No description provided for @incLogsCount.
+  ///
+  /// In en, this message translates to:
+  /// **'{shown} of {total} lines'**
+  String incLogsCount(int shown, int total);
+
+  /// No description provided for @incContextPending.
+  ///
+  /// In en, this message translates to:
+  /// **'Context is being collected…'**
+  String get incContextPending;
+
+  /// No description provided for @incContextFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not collect: {sections}'**
+  String incContextFailed(String sections);
+
+  /// No description provided for @incInspImage.
+  ///
+  /// In en, this message translates to:
+  /// **'Image'**
+  String get incInspImage;
+
+  /// No description provided for @incInspStatus.
+  ///
+  /// In en, this message translates to:
+  /// **'Status'**
+  String get incInspStatus;
+
+  /// No description provided for @incInspCreated.
+  ///
+  /// In en, this message translates to:
+  /// **'Created'**
+  String get incInspCreated;
+
+  /// No description provided for @incInspStarted.
+  ///
+  /// In en, this message translates to:
+  /// **'Started'**
+  String get incInspStarted;
+
+  /// No description provided for @incInspFinished.
+  ///
+  /// In en, this message translates to:
+  /// **'Finished'**
+  String get incInspFinished;
+
+  /// No description provided for @incInspExit.
+  ///
+  /// In en, this message translates to:
+  /// **'Exit code'**
+  String get incInspExit;
+
+  /// No description provided for @incInspOom.
+  ///
+  /// In en, this message translates to:
+  /// **'Killed for memory'**
+  String get incInspOom;
+
+  /// No description provided for @incInspRestarts.
+  ///
+  /// In en, this message translates to:
+  /// **'Restarts'**
+  String get incInspRestarts;
+
+  /// No description provided for @incInspPolicy.
+  ///
+  /// In en, this message translates to:
+  /// **'Restart policy'**
+  String get incInspPolicy;
+
+  /// No description provided for @incInspHealth.
+  ///
+  /// In en, this message translates to:
+  /// **'Health'**
+  String get incInspHealth;
+
+  /// No description provided for @incInspCompose.
+  ///
+  /// In en, this message translates to:
+  /// **'Compose'**
+  String get incInspCompose;
+
+  /// No description provided for @incYes.
+  ///
+  /// In en, this message translates to:
+  /// **'Yes'**
+  String get incYes;
+
+  /// No description provided for @incNo.
+  ///
+  /// In en, this message translates to:
+  /// **'No'**
+  String get incNo;
+
+  /// No description provided for @incGitNone.
+  ///
+  /// In en, this message translates to:
+  /// **'This stack has no git history.'**
+  String get incGitNone;
+
+  /// No description provided for @incGitLog.
+  ///
+  /// In en, this message translates to:
+  /// **'Commits in the last 48 hours'**
+  String get incGitLog;
+
+  /// No description provided for @incGitNoCommits.
+  ///
+  /// In en, this message translates to:
+  /// **'No commits in the last 48 hours.'**
+  String get incGitNoCommits;
+
+  /// No description provided for @incGitStatus.
+  ///
+  /// In en, this message translates to:
+  /// **'Uncommitted changes'**
+  String get incGitStatus;
+
+  /// No description provided for @incGitClean.
+  ///
+  /// In en, this message translates to:
+  /// **'Working tree is clean.'**
+  String get incGitClean;
+
+  /// No description provided for @incEventsEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'No events on this host in the last 2 hours.'**
+  String get incEventsEmpty;
+
+  /// No description provided for @incSimilarEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'No similar incidents in the last 90 days.'**
+  String get incSimilarEmpty;
+
+  /// No description provided for @incSimilarWorked.
+  ///
+  /// In en, this message translates to:
+  /// **'Worked: {action}'**
+  String incSimilarWorked(String action);
+
+  /// No description provided for @incSimilarOpen.
+  ///
+  /// In en, this message translates to:
+  /// **'Still open'**
+  String get incSimilarOpen;
+
+  /// No description provided for @incTlOpened.
+  ///
+  /// In en, this message translates to:
+  /// **'Incident opened'**
+  String get incTlOpened;
+
+  /// No description provided for @incTlSignal.
+  ///
+  /// In en, this message translates to:
+  /// **'New signal: {title}'**
+  String incTlSignal(String title);
+
+  /// No description provided for @incTlMerged.
+  ///
+  /// In en, this message translates to:
+  /// **'Grouped here: {target}'**
+  String incTlMerged(String target);
+
+  /// No description provided for @incTlRecovered.
+  ///
+  /// In en, this message translates to:
+  /// **'Recovered: {what}'**
+  String incTlRecovered(String what);
+
+  /// No description provided for @incTlAck.
+  ///
+  /// In en, this message translates to:
+  /// **'Acknowledged'**
+  String get incTlAck;
+
+  /// No description provided for @incTlResolved.
+  ///
+  /// In en, this message translates to:
+  /// **'Resolved'**
+  String get incTlResolved;
+
+  /// No description provided for @incTlReopened.
+  ///
+  /// In en, this message translates to:
+  /// **'Reopened'**
+  String get incTlReopened;
+
+  /// No description provided for @incTlNote.
+  ///
+  /// In en, this message translates to:
+  /// **'Note'**
+  String get incTlNote;
+
+  /// No description provided for @incTlContext.
+  ///
+  /// In en, this message translates to:
+  /// **'Context collected ({lines} log lines)'**
+  String incTlContext(int lines);
+
+  /// No description provided for @incTlContextFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Context could not be collected'**
+  String get incTlContextFailed;
+
+  /// No description provided for @incTlAction.
+  ///
+  /// In en, this message translates to:
+  /// **'Action started: {action}'**
+  String incTlAction(String action);
+
+  /// No description provided for @incTlActionOk.
+  ///
+  /// In en, this message translates to:
+  /// **'Action finished: {action}'**
+  String incTlActionOk(String action);
+
+  /// No description provided for @incTlActionFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Action failed: {action} (code {code})'**
+  String incTlActionFailed(String action, String code);
+
+  /// No description provided for @incTlPostOk.
+  ///
+  /// In en, this message translates to:
+  /// **'Post-check passed: {state}'**
+  String incTlPostOk(String state);
+
+  /// No description provided for @incTlPostFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Post-check failed: {state}'**
+  String incTlPostFailed(String state);
+
+  /// No description provided for @notifyIncidents.
+  ///
+  /// In en, this message translates to:
+  /// **'Incidents'**
+  String get notifyIncidents;
+
+  /// No description provided for @notifyIncidentsHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Resolved incidents, failed actions, site outages'**
+  String get notifyIncidentsHint;
+
+  /// No description provided for @homeIncidentsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Open incidents'**
+  String get homeIncidentsTitle;
+
+  /// No description provided for @homeIncidentsNone.
+  ///
+  /// In en, this message translates to:
+  /// **'No open incidents'**
+  String get homeIncidentsNone;
+
+  /// No description provided for @homeIncidentsCount.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 open incident} other{{count} open incidents}}'**
+  String homeIncidentsCount(int count);
+
+  /// No description provided for @homeIncidentsAll.
+  ///
+  /// In en, this message translates to:
+  /// **'All incidents'**
+  String get homeIncidentsAll;
+
+  /// No description provided for @notifIncidentResolvedTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Incident resolved · {host}'**
+  String notifIncidentResolvedTitle(String host);
+
+  /// No description provided for @notifIncidentActionFailedTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Action failed · {host}'**
+  String notifIncidentActionFailedTitle(String host);
+
+  /// No description provided for @notifIncidentActionCommand.
+  ///
+  /// In en, this message translates to:
+  /// **'{action} on {target} failed'**
+  String notifIncidentActionCommand(String action, String target);
+
+  /// No description provided for @notifIncidentActionPostCheck.
+  ///
+  /// In en, this message translates to:
+  /// **'{action} ran, but {target} is not healthy afterwards'**
+  String notifIncidentActionPostCheck(String action, String target);
+
+  /// No description provided for @notifUptimeDownTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Site down: {monitor}'**
+  String notifUptimeDownTitle(String monitor);
+
+  /// No description provided for @notifUptimeUpTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Site back up: {monitor}'**
+  String notifUptimeUpTitle(String monitor);
+
+  /// No description provided for @notifDockerUnhealthyTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Container unhealthy · {host}'**
+  String notifDockerUnhealthyTitle(String host);
+
+  /// No description provided for @notifDockerRestartLoopTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Container restart loop · {host}'**
+  String notifDockerRestartLoopTitle(String host);
+
+  /// No description provided for @notifDockerRestartLoopBody.
+  ///
+  /// In en, this message translates to:
+  /// **'{container} · {count, plural, =1{1 restart} other{{count} restarts}} in 10 min'**
+  String notifDockerRestartLoopBody(String container, int count);
+
+  /// No description provided for @errIncNotFound.
+  ///
+  /// In en, this message translates to:
+  /// **'Incident not found. It may have been deleted.'**
+  String get errIncNotFound;
+
+  /// No description provided for @errIncActionNotFound.
+  ///
+  /// In en, this message translates to:
+  /// **'That action is no longer offered.'**
+  String get errIncActionNotFound;
+
+  /// No description provided for @errIncBadState.
+  ///
+  /// In en, this message translates to:
+  /// **'Not possible while the incident is {status}.'**
+  String errIncBadState(String status);
+
+  /// No description provided for @errIncConfirmRequired.
+  ///
+  /// In en, this message translates to:
+  /// **'Confirmation is required.'**
+  String get errIncConfirmRequired;
+
+  /// No description provided for @errIncActionRunning.
+  ///
+  /// In en, this message translates to:
+  /// **'Another action of this incident is still running.'**
+  String get errIncActionRunning;
+
+  /// No description provided for @errIncActionUnavailable.
+  ///
+  /// In en, this message translates to:
+  /// **'This action can no longer be run (its stack is gone).'**
+  String get errIncActionUnavailable;
+
+  /// No description provided for @errIncRateLimited.
+  ///
+  /// In en, this message translates to:
+  /// **'Too many actions in a minute. Wait a moment.'**
+  String get errIncRateLimited;
+
+  /// No description provided for @errPreviewInvalid.
+  ///
+  /// In en, this message translates to:
+  /// **'The preview is no longer valid. Refresh it and confirm again.'**
+  String get errPreviewInvalid;
+
+  /// No description provided for @incScreenTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Incident'**
+  String get incScreenTitle;
+
+  /// No description provided for @incTest.
+  ///
+  /// In en, this message translates to:
+  /// **'test'**
+  String get incTest;
+
+  /// No description provided for @incNothing.
+  ///
+  /// In en, this message translates to:
+  /// **'Nothing collected.'**
+  String get incNothing;
+
+  /// No description provided for @cfTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Config and secrets'**
+  String get cfTitle;
+
+  /// No description provided for @cfNoHosts.
+  ///
+  /// In en, this message translates to:
+  /// **'No connected agent has the config editor turned on (feature configfiles).'**
+  String get cfNoHosts;
+
+  /// No description provided for @cfNoFiles.
+  ///
+  /// In en, this message translates to:
+  /// **'No .env files found. Keep compose stacks under ~/stack, or add paths under configFiles.extraPaths.'**
+  String get cfNoFiles;
+
+  /// No description provided for @cfOtherFiles.
+  ///
+  /// In en, this message translates to:
+  /// **'Other files'**
+  String get cfOtherFiles;
+
+  /// No description provided for @cfKeysCount.
+  ///
+  /// In en, this message translates to:
+  /// **'{keys, plural, =1{1 key} other{{keys} keys}} · {secrets, plural, =1{1 secret} other{{secrets} secrets}}'**
+  String cfKeysCount(int keys, int secrets);
+
+  /// No description provided for @cfWorldReadableShort.
+  ///
+  /// In en, this message translates to:
+  /// **'world-readable'**
+  String get cfWorldReadableShort;
+
+  /// No description provided for @cfSkippedTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 skipped file} other{{count} skipped files}}'**
+  String cfSkippedTitle(int count);
+
+  /// No description provided for @cfSkipNotRegular.
+  ///
+  /// In en, this message translates to:
+  /// **'Not a regular file (a link, folder or device).'**
+  String get cfSkipNotRegular;
+
+  /// No description provided for @cfSkipNotOwner.
+  ///
+  /// In en, this message translates to:
+  /// **'Owned by another user than the agent.'**
+  String get cfSkipNotOwner;
+
+  /// No description provided for @cfSkipTooLarge.
+  ///
+  /// In en, this message translates to:
+  /// **'Larger than 256 KB.'**
+  String get cfSkipTooLarge;
+
+  /// No description provided for @cfSkipBadName.
+  ///
+  /// In en, this message translates to:
+  /// **'Name isn\'t .env, *.env or .env.*.'**
+  String get cfSkipBadName;
+
+  /// No description provided for @cfSkipOutsideRoot.
+  ///
+  /// In en, this message translates to:
+  /// **'Its real path leaves the stack folder (symbolic link).'**
+  String get cfSkipOutsideRoot;
+
+  /// No description provided for @cfSkipMissing.
+  ///
+  /// In en, this message translates to:
+  /// **'The file doesn\'t exist.'**
+  String get cfSkipMissing;
+
+  /// No description provided for @cfSkipMoved.
+  ///
+  /// In en, this message translates to:
+  /// **'The file moved while it was being read.'**
+  String get cfSkipMoved;
+
+  /// No description provided for @cfSkipReplaced.
+  ///
+  /// In en, this message translates to:
+  /// **'The file was replaced while it was being read.'**
+  String get cfSkipReplaced;
+
+  /// No description provided for @cfSkipNotText.
+  ///
+  /// In en, this message translates to:
+  /// **'Not valid UTF-8 text.'**
+  String get cfSkipNotText;
+
+  /// No description provided for @cfSkipUnreadable.
+  ///
+  /// In en, this message translates to:
+  /// **'The agent can\'t read it.'**
+  String get cfSkipUnreadable;
+
+  /// No description provided for @cfBackups.
+  ///
+  /// In en, this message translates to:
+  /// **'Backups'**
+  String get cfBackups;
+
+  /// No description provided for @cfBackupsHint.
+  ///
+  /// In en, this message translates to:
+  /// **'The agent keeps the last 10 versions, saved right before each write.'**
+  String get cfBackupsHint;
+
+  /// No description provided for @cfBackupsEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'No backups yet.'**
+  String get cfBackupsEmpty;
+
+  /// No description provided for @cfRestore.
+  ///
+  /// In en, this message translates to:
+  /// **'Restore'**
+  String get cfRestore;
+
+  /// No description provided for @cfRestored.
+  ///
+  /// In en, this message translates to:
+  /// **'Restored. The version it replaced was backed up too.'**
+  String get cfRestored;
+
+  /// No description provided for @cfRestoreConfirm.
+  ///
+  /// In en, this message translates to:
+  /// **'Restore {file} from this backup? The current version is backed up first.'**
+  String cfRestoreConfirm(String file);
+
+  /// No description provided for @cfSaveConfirm.
+  ///
+  /// In en, this message translates to:
+  /// **'Write the changes to {file}? The previous version is backed up first.'**
+  String cfSaveConfirm(String file);
+
+  /// No description provided for @cfSaved.
+  ///
+  /// In en, this message translates to:
+  /// **'Saved. The previous version was backed up.'**
+  String get cfSaved;
+
+  /// No description provided for @cfSaving.
+  ///
+  /// In en, this message translates to:
+  /// **'Writing…'**
+  String get cfSaving;
+
+  /// No description provided for @cfBackupMade.
+  ///
+  /// In en, this message translates to:
+  /// **'Backup: {id}'**
+  String cfBackupMade(String id);
+
+  /// No description provided for @cfPreviewTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Review changes'**
+  String get cfPreviewTitle;
+
+  /// No description provided for @cfPreviewRestoreTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Review restore'**
+  String get cfPreviewRestoreTitle;
+
+  /// No description provided for @cfPreviewNoChanges.
+  ///
+  /// In en, this message translates to:
+  /// **'Nothing would change.'**
+  String get cfPreviewNoChanges;
+
+  /// No description provided for @cfPreviewOtherLines.
+  ///
+  /// In en, this message translates to:
+  /// **'Other lines of the file change too.'**
+  String get cfPreviewOtherLines;
+
+  /// No description provided for @cfAffectedTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Affected services'**
+  String get cfAffectedTitle;
+
+  /// No description provided for @cfAffectedNone.
+  ///
+  /// In en, this message translates to:
+  /// **'No service uses these keys.'**
+  String get cfAffectedNone;
+
+  /// No description provided for @cfRestartAffected.
+  ///
+  /// In en, this message translates to:
+  /// **'Recreate affected services'**
+  String get cfRestartAffected;
+
+  /// No description provided for @cfLengthChange.
+  ///
+  /// In en, this message translates to:
+  /// **'changed, {before} → {after} characters'**
+  String cfLengthChange(int before, int after);
+
+  /// No description provided for @cfChangeAdded.
+  ///
+  /// In en, this message translates to:
+  /// **'New'**
+  String get cfChangeAdded;
+
+  /// No description provided for @cfChangeChanged.
+  ///
+  /// In en, this message translates to:
+  /// **'Changed'**
+  String get cfChangeChanged;
+
+  /// No description provided for @cfChangeRemoved.
+  ///
+  /// In en, this message translates to:
+  /// **'To be removed'**
+  String get cfChangeRemoved;
+
+  /// No description provided for @cfChangeRenamed.
+  ///
+  /// In en, this message translates to:
+  /// **'Renamed'**
+  String get cfChangeRenamed;
+
+  /// No description provided for @cfReload.
+  ///
+  /// In en, this message translates to:
+  /// **'Reload'**
+  String get cfReload;
+
+  /// No description provided for @cfReloaded.
+  ///
+  /// In en, this message translates to:
+  /// **'File reloaded.'**
+  String get cfReloaded;
+
+  /// No description provided for @cfReloadedDropped.
+  ///
+  /// In en, this message translates to:
+  /// **'File reloaded. {count, plural, =1{1 staged change no longer applies and was dropped.} other{{count} staged changes no longer apply and were dropped.}}'**
+  String cfReloadedDropped(int count);
+
+  /// No description provided for @cfTooManyChanges.
+  ///
+  /// In en, this message translates to:
+  /// **'At most {max} changes per save.'**
+  String cfTooManyChanges(int max);
+
+  /// No description provided for @cfNeedsLock.
+  ///
+  /// In en, this message translates to:
+  /// **'Set an app lock (PIN or fingerprint) first: secret values are only shown after unlocking.'**
+  String get cfNeedsLock;
+
+  /// No description provided for @cfRevealMissing.
+  ///
+  /// In en, this message translates to:
+  /// **'Some keys are no longer in the file.'**
+  String get cfRevealMissing;
+
+  /// No description provided for @cfRevealedNote.
+  ///
+  /// In en, this message translates to:
+  /// **'Shown values are hidden again after {seconds} s.'**
+  String cfRevealedNote(int seconds);
+
+  /// No description provided for @cfHideAll.
+  ///
+  /// In en, this message translates to:
+  /// **'Hide all'**
+  String get cfHideAll;
+
+  /// No description provided for @cfCopy.
+  ///
+  /// In en, this message translates to:
+  /// **'Copy'**
+  String get cfCopy;
+
+  /// No description provided for @cfCopied.
+  ///
+  /// In en, this message translates to:
+  /// **'Copied. It is cleared from the clipboard after 30 s.'**
+  String get cfCopied;
+
+  /// No description provided for @cfShow.
+  ///
+  /// In en, this message translates to:
+  /// **'Show'**
+  String get cfShow;
+
+  /// No description provided for @cfHide.
+  ///
+  /// In en, this message translates to:
+  /// **'Hide'**
+  String get cfHide;
+
+  /// No description provided for @cfSelect.
+  ///
+  /// In en, this message translates to:
+  /// **'Select'**
+  String get cfSelect;
+
+  /// No description provided for @cfSelectedCount.
+  ///
+  /// In en, this message translates to:
+  /// **'{selected} of {max} selected'**
+  String cfSelectedCount(int selected, int max);
+
+  /// No description provided for @cfShowSelected.
+  ///
+  /// In en, this message translates to:
+  /// **'Show'**
+  String get cfShowSelected;
+
+  /// No description provided for @cfAddKey.
+  ///
+  /// In en, this message translates to:
+  /// **'Add key'**
+  String get cfAddKey;
+
+  /// No description provided for @cfEditValue.
+  ///
+  /// In en, this message translates to:
+  /// **'Change value'**
+  String get cfEditValue;
+
+  /// No description provided for @cfRenameKey.
+  ///
+  /// In en, this message translates to:
+  /// **'Rename key'**
+  String get cfRenameKey;
+
+  /// No description provided for @cfDeleteKey.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete key'**
+  String get cfDeleteKey;
+
+  /// No description provided for @cfUndo.
+  ///
+  /// In en, this message translates to:
+  /// **'Undo'**
+  String get cfUndo;
+
+  /// No description provided for @cfDiscardNew.
+  ///
+  /// In en, this message translates to:
+  /// **'Discard new key'**
+  String get cfDiscardNew;
+
+  /// No description provided for @cfDiscardAll.
+  ///
+  /// In en, this message translates to:
+  /// **'Discard all'**
+  String get cfDiscardAll;
+
+  /// No description provided for @cfStagedNote.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 change staged} other{{count} changes staged}}. Tap Save to review.'**
+  String cfStagedNote(int count);
+
+  /// No description provided for @cfStage.
+  ///
+  /// In en, this message translates to:
+  /// **'Done'**
+  String get cfStage;
+
+  /// No description provided for @cfKeyName.
+  ///
+  /// In en, this message translates to:
+  /// **'Key name'**
+  String get cfKeyName;
+
+  /// No description provided for @cfKeyInvalid.
+  ///
+  /// In en, this message translates to:
+  /// **'Letters, digits, _ and . only; it can\'t start with a digit.'**
+  String get cfKeyInvalid;
+
+  /// No description provided for @cfKeyTaken.
+  ///
+  /// In en, this message translates to:
+  /// **'This key already exists in the file.'**
+  String get cfKeyTaken;
+
+  /// No description provided for @cfValue.
+  ///
+  /// In en, this message translates to:
+  /// **'Value'**
+  String get cfValue;
+
+  /// No description provided for @cfNewValue.
+  ///
+  /// In en, this message translates to:
+  /// **'New value'**
+  String get cfNewValue;
+
+  /// No description provided for @cfSecretNotPrefilled.
+  ///
+  /// In en, this message translates to:
+  /// **'The current value isn\'t shown. What you type replaces it.'**
+  String get cfSecretNotPrefilled;
+
+  /// No description provided for @cfInherited.
+  ///
+  /// In en, this message translates to:
+  /// **'(from the environment)'**
+  String get cfInherited;
+
+  /// No description provided for @cfEmptyValue.
+  ///
+  /// In en, this message translates to:
+  /// **'(empty)'**
+  String get cfEmptyValue;
+
+  /// No description provided for @cfOverridden.
+  ///
+  /// In en, this message translates to:
+  /// **'overridden'**
+  String get cfOverridden;
+
+  /// No description provided for @cfMarkedSecret.
+  ///
+  /// In en, this message translates to:
+  /// **'marked'**
+  String get cfMarkedSecret;
+
+  /// No description provided for @cfDuplicateNote.
+  ///
+  /// In en, this message translates to:
+  /// **'A later line with the same key wins; this earlier line can\'t be edited here.'**
+  String get cfDuplicateNote;
+
+  /// No description provided for @cfNoEntries.
+  ///
+  /// In en, this message translates to:
+  /// **'This file has no entries.'**
+  String get cfNoEntries;
+
+  /// No description provided for @cfAgeDays.
+  ///
+  /// In en, this message translates to:
+  /// **'{days} d'**
+  String cfAgeDays(int days);
+
+  /// No description provided for @cfAgeDue.
+  ///
+  /// In en, this message translates to:
+  /// **'{days} d · rotate'**
+  String cfAgeDue(int days);
+
+  /// No description provided for @cfWarnWorldReadable.
+  ///
+  /// In en, this message translates to:
+  /// **'Every user on the PC can read this file (mode {mode}). Restrict it, e.g. chmod 600.'**
+  String cfWarnWorldReadable(String mode);
+
+  /// No description provided for @cfWarnWorldReadableShort.
+  ///
+  /// In en, this message translates to:
+  /// **'The file is readable by every user on the PC. Consider chmod 600.'**
+  String get cfWarnWorldReadableShort;
+
+  /// No description provided for @cfReadOnlyQuote.
+  ///
+  /// In en, this message translates to:
+  /// **'Read-only: the quote opened on line {line} is never closed, and compose would read the lines below into that value. Fix the file on the PC first.'**
+  String cfReadOnlyQuote(int line);
+
+  /// No description provided for @cfIssueUnterminated.
+  ///
+  /// In en, this message translates to:
+  /// **'Line {line}: unterminated quote.'**
+  String cfIssueUnterminated(int line);
+
+  /// No description provided for @cfIssueTrailing.
+  ///
+  /// In en, this message translates to:
+  /// **'Line {line}: text after a quoted value. It is kept as it is.'**
+  String cfIssueTrailing(int line);
+
+  /// No description provided for @cfIssueSyntax.
+  ///
+  /// In en, this message translates to:
+  /// **'Line {line} couldn\'t be read. It is kept as it is.'**
+  String cfIssueSyntax(int line);
+
+  /// No description provided for @cfSecretSettings.
+  ///
+  /// In en, this message translates to:
+  /// **'Secret settings'**
+  String get cfSecretSettings;
+
+  /// No description provided for @cfMarkTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Treat this key as'**
+  String get cfMarkTitle;
+
+  /// No description provided for @cfMarkAuto.
+  ///
+  /// In en, this message translates to:
+  /// **'Automatic'**
+  String get cfMarkAuto;
+
+  /// No description provided for @cfMarkSecret.
+  ///
+  /// In en, this message translates to:
+  /// **'Secret'**
+  String get cfMarkSecret;
+
+  /// No description provided for @cfMarkPlain.
+  ///
+  /// In en, this message translates to:
+  /// **'Not secret'**
+  String get cfMarkPlain;
+
+  /// No description provided for @cfMaxAgeTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Rotation reminder'**
+  String get cfMaxAgeTitle;
+
+  /// No description provided for @cfMaxAgeDays.
+  ///
+  /// In en, this message translates to:
+  /// **'Rotate after (days)'**
+  String get cfMaxAgeDays;
+
+  /// No description provided for @cfMaxAgeInvalid.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter 1 to 3650.'**
+  String get cfMaxAgeInvalid;
+
+  /// No description provided for @cfMaxAgeHelp.
+  ///
+  /// In en, this message translates to:
+  /// **'Empty = no reminder. The age counts from the last change.'**
+  String get cfMaxAgeHelp;
+
+  /// No description provided for @cfMaxAgeSuggest.
+  ///
+  /// In en, this message translates to:
+  /// **'Suggest {days} days'**
+  String cfMaxAgeSuggest(int days);
+
+  /// No description provided for @cfMaxAgeClear.
+  ///
+  /// In en, this message translates to:
+  /// **'No reminder'**
+  String get cfMaxAgeClear;
+
+  /// No description provided for @errCfNotFound.
+  ///
+  /// In en, this message translates to:
+  /// **'That file is no longer offered by the agent.'**
+  String get errCfNotFound;
+
+  /// No description provided for @errCfNotEditable.
+  ///
+  /// In en, this message translates to:
+  /// **'This file can\'t be edited: {reason}'**
+  String errCfNotEditable(String reason);
+
+  /// No description provided for @errCfFileChanged.
+  ///
+  /// In en, this message translates to:
+  /// **'The file moved or was replaced meanwhile. Nothing was written. Reload it.'**
+  String get errCfFileChanged;
+
+  /// No description provided for @errCfConflict.
+  ///
+  /// In en, this message translates to:
+  /// **'The file changed since you opened it. Nothing was written. Reload it and check your changes again.'**
+  String get errCfConflict;
+
+  /// No description provided for @errCfNotText.
+  ///
+  /// In en, this message translates to:
+  /// **'The file isn\'t valid UTF-8 text.'**
+  String get errCfNotText;
+
+  /// No description provided for @errCfKeyNotFound.
+  ///
+  /// In en, this message translates to:
+  /// **'Key {key} is no longer in the file.'**
+  String errCfKeyNotFound(String key);
+
+  /// No description provided for @errCfKeyExists.
+  ///
+  /// In en, this message translates to:
+  /// **'A key named {key} already exists.'**
+  String errCfKeyExists(String key);
+
+  /// No description provided for @errCfUnterminatedQuote.
+  ///
+  /// In en, this message translates to:
+  /// **'Line {line} has an unterminated quote; editing is refused.'**
+  String errCfUnterminatedQuote(String line);
+
+  /// No description provided for @errCfNoChange.
+  ///
+  /// In en, this message translates to:
+  /// **'These changes leave the file as it is.'**
+  String get errCfNoChange;
+
+  /// No description provided for @errCfTooLarge.
+  ///
+  /// In en, this message translates to:
+  /// **'The result would be larger than 256 KB.'**
+  String get errCfTooLarge;
+
+  /// No description provided for @errCfConfirmRequired.
+  ///
+  /// In en, this message translates to:
+  /// **'Confirmation is required.'**
+  String get errCfConfirmRequired;
+
+  /// No description provided for @errCfRestartUnavailable.
+  ///
+  /// In en, this message translates to:
+  /// **'Recreating services isn\'t available yet.'**
+  String get errCfRestartUnavailable;
+
+  /// No description provided for @errCfRateLimited.
+  ///
+  /// In en, this message translates to:
+  /// **'Too many reveals in a minute. Wait a moment.'**
+  String get errCfRateLimited;
+
+  /// No description provided for @errCfBackupNotFound.
+  ///
+  /// In en, this message translates to:
+  /// **'That backup no longer exists.'**
+  String get errCfBackupNotFound;
+
+  /// No description provided for @incTabDeploys.
+  ///
+  /// In en, this message translates to:
+  /// **'Deploys'**
+  String get incTabDeploys;
+
+  /// No description provided for @incDeploysEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'No deploys recorded for this service in the last 7 days. The agent needs the docker feature to track them.'**
+  String get incDeploysEmpty;
+
+  /// No description provided for @incDeployChanged.
+  ///
+  /// In en, this message translates to:
+  /// **'Updated'**
+  String get incDeployChanged;
+
+  /// No description provided for @incDeploySeen.
+  ///
+  /// In en, this message translates to:
+  /// **'First seen'**
+  String get incDeploySeen;
+
+  /// No description provided for @incDeployRollbackReady.
+  ///
+  /// In en, this message translates to:
+  /// **'Rollback ready'**
+  String get incDeployRollbackReady;
+
+  /// No description provided for @incDeployNoRollback.
+  ///
+  /// In en, this message translates to:
+  /// **'No previous image'**
+  String get incDeployNoRollback;
+
+  /// No description provided for @incDeployMinBefore.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} min before the incident'**
+  String incDeployMinBefore(int count);
+
+  /// No description provided for @incDeployBefore.
+  ///
+  /// In en, this message translates to:
+  /// **'Before the incident'**
+  String get incDeployBefore;
+
+  /// No description provided for @incDeployAfter.
+  ///
+  /// In en, this message translates to:
+  /// **'After the incident opened'**
+  String get incDeployAfter;
+
+  /// No description provided for @incConfigChanges.
+  ///
+  /// In en, this message translates to:
+  /// **'Config changes (last 48 h)'**
+  String get incConfigChanges;
+
+  /// No description provided for @incConfigChangesEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'No config file was saved through Tiphys in the last 48 hours.'**
+  String get incConfigChangesEmpty;
+
+  /// No description provided for @incConfigSaved.
+  ///
+  /// In en, this message translates to:
+  /// **'{file} saved'**
+  String incConfigSaved(String file);
+
+  /// No description provided for @incConfigRestored.
+  ///
+  /// In en, this message translates to:
+  /// **'{file} restored from a backup'**
+  String incConfigRestored(String file);
+
+  /// No description provided for @incActionKindRollback.
+  ///
+  /// In en, this message translates to:
+  /// **'Rollback'**
+  String get incActionKindRollback;
+
+  /// No description provided for @incActionKindCleanup.
+  ///
+  /// In en, this message translates to:
+  /// **'Disk cleanup'**
+  String get incActionKindCleanup;
+
+  /// No description provided for @incActionRollback.
+  ///
+  /// In en, this message translates to:
+  /// **'Roll back {service} to the previous image'**
+  String incActionRollback(String service);
+
+  /// No description provided for @incActionCleanup.
+  ///
+  /// In en, this message translates to:
+  /// **'Free disk space on {mount}'**
+  String incActionCleanup(String mount);
+
+  /// No description provided for @incRollbackTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Images'**
+  String get incRollbackTitle;
+
+  /// No description provided for @incRollbackCurrent.
+  ///
+  /// In en, this message translates to:
+  /// **'Running now'**
+  String get incRollbackCurrent;
+
+  /// No description provided for @incRollbackPrevious.
+  ///
+  /// In en, this message translates to:
+  /// **'Will run instead'**
+  String get incRollbackPrevious;
+
+  /// No description provided for @incRollbackBuilt.
+  ///
+  /// In en, this message translates to:
+  /// **'Built {date}'**
+  String incRollbackBuilt(String date);
+
+  /// No description provided for @incWarnDbMigrations.
+  ///
+  /// In en, this message translates to:
+  /// **'Database migrations are not rolled back. If the newer version changed the schema, the old image may not work with it.'**
+  String get incWarnDbMigrations;
+
+  /// No description provided for @incCleanTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'What to clean'**
+  String get incCleanTitle;
+
+  /// No description provided for @incCleanBuilder.
+  ///
+  /// In en, this message translates to:
+  /// **'Build cache'**
+  String get incCleanBuilder;
+
+  /// No description provided for @incCleanImages.
+  ///
+  /// In en, this message translates to:
+  /// **'Dangling images'**
+  String get incCleanImages;
+
+  /// No description provided for @incCleanContainers.
+  ///
+  /// In en, this message translates to:
+  /// **'Stopped containers'**
+  String get incCleanContainers;
+
+  /// No description provided for @incCleanUserJournal.
+  ///
+  /// In en, this message translates to:
+  /// **'User journal'**
+  String get incCleanUserJournal;
+
+  /// No description provided for @incCleanSystemJournal.
+  ///
+  /// In en, this message translates to:
+  /// **'System journal'**
+  String get incCleanSystemJournal;
+
+  /// No description provided for @incCleanBuilderHint.
+  ///
+  /// In en, this message translates to:
+  /// **'unused build cache'**
+  String get incCleanBuilderHint;
+
+  /// No description provided for @incCleanImagesHint.
+  ///
+  /// In en, this message translates to:
+  /// **'untagged only; rollback images stay'**
+  String get incCleanImagesHint;
+
+  /// No description provided for @incCleanContainersHint.
+  ///
+  /// In en, this message translates to:
+  /// **'stopped for over 24 h'**
+  String get incCleanContainersHint;
+
+  /// No description provided for @incCleanUserJournalHint.
+  ///
+  /// In en, this message translates to:
+  /// **'archives older than 7 days'**
+  String get incCleanUserJournalHint;
+
+  /// No description provided for @incCleanNeedsRoot.
+  ///
+  /// In en, this message translates to:
+  /// **'Needs root; the agent can\'t do this'**
+  String get incCleanNeedsRoot;
+
+  /// No description provided for @incCleanNoUserJournal.
+  ///
+  /// In en, this message translates to:
+  /// **'There is no user journal'**
+  String get incCleanNoUserJournal;
+
+  /// No description provided for @incCleanNoDocker.
+  ///
+  /// In en, this message translates to:
+  /// **'Docker isn\'t available'**
+  String get incCleanNoDocker;
+
+  /// No description provided for @incCleanUnavailable.
+  ///
+  /// In en, this message translates to:
+  /// **'Not available'**
+  String get incCleanUnavailable;
+
+  /// No description provided for @incCleanNoEstimate.
+  ///
+  /// In en, this message translates to:
+  /// **'no estimate'**
+  String get incCleanNoEstimate;
+
+  /// No description provided for @incCleanReclaim.
+  ///
+  /// In en, this message translates to:
+  /// **'frees about {size}'**
+  String incCleanReclaim(String size);
+
+  /// No description provided for @incCleanUsage.
+  ///
+  /// In en, this message translates to:
+  /// **'now {size}'**
+  String incCleanUsage(String size);
+
+  /// No description provided for @incCleanTotal.
+  ///
+  /// In en, this message translates to:
+  /// **'Estimated total: {size}'**
+  String incCleanTotal(String size);
+
+  /// No description provided for @incCleanPickOne.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose at least one option.'**
+  String get incCleanPickOne;
+
+  /// No description provided for @errIncCleanupOption.
+  ///
+  /// In en, this message translates to:
+  /// **'{option} can\'t be cleaned on this host any more. Refresh the preview.'**
+  String errIncCleanupOption(String option);
+
+  /// No description provided for @cfRestartHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Runs docker compose up -d --no-deps for them after writing, so the new values take effect. This can take a few minutes.'**
+  String get cfRestartHint;
+
+  /// No description provided for @cfNothingToRestart.
+  ///
+  /// In en, this message translates to:
+  /// **'No service uses these keys, so there is nothing to recreate.'**
+  String get cfNothingToRestart;
+
+  /// No description provided for @cfRestartPlan.
+  ///
+  /// In en, this message translates to:
+  /// **'Commands that will run'**
+  String get cfRestartPlan;
+
+  /// No description provided for @cfRestartConfirm.
+  ///
+  /// In en, this message translates to:
+  /// **'The affected services are recreated right after writing; they restart briefly.'**
+  String get cfRestartConfirm;
+
+  /// No description provided for @cfRecreating.
+  ///
+  /// In en, this message translates to:
+  /// **'Writing and recreating services… this can take a few minutes.'**
+  String get cfRecreating;
+
+  /// No description provided for @cfRecreateTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Recreated services'**
+  String get cfRecreateTitle;
+
+  /// No description provided for @cfRecreateFailedCommand.
+  ///
+  /// In en, this message translates to:
+  /// **'The file was saved, but docker compose failed. Restore the backup to undo the change.'**
+  String get cfRecreateFailedCommand;
+
+  /// No description provided for @cfRecreateFailedPostCheck.
+  ///
+  /// In en, this message translates to:
+  /// **'The file was saved and the services were recreated, but they are not running healthy. Restore the backup to undo the change.'**
+  String get cfRecreateFailedPostCheck;
+
+  /// No description provided for @cfRecreateSkipped.
+  ///
+  /// In en, this message translates to:
+  /// **'Skipped (no longer affected): {services}'**
+  String cfRecreateSkipped(String services);
+
+  /// No description provided for @cfRestoreBackup.
+  ///
+  /// In en, this message translates to:
+  /// **'Restore backup'**
+  String get cfRestoreBackup;
+
+  /// No description provided for @errCfNothingToRestart.
+  ///
+  /// In en, this message translates to:
+  /// **'No service uses the changed keys, so there is nothing to recreate.'**
+  String get errCfNothingToRestart;
+
+  /// No description provided for @errCfRestartRateLimited.
+  ///
+  /// In en, this message translates to:
+  /// **'Too many recreates: at most {limit} per {minutes} min. Save without recreating, or wait.'**
+  String errCfRestartRateLimited(String limit, String minutes);
+
+  /// No description provided for @notifRotationDueTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Secrets to rotate · {host}'**
+  String notifRotationDueTitle(String host);
+
+  /// No description provided for @notifRotationDueBody.
+  ///
+  /// In en, this message translates to:
+  /// **'{file} · {keys}'**
+  String notifRotationDueBody(String file, String keys);
+
+  /// No description provided for @notifConfigRestartFailedTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Service restart failed · {host}'**
+  String notifConfigRestartFailedTitle(String host);
+
+  /// No description provided for @notifConfigRestartFailedBody.
+  ///
+  /// In en, this message translates to:
+  /// **'{file} saved; failed: {services}'**
+  String notifConfigRestartFailedBody(String file, String services);
+
+  /// No description provided for @evSecretChangedTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Secret changed outside Tiphys'**
+  String get evSecretChangedTitle;
+
+  /// No description provided for @evConfigSavedTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Config file saved'**
+  String get evConfigSavedTitle;
+
+  /// No description provided for @evConfigRestoredTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Config file restored'**
+  String get evConfigRestoredTitle;
 }
 
 class _AppLocalizationsDelegate

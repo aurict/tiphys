@@ -3335,5 +3335,1027 @@
   "tgWindowWeek": "last 7 days",
   "tgFeedEnabled": "Enabled",
   "notifTgStateCorruptTitle": "Telegram state was reset",
-  "notifTgStateCorruptBody": "A corrupt state file was moved aside; recipients and newsletters need to be added again."
+  "notifTgStateCorruptBody": "A corrupt state file was moved aside; recipients and newsletters need to be added again.",
+  "incTitle": "Incidents",
+  "incStatusOpen": "Open",
+  "incStatusAck": "Acknowledged",
+  "incStatusResolved": "Resolved",
+  "incSeverityCritical": "Critical",
+  "incSeverityWarning": "Warning",
+  "incAllHosts": "All hosts",
+  "incAllKinds": "All kinds",
+  "incKindContainer": "Container",
+  "incKindService": "Service",
+  "incKindDisk": "Disk",
+  "incKindSite": "Site",
+  "incKindAlert": "Alert",
+  "incKindBackup": "Backup",
+  "incKindHost": "Host",
+  "incKindOther": "Other",
+  "incEmptyOpen": "No open incidents",
+  "incEmptyAck": "No acknowledged incidents",
+  "incEmptyResolved": "No resolved incidents",
+  "incEmptyFiltered": "No incidents match the filter",
+  "incNoAgents": "Incidents come from hosts whose agent has the incidents feature turned on.",
+  "incHostFailed": "Could not load incidents of {host}",
+  "@incHostFailed": {
+    "placeholders": {
+      "host": {
+        "type": "String"
+      }
+    }
+  },
+  "incSignals": "{count, plural, =1{1 signal} other{{count} signals}}",
+  "@incSignals": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "incTitleDockerDied": "Container crashed: {target}",
+  "@incTitleDockerDied": {
+    "placeholders": {
+      "target": {
+        "type": "String"
+      }
+    }
+  },
+  "incTitleDockerOom": "Container out of memory: {target}",
+  "@incTitleDockerOom": {
+    "placeholders": {
+      "target": {
+        "type": "String"
+      }
+    }
+  },
+  "incTitleUnhealthy": "Container unhealthy: {target}",
+  "@incTitleUnhealthy": {
+    "placeholders": {
+      "target": {
+        "type": "String"
+      }
+    }
+  },
+  "incTitleRestartLoop": "Restart loop: {target}",
+  "@incTitleRestartLoop": {
+    "placeholders": {
+      "target": {
+        "type": "String"
+      }
+    }
+  },
+  "incTitleDisk": "Disk full: {target}",
+  "@incTitleDisk": {
+    "placeholders": {
+      "target": {
+        "type": "String"
+      }
+    }
+  },
+  "incTitleService": "Service failed: {target}",
+  "@incTitleService": {
+    "placeholders": {
+      "target": {
+        "type": "String"
+      }
+    }
+  },
+  "incTitleAlert": "Alert: {target}",
+  "@incTitleAlert": {
+    "placeholders": {
+      "target": {
+        "type": "String"
+      }
+    }
+  },
+  "incTitleHost": "Host offline: {target}",
+  "@incTitleHost": {
+    "placeholders": {
+      "target": {
+        "type": "String"
+      }
+    }
+  },
+  "incTitleBackup": "Backup problem: {target}",
+  "@incTitleBackup": {
+    "placeholders": {
+      "target": {
+        "type": "String"
+      }
+    }
+  },
+  "incTitleSite": "Site down: {target}",
+  "@incTitleSite": {
+    "placeholders": {
+      "target": {
+        "type": "String"
+      }
+    }
+  },
+  "incTitleOther": "{kind}: {target}",
+  "@incTitleOther": {
+    "placeholders": {
+      "kind": {
+        "type": "String"
+      },
+      "target": {
+        "type": "String"
+      }
+    }
+  },
+  "incOpenedAt": "Opened {when}",
+  "@incOpenedAt": {
+    "placeholders": {
+      "when": {
+        "type": "String"
+      }
+    }
+  },
+  "incResolvedAt": "Resolved {when}",
+  "@incResolvedAt": {
+    "placeholders": {
+      "when": {
+        "type": "String"
+      }
+    }
+  },
+  "incAck": "Acknowledge",
+  "incResolve": "Resolve",
+  "incReopen": "Reopen",
+  "incNote": "Note",
+  "incResolveTitle": "Resolve incident",
+  "incNoteOptional": "Note (optional)",
+  "incNoteTitle": "Add a note",
+  "incNoteField": "Note",
+  "incActorAuto": "automatic",
+  "incActorAgent": "agent",
+  "incActorDevice": "device {id}",
+  "@incActorDevice": {
+    "placeholders": {
+      "id": {
+        "type": "String"
+      }
+    }
+  },
+  "incResolvedBy": "Resolved by {by}",
+  "@incResolvedBy": {
+    "placeholders": {
+      "by": {
+        "type": "String"
+      }
+    }
+  },
+  "incWhyTitle": "Likely cause",
+  "incWhyRules": "rules",
+  "incWhyEmpty": "No rule matched. See the evidence below.",
+  "incAnalyze": "Analyze with AI",
+  "incAnalyzeSoon": "AI analysis coming soon",
+  "incHintOom": "Out of memory: the container was killed for memory or exited with 137.",
+  "incHintExitCode": "The container exited with code {code}.",
+  "@incHintExitCode": {
+    "placeholders": {
+      "code": {
+        "type": "String"
+      }
+    }
+  },
+  "incHintRestartLoop": "Restart loop: the container keeps restarting.",
+  "incHintRestartLoopCount": "Restart loop: {count, plural, =1{1 restart} other{{count} restarts}} so far.",
+  "@incHintRestartLoopCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "incHintUnhealthy": "The health check is failing.",
+  "incHintRecentDeploy": "The container was created shortly before the incident (image {image}): possibly a recent deployment.",
+  "@incHintRecentDeploy": {
+    "placeholders": {
+      "image": {
+        "type": "String"
+      }
+    }
+  },
+  "incHintDiskFull": "{mount} is {percent}% full.",
+  "@incHintDiskFull": {
+    "placeholders": {
+      "mount": {
+        "type": "String"
+      },
+      "percent": {
+        "type": "int"
+      }
+    }
+  },
+  "incHintPortInUse": "A port is already in use (see the logs).",
+  "incHintPortUnreachable": "A connection is refused or times out (see the logs).",
+  "incHintUnknown": "Hint: {code}",
+  "@incHintUnknown": {
+    "placeholders": {
+      "code": {
+        "type": "String"
+      }
+    }
+  },
+  "incTabLogs": "Logs",
+  "incTabContainer": "Container",
+  "incTabGit": "Git",
+  "incTabEvents": "Events",
+  "incTabSimilar": "Similar",
+  "incTabTimeline": "Timeline",
+  "incEvMetrics": "Metrics",
+  "incActionsTitle": "Suggested actions",
+  "incActionsEmpty": "No actions offered for this incident.",
+  "incActionRestart": "Restart container {target}",
+  "@incActionRestart": {
+    "placeholders": {
+      "target": {
+        "type": "String"
+      }
+    }
+  },
+  "incActionRecreate": "Recreate service {target}",
+  "@incActionRecreate": {
+    "placeholders": {
+      "target": {
+        "type": "String"
+      }
+    }
+  },
+  "incActionUnit": "Restart unit {target}",
+  "@incActionUnit": {
+    "placeholders": {
+      "target": {
+        "type": "String"
+      }
+    }
+  },
+  "incActionOther": "{kind}: {target}",
+  "@incActionOther": {
+    "placeholders": {
+      "kind": {
+        "type": "String"
+      },
+      "target": {
+        "type": "String"
+      }
+    }
+  },
+  "incActionKindRestart": "Container restart",
+  "incActionKindRecreate": "Service recreate",
+  "incActionKindUnit": "Unit restart",
+  "incRiskLow": "Low risk",
+  "incRiskMedium": "Medium risk",
+  "incActionRunning": "Running…",
+  "incActionBusy": "Another action is running",
+  "incPreviewTitle": "Review action",
+  "incPreviewSteps": "Commands that will run",
+  "incPreviewCwd": "in {dir}",
+  "@incPreviewCwd": {
+    "placeholders": {
+      "dir": {
+        "type": "String"
+      }
+    }
+  },
+  "incPreviewExpiresIn": "Valid for {time}",
+  "@incPreviewExpiresIn": {
+    "placeholders": {
+      "time": {
+        "type": "String"
+      }
+    }
+  },
+  "incPreviewExpired": "This preview has expired.",
+  "incPreviewRefresh": "Refresh preview",
+  "incExecute": "Run",
+  "incExecuteConfirm": "Run \"{action}\" on {host}? It is recorded in the incident timeline.",
+  "@incExecuteConfirm": {
+    "placeholders": {
+      "action": {
+        "type": "String"
+      },
+      "host": {
+        "type": "String"
+      }
+    }
+  },
+  "incRunning": "Running…",
+  "incResultOk": "Done. A post-check runs in about a minute and is added to the timeline.",
+  "incResultFailed": "Failed (exit code {code})",
+  "@incResultFailed": {
+    "placeholders": {
+      "code": {
+        "type": "String"
+      }
+    }
+  },
+  "incLogsSearch": "Search the logs",
+  "incLogsEmpty": "No log lines were collected.",
+  "incLogsNoMatch": "No line matches.",
+  "incLogsTruncated": "Older lines were cut.",
+  "incLogsCount": "{shown} of {total} lines",
+  "@incLogsCount": {
+    "placeholders": {
+      "shown": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "incContextPending": "Context is being collected…",
+  "incContextFailed": "Could not collect: {sections}",
+  "@incContextFailed": {
+    "placeholders": {
+      "sections": {
+        "type": "String"
+      }
+    }
+  },
+  "incInspImage": "Image",
+  "incInspStatus": "Status",
+  "incInspCreated": "Created",
+  "incInspStarted": "Started",
+  "incInspFinished": "Finished",
+  "incInspExit": "Exit code",
+  "incInspOom": "Killed for memory",
+  "incInspRestarts": "Restarts",
+  "incInspPolicy": "Restart policy",
+  "incInspHealth": "Health",
+  "incInspCompose": "Compose",
+  "incYes": "Yes",
+  "incNo": "No",
+  "incGitNone": "This stack has no git history.",
+  "incGitLog": "Commits in the last 48 hours",
+  "incGitNoCommits": "No commits in the last 48 hours.",
+  "incGitStatus": "Uncommitted changes",
+  "incGitClean": "Working tree is clean.",
+  "incEventsEmpty": "No events on this host in the last 2 hours.",
+  "incSimilarEmpty": "No similar incidents in the last 90 days.",
+  "incSimilarWorked": "Worked: {action}",
+  "@incSimilarWorked": {
+    "placeholders": {
+      "action": {
+        "type": "String"
+      }
+    }
+  },
+  "incSimilarOpen": "Still open",
+  "incTlOpened": "Incident opened",
+  "incTlSignal": "New signal: {title}",
+  "@incTlSignal": {
+    "placeholders": {
+      "title": {
+        "type": "String"
+      }
+    }
+  },
+  "incTlMerged": "Grouped here: {target}",
+  "@incTlMerged": {
+    "placeholders": {
+      "target": {
+        "type": "String"
+      }
+    }
+  },
+  "incTlRecovered": "Recovered: {what}",
+  "@incTlRecovered": {
+    "placeholders": {
+      "what": {
+        "type": "String"
+      }
+    }
+  },
+  "incTlAck": "Acknowledged",
+  "incTlResolved": "Resolved",
+  "incTlReopened": "Reopened",
+  "incTlNote": "Note",
+  "incTlContext": "Context collected ({lines} log lines)",
+  "@incTlContext": {
+    "placeholders": {
+      "lines": {
+        "type": "int"
+      }
+    }
+  },
+  "incTlContextFailed": "Context could not be collected",
+  "incTlAction": "Action started: {action}",
+  "@incTlAction": {
+    "placeholders": {
+      "action": {
+        "type": "String"
+      }
+    }
+  },
+  "incTlActionOk": "Action finished: {action}",
+  "@incTlActionOk": {
+    "placeholders": {
+      "action": {
+        "type": "String"
+      }
+    }
+  },
+  "incTlActionFailed": "Action failed: {action} (code {code})",
+  "@incTlActionFailed": {
+    "placeholders": {
+      "action": {
+        "type": "String"
+      },
+      "code": {
+        "type": "String"
+      }
+    }
+  },
+  "incTlPostOk": "Post-check passed: {state}",
+  "@incTlPostOk": {
+    "placeholders": {
+      "state": {
+        "type": "String"
+      }
+    }
+  },
+  "incTlPostFailed": "Post-check failed: {state}",
+  "@incTlPostFailed": {
+    "placeholders": {
+      "state": {
+        "type": "String"
+      }
+    }
+  },
+  "notifyIncidents": "Incidents",
+  "notifyIncidentsHint": "Resolved incidents, failed actions, site outages",
+  "homeIncidentsTitle": "Open incidents",
+  "homeIncidentsNone": "No open incidents",
+  "homeIncidentsCount": "{count, plural, =1{1 open incident} other{{count} open incidents}}",
+  "@homeIncidentsCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "homeIncidentsAll": "All incidents",
+  "notifIncidentResolvedTitle": "Incident resolved · {host}",
+  "@notifIncidentResolvedTitle": {
+    "placeholders": {
+      "host": {
+        "type": "String"
+      }
+    }
+  },
+  "notifIncidentActionFailedTitle": "Action failed · {host}",
+  "@notifIncidentActionFailedTitle": {
+    "placeholders": {
+      "host": {
+        "type": "String"
+      }
+    }
+  },
+  "notifIncidentActionCommand": "{action} on {target} failed",
+  "@notifIncidentActionCommand": {
+    "placeholders": {
+      "action": {
+        "type": "String"
+      },
+      "target": {
+        "type": "String"
+      }
+    }
+  },
+  "notifIncidentActionPostCheck": "{action} ran, but {target} is not healthy afterwards",
+  "@notifIncidentActionPostCheck": {
+    "placeholders": {
+      "action": {
+        "type": "String"
+      },
+      "target": {
+        "type": "String"
+      }
+    }
+  },
+  "notifUptimeDownTitle": "Site down: {monitor}",
+  "@notifUptimeDownTitle": {
+    "placeholders": {
+      "monitor": {
+        "type": "String"
+      }
+    }
+  },
+  "notifUptimeUpTitle": "Site back up: {monitor}",
+  "@notifUptimeUpTitle": {
+    "placeholders": {
+      "monitor": {
+        "type": "String"
+      }
+    }
+  },
+  "notifDockerUnhealthyTitle": "Container unhealthy · {host}",
+  "@notifDockerUnhealthyTitle": {
+    "placeholders": {
+      "host": {
+        "type": "String"
+      }
+    }
+  },
+  "notifDockerRestartLoopTitle": "Container restart loop · {host}",
+  "@notifDockerRestartLoopTitle": {
+    "placeholders": {
+      "host": {
+        "type": "String"
+      }
+    }
+  },
+  "notifDockerRestartLoopBody": "{container} · {count, plural, =1{1 restart} other{{count} restarts}} in 10 min",
+  "@notifDockerRestartLoopBody": {
+    "placeholders": {
+      "container": {
+        "type": "String"
+      },
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "errIncNotFound": "Incident not found. It may have been deleted.",
+  "errIncActionNotFound": "That action is no longer offered.",
+  "errIncBadState": "Not possible while the incident is {status}.",
+  "@errIncBadState": {
+    "placeholders": {
+      "status": {
+        "type": "String"
+      }
+    }
+  },
+  "errIncConfirmRequired": "Confirmation is required.",
+  "errIncActionRunning": "Another action of this incident is still running.",
+  "errIncActionUnavailable": "This action can no longer be run (its stack is gone).",
+  "errIncRateLimited": "Too many actions in a minute. Wait a moment.",
+  "errPreviewInvalid": "The preview is no longer valid. Refresh it and confirm again.",
+  "incScreenTitle": "Incident",
+  "incTest": "test",
+  "incNothing": "Nothing collected.",
+  "cfTitle": "Config and secrets",
+  "cfNoHosts": "No connected agent has the config editor turned on (feature configfiles).",
+  "cfNoFiles": "No .env files found. Keep compose stacks under ~/stack, or add paths under configFiles.extraPaths.",
+  "cfOtherFiles": "Other files",
+  "cfKeysCount": "{keys, plural, =1{1 key} other{{keys} keys}} · {secrets, plural, =1{1 secret} other{{secrets} secrets}}",
+  "@cfKeysCount": {
+    "placeholders": {
+      "keys": {
+        "type": "int"
+      },
+      "secrets": {
+        "type": "int"
+      }
+    }
+  },
+  "cfWorldReadableShort": "world-readable",
+  "cfSkippedTitle": "{count, plural, =1{1 skipped file} other{{count} skipped files}}",
+  "@cfSkippedTitle": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "cfSkipNotRegular": "Not a regular file (a link, folder or device).",
+  "cfSkipNotOwner": "Owned by another user than the agent.",
+  "cfSkipTooLarge": "Larger than 256 KB.",
+  "cfSkipBadName": "Name isn't .env, *.env or .env.*.",
+  "cfSkipOutsideRoot": "Its real path leaves the stack folder (symbolic link).",
+  "cfSkipMissing": "The file doesn't exist.",
+  "cfSkipMoved": "The file moved while it was being read.",
+  "cfSkipReplaced": "The file was replaced while it was being read.",
+  "cfSkipNotText": "Not valid UTF-8 text.",
+  "cfSkipUnreadable": "The agent can't read it.",
+  "cfBackups": "Backups",
+  "cfBackupsHint": "The agent keeps the last 10 versions, saved right before each write.",
+  "cfBackupsEmpty": "No backups yet.",
+  "cfRestore": "Restore",
+  "cfRestored": "Restored. The version it replaced was backed up too.",
+  "cfRestoreConfirm": "Restore {file} from this backup? The current version is backed up first.",
+  "@cfRestoreConfirm": {
+    "placeholders": {
+      "file": {
+        "type": "String"
+      }
+    }
+  },
+  "cfSaveConfirm": "Write the changes to {file}? The previous version is backed up first.",
+  "@cfSaveConfirm": {
+    "placeholders": {
+      "file": {
+        "type": "String"
+      }
+    }
+  },
+  "cfSaved": "Saved. The previous version was backed up.",
+  "cfSaving": "Writing…",
+  "cfBackupMade": "Backup: {id}",
+  "@cfBackupMade": {
+    "placeholders": {
+      "id": {
+        "type": "String"
+      }
+    }
+  },
+  "cfPreviewTitle": "Review changes",
+  "cfPreviewRestoreTitle": "Review restore",
+  "cfPreviewNoChanges": "Nothing would change.",
+  "cfPreviewOtherLines": "Other lines of the file change too.",
+  "cfAffectedTitle": "Affected services",
+  "cfAffectedNone": "No service uses these keys.",
+  "cfRestartAffected": "Recreate affected services",
+  "cfLengthChange": "changed, {before} → {after} characters",
+  "@cfLengthChange": {
+    "placeholders": {
+      "before": {
+        "type": "int"
+      },
+      "after": {
+        "type": "int"
+      }
+    }
+  },
+  "cfChangeAdded": "New",
+  "cfChangeChanged": "Changed",
+  "cfChangeRemoved": "To be removed",
+  "cfChangeRenamed": "Renamed",
+  "cfReload": "Reload",
+  "cfReloaded": "File reloaded.",
+  "cfReloadedDropped": "File reloaded. {count, plural, =1{1 staged change no longer applies and was dropped.} other{{count} staged changes no longer apply and were dropped.}}",
+  "@cfReloadedDropped": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "cfTooManyChanges": "At most {max} changes per save.",
+  "@cfTooManyChanges": {
+    "placeholders": {
+      "max": {
+        "type": "int"
+      }
+    }
+  },
+  "cfNeedsLock": "Set an app lock (PIN or fingerprint) first: secret values are only shown after unlocking.",
+  "cfRevealMissing": "Some keys are no longer in the file.",
+  "cfRevealedNote": "Shown values are hidden again after {seconds} s.",
+  "@cfRevealedNote": {
+    "placeholders": {
+      "seconds": {
+        "type": "int"
+      }
+    }
+  },
+  "cfHideAll": "Hide all",
+  "cfCopy": "Copy",
+  "cfCopied": "Copied. It is cleared from the clipboard after 30 s.",
+  "cfShow": "Show",
+  "cfHide": "Hide",
+  "cfSelect": "Select",
+  "cfSelectedCount": "{selected} of {max} selected",
+  "@cfSelectedCount": {
+    "placeholders": {
+      "selected": {
+        "type": "int"
+      },
+      "max": {
+        "type": "int"
+      }
+    }
+  },
+  "cfShowSelected": "Show",
+  "cfAddKey": "Add key",
+  "cfEditValue": "Change value",
+  "cfRenameKey": "Rename key",
+  "cfDeleteKey": "Delete key",
+  "cfUndo": "Undo",
+  "cfDiscardNew": "Discard new key",
+  "cfDiscardAll": "Discard all",
+  "cfStagedNote": "{count, plural, =1{1 change staged} other{{count} changes staged}}. Tap Save to review.",
+  "@cfStagedNote": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "cfStage": "Done",
+  "cfKeyName": "Key name",
+  "cfKeyInvalid": "Letters, digits, _ and . only; it can't start with a digit.",
+  "cfKeyTaken": "This key already exists in the file.",
+  "cfValue": "Value",
+  "cfNewValue": "New value",
+  "cfSecretNotPrefilled": "The current value isn't shown. What you type replaces it.",
+  "cfInherited": "(from the environment)",
+  "cfEmptyValue": "(empty)",
+  "cfOverridden": "overridden",
+  "cfMarkedSecret": "marked",
+  "cfDuplicateNote": "A later line with the same key wins; this earlier line can't be edited here.",
+  "cfNoEntries": "This file has no entries.",
+  "cfAgeDays": "{days} d",
+  "@cfAgeDays": {
+    "placeholders": {
+      "days": {
+        "type": "int"
+      }
+    }
+  },
+  "cfAgeDue": "{days} d · rotate",
+  "@cfAgeDue": {
+    "placeholders": {
+      "days": {
+        "type": "int"
+      }
+    }
+  },
+  "cfWarnWorldReadable": "Every user on the PC can read this file (mode {mode}). Restrict it, e.g. chmod 600.",
+  "@cfWarnWorldReadable": {
+    "placeholders": {
+      "mode": {
+        "type": "String"
+      }
+    }
+  },
+  "cfWarnWorldReadableShort": "The file is readable by every user on the PC. Consider chmod 600.",
+  "cfReadOnlyQuote": "Read-only: the quote opened on line {line} is never closed, and compose would read the lines below into that value. Fix the file on the PC first.",
+  "@cfReadOnlyQuote": {
+    "placeholders": {
+      "line": {
+        "type": "int"
+      }
+    }
+  },
+  "cfIssueUnterminated": "Line {line}: unterminated quote.",
+  "@cfIssueUnterminated": {
+    "placeholders": {
+      "line": {
+        "type": "int"
+      }
+    }
+  },
+  "cfIssueTrailing": "Line {line}: text after a quoted value. It is kept as it is.",
+  "@cfIssueTrailing": {
+    "placeholders": {
+      "line": {
+        "type": "int"
+      }
+    }
+  },
+  "cfIssueSyntax": "Line {line} couldn't be read. It is kept as it is.",
+  "@cfIssueSyntax": {
+    "placeholders": {
+      "line": {
+        "type": "int"
+      }
+    }
+  },
+  "cfSecretSettings": "Secret settings",
+  "cfMarkTitle": "Treat this key as",
+  "cfMarkAuto": "Automatic",
+  "cfMarkSecret": "Secret",
+  "cfMarkPlain": "Not secret",
+  "cfMaxAgeTitle": "Rotation reminder",
+  "cfMaxAgeDays": "Rotate after (days)",
+  "cfMaxAgeInvalid": "Enter 1 to 3650.",
+  "cfMaxAgeHelp": "Empty = no reminder. The age counts from the last change.",
+  "cfMaxAgeSuggest": "Suggest {days} days",
+  "@cfMaxAgeSuggest": {
+    "placeholders": {
+      "days": {
+        "type": "int"
+      }
+    }
+  },
+  "cfMaxAgeClear": "No reminder",
+  "errCfNotFound": "That file is no longer offered by the agent.",
+  "errCfNotEditable": "This file can't be edited: {reason}",
+  "@errCfNotEditable": {
+    "placeholders": {
+      "reason": {
+        "type": "String"
+      }
+    }
+  },
+  "errCfFileChanged": "The file moved or was replaced meanwhile. Nothing was written. Reload it.",
+  "errCfConflict": "The file changed since you opened it. Nothing was written. Reload it and check your changes again.",
+  "errCfNotText": "The file isn't valid UTF-8 text.",
+  "errCfKeyNotFound": "Key {key} is no longer in the file.",
+  "@errCfKeyNotFound": {
+    "placeholders": {
+      "key": {
+        "type": "String"
+      }
+    }
+  },
+  "errCfKeyExists": "A key named {key} already exists.",
+  "@errCfKeyExists": {
+    "placeholders": {
+      "key": {
+        "type": "String"
+      }
+    }
+  },
+  "errCfUnterminatedQuote": "Line {line} has an unterminated quote; editing is refused.",
+  "@errCfUnterminatedQuote": {
+    "placeholders": {
+      "line": {
+        "type": "String"
+      }
+    }
+  },
+  "errCfNoChange": "These changes leave the file as it is.",
+  "errCfTooLarge": "The result would be larger than 256 KB.",
+  "errCfConfirmRequired": "Confirmation is required.",
+  "errCfRestartUnavailable": "Recreating services isn't available yet.",
+  "errCfRateLimited": "Too many reveals in a minute. Wait a moment.",
+  "errCfBackupNotFound": "That backup no longer exists.",
+  "incTabDeploys": "Deploys",
+  "incDeploysEmpty": "No deploys recorded for this service in the last 7 days. The agent needs the docker feature to track them.",
+  "incDeployChanged": "Updated",
+  "incDeploySeen": "First seen",
+  "incDeployRollbackReady": "Rollback ready",
+  "incDeployNoRollback": "No previous image",
+  "incDeployMinBefore": "{count} min before the incident",
+  "@incDeployMinBefore": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "incDeployBefore": "Before the incident",
+  "incDeployAfter": "After the incident opened",
+  "incConfigChanges": "Config changes (last 48 h)",
+  "incConfigChangesEmpty": "No config file was saved through Tiphys in the last 48 hours.",
+  "incConfigSaved": "{file} saved",
+  "@incConfigSaved": {
+    "placeholders": {
+      "file": {
+        "type": "String"
+      }
+    }
+  },
+  "incConfigRestored": "{file} restored from a backup",
+  "@incConfigRestored": {
+    "placeholders": {
+      "file": {
+        "type": "String"
+      }
+    }
+  },
+  "incActionKindRollback": "Rollback",
+  "incActionKindCleanup": "Disk cleanup",
+  "incActionRollback": "Roll back {service} to the previous image",
+  "@incActionRollback": {
+    "placeholders": {
+      "service": {
+        "type": "String"
+      }
+    }
+  },
+  "incActionCleanup": "Free disk space on {mount}",
+  "@incActionCleanup": {
+    "placeholders": {
+      "mount": {
+        "type": "String"
+      }
+    }
+  },
+  "incRollbackTitle": "Images",
+  "incRollbackCurrent": "Running now",
+  "incRollbackPrevious": "Will run instead",
+  "incRollbackBuilt": "Built {date}",
+  "@incRollbackBuilt": {
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "incWarnDbMigrations": "Database migrations are not rolled back. If the newer version changed the schema, the old image may not work with it.",
+  "incCleanTitle": "What to clean",
+  "incCleanBuilder": "Build cache",
+  "incCleanImages": "Dangling images",
+  "incCleanContainers": "Stopped containers",
+  "incCleanUserJournal": "User journal",
+  "incCleanSystemJournal": "System journal",
+  "incCleanBuilderHint": "unused build cache",
+  "incCleanImagesHint": "untagged only; rollback images stay",
+  "incCleanContainersHint": "stopped for over 24 h",
+  "incCleanUserJournalHint": "archives older than 7 days",
+  "incCleanNeedsRoot": "Needs root; the agent can't do this",
+  "incCleanNoUserJournal": "There is no user journal",
+  "incCleanNoDocker": "Docker isn't available",
+  "incCleanUnavailable": "Not available",
+  "incCleanNoEstimate": "no estimate",
+  "incCleanReclaim": "frees about {size}",
+  "@incCleanReclaim": {
+    "placeholders": {
+      "size": {
+        "type": "String"
+      }
+    }
+  },
+  "incCleanUsage": "now {size}",
+  "@incCleanUsage": {
+    "placeholders": {
+      "size": {
+        "type": "String"
+      }
+    }
+  },
+  "incCleanTotal": "Estimated total: {size}",
+  "@incCleanTotal": {
+    "placeholders": {
+      "size": {
+        "type": "String"
+      }
+    }
+  },
+  "incCleanPickOne": "Choose at least one option.",
+  "errIncCleanupOption": "{option} can't be cleaned on this host any more. Refresh the preview.",
+  "@errIncCleanupOption": {
+    "placeholders": {
+      "option": {
+        "type": "String"
+      }
+    }
+  },
+  "cfRestartHint": "Runs docker compose up -d --no-deps for them after writing, so the new values take effect. This can take a few minutes.",
+  "cfNothingToRestart": "No service uses these keys, so there is nothing to recreate.",
+  "cfRestartPlan": "Commands that will run",
+  "cfRestartConfirm": "The affected services are recreated right after writing; they restart briefly.",
+  "cfRecreating": "Writing and recreating services… this can take a few minutes.",
+  "cfRecreateTitle": "Recreated services",
+  "cfRecreateFailedCommand": "The file was saved, but docker compose failed. Restore the backup to undo the change.",
+  "cfRecreateFailedPostCheck": "The file was saved and the services were recreated, but they are not running healthy. Restore the backup to undo the change.",
+  "cfRecreateSkipped": "Skipped (no longer affected): {services}",
+  "@cfRecreateSkipped": {
+    "placeholders": {
+      "services": {
+        "type": "String"
+      }
+    }
+  },
+  "cfRestoreBackup": "Restore backup",
+  "errCfNothingToRestart": "No service uses the changed keys, so there is nothing to recreate.",
+  "errCfRestartRateLimited": "Too many recreates: at most {limit} per {minutes} min. Save without recreating, or wait.",
+  "@errCfRestartRateLimited": {
+    "placeholders": {
+      "limit": {
+        "type": "String"
+      },
+      "minutes": {
+        "type": "String"
+      }
+    }
+  },
+  "notifRotationDueTitle": "Secrets to rotate · {host}",
+  "@notifRotationDueTitle": {
+    "placeholders": {
+      "host": {
+        "type": "String"
+      }
+    }
+  },
+  "notifRotationDueBody": "{file} · {keys}",
+  "@notifRotationDueBody": {
+    "placeholders": {
+      "file": {
+        "type": "String"
+      },
+      "keys": {
+        "type": "String"
+      }
+    }
+  },
+  "notifConfigRestartFailedTitle": "Service restart failed · {host}",
+  "@notifConfigRestartFailedTitle": {
+    "placeholders": {
+      "host": {
+        "type": "String"
+      }
+    }
+  },
+  "notifConfigRestartFailedBody": "{file} saved; failed: {services}",
+  "@notifConfigRestartFailedBody": {
+    "placeholders": {
+      "file": {
+        "type": "String"
+      },
+      "services": {
+        "type": "String"
+      }
+    }
+  },
+  "evSecretChangedTitle": "Secret changed outside Tiphys",
+  "evConfigSavedTitle": "Config file saved",
+  "evConfigRestoredTitle": "Config file restored"
 }

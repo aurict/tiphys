@@ -1332,6 +1332,10 @@
         "telegramAlerts": {
           "default": true,
           "type": "boolean"
+        },
+        "incidents": {
+          "default": true,
+          "type": "boolean"
         }
       },
       "additionalProperties": false

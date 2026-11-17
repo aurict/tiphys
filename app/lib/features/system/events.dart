@@ -90,7 +90,7 @@ String eventTypeName(AppLocalizations l, String type) => switch (type) {
 (IconData, Color) eventVisual(TiphysTokens t, String key) {
   const bad = {
     'host.offline', 'disk.full', 'service.failed', 'grafana.alert', 'agent.restarted', 'command.failed', 'claude.error', 'docker.died', 'docker.oom', //
-    'backup.failed', 'backup.stale', 'compose.failed', 'claude.scheduleFailed',
+    'backup.failed', 'backup.stale', 'compose.failed', 'claude.scheduleFailed', 'config.restartFailed',
   };
   const good = {'host.online', 'disk.ok', 'service.recovered', 'grafana.resolved', 'command.done', 'backup.ok', 'compose.updated'};
   final icon = key.startsWith('claude.schedule') ? LucideIcons.alarmClock : switch (key.split('.').first) {
@@ -130,6 +130,10 @@ void openEvent(BuildContext context, HostEvent e) {
   final route = routeForLink(e.link);
   if (route == null) return;
   // Bottom tabs (tab shell) open with go, other screens with push; same target as opening from the notification.
+  if (route.startsWith('/incidents/')) {
+    context.push('$route?host=${e.host.id}');
+    return;
+  }
   if (const {'/system', '/terminal', '/claude', '/files', '/'}.contains(route)) {
     context.go(route);
   } else {
