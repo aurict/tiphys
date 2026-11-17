@@ -14,7 +14,7 @@ Source of truth: `agent/src/server.ts` (registration), `agent/src/routes/*.ts`, 
   - [Always available](#always-available)
   - [system](#system) · [services](#services) · [docker](#docker) · [power](#power) · [wake](#wake) · [ports](#ports) · [transcribe](#transcribe) · [git](#git) · [homepage](#homepage)
   - [desktop](#desktop): [clipboard, screenshot, open](#clipboard-screenshot-open) · [media](#media) · [windows and apps](#windows-and-apps) · [Sunshine](#sunshine) · [Firefox bridge](#firefox-bridge) · [mobile view](#mobile-view-at-spi) · [live screen](#live-screen)
-  - [claude](#claude) · [watch](#watch) · [alerts](#alerts) · [backups](#backups) · [uptime](#uptime) · [research](#research) · [telegram](#telegram)
+  - [claude](#claude) · [watch](#watch) · [alerts](#alerts) · [backups](#backups) · [uptime](#uptime) · [research](#research) · [analysis](#analysis) · [telegram](#telegram) · [incidents](#incidents) · [configfiles](#configfiles)
 - [Protocols](#protocols)
   - [Live screen WebSocket](#live-screen-websocket)
   - [Claude session WebSocket](#claude-session-websocket)
@@ -29,13 +29,14 @@ Source of truth: `agent/src/server.ts` (registration), `agent/src/routes/*.ts`, 
 - **Validation**: zod. Unknown keys are ignored unless the schema is marked *strict* below.
 - **Confirmation**: destructive endpoints require `{"confirm": true}` in the body and fail with a dedicated `…confirmRequired` code without it.
 - **Feature column**: the routes exist only when that flag is on. Otherwise they return `404 agent.route.notFound`.
-- **Audit**: every non-GET request is recorded in `audit.jsonl` as `{at, device, method, path, status}`. The body and query string are never logged.
+- **Audit**: every non-GET request is recorded in `audit.jsonl` as `{at, device, method, path, status, detail?}`. The body and query string are never logged. `detail` is set by some routes (`req.auditDetail`: ids, key names, counts, hashes; never values), at most 16 keys and 200 characters per string.
+- **Preview tokens**: risky operations are previewed first. The preview returns `{previewToken: "tpv_…", expiresAt}`, bound to the calling device, the operation kind and a SHA-256 of the operation's input, valid for 120 s and usable once (in memory only). The execute route takes `{previewToken, confirm: true}`; a missing, expired, used or mismatched token is `409 agent.preview.invalid` (presenting a token spends it, even on a mismatch).
 
 ## Authentication
 
 | Mechanism | Applies to | Details |
 | --- | --- | --- |
-| Service token | only routes that declare its scope (today: `research` → `POST /v1/research/jobs`, `GET`/`DELETE /v1/research/jobs/:id`) | `Authorization: Bearer tps_…` (header only, never `?token=`). Issued for another agent with `tiphys-agent service-token create` or `POST /v1/service-tokens`; shown once, stored as a SHA-256 hash. Any other route, including unknown paths, returns `403 agent.auth.scopeDenied`. The Tailscale identity check applies as for devices. The audit log records the caller as `service:<id>`. |
+| Service token | only routes that declare its scope (today: `research` → `POST /v1/research/jobs`, `GET`/`DELETE /v1/research/jobs/:id`; `analysis` → `POST /v1/analysis/jobs`, `GET`/`DELETE /v1/analysis/jobs/:id`) | `Authorization: Bearer tps_…` (header only, never `?token=`). Issued for another agent with `tiphys-agent service-token create` or `POST /v1/service-tokens`; shown once, stored as a SHA-256 hash. Any other route, including unknown paths, returns `403 agent.auth.scopeDenied`. The Tailscale identity check applies as for devices. The audit log records the caller as `service:<id>`. |
 | Device token | every route except `GET /v1/health` | `Authorization: Bearer tph_…`. Created by `tiphys-agent pair`; only its SHA-256 hash is stored, and comparison is constant-time. For WebSockets the token may also be sent as the `?token=` query parameter. |
 | Tailscale identity | every route except `GET /v1/health` | When `requireTailscaleLogin` is set, the `Tailscale-User-Login` header (added by `tailscale serve`) must equal it. Otherwise `403 agent.auth.tailnetUserNotAllowed`. |
 | Control token | mutating desktop routes, live screen, Firefox tabs, mobile view, Sunshine actions, Claude PC sessions | `X-Tiphys-Control: tpc_…`, obtained from `POST /v1/desktop/control/session`. It must belong to the calling device and not be expired, and the `control` feature must be on. |
@@ -95,6 +96,35 @@ Every error has the same envelope. The agent sends codes, never sentences; the a
 | `agent.auth.tailnetUserNotAllowed` | 403 | Tailscale login mismatch |
 | `agent.auth.scopeDenied` | 403 | Service token used on a route outside its scopes |
 | `agent.serviceToken.notFound` | 404 | Unknown service token id |
+| `agent.preview.invalid` | 409 | Preview token missing, expired, already used, or for another device/operation/input |
+| `agent.incident.notFound` / `agent.incident.action.notFound` | 404 | Unknown incident / action candidate |
+| `agent.incident.badState` | 409 | Lifecycle change not allowed from the current status (`params.status`) |
+| `agent.incident.confirmRequired` | 400 | Action execute without `confirm: true` |
+| `agent.incident.actionRunning` | 409 | Another action of this incident is still running |
+| `agent.incident.actionUnavailable` | 409 | The candidate can't be run any more (e.g. its stack is gone) |
+| `agent.incident.rateLimited` | 429 | More than 6 action executions per minute from this device |
+| `agent.incident.analysisOff` | 409 | `/analyze` while `incidents.analysis.mode` is `off` |
+| `agent.incident.analysisRateLimited` | 429 | More than 3 analyses of this incident per 10 minutes (manual and automatic together; `params: {limit, windowSeconds}`) |
+| `agent.incident.redactedOnly` | 400 | `/bundle` without `?redacted=1` (the unredacted bundle is never served) |
+| `agent.incident.bundleRateLimited` | 429 | More than 10 `/bundle` calls per 10 minutes from this device |
+| `agent.analysis.notFound` | 404 | Unknown analysis job, or one another service token started |
+| `agent.analysis.busy` | 429 | 1 analysis job runs and 3 wait (`params.waiting`) |
+| `agent.analysis.bundleTooLarge` | 413 | Serialized job body over 192 KB |
+| `agent.config.urlRequired` | 400 | `incidents.analysis.mode: "remote"` without a URL (`params.field`) |
+| `agent.configfiles.notFound` | 404 | Unknown `fileId` (not a discovered config file) |
+| `agent.configfiles.notEditable` | 409 | The file exists but breaks a file rule (`params.reason`: `notRegular`, `notOwner`, `tooLarge`, `badName`, `outsideRoot`, `missing`) |
+| `agent.configfiles.fileChanged` | 409 | The file moved, was replaced or stopped qualifying between checks (`params.reason`); nothing was written |
+| `agent.configfiles.conflict` | 409 | `baseHash` no longer matches the file (`params.hash` = current hash); preview again |
+| `agent.configfiles.notText` | 409 | The file isn't valid UTF-8 |
+| `agent.configfiles.keyNotFound` / `agent.configfiles.keyExists` | 404 / 409 | `unset`/`rename`/meta on a missing key; `rename` onto an existing key (`params.key`) |
+| `agent.configfiles.unterminatedQuote` | 409 | The file has an unterminated quote (`params.line`); edits are refused because compose would read the lines below into it |
+| `agent.configfiles.noChange` | 400 | The ops leave the file unchanged |
+| `agent.configfiles.tooLarge` | 400 | The result would exceed 256 KB |
+| `agent.configfiles.confirmRequired` | 400 | Save/restore without `confirm: true` |
+| `agent.configfiles.nothingToRestart` | 409 | Preview with `restart: "affected"` for a file no service is affected by (e.g. an extra path) |
+| `agent.configfiles.restartRateLimited` | 429 | More than 6 saves/restores with `restart: "affected"` per 10 minutes from this device (`params: {limit, windowSeconds}`); checked before the preview token is spent |
+| `agent.configfiles.rateLimited` | 429 | More than 10 reveal calls per minute from this device |
+| `agent.configfiles.backupNotFound` | 404 | Unknown backup id |
 | `agent.research.busy` | 429 | Research queue full (1 running + 5 waiting) |
 | `agent.research.notFound` | 404 | Unknown research job (or another service token's job) |
 | `agent.telegram.notConfigured` | 409 | No bot token stored yet (`PUT /v1/telegram/bot`) |
@@ -484,6 +514,114 @@ Feature `telegram` (`telegram/*.ts`). Telegram newsletters: the bot, recipients 
 | `telegram.pcUnreachable` | `feed, feedId, issueId` | priority high; the PC couldn't be reached before the deadline |
 
 Event-only keys (ids and counts, never content or names): `telegram.started`, `.skipped` (`reason: nothingNew|noRecipients|running`), `.missed` (`slotAt`), `.previewReady`, `.previewFailed`, `.approved`, `.rejected`, `.testSent`, `.wakeSent`, `.recipientAdded`, `.recipientStopped`, `.recipientRemoved`, `.recipientUnreachable`, `.inviteCreated`, `.groupLeft`, `.botSet`, `.botRemoved`.
+
+### analysis
+
+Feature `analysis` (`analysis/*.ts`), on the PC that has Claude Code. Incident analysis jobs for a server's incident room (`incidents.analysis.mode: "remote"`): a tool-less `claude -p` reads the redacted bundle and returns structured output. See [Incidents › AI analysis](../features/incidents.md#ai-analysis-i-3).
+
+| Method | Path | Auth | Description |
+| --- | --- | --- | --- |
+| POST | `/v1/analysis/jobs` | service (`analysis`) or device | Strict `{bundle}` (below, ≤192 KB) → `202 {id: "aj-<16 hex>", status}`. `429 agent.analysis.busy` when 1 job runs and 3 wait. |
+| GET | `/v1/analysis/jobs/:id` | service (`analysis`) or device | `{id, status: queued\|running\|done\|failed, createdAt, startedAt?, finishedAt?, durationSec?, error?: {code, params}, result?}`. A service token sees only jobs it started (others: `404 agent.analysis.notFound`). |
+| GET | `/v1/analysis/jobs` | device | `{jobs: [{id, status, createdAt, startedAt, finishedAt, durationSec, error, requestedBy, incidentId, hypothesisCount}]}`, newest first |
+| DELETE | `/v1/analysis/jobs/:id` | service (`analysis`) or device | Cancels a queued or running job → `{cancelled, job}` |
+
+Jobs live in memory only (the bundle is dropped when the job ends; results are kept 24 h); 3 min per job; this queue is separate from the research queue, so an analysis never waits behind a research job. Job `error.code`: `agent.analysis.toolMissing` / `.toolFailed` / `.invalidOutput` / `.timeout` / `.cancelled` / `.interrupted` / `.failed`.
+
+**Bundle** (built and redacted by the incident's agent): `{v: 1, language: tr|en, incident: {id, host, kind, target, severity, status, openedAt, stack?, service?, parts: [{kind, target, firstAt, lastAt, recoveredAt?}]}, hints: [{code, params}], evidence: [{id, section, text (≤4000)}] (≤1500), candidates: [{id, kind, target, risk}] (≤20), similar: [{id, kind, openedAt, resolvedAt, resolutionNote, workedAction}] (≤5), truncated: [section]}`. Evidence ids: `log:<source>#<line>` (line number within the collected excerpt), `signal:<n>`, `inspect:container`, `deploy:<n>`, `event:<n>`, `metric:<name>` (e.g. `metric:host.memPct`, `metric:disk:/`, `metric:container.cpu`), `git:<hash>` / `git:status`, `config:<n>`; sections `signals, inspect, logs, deploys, events, metrics, git, config`.
+
+**Result** (validated against the bundle; the incident's agent validates it again): `{summary (≤600), hypotheses: [{cause (≤300), confidence 0..1, evidenceRefs: [evidence id], unsupported}] (≤5), suggestedActions: [{candidateId, kind, why (≤300)}] (≤5), questions: [string ≤200] (≤5), dropped: {actions, refs}}`. Unknown candidate ids and evidence refs not in the bundle are dropped (counted in `dropped`); a hypothesis left without a valid ref is `unsupported: true` ("kanıtsız"). All text is plain: markdown, HTML, links (replaced by `[link]`) and control/bidi characters are removed.
+
+### incidents
+
+Feature `incidents` (`incidents/*.ts`), device tokens only. The incident room groups alert notifications into incidents, collects context and offers confirmed actions. See [Incidents](../features/incidents.md).
+
+| Method | Path | Description |
+| --- | --- | --- |
+| GET | `/v1/incidents?status=open\|acknowledged\|resolved\|active&limit=1..500` | `{incidents: [summary]}`, newest first. `active` = open + acknowledged. |
+| GET | `/v1/incidents/deploys?stack=&service=&limit=1..500` | `{deploys: [deploy record]}`, newest first (default 100). `stack` is a stack id (or a compose project name when no stack has that id); both filters optional. Empty without the `docker` feature. |
+| GET | `/v1/incidents/:id` | `{incident, similar}` (full record, below; `similar` is recomputed on every read: same fingerprint, last 90 days, ≤5, `[{id, kind, status, openedAt, resolvedAt, resolutionNote, workedAction}]`, the ones resolved with a note or a working action first) |
+| POST | `/v1/incidents/:id/ack` | open → acknowledged → `{incident}` (`409 agent.incident.badState` otherwise) |
+| POST | `/v1/incidents/:id/resolve` | `{note? (≤2000)}`; open/acknowledged → resolved → `{incident}` |
+| POST | `/v1/incidents/:id/reopen` | resolved → open → `{incident}` |
+| POST | `/v1/incidents/:id/notes` | Strict `{text (1–2000)}` → `{incident}` (timeline entry `note`) |
+| POST | `/v1/incidents/:id/analyze` | Starts an AI analysis (I-3) → `202 {analysis}` (state below). A queued/running analysis is returned instead of starting another. 3 per 10 min per incident (`429 agent.incident.analysisRateLimited`); `409 agent.incident.analysisOff` when `incidents.analysis.mode` is `off`. Poll `GET /v1/incidents/:id` for the result. |
+| GET | `/v1/incidents/:id/bundle?redacted=1` | "Claude ile incele": `{text, bytes, evidenceCount, truncated}` — the redacted bundle as text with the same nonce markers and "data, not instructions" framing, for a normal Claude session the app starts on the PC. `?redacted=1` is required (`400 agent.incident.redactedOnly`); 10 per 10 min per device (`429 agent.incident.bundleRateLimited`). |
+| GET | `/v1/incidents/:id/actions` | `{actions: [candidate], running: candidateId \| null}` |
+| POST | `/v1/incidents/:id/actions/:aid/preview` | Optional strict body `{options?: [cleanup option]}` (disk.cleanup only). → `{candidate, steps: [{argv, cwd?}], risk: low\|medium, details?, previewToken, expiresAt}`. `details` for `compose.rollback`: `{rollback: {tag, imageRef, current: {imageId, created}, previous: {imageId, created}}, warnings: ["dbMigrationsNotReverted"]}`; for `disk.cleanup`: `{cleanup: {options: [estimate], selected: [option]}}` (default selection: every available option). An unavailable option → `409 agent.incident.cleanupOptionUnavailable {option}`. |
+| POST | `/v1/incidents/:id/actions/:aid/execute` | `{previewToken, confirm: true, options?}` (disk.cleanup: the same `options` as the preview; another selection → `409 agent.preview.invalid`) → `{ok, code, stderr?}` after the command finished (stderr redacted, ≤1000 chars). 6 per minute per device, one running action per incident. A post-check runs 60 s later and is written to the timeline. |
+| POST | `/v1/incidents/test` | Strict `{kind: docker.died\|docker.unhealthy\|service.failed\|disk.full\|uptime.down}`: sends that notification for target `tiphys-test` through the normal path → `{incident: summary}` (`test: true`, no action candidates) |
+| DELETE | `/v1/incidents/:id` | Deletes the record → `{ok: true}` |
+
+**Summary**: `{id: "inc-<12 hex>", status: open|acknowledged|resolved, severity: critical|warning, host, kind (key of the first signal, e.g. docker.died), target, stack, service, openedAt, updatedAt, lastSignalAt, resolvedAt, signalCount, fingerprints, resolutionNote, workedAction, test}`.
+
+**Incident** adds: `parts: [{fingerprint, kind, target, targetType: container|unit|mount|host|backup|monitor|alert, unitScope?, firstAt, lastAt, recoveredAt?}]`, `acknowledgedAt?`, `resolvedBy?` (`device:<id>` or `auto`), `recoveredAt?`, `signals: [{at, key, params}]` (last 50), `timeline: [{at, type, by?, key?, text?, data?}]` (≤300; types `opened, signal, merged, recovered, acknowledged, resolved, reopened, note, context, action, actionResult, postCheck, analysis` (`by`, `data: {status: queued, mode}`), `analysisResult` (`data: {status, hypotheses?, actions?, droppedActions?, code?}`)), `hints: [{code, params, evidence}]`, `analysis?` (below), and `context`:
+
+- `logs: {source: docker|journal, target, lines (≤300, ≤60 KB, redacted), truncated}`
+- `inspect: {name, image, imageId, created, startedAt, finishedAt, status, running, exitCode, oomKilled, restartCount, restartPolicy, health, project, service}`
+- `git: {repo, log: [{hash, date, subject}], status: [porcelain lines]}` (stack repository; last 48 h, ≤10 commits)
+- `metrics: {host: [{t, cpu, load1, memPct, swapPct, disks: [{mount, pct}]}], container?: {name, samples: [{t, cpu, memPct, memBytes}]}}` (±30 min around the opening, from the in-memory ring)
+- `deploys: [deploy record]` (the incident's compose project, last 7 days, ≤20, newest first; a snapshot is taken first)
+- `configChanges: [{at, key: config.saved|config.restored, file, keys: [name]}]` (last 48 h; the stack's files when the stack is known; key names only, ≤50)
+- `events: [{at, key, params}]` (same host, last 2 h, ≤100), `similar: [{id, kind, status, openedAt, resolvedAt, resolutionNote, workedAction}]` (same fingerprint, 90 days, ≤5, resolved-with-note/action first; `kind`/`status` missing in records from before I-3), `errors?: {section: code}`, `collectedAt`
+
+Hint codes (rule based, translated by the app as `incident.hint.<code>`): `oom`, `exitCode` (`exitCode`), `restartLoop` (`restartCount`), `unhealthy`, `recentDeploy` (`service`, `created`, `image`, `imageId`, `prevImageId?`: an image change of the incident's service within the hour before it opened, from the deploy history), `diskFull` (`mount`, `percent`), `portInUse`, `portUnreachable`. `evidence` names context sections (`inspect`, `logs`, `metrics`, `signals`, `deploys`).
+
+**Analysis** (`incident.analysis`, I-3): `{status: queued|running|done|failed|unavailable, mode: local|remote, by: "device:<id>"|"auto", requestedAt, finishedAt?, jobId?, result? (the analysis result above), error?: {code, params}, reason?}`. `failed`: the model or validation failed (`error.code` from the job, e.g. `agent.analysis.invalidOutput`). `unavailable`: remote mode couldn't get an answer, `reason` `unreachable` (also 502/503/504), `unauthorized`, `busy`, `rejected`, `badResponse`, `timeout` (5 min), `lost` (the PC forgot the job or the agent stopped); `error.code` is `agent.incident.analysis.<reason>`. The PC is never woken; the rule hints stay. With mode `local`/`remote`, an analysis starts by itself ~10 s after the context of a new or reopened incident is collected (not for test incidents).
+
+**Candidates**: `{id: "c-<12 hex>", kind, target, risk}`, derived by the agent from the incident only: `container.restart {container}` → `docker restart <c>`; `compose.recreate {stack, service}` → `docker compose -f <files…> up -d --no-deps <service>` in the stack directory (only for a discovered stack that has the service); `unit.restart {scope: user|system, unit}` → `systemctl [--user] --no-ask-password restart <unit>`; `compose.rollback {stack, service}` (only when `tiphys-rollback/<project>-<service>:prev` exists, differs from the running image and the service's image reference is a tag, not a digest) → `docker tag <previous image id> <image reference>`, then `docker compose -f <files…> up -d --no-deps --pull never <service>` in the stack directory; `disk.cleanup {mount}` (disk signals or a `diskFull` hint) → the selected commands: `builder` `docker builder prune -f`, `images` `docker image prune -f` (dangling only, never `-a`), `containers` `docker container prune -f --filter until=24h`, `userJournal` `journalctl --user --vacuum-time=7d`. No shell is involved. Post-checks: rollback also requires the service's container to run the previous image id (`state` `…/otherImage` otherwise); disk.cleanup reads the mount's usage (`state: "<pct>%"`, ok below 95 %).
+
+**Deploy record**: `{at, kind: seen|changed, project, service, container, imageId, imageRef, createdAt (container creation), prevImageId, prevImageRef, rollbackTag (tag set on the previous image or null)}`. `seen` = first sighting of the service.
+
+**Cleanup estimate**: `{option: userJournal|systemJournal|builder|images|containers, available, reason?: needsRoot|noUserJournal|noDocker, reclaimableBytes (estimate or null), usageBytes}`. `systemJournal` is always `needsRoot`; `userJournal` is `needsRoot` when the journal directory holding the user's files isn't writable by the agent user (the usual persistent journal). `images` sums the unused dangling images (shared layers make it an upper bound); `builder`/`containers` use `docker system df`.
+
+**Notifications.** The source notification of a signal (`docker.died`, `disk.full`, …) gets `link: tiphys://incidents/<id>` and `data: {incidentId}`; there is no separate "incident opened" notification. New keys:
+
+| Key | Params | Notes |
+| --- | --- | --- |
+| `incident.resolved` | `host, kind, target, incidentId` | Auto-resolve only (10 stable minutes); `data: {incidentId}` |
+| `incident.analyzed` | `host, incidentId, summary (≤140)` | priority low, `data: {incidentId, silent: "1", replaceKey, replaceParams}`. Meant to **replace the incident's source notification silently**: the app derives notification ids from key + params (`noticeId`), so it should use `noticeId(replaceKey, jsonDecode(replaceParams))` as the id and show it without sound/vibration. `replaceKey`/`replaceParams` are the key and params of the incident's first source notification (e.g. `docker.died` + `{host, container, code}`). Sent as `sensitive` (model text about logs): only to endpoints with a WebPush key (end-to-end encrypted), not written to the event stream. |
+| `incident.actionFailed` | `host, target, action, stage: command\|postCheck, incidentId` | priority high; `data: {incidentId}` |
+| `uptime.down` / `uptime.up` | `host, monitor, monitorId` | Uptime Kuma important beat flipping down↔up (only with `incidents` on); `down` is priority high |
+| `docker.unhealthy` | `host, container` | Health check turned unhealthy (only with `incidents` on), priority high |
+| `docker.restartLoop` | `host, container, count` | ≥3 unexpected exits within 10 min (only with `incidents` on), priority high |
+
+### configfiles
+
+Feature `configfiles` (`configfiles/*.ts`), device tokens only (service tokens get `403 agent.auth.scopeDenied`). View and edit the `.env` / `env_file` files of the compose stacks and `configFiles.extraPaths`, with masked diffs, backups and restore. Routes take a `fileId` (`cf-<24 hex>`, a hash of the real path), never a path. Validation errors on these routes carry only `{path, message: <issue code>}` and never echo the request (a malformed JSON body gives `params.reason` only). See [Config files and secrets](../features/config-files.md).
+
+| Method | Path | Description |
+| --- | --- | --- |
+| GET | `/v1/config-files` | `{files: [{fileId, file, source: stack\|extra, stack, size, modifiedAt, keys, secrets, worldReadable}], skipped: [{fileId, file, reason}]}` |
+| GET | `/v1/config-files/:fileId` | `{fileId, file, source, stack, hash, size, modifiedAt, mode: "0640", warnings: [worldReadable], entries: [entry], issues: [{line, reason: syntax\|unterminatedQuote\|trailingText}]}` |
+| POST | `/v1/config-files/:fileId/reveal` | Strict `{keys: [1–10 key names]}` → `{fileId, file, values: {KEY: value}, missing: [key]}`. 10 calls per minute per device. Event `secrets.revealed {file, keys (comma separated), count}` with the device; no values. |
+| POST | `/v1/config-files/:fileId/preview` | Strict `{fileId?, baseHash, ops: [1–100 op], restart?: none (default)\|affected}` → `{fileId, file, baseHash, changes: [change], otherLinesChanged, affected: [{stack, project, services}], keys, restart, restartPlan?: [{stack, project, services, argv}], previewToken, expiresAt}`. `restartPlan` (with `affected`) shows the exact commands; no affected service → `409 agent.configfiles.nothingToRestart`. |
+| PUT | `/v1/config-files/:fileId` | `{previewToken, confirm: true, restart: none (default)\|affected}` → `{fileId, file, hash, backupId, warnings, affected, keys, restart, recreate?: result, restore?: {route, backupId}}`. `restart` must equal the preview's (else `409 agent.preview.invalid`, token spent). With `affected` the request lasts up to ~3.5 min (command ≤3 min + 30 s post-check): clients should allow ≥240 s. `restore` is present when the recreate failed: the file stays saved, and restoring `backupId` undoes it. Event `config.saved {file, keys, backupId, restart: none\|ok\|failed, services?, stage?, failed?}`. |
+| GET | `/v1/config-files/:fileId/backups` | `{fileId, file, backups: [{id, at, size}]}`, newest first (last 10 kept) |
+| POST | `/v1/config-files/:fileId/restore` | `{backupId, restart?}` → preview (current → backup): same shape as `/preview` plus `backupId`. `{backupId, previewToken, confirm: true, restart?}` (same `restart` as the preview) → `{fileId, file, hash, restoredFrom, backupId (backup of the replaced version), warnings, affected, keys, restart, recreate?, restore?}`. Event `config.restored` (same params as `config.saved`; `backupId` = the restored one). |
+| GET | `/v1/secrets/meta` | `{files: [{fileId, file, keys: [{key, firstSeenAt?, lastChangedAt?, changedBy?: tiphys\|external, maxAgeDays?, mark?, ageDays?, due?}]}]}` (no fingerprints) |
+| PUT | `/v1/secrets/meta` | Strict `{updates: [1–100 {fileId, key, maxAgeDays?: 1–3650\|null, secret?: boolean\|null}]}` → same as GET. `secret` is the user's mark (overrides the automatic classification); `null` clears. The key must exist in the file. |
+
+**Entry**: `{key, line, secret, reason: name|uriPassword|entropy|mark|null, masked: "••••<length>", length, value? (non-secrets only), inherited (bare KEY), quote: ""|"'"|"\"", duplicate (an earlier occurrence; the last one wins), …key meta}`. Values are what compose reads before `${VAR}` interpolation (double-quoted `\$` reads as `$$`).
+
+**Op**: `{op: "set", key, value (≤64 KB)}` (changes the last occurrence or appends), `{op: "unset", key}` (all occurrences), `{op: "rename", key, newKey}`. Keys match `^[A-Za-z_][A-Za-z0-9_.]*$`. Untouched lines are kept byte for byte; an edited line keeps its indentation, `export`, quoting (when it can hold the value) and inline comment; new values are written literally (plain, `'single'`, or `"double"` with `\$`).
+
+**Change**: `{key, change: added|removed|changed|renamed, from? (renamed), secret, line?, oldLine?, before?: {length, value?, inherited?}, after?: {…}}`; `value` only for non-secrets.
+
+**Flow.** `GET` gives `hash` → `preview {baseHash, ops, restart?}` → show the masked diff (and `restartPlan`) → `PUT {previewToken, confirm: true, restart}`. The token (120 s, single use, bound to device + file + baseHash + ops + restart choice + the previewed services) carries the ops; the save re-reads the file and returns `409 agent.configfiles.conflict` if it changed. **Affected services**: services whose `env_file` is the file; for the stack's root `.env`, services whose definition references a changed key as `${KEY}`/`$KEY`.
+
+**Recreate** (`restart: "affected"`, after the atomic write succeeded): per stack `docker compose -f <compose files…> up -d --no-deps <services…>` in the stack directory, no shell, 3 min timeout. Services are those of the preview that are still affected now and defined in the stack (validated names); the rest are reported in `skipped`. Then a post-check of up to 30 s, every 2 s: each container of a service (compose labels, one-off containers excluded) must be running and not unhealthy; exited/dead/unhealthy, a missing container or a growing restart count fail early, `healthy` passes early, otherwise it is judged at the end. **Result**: `{ok, stage?: command|postCheck, stacks: [{stack, project, services, ok, code, stderr? (last 2000 chars, ANSI stripped, redacted incl. the values the save replaced)}], services: [{stack, service, ok, state: running|running/healthy|running/starting|exited|running/unhealthy|restarting|missing|notRun}], skipped?: [{stack, project, services}]}`. On failure also the notification `config.restartFailed`. Audit detail `restart`: `none`, `ok`, `failed:command` or `failed:postCheck`.
+
+**Background jobs.** At startup and then daily: a rescan of all files plus the rotation reminder; every 10 minutes a rescan (current secret values for redaction, external changes).
+
+**Events and notifications** (key names only, never values):
+
+| Key | Kind | Params | Notes |
+| --- | --- | --- | --- |
+| `config.saved` / `config.restored` | event | `file, keys, backupId, restart: none\|ok\|failed, services?, stage?: command\|postCheck, failed?` | With the device |
+| `secret.changedExternally` | event | `file, keys (comma separated), count` | A known secret's HMAC fingerprint changed while Tiphys didn't write it (any read or rescan); its `lastChangedAt` is reset |
+| `secret.rotationDue` | notification | `host, file, keys (comma separated), count` | Secrets older than their `maxAgeDays` (age from `lastChangedAt`, else `firstSeenAt`); at most one per file per local day (persisted as `rotationNotifiedOn` in `secrets-meta.json`, so a restart doesn't repeat it); `data: {fileId}` |
+| `config.restartFailed` | notification | `host, file, services (failed, comma separated), stage: command\|postCheck, backupId` | priority high; `data: {fileId, backupId}`; `backupId` restores the version before the save |
 
 ## Protocols
 

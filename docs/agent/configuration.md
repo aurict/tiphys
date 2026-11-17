@@ -31,7 +31,7 @@ The file is validated with a zod schema (`agent/src/config.ts`) when it loads. I
     "homepage": false, "claude": true, "uptime": false, "wake": false,
     "watch": false, "git": true, "desktop": true, "control": true,
     "ports": false, "transcribe": false, "alerts": true, "backups": false,
-    "research": false, "telegram": false
+    "research": false, "telegram": false, "analysis": false
   },
   "devices": [],
   "allowedRoots": ["~"]
@@ -49,7 +49,7 @@ The file is validated with a zod schema (`agent/src/config.ts`) when it loads. I
 | `requireTailscaleLogin` | string or `null` | `null` | If set, every authenticated request must carry a `Tailscale-User-Login` header equal to this value. `tailscale serve` adds that header. `null` disables the check. |
 | `features` | object | see below | Feature flags. Routes for a disabled feature are not registered at all. |
 | `devices` | array | `[]` | Paired devices: `{id, name, tokenHash, createdAt}`. Only the SHA-256 hash of each token is stored. Managed by `pair`/`revoke`. Do not edit by hand. |
-| `serviceTokens` | array | `[]` | Scoped tokens for other agents: `{id, name, scopes: ["research"], tokenHash, createdAt, lastUsedAt?}`. Only the hash is stored; `lastUsedAt` is updated at most hourly. Managed by `service-token` and the app. A service token can call only routes of its scopes (see [api.md](api.md#authentication)). |
+| `serviceTokens` | array | `[]` | Scoped tokens for other agents: `{id, name, scopes: ["research" | "analysis"], tokenHash, createdAt, lastUsedAt?}`. Only the hash is stored; `lastUsedAt` is updated at most hourly. Managed by `service-token` and the app. A service token can call only routes of its scopes (see [api.md](api.md#authentication)). |
 | `allowedRoots` | string[] | `["~"]` | Directories that path-based features may touch: git, the Claude working directory and the folder picker. Paths are resolved with `realpath` (symlinks followed) before the check. `~` is expanded. |
 | `claude` | object | see [claude](#claude) | Claude Code profiles. |
 | `homepage` | object | see [homepage](#homepage) | Homepage dashboard integration. |
@@ -64,6 +64,9 @@ The file is validated with a zod schema (`agent/src/config.ts`) when it loads. I
 | `transcribe` | object | see [transcribe](#transcribe) | Voice-to-text command. |
 | `telegram` | object or `null` | `null` | Telegram bot (`{botToken, botUsername, botId}`). Set with `PUT /v1/telegram/bot`; the token is never returned. See [telegram](#telegram-and-research). |
 | `research` | object or `null` | `null` | The PC agent that runs research jobs for the `telegram` feature. See [telegram](#telegram-and-research). |
+| `stacks` | object | `{roots: ["~/stack"]}` | Where compose stacks are discovered. See [stacks](#stacks). |
+| `incidents` | object | `{links: [], analysis: {mode: "off", language: "tr"}}` | Incident room options (links, AI analysis). See [incidents](#incidents). |
+| `configFiles` | object | `{extraPaths: []}` | Extra `.env` files for the config editor. See [configFiles](#configfiles). |
 
 > **Security:** `requireTailscaleLogin` relies on a header. It only means something when the agent is reachable solely through `tailscale serve` (`listen.host` on loopback). If you bind to a tailnet or LAN address, any client can send that header itself. See [Security](../security.md).
 
@@ -96,6 +99,9 @@ Risk levels below are a guide to how much a holder of a device token can do with
 | `alerts` | `false` | Background checks: disk usage, failed systemd units, Grafana firing alerts, and Docker crash/OOM events (needs `docker`). Sends notifications. | low |
 | `backups` | `false` | Evaluates `backups.checks` every 15 minutes and notifies on state changes. | low |
 | `telegram` | `false` | Telegram newsletters: bot, invite-only recipients, feeds on a schedule, research on another agent (`research` section), approval, delivery and archive. Outbound HTTPS only (`api.telegram.org`, the PC agent, link checks); no webhook. See [Telegram newsletters](../features/telegram.md). | low (sends messages to people you invited) |
+| `incidents` | `false` | Incident room: alert notifications (alerts, Docker events, watch, backups, Uptime Kuma) become incidents with context (logs, inspect, git, metrics, events, deploys, config changes), rule hints and confirmed actions (container restart, compose recreate, unit restart, compose rollback, disk cleanup). Turns on the `uptime.down/up`, `docker.unhealthy` and `docker.restartLoop` notifications. Local signals need `alerts` (and `docker`); with `docker` on it also tags previous images `tiphys-rollback/*:prev`. See [Incidents](../features/incidents.md). | medium (restarts/rolls back containers, prunes Docker data after confirmation) |
+| `configfiles` | `false` | Config and secrets: view and edit the stacks' `.env` / `env_file` files and `configFiles.extraPaths` with masked values, reveal (rate limited), masked diff preview → confirmed atomic save (optionally recreating the affected compose services with `up -d --no-deps`), backups and restore, secret rotation metadata, a daily rotation reminder (`secret.rotationDue`). Known secret values of all discovered files (rescanned every 10 minutes and on each save) are redacted from incident context. See [Config files and secrets](../features/config-files.md). | high (writes service secrets after confirmation) |
+| `analysis` | `false` | Incident analysis jobs (`/v1/analysis/jobs`) for another agent holding an `analysis` service token (a server's incident room in `remote` mode): a tool-less `claude -p` (no built-in tools, no MCP, no user settings) reads the redacted bundle; output is schema-checked. Turn on only where Claude Code is installed. See [Incidents › AI analysis](../features/incidents.md#ai-analysis-i-3). | low (spends the user's Claude subscription; the model can't act) |
 | `research` | `false` | Web research jobs (`/v1/research/jobs`) run with `agy` (Gemini) and `claude` for another agent holding a `research` service token. The tools may only use the searxng/firecrawl MCP servers and write in the job's work directory; shell commands are denied. See [Research](../features/research.md). | medium (spends the user's AI subscriptions) |
 
 Endpoints that are always on, whatever the flags: health, config, devices, push endpoint registration, events, audit log and agent status. See [api.md](api.md#always-available).
@@ -224,6 +230,48 @@ Used by the `telegram` feature (the agent that sends the newsletters, e.g. atlas
 
 Example: `"research": {"url": "https://pc.my-tailnet.ts.net", "token": "tps_…", "wakeHostId": "pc"}`.
 
+### stacks
+
+```json
+"stacks": { "roots": ["~/stack"] }
+```
+
+Every directory directly under a root that holds `compose.yaml`, `compose.yml`, `docker-compose.yaml` or `docker-compose.yml` is a stack `{id (directory name), project, dir, composeFiles (+ override file), envFiles (.env and the services' env_file), services, gitRepo?}`. All paths are resolved with `realpath` and must stay inside the root: symlinked directories, compose files or env files pointing outside are skipped. This list is separate from `allowedRoots`. Missing roots are ignored. Read on each use (the incident room refreshes every 5 minutes).
+
+### incidents
+
+```json
+"incidents": { "links": [{ "uptimeMonitor": "Nextcloud", "stack": "nextcloud", "service": "app" }] }
+```
+
+`links` ties an Uptime Kuma monitor (by name) to a stack id and optionally a compose service: its downtime is grouped with that stack's container signals, and a `compose.recreate` action is offered. Read on each use.
+
+`analysis` (I-3) chooses where the AI analysis runs:
+
+| Field | Meaning |
+| --- | --- |
+| `analysis.mode` | `off` (default: rule hints only), `local` (tool-less `claude -p` in this agent: the PC), `remote` (jobs on the PC agent below: servers, which have no Claude) |
+| `analysis.url` | Base URL of the PC agent with the `analysis` feature, e.g. `https://pc.my-tailnet.ts.net:7443` (required for `remote`) |
+| `analysis.token` | Service token with the `analysis` scope from that agent. Returned only as `hasToken`; kept on PATCH while the URL stays the same, required again when it changes. |
+| `analysis.language` | `tr` (default) or `en`: the language the model writes in |
+
+Setting up a server (e.g. atlas) against the PC:
+
+1. On the PC: turn on the `analysis` feature (`PATCH /v1/config {"features": {"analysis": true}}` or `agent.json`, then restart) and create a token: `tiphys-agent service-token create --name charon --scope analysis` (or `POST /v1/service-tokens {"name": "charon", "scopes": ["analysis"]}` from the app). The token is printed once.
+2. On the server: `PATCH /v1/config {"incidents": {"analysis": {"mode": "remote", "url": "https://pc.my-tailnet.ts.net:7443", "token": "tps_…"}}}`. No restart needed.
+
+Example: `"incidents": {"links": [], "analysis": {"mode": "remote", "url": "https://pc.my-tailnet.ts.net:7443", "token": "tps_…", "language": "tr"}}`. When the PC is off or asleep the analysis is marked `unavailable` and the rule hints stay; the PC is never woken for it. The bundle is redacted on the server before it is sent.
+
+With `docker` also on, the incident room tracks deploys (no setting): every 5 minutes and after each container start it records compose services whose image changed in `incidents/deploys.jsonl` and tags the previous image `tiphys-rollback/<project>-<service>:prev` (one tag per service). These tags keep old images out of `docker image prune` (dangling only); `docker image prune -a` or `docker rmi` still removes them. Remove a tag by hand with `docker image rm tiphys-rollback/<name>:prev`.
+
+### configFiles
+
+```json
+"configFiles": { "extraPaths": ["~/apps/bot/.env"] }
+```
+
+`.env` files to offer besides the ones found in [stacks](#stacks). Each must be a regular file whose real path is in the configured file's own directory (a symlink to another directory is refused), owned by the agent user, at most 256 KB, and named `.env`, `*.env` or `.env.*`. The same rules apply to stack files (their real path must stay inside the stack root). Files that don't qualify are listed under `skipped` with a reason. Read on each use.
+
 ## Editing from the app
 
 The app reads the redacted config with `GET /v1/config` and changes it with `PATCH /v1/config` (agent settings screens).
@@ -234,16 +282,17 @@ The app reads the redacted config with `GET /v1/config` and changes it with `PAT
 - `push.endpoints` is reduced to `{deviceId}`, and `push.token` becomes `hasToken`
 - for `uptimeKuma`, `sunshine` and `alerts.grafana`, the password or token becomes `hasPassword` / `hasToken`
 - `telegram` becomes `{configured, username}` and `research` becomes `{url, wakeHostId, hasToken}`
+- `incidents.analysis` becomes `{mode, url, language, hasToken}`
 
-**Patchable fields:** `name`, `features` (partial), `allowedRoots`, `claude`, `homepage`, `pushToken` (string or `null`), `uptimeKuma`, `sunshine`, `wake`, `watch`, `alerts`, `transcribe`, `desktop`, `backups`, `research` (`{url, token?, wakeHostId?}` or `null`). The bot token has its own route (`PUT /v1/telegram/bot`). Unknown keys are rejected. The phone **cannot** change `listen`, `requireTailscaleLogin`, `devices`, `serviceTokens` or push endpoints this way (service tokens have their own routes, `/v1/service-tokens`; they are not part of `GET /v1/config`).
+**Patchable fields:** `name`, `features` (partial), `allowedRoots`, `claude`, `homepage`, `pushToken` (string or `null`), `uptimeKuma`, `sunshine`, `wake`, `watch`, `alerts`, `transcribe`, `desktop`, `backups`, `research` (`{url, token?, wakeHostId?}` or `null`), `stacks` (`{roots}`), `incidents` (`{links?, analysis?: {mode, url? (null clears), token?, language?}}`; an omitted part is kept), `configFiles` (`{extraPaths}`). The bot token has its own route (`PUT /v1/telegram/bot`). Unknown keys are rejected. The phone **cannot** change `listen`, `requireTailscaleLogin`, `devices`, `serviceTokens` or push endpoints this way (service tokens have their own routes, `/v1/service-tokens`; they are not part of `GET /v1/config`).
 
-**Password fields.** For `uptimeKuma.password`, `sunshine.password`, `alerts.grafana.token` and `research.token`, an omitted value keeps the stored secret, but only if the URL is unchanged. If the URL changes and no new secret is sent, the request fails with `agent.config.passwordRequired`, so an old secret is never sent to a new host. Sending `null` for the section removes it.
+**Password fields.** For `uptimeKuma.password`, `sunshine.password`, `alerts.grafana.token`, `research.token` and `incidents.analysis.token`, an omitted value keeps the stored secret, but only if the URL is unchanged. If the URL changes and no new secret is sent, the request fails with `agent.config.passwordRequired`, so an old secret is never sent to a new host. Sending `null` for the section removes it.
 
 **Restart.** The response is `{config, restartRequired}`. `restartRequired` is `true` when the patch contained `features` or `alerts`. The agent does not restart itself. Restart the service, for example `systemctl --user restart tiphys-agent` if you installed it as a user unit. In practice, these settings take effect as follows:
 
 | Setting | Takes effect |
 | --- | --- |
-| `name`, `allowedRoots`, `claude`, `homepage`, `pushToken`, `wake`, `transcribe`, `sunshine`, `desktop.clipboardSync`, `backups.checks`, `research` | Immediately (read on each use) |
+| `name`, `allowedRoots`, `claude`, `homepage`, `pushToken`, `wake`, `transcribe`, `sunshine`, `desktop.clipboardSync`, `backups.checks`, `research`, `stacks`, `incidents`, `configFiles` | Immediately (read on each use) |
 | `features.control = false` | Immediately. The open control session ends at once. |
 | other `features`, `alerts` | After restart (`restartRequired: true`) |
 | `uptimeKuma`, `watch` | After restart. The bridge and watcher read these only at startup, but the response does **not** set `restartRequired` for them. |
@@ -259,7 +308,7 @@ The binary is `tiphys-agent`, which is `node agent/dist/cli.js` after `npm run b
 | `tiphys-agent pair --name "Phone" [--url https://argo.my-tailnet.ts.net]` | Adds a device and prints a QR code. The QR holds `{"v":1,"type":"tiphys-pair","agent","url","token"}`. The address and token are also printed for manual entry. The token (`tph_…`) is shown only once. Scan it in the app's agent pairing screen. **Always pass `--url`**: the default is `http://<listen.host>:<listen.port>`, which is a loopback address the phone cannot reach. |
 | `tiphys-agent devices` | Lists paired devices (`id`, `name`, `createdAt`, tab-separated). |
 | `tiphys-agent revoke <device-id>` | Removes a device and its push endpoint. |
-| `tiphys-agent service-token create --name NAME --scope research` | Creates a scoped service token (`tps_…`) and prints it **once**; only its hash is stored. Give it to the other agent (e.g. atlas's `research.token`). |
+| `tiphys-agent service-token create --name NAME --scope research\|analysis` | Creates a scoped service token (`tps_…`) and prints it **once**; only its hash is stored. Give it to the other agent (e.g. atlas's `research.token`, a server's `incidents.analysis.token`). |
 | `tiphys-agent service-token list` | Lists service tokens (`id`, `name`, `scopes`, `createdAt`, `lastUsedAt`, tab-separated). |
 | `tiphys-agent service-token revoke <id>` | Revokes a service token. |
 | `tiphys-agent run -- CMD [ARGS…]` | Runs a command with inherited stdio. When it exits, sends `command.done` (exit 0) or `command.failed` with the duration and exit code, then exits with the same code. Only the program name of the command is written to the event log; the notification shows up to 120 characters of the full command line. |
@@ -284,6 +333,9 @@ All state files sit next to `agent.json` (by default in `~/.config/tiphys/`) and
 | `claude-sessions.json` | `claude` | Live Claude sessions, restored after an agent restart. |
 | `claude-schedules.json` | `claude` | Scheduled Claude tasks. |
 | `telegram-state.json` | `telegram` | Recipients (chat id, names, status, subscriptions), invites, feeds, the `getUpdates` offset and the newsletter archive (last 60 issues per feed with items, rendered parts and deliveries). No tokens. A corrupt file is moved aside to `telegram-state.json.corrupt-<time>` and the agent starts empty (event `telegram.stateCorrupt`). |
+| `incidents/` | `incidents` | Directory (`0700`): `index.json` (summaries) and `<id>.json` per incident (redacted logs, inspect summary, git log/status, metrics, deploys, timeline, notes). Atomic writes, `0600`. Resolved incidents are deleted after 90 days; at most 500 are kept (oldest resolved first). `deploys.jsonl` (`incidents` + `docker`, `0600`): compose service image changes (ids, references, container names; no env); rotated at 1 MB to `deploys.jsonl.1`. |
+| `secrets-meta.json` | `configfiles` | Per file and key: `{fingerprint (HMAC-SHA256 with secrets-hmac.key), firstSeenAt, lastChangedAt, changedBy, maxAgeDays?, mark?}`; per file `rotationNotifiedOn` (local date of the last rotation reminder). No values. Atomic writes. |
+| `secrets-hmac.key` | `configfiles` | 32 random bytes (hex) keying the fingerprints. Never leaves the agent. |
 | `research-jobs.json` | `research` | Research jobs of the last 24 h with their results (public news; no tokens, no MCP settings). |
 | `claude-shots/` | `claude` + PC sessions | JPEG screenshots taken by PC sessions. The last 60 are kept. |
 
@@ -295,6 +347,9 @@ Other locations:
 | `~/.mozilla/native-messaging-hosts/dev.tiphys.bridge.json`, `$XDG_DATA_HOME/tiphys/firefox-host` | Written by `firefox install`. |
 | `~/.local/share/applications/com.visualstudio.code.desktop` | Written by `vscode-a11y install`. |
 | `$XDG_RUNTIME_DIR/tiphys/research/<job-id>/` (fallback `~/.cache/tiphys/research/`) | Research job work directory (`0700`): `draft.schema.json`, `draft.json`, `notes.md` (no MCP config: it is passed to Claude inline). Deleted 24 h after the job ends. |
+| `$XDG_RUNTIME_DIR/tiphys/llm/run-*/` (fallback `~/.cache/tiphys/llm/`) | Empty `0700` working directory of a tool-less `claude -p` run (incident analysis, I-3); removed after the run. |
+| `~/.local/state/tiphys/config-backups/<fileId>/<time>` (`$XDG_STATE_HOME` if set) | `configfiles`: the previous version of a config file before each save or restore (directories `0700`, files `0600`, last 10 per file). These are copies of the `.env` file, secrets included. |
+| `.<name>.tiphys-<random>.tmp` next to a config file | `configfiles`: temp file of an atomic save; removed on failure, renamed over the file on success. |
 | `$TMPDIR/tiphys-voice-*` | Temporary audio for `/v1/transcribe`, deleted after each request. |
 | `services.yaml` (`homepage.servicesPath`) | Rewritten in place when a service is added from the app. |
 

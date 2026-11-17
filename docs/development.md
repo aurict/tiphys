@@ -94,7 +94,7 @@ flutter test test/integration --tags real
 
 ### Building
 
-See [getting-started.md](getting-started.md#4-build-the-app). On a machine you are also working on, use
+See [setup-guide.md](setup-guide.md#6-build-and-install-the-app). On a machine you are also working on, use
 `tools/limited.sh` (`LIMIT_GB`, default 4) so Gradle cannot take all memory.
 
 ## Firefox extension

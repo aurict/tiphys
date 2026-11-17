@@ -56,7 +56,7 @@ or re-run `tools/deploy-agent.sh` for servers.
 ### The agent restarted unexpectedly
 
 You get an "agent restarted" notification after an unclean stop. The usual cause is memory: each Claude process
-uses roughly 500 MB. The unit file from [getting-started](getting-started.md#run-it-as-a-systemd-user-service) sets no
+uses roughly 500 MB. The unit file from [setup guide](setup-guide.md#run-it-as-a-systemd-user-service) sets no
 memory limit and `OOMPolicy=continue`. With a `MemoryMax=` limit or `OOMPolicy=stop`, the first Claude session can
 take the whole agent down. Claude sessions come back idle after a restart.
 
@@ -225,7 +225,7 @@ if the previous run of the same task is still going (`claude.scheduleSkipped` ev
   `FILE -m MODEL [-l LANG]` and print the text to stdout.
 - **Terminal falls back to a plain shell:** install `tmux` on the host. Without it, sessions do not survive
   reconnects.
-- **APK build kills the desktop:** build through `tools/limited.sh` (see [getting-started](getting-started.md#build)).
+- **APK build kills the desktop:** build through `tools/limited.sh` (see [setup guide](setup-guide.md#build)).
 - **Release APK will not install over the existing app:** it was signed with a different key (for example the
   debug key because `key.properties` was missing). Restore your release key, or uninstall first. Uninstalling loses
   on-device secrets, so export an encrypted profile beforehand.
