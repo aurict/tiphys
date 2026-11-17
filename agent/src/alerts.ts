@@ -131,6 +131,12 @@ export interface DockerEvent {
   exitCode: number | null;
   /** Event time, ms */
   at: number;
+  /** For "health_status": the new status ("healthy", "unhealthy", "starting"). */
+  health?: string;
+  /** Compose labels of the container, if any. */
+  project?: string;
+  service?: string;
+  workingDir?: string;
 }
 
 /** A `docker events --format '{{json .}}'` line → event; null if it isn't a container event. */
@@ -142,15 +148,26 @@ export function parseDockerEvent(line: string): DockerEvent | null {
     return null;
   }
   if (j.Type !== undefined && j.Type !== "container") return null;
-  const action = (j.Action ?? j.status ?? "").split(":")[0]!;
-  const name = j.Actor?.Attributes?.name;
+  // Some actions carry a detail after a colon: "health_status: unhealthy", "exec_start: sh -c …".
+  const raw = j.Action ?? j.status ?? "";
+  const colon = raw.indexOf(":");
+  const action = colon < 0 ? raw : raw.slice(0, colon);
+  const attrs = j.Actor?.Attributes ?? {};
+  const name = attrs.name;
   if (!action || !name) return null;
-  const code = j.Actor?.Attributes?.exitCode;
+  const code = attrs.exitCode;
+  const project = attrs["com.docker.compose.project"];
+  const service = attrs["com.docker.compose.service"];
+  const workingDir = attrs["com.docker.compose.project.working_dir"];
   return {
     action,
     name,
     exitCode: code === undefined || code === "" ? null : Number(code),
     at: j.timeNano ? Math.floor(j.timeNano / 1e6) : j.time ? j.time * 1000 : Date.now(),
+    ...(action === "health_status" && colon >= 0 ? { health: raw.slice(colon + 1).trim() } : {}),
+    ...(project ? { project } : {}),
+    ...(service ? { service } : {}),
+    ...(workingDir ? { workingDir } : {}),
   };
 }
 
@@ -158,15 +175,21 @@ export function parseDockerEvent(line: string): DockerEvent | null {
 const EXPECTED_WINDOW_MS = 60_000;
 /** No repeat record/notification for the same container + kind within this time (crash loop noise). */
 export const DOCKER_DEBOUNCE_MS = 15 * 60_000;
+/** Restart loop: at least this many unexpected exits of one container within RESTART_LOOP_WINDOW_MS. */
+export const RESTART_LOOP_COUNT = 3;
+export const RESTART_LOOP_WINDOW_MS = 10 * 60_000;
 
 /**
  * Interprets Docker events: die (unexpected: exit code ≠ 0 and no recent kill/stop) and oom give a notification
  * + event; restart only an event. Once per container + kind within DOCKER_DEBOUNCE_MS.
+ * With the "incidents" feature on, also: health_status unhealthy → docker.unhealthy, and ≥3 unexpected exits
+ * (any exit code) within 10 min → docker.restartLoop.
  */
 export class DockerEventWatcher {
   #ctx: Ctx;
   #lastKill = new Map<string, number>();
   #lastSeen = new Map<string, number>();
+  #exits = new Map<string, number[]>();
   #child: ChildProcess | null = null;
   #retry: NodeJS.Timeout | null = null;
   #stopped = false;
@@ -180,24 +203,44 @@ export class DockerEventWatcher {
       this.#lastKill.set(e.name, e.at);
       return;
     }
+    const incidents = this.#ctx.store.get().features.incidents;
+    const sends: Array<Promise<unknown>> = [];
     let key: string;
     if (e.action === "oom") key = "docker.oom";
     else if (e.action === "restart") key = "docker.restarted";
-    else if (e.action === "die") {
+    else if (e.action === "health_status") {
+      if (!incidents || e.health !== "unhealthy") return;
+      key = "docker.unhealthy";
+    } else if (e.action === "die") {
       const killed = e.at - (this.#lastKill.get(e.name) ?? -Infinity) < EXPECTED_WINDOW_MS;
-      if (killed || e.exitCode === 0) return; // stopped on purpose or exited cleanly
+      if (killed) return; // stopped on purpose
+      if (incidents) sends.push(this.#restartLoop(e));
+      if (e.exitCode === 0) return void (await Promise.all(sends)); // exited cleanly
       key = "docker.died";
     } else return;
+    sends.push(this.#notify(key, e, e.exitCode !== null && key === "docker.died" ? { code: e.exitCode } : {}));
+    await Promise.all(sends);
+  }
+
+  /** Notifies (or for docker.restarted only records) once per container + kind within DOCKER_DEBOUNCE_MS. */
+  async #notify(key: string, e: DockerEvent, extra: Record<string, string | number>): Promise<void> {
     const dk = `${key}|${e.name}`;
     if (e.at - (this.#lastSeen.get(dk) ?? -Infinity) < DOCKER_DEBOUNCE_MS) return;
     this.#lastSeen.set(dk, e.at);
     const host = this.#ctx.store.get().name;
-    const params: Record<string, string | number> = { host, container: e.name, ...(e.exitCode !== null && key === "docker.died" ? { code: e.exitCode } : {}) };
+    const params: Record<string, string | number> = { host, container: e.name, ...extra };
     if (key === "docker.restarted") {
       await this.#ctx.notifier.events?.record({ key, params, link: "tiphys://system" });
       return;
     }
-    await this.#ctx.notifier.send({ key, params, link: "tiphys://system", priority: "high" });
+    const context = { ...(e.project ? { project: e.project } : {}), ...(e.service ? { service: e.service } : {}), ...(e.workingDir ? { workingDir: e.workingDir } : {}) };
+    await this.#ctx.notifier.send({ key, params, link: "tiphys://system", priority: "high", context });
+  }
+
+  async #restartLoop(e: DockerEvent): Promise<void> {
+    const recent = [...(this.#exits.get(e.name) ?? []), e.at].filter((t) => e.at - t < RESTART_LOOP_WINDOW_MS);
+    this.#exits.set(e.name, recent);
+    if (recent.length >= RESTART_LOOP_COUNT) await this.#notify("docker.restartLoop", e, { count: recent.length });
   }
 
   /** Starts the `docker events` process; if it ends (Docker restarted, missing) retries after 60 s. */
@@ -205,7 +248,7 @@ export class DockerEventWatcher {
     if (this.#stopped) return;
     const child = spawn(
       "docker",
-      ["events", "--format", "{{json .}}", "--filter", "type=container", ...["die", "oom", "restart", "kill", "stop"].flatMap((a) => ["--filter", `event=${a}`])],
+      ["events", "--format", "{{json .}}", "--filter", "type=container", ...["die", "oom", "restart", "kill", "stop", "health_status"].flatMap((a) => ["--filter", `event=${a}`])],
       { stdio: ["ignore", "pipe", "ignore"] },
     );
     this.#child = child;

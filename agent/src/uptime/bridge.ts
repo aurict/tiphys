@@ -35,6 +35,8 @@ export class UptimeBridge {
   cert = new Map<number, { valid: boolean; daysRemaining: number | null; issuer: string | null }>();
   notifications: Array<Record<string, unknown>> = [];
   maintenances = new Map<number, Record<string, unknown> & { id: number; title: string }>();
+  /** Last known down (0) / up (1) state per monitor; pending and maintenance beats don't change it. */
+  #lastStatus = new Map<number, number>();
 
   constructor(getConfig: () => AgentConfig, notifier: Notifier) {
     this.#getConfig = getConfig;
@@ -77,10 +79,12 @@ export class UptimeBridge {
     s.on("heartbeatList", (id: number, list: Beat[], overwrite: boolean) => {
       const cur = overwrite ? [] : (this.beats.get(id) ?? []);
       this.beats.set(id, [...cur, ...list].slice(-MAX_BEATS));
+      this.#seed(id, [...list].reverse());
     });
     s.on("importantHeartbeatList", (id: number, list: Beat[], overwrite: boolean) => {
       const cur = overwrite ? [] : (this.important.get(id) ?? []);
       this.important.set(id, [...list, ...cur].slice(0, 200));
+      this.#seed(id, list);
     });
     s.on("heartbeat", (b: Beat & { monitorID: number }) => {
       const arr = this.beats.get(b.monitorID) ?? [];
@@ -90,6 +94,7 @@ export class UptimeBridge {
       if (b.important) {
         this.important.set(b.monitorID, [b, ...(this.important.get(b.monitorID) ?? [])].slice(0, 200));
       }
+      this.onBeat(b.monitorID, b);
     });
     s.on("uptime", (id: number, period: number | string, value: number) => {
       const u = this.uptime.get(id) ?? { h24: null, d30: null };
@@ -110,6 +115,35 @@ export class UptimeBridge {
         /* malformed certificate info is ignored */
       }
     });
+  }
+
+  /** Cache fills (history lists, newest first here) only set the state, silently, when it isn't known yet. */
+  #seed(id: number, newestFirst: Beat[]) {
+    if (this.#lastStatus.has(id)) return;
+    const b = newestFirst.find((x) => x.status === 0 || x.status === 1);
+    if (b) this.#lastStatus.set(id, b.status);
+  }
+
+  /**
+   * A live heartbeat. An important beat that flips the known state 0↔1 sends uptime.down / uptime.up (only with the
+   * "incidents" feature on: Uptime Kuma usually notifies on its own). The first state of a monitor is recorded silently.
+   */
+  onBeat(id: number, b: Beat) {
+    if (b.status !== 0 && b.status !== 1) return;
+    const prev = this.#lastStatus.get(id);
+    this.#lastStatus.set(id, b.status);
+    if (prev === undefined || prev === b.status || !b.important) return;
+    const c = this.#getConfig();
+    if (!c.features.incidents) return;
+    const down = b.status === 0;
+    void this.#notifier
+      .send({
+        key: down ? "uptime.down" : "uptime.up",
+        params: { host: c.name, monitor: this.monitors.get(id)?.name ?? String(id), monitorId: id },
+        link: "tiphys://monitor/uptime",
+        ...(down ? { priority: "high" as const } : {}),
+      })
+      .catch(() => {});
   }
 
   /** On a new connection fetches the last 2 hours of heartbeats (so the mini charts in the list fill right away). */

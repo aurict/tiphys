@@ -25,6 +25,12 @@ export function redact(c: AgentConfig) {
     desktop: c.desktop,
     telegram: c.telegram ? { configured: true, username: c.telegram.botUsername } : null,
     research: c.research ? { url: c.research.url, wakeHostId: c.research.wakeHostId ?? null, hasToken: true } : null,
+    stacks: c.stacks,
+    incidents: {
+      links: c.incidents.links,
+      analysis: { mode: c.incidents.analysis.mode, url: c.incidents.analysis.url ?? null, language: c.incidents.analysis.language, hasToken: !!c.incidents.analysis.token },
+    },
+    configFiles: c.configFiles,
     devices: c.devices.map(({ id, name, createdAt }) => ({ id, name, createdAt })),
   };
 }
@@ -65,6 +71,21 @@ const patchSchema = z.strictObject({
     .strictObject({ url: z.url({ protocol: /^https?$/ }), token: z.string().min(1).max(200).optional(), wakeHostId: z.string().nullable().optional() })
     .nullable()
     .optional(),
+  stacks: z.strictObject({ roots: shape.stacks.unwrap().shape.roots }).optional(),
+  incidents: z
+    .strictObject({
+      links: shape.incidents.unwrap().shape.links.optional(),
+      analysis: z
+        .strictObject({
+          mode: z.enum(["local", "remote", "off"]),
+          url: z.url({ protocol: /^https?$/ }).nullable().optional(),
+          token: z.string().min(1).max(200).optional(),
+          language: z.enum(["tr", "en"]).optional(),
+        })
+        .optional(),
+    })
+    .optional(),
+  configFiles: z.strictObject({ extraPaths: shape.configFiles.unwrap().shape.extraPaths }).optional(),
 });
 
 export function configRoutes(app: FastifyInstance, ctx: Ctx) {
@@ -101,6 +122,21 @@ export function configRoutes(app: FastifyInstance, ctx: Ctx) {
       if (p.desktop) c.desktop = p.desktop;
       // Checks read the setting every round: no restart needed.
       if (p.backups) c.backups = p.backups;
+      // Stack roots and incident links are read on every use: no restart needed.
+      if (p.stacks) c.stacks = p.stacks;
+      if (p.incidents?.links) c.incidents.links = p.incidents.links;
+      // Analysis PC (read on every run): like research, the token is kept only while the URL stays the same.
+      const a = p.incidents?.analysis;
+      if (a) {
+        const old = c.incidents.analysis;
+        const url = a.url === undefined ? old.url : (a.url ?? undefined);
+        const token = a.token ?? (url && url === old.url ? old.token : undefined);
+        if (a.mode === "remote" && !url) throw new AppError("agent.config.urlRequired", 400, { field: "incidents.analysis.url" });
+        if (a.mode === "remote" && !token) throw new AppError("agent.config.passwordRequired", 400, { field: "incidents.analysis.token" });
+        c.incidents.analysis = { mode: a.mode, language: a.language ?? old.language, ...(url ? { url } : {}), ...(url && token ? { token } : {}) };
+      }
+      // Config file paths are read on every request: no restart needed.
+      if (p.configFiles) c.configFiles = p.configFiles;
       // Research PC (telegram feature): read on every run. The token is kept only while the URL stays the same.
       if (p.research === null) c.research = null;
       else if (p.research) {

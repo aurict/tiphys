@@ -7,7 +7,7 @@ import { homedir } from "node:os";
 import { join } from "node:path";
 import { AppError } from "../errors.ts";
 import { editorPrompt, researchPrompt } from "./prompts.ts";
-import { runTool } from "./run.ts";
+import { runTool } from "../llm/claude_print.ts";
 import { draftJsonSchema, draftOutputSchema, editorJsonSchema, editorOutputSchema, type Item, type JobInput } from "./schema.ts";
 import { MAX_URL_LENGTH, MCP_PACKAGES, MCP_TOOLS, normalizeUrl, parseAgyStream, parseClaudeStream, UrlSet } from "./streams.ts";
 
@@ -288,7 +288,7 @@ export class ResearchService {
     // Only URLs from successful searxng/firecrawl tool outputs (see streams.ts), never model-written text.
     const seen = new UrlSet();
     const run = (tool: string, args: string[]) =>
-      runTool(tool, args, { cwd: dir, signal, timeoutMs: Math.max(1, deadline - Date.now()), killGraceMs: this.o.killGraceMs });
+      runTool(tool, args, { cwd: dir, signal, timeoutMs: Math.max(1, deadline - Date.now()), killGraceMs: this.o.killGraceMs, errorPrefix: "agent.research" });
     await writeFile(join(dir, "draft.schema.json"), JSON.stringify(draftJsonSchema), { mode: 0o600 });
 
     let researchMs = 0;

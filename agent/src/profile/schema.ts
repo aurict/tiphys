@@ -242,6 +242,12 @@ const notifications = z.strictObject({
   clipboardToPc: z.boolean().default(false),
   /** PC whose clipboard is synced; null: the Claude host or the first host with an agent. */
   clipboardHostId: id.nullable().default(null),
+  /** Telegram newsletter sent (summary). */
+  telegramSent: z.boolean().default(true),
+  /** Telegram newsletter needs approval, failed, or the research PC was unreachable. */
+  telegramAlerts: z.boolean().default(true),
+  /** Incident room: incident resolved / remediation failed (alerts themselves follow their own switches). */
+  incidents: z.boolean().default(true),
 });
 
 const encryptedSecrets = z.strictObject({

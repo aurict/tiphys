@@ -12,7 +12,7 @@ import { powerRoutes } from "./routes/power.ts";
 import { serviceRoutes } from "./routes/services.ts";
 import { systemRoutes } from "./routes/system.ts";
 import { wakeRoutes } from "./routes/wake.ts";
-import { auditRoutes } from "./audit.ts";
+import { auditRoutes, type AuditDetail } from "./audit.ts";
 import { EventLog, eventRoutes, eventsPath } from "./events.ts";
 import { agentStatusRoutes, type RunLog } from "./runs.ts";
 import { desktopRoutes, openRoutes } from "./routes/desktop.ts";
@@ -32,6 +32,7 @@ import { processRoutes } from "./routes/processes.ts";
 import { transcribeRoutes } from "./routes/transcribe.ts";
 import { serviceTokenRoutes, touchServiceToken } from "./service_tokens.ts";
 import type { ResearchService } from "./research/jobs.ts";
+import type { AnalysisQueue } from "./analysis/jobs.ts";
 
 export { VERSION } from "./version.ts";
 import { VERSION } from "./version.ts";
@@ -55,6 +56,11 @@ export interface Ctx {
   ui?: UiService;
   /** Research job queue ("research" feature); created by researchRoutes unless supplied (tests). */
   research?: ResearchService;
+  /**
+   * Incident analysis queue: created by analysisRoutes ("analysis" feature) or lazily by the incident room in local
+   * mode; one queue per agent (tests supply their own).
+   */
+  analysis?: AnalysisQueue;
 }
 
 declare module "fastify" {
@@ -62,6 +68,8 @@ declare module "fastify" {
     device?: Device;
     /** Set instead of device when a scoped service token authenticated the request. */
     service?: ServiceToken;
+    /** Extra audit fields set by the route (ids, key names, counts, hashes; never values). See audit.ts. */
+    auditDetail?: AuditDetail;
   }
   interface FastifyContextConfig {
     /** Service tokens holding this scope may call the route (devices may call every route). */
@@ -69,9 +77,10 @@ declare module "fastify" {
   }
 }
 
-export async function buildApp(ctx: Ctx, opts: { logger?: boolean } = {}): Promise<FastifyInstance> {
+export async function buildApp(ctx: Ctx, opts: { logger?: boolean; logStream?: { write(line: string): void } } = {}): Promise<FastifyInstance> {
   const app = Fastify({
-    logger: opts.logger ? { level: "info", redact: ["req.headers.authorization"] } : false,
+    // logStream: tests capture the log (leak checks); in production pino writes to stdout.
+    logger: opts.logger ? { level: "info", redact: ["req.headers.authorization"], ...(opts.logStream ? { stream: opts.logStream } : {}) } : false,
     bodyLimit: 32 * 1024 * 1024,
     trustProxy: "127.0.0.1",
   });
@@ -146,6 +155,7 @@ export async function buildApp(ctx: Ctx, opts: { logger?: boolean } = {}): Promi
   if (f.homepage) homepageRoutes(app, ctx);
   if (f.wake) wakeRoutes(app, ctx);
   if (f.research) await (await import("./routes/research.ts")).researchRoutes(app, ctx);
+  if (f.analysis) await (await import("./analysis/routes.ts")).analysisRoutes(app, ctx);
   for (const register of ctx.extraRoutes ?? []) await register(app, ctx);
 
   return app;

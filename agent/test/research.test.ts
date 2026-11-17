@@ -7,7 +7,7 @@ import { ConfigStore } from "../src/config.ts";
 import { EventLog, eventsPath } from "../src/events.ts";
 import { Notifier } from "../src/notify.ts";
 import { cleanItems, ResearchService, type Job } from "../src/research/jobs.ts";
-import { childEnv } from "../src/research/run.ts";
+import { childEnv } from "../src/llm/claude_print.ts";
 import { normalizeUrl, toolUrls } from "../src/research/streams.ts";
 import { jobInputSchema } from "../src/research/schema.ts";
 import { buildApp } from "../src/server.ts";

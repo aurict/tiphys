@@ -19,7 +19,17 @@ export interface Notice {
    * with a WebPush key (end-to-end encrypted); plain text never goes to ntfy.
    */
   sensitive?: boolean;
+  /**
+   * Local hints for observers only (e.g. a container's compose project and service); never sent, never recorded.
+   */
+  context?: Record<string, string>;
 }
+
+/**
+ * Sees every notification before it is recorded and sent; may return a changed copy (the incident room adds its link
+ * and data.incidentId). Synchronous so delivery isn't delayed; an observer that throws is logged and skipped.
+ */
+export type NoticeObserver = (n: Notice) => Notice | void;
 
 export function payloadOf(n: Notice) {
   return JSON.stringify({ v: 1, key: n.key, params: n.params ?? {}, link: n.link ?? null, ...(n.data ? { data: n.data } : {}), at: new Date().toISOString() });
@@ -40,6 +50,7 @@ export class Notifier {
   #log: (msg: string, err?: unknown) => void;
   /** Every notification is also written to the event stream (created next to the settings file if there's no buildApp). */
   events: EventLog | null;
+  #observers: NoticeObserver[] = [];
 
   constructor(getConfig: () => AgentConfig, log: (msg: string, err?: unknown) => void, events: EventLog | null = null) {
     this.#getConfig = getConfig;
@@ -47,8 +58,24 @@ export class Notifier {
     this.events = events;
   }
 
+  /** Adds an observer; returns a function that removes it. */
+  observe(fn: NoticeObserver): () => void {
+    this.#observers.push(fn);
+    return () => {
+      this.#observers = this.#observers.filter((o) => o !== fn);
+    };
+  }
+
   /** Records an event (if not sensitive) and sends to all registered endpoints; returns the number of successful sends. */
-  async send(n: Notice): Promise<number> {
+  async send(notice: Notice): Promise<number> {
+    let n = notice;
+    for (const o of this.#observers) {
+      try {
+        n = o(n) ?? n;
+      } catch (err) {
+        this.#log("bildirim gözlemcisi hata verdi", err);
+      }
+    }
     const { endpoints, token } = this.#getConfig().push;
     const body = payloadOf(n);
     const recorded = n.sensitive ? undefined : this.events?.record({ key: n.key, params: eventParams(n), link: n.link }, (e) => this.#log("olay yazılamadı", e));

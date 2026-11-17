@@ -1,5 +1,6 @@
 // Audit log: every mutating request (non-GET) is written to a JSONL file with device, path and result.
 // The file sits next to the agent settings file (audit.jsonl); past 1 MB it's kept as the previous copy.
+// A route may add `req.auditDetail` (ids, key names, counts, hashes; never values): it is written as `detail`.
 import { appendFile, readFile, rename, stat } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import type { FastifyInstance } from "fastify";
@@ -14,6 +15,23 @@ export interface AuditEntry {
   method: string;
   path: string;
   status: number;
+  detail?: AuditDetail;
+}
+
+export type AuditDetail = Record<string, string | number | boolean | string[]>;
+
+const MAX_DETAIL_KEYS = 16;
+const MAX_DETAIL_CHARS = 200;
+
+/** Bounds the detail a route attached (key count, string length, list length). */
+export function auditDetailOf(d: AuditDetail | undefined): AuditDetail | undefined {
+  if (!d) return undefined;
+  const cut = (v: string) => v.slice(0, MAX_DETAIL_CHARS);
+  const out: AuditDetail = {};
+  for (const [k, v] of Object.entries(d).slice(0, MAX_DETAIL_KEYS)) {
+    out[k] = typeof v === "string" ? cut(v) : Array.isArray(v) ? v.slice(0, 50).map(cut) : v;
+  }
+  return out;
 }
 
 export function auditRoutes(app: FastifyInstance, ctx: Ctx) {
@@ -29,6 +47,8 @@ export function auditRoutes(app: FastifyInstance, ctx: Ctx) {
       path: req.url.split("?")[0]!,
       status: reply.statusCode,
     };
+    const detail = auditDetailOf(req.auditDetail);
+    if (detail) entry.detail = detail;
     // Writes are serialized; a logging error doesn't break the request.
     chain = chain
       .then(async () => {

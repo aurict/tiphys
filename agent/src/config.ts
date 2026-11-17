@@ -14,7 +14,8 @@ export const deviceSchema = z.object({
   createdAt: z.string(),
 });
 
-export const SERVICE_SCOPES = ["research"] as const;
+/** "analysis": incident analysis jobs on the PC (PLAN.md §13.1 I-3, /v1/analysis/jobs). */
+export const SERVICE_SCOPES = ["research", "analysis"] as const;
 
 export const serviceTokenSchema = z.object({
   id,
@@ -72,6 +73,12 @@ export const agentConfigSchema = z.object({
     research: z.boolean().default(false),
     /** Telegram newsletters (PLAN.md §12): bot, recipients, feeds; research runs on another agent ("research" config). */
     telegram: z.boolean().default(false),
+    /** Incident room (PLAN.md §13.1): groups alert notifications into incidents, collects context, offers actions. */
+    incidents: z.boolean().default(false),
+    /** Config & secrets (PLAN.md §13.3): view/edit the stacks' .env files with masked diffs, backups and reveal. */
+    configfiles: z.boolean().default(false),
+    /** Incident analysis jobs for other agents (PLAN.md §13.1 I-3): tool-less claude -p; reached with an "analysis" service token. */
+    analysis: z.boolean().default(false),
   }),
   devices: z.array(deviceSchema).default([]),
   /** Scoped service tokens (tps_…): they open only routes that declare one of their scopes. */
@@ -176,6 +183,44 @@ export const agentConfigSchema = z.object({
     .object({ url: z.url({ protocol: /^https?$/ }), token: z.string().min(1).max(200), wakeHostId: id.optional() })
     .nullable()
     .default(null),
+  /**
+   * Compose stacks (PLAN.md §13.0): every directory directly under a root holding a compose file is a stack.
+   * Separate from allowedRoots: stack actions (compose recreate) only touch files inside these roots.
+   */
+  stacks: z.object({ roots: z.array(z.string().min(1).max(1024)).max(20).default(["~/stack"]) }).default({ roots: ["~/stack"] }),
+  /** Incident room ("incidents" feature). links: ties an Uptime Kuma monitor to a stack/service for grouping and actions. */
+  incidents: z
+    .object({
+      links: z
+        .array(
+          z.object({
+            uptimeMonitor: z.string().min(1).max(150).optional(),
+            stack: z.string().regex(/^[A-Za-z0-9][A-Za-z0-9_.-]{0,99}$/),
+            service: z.string().regex(/^[A-Za-z0-9][A-Za-z0-9_.-]{0,99}$/).optional(),
+          }),
+        )
+        .max(200)
+        .default([]),
+      /**
+       * AI analysis (I-3). local: tool-less claude -p in this agent; remote: jobs on the PC agent at `url` with a service
+       * token of the "analysis" scope (never returned); off: rule hints only. The PC is never woken for an analysis.
+       */
+      analysis: z
+        .object({
+          mode: z.enum(["local", "remote", "off"]).default("off"),
+          url: z.url({ protocol: /^https?$/ }).optional(),
+          token: z.string().min(1).max(200).optional(),
+          language: z.enum(["tr", "en"]).default("tr"),
+        })
+        .refine((a) => a.mode !== "remote" || (!!a.url && !!a.token), { message: "remote için url ve token gerekli" })
+        .default({ mode: "off", language: "tr" }),
+    })
+    .default({ links: [], analysis: { mode: "off", language: "tr" } }),
+  /**
+   * Config files ("configfiles" feature). extraPaths: extra .env files besides the ones found in stacks; each must be a
+   * regular file (not a symlink out of its directory), owned by the agent user, ≤256 KB, named .env / *.env / .env.*.
+   */
+  configFiles: z.object({ extraPaths: z.array(z.string().min(1).max(1024)).max(50).default([]) }).default({ extraPaths: [] }),
 });
 
 export type AgentConfig = z.infer<typeof agentConfigSchema>;

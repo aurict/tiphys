@@ -8,6 +8,15 @@ type Register = (app: FastifyInstance, ctx: Ctx) => void | Promise<void>;
 export async function extraModules(ctx: Ctx): Promise<Register[]> {
   const f = ctx.store.get().features;
   const out: Register[] = [];
+  // First, so its notification observer is in place before the monitors below start.
+  if (f.incidents) {
+    const { incidentRoutes } = await import("./incidents/routes.ts");
+    out.push(incidentRoutes());
+  }
+  if (f.configfiles) {
+    const { configFilesRoutes } = await import("./configfiles/routes.ts");
+    out.push(configFilesRoutes());
+  }
   if (f.claude) {
     const { query } = await import("@anthropic-ai/claude-agent-sdk");
     const { claudeRoutes } = await import("./claude/routes.ts");
