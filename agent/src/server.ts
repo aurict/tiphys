@@ -2,7 +2,7 @@ import websocket from "@fastify/websocket";
 import Fastify, { type FastifyInstance } from "fastify";
 import { ZodError } from "zod";
 import { authenticate } from "./auth.ts";
-import type { ConfigStore, Device } from "./config.ts";
+import type { ConfigStore, Device, ServiceToken } from "./config.ts";
 import { AppError } from "./errors.ts";
 import { Notifier } from "./notify.ts";
 import { configRoutes } from "./routes/config.ts";
@@ -30,6 +30,8 @@ import { gitRoutes } from "./routes/git.ts";
 import { portRoutes } from "./routes/ports.ts";
 import { processRoutes } from "./routes/processes.ts";
 import { transcribeRoutes } from "./routes/transcribe.ts";
+import { serviceTokenRoutes, touchServiceToken } from "./service_tokens.ts";
+import type { ResearchService } from "./research/jobs.ts";
 
 export { VERSION } from "./version.ts";
 import { VERSION } from "./version.ts";
@@ -51,11 +53,19 @@ export interface Ctx {
   browser?: BrowserBridge;
   /** Mobile view sessions (11.4; set up by atspiRoutes, also used by Claude's ui_* tools). */
   ui?: UiService;
+  /** Research job queue ("research" feature); created by researchRoutes unless supplied (tests). */
+  research?: ResearchService;
 }
 
 declare module "fastify" {
   interface FastifyRequest {
     device?: Device;
+    /** Set instead of device when a scoped service token authenticated the request. */
+    service?: ServiceToken;
+  }
+  interface FastifyContextConfig {
+    /** Service tokens holding this scope may call the route (devices may call every route). */
+    scope?: string;
   }
 }
 
@@ -89,10 +99,15 @@ export async function buildApp(ctx: Ctx, opts: { logger?: boolean } = {}): Promi
     reply.status(404).send({ error: { code: "agent.route.notFound", params: { url: req.url.split("?")[0] } } }),
   );
 
-  // Authentication: every request except /v1/health requires a device token.
+  // Authentication: every request except /v1/health requires a device token, or a service token on a route of its scope.
   app.addHook("onRequest", async (req) => {
     if (req.url === "/v1/health" || req.url.startsWith("/v1/health?")) return;
-    req.device = authenticate(ctx.store.get(), req);
+    const caller = authenticate(ctx.store.get(), req, req.routeOptions.config?.scope);
+    req.device = caller.device;
+    req.service = caller.service;
+    if (caller.service) {
+      void touchServiceToken(ctx.store, caller.service.id).catch((err) => req.log.warn({ err }, "hizmet belirteci kullanımı yazılamadı"));
+    }
   });
 
   app.get("/v1/health", async () => {
@@ -106,6 +121,7 @@ export async function buildApp(ctx: Ctx, opts: { logger?: boolean } = {}): Promi
   eventRoutes(app, ctx);
   agentStatusRoutes(ctx.runs ?? null)(app);
   configRoutes(app, ctx);
+  serviceTokenRoutes(app, ctx);
   const f = ctx.store.get().features;
   if (f.system) {
     systemRoutes(app, ctx);
@@ -129,6 +145,7 @@ export async function buildApp(ctx: Ctx, opts: { logger?: boolean } = {}): Promi
   if (f.power) powerRoutes(app, ctx);
   if (f.homepage) homepageRoutes(app, ctx);
   if (f.wake) wakeRoutes(app, ctx);
+  if (f.research) await (await import("./routes/research.ts")).researchRoutes(app, ctx);
   for (const register of ctx.extraRoutes ?? []) await register(app, ctx);
 
   return app;

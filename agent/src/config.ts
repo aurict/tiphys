@@ -14,6 +14,17 @@ export const deviceSchema = z.object({
   createdAt: z.string(),
 });
 
+export const SERVICE_SCOPES = ["research"] as const;
+
+export const serviceTokenSchema = z.object({
+  id,
+  name: z.string().min(1).max(80),
+  scopes: z.array(z.enum(SERVICE_SCOPES)).min(1),
+  tokenHash: z.string().regex(/^[a-f0-9]{64}$/),
+  createdAt: z.string(),
+  lastUsedAt: z.string().optional(),
+});
+
 /** Backup check: "file" = age/size of the newest file matching the glob, "unit" = last result of a systemd unit. */
 export const backupCheckSchema = z
   .object({
@@ -57,8 +68,14 @@ export const agentConfigSchema = z.object({
     transcribe: z.boolean().default(false),
     alerts: z.boolean().default(false),
     backups: z.boolean().default(false),
+    /** Web research jobs run with agy (Gemini) + Claude for another agent (PLAN.md §12); reached with a service token. */
+    research: z.boolean().default(false),
+    /** Telegram newsletters (PLAN.md §12): bot, recipients, feeds; research runs on another agent ("research" config). */
+    telegram: z.boolean().default(false),
   }),
   devices: z.array(deviceSchema).default([]),
+  /** Scoped service tokens (tps_…): they open only routes that declare one of their scopes. */
+  serviceTokens: z.array(serviceTokenSchema).default([]),
   allowedRoots: z.array(z.string()).default(["~"]),
   claude: z
     .object({
@@ -146,10 +163,25 @@ export const agentConfigSchema = z.object({
   transcribe: z
     .object({ command: z.string().default("~/.local/bin/transcribe"), model: z.enum(["small", "large-v3"]).default("small") })
     .default({ command: "~/.local/bin/transcribe", model: "small" }),
+  /** Telegram bot ("telegram" feature): set with PUT /v1/telegram/bot after getMe; the token is never returned. */
+  telegram: z
+    .object({ botToken: z.string().min(1).max(200), botUsername: z.string().min(1).max(64), botId: z.number().int() })
+    .nullable()
+    .default(null),
+  /**
+   * The PC agent that runs research jobs for the "telegram" feature: its URL and a service token with the "research"
+   * scope (never returned). wakeHostId: a wake.targets entry woken (Wake-on-LAN) when the PC can't be reached.
+   */
+  research: z
+    .object({ url: z.url({ protocol: /^https?$/ }), token: z.string().min(1).max(200), wakeHostId: id.optional() })
+    .nullable()
+    .default(null),
 });
 
 export type AgentConfig = z.infer<typeof agentConfigSchema>;
 export type Device = z.infer<typeof deviceSchema>;
+export type ServiceToken = z.infer<typeof serviceTokenSchema>;
+export type ServiceScope = (typeof SERVICE_SCOPES)[number];
 
 export function defaultConfigPath(): string {
   return process.env.TIPHYS_AGENT_CONFIG ?? join(homedir(), ".config", "tiphys", "agent.json");

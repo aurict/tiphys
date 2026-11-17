@@ -1324,6 +1324,14 @@
               "type": "null"
             }
           ]
+        },
+        "telegramSent": {
+          "default": true,
+          "type": "boolean"
+        },
+        "telegramAlerts": {
+          "default": true,
+          "type": "boolean"
         }
       },
       "additionalProperties": false

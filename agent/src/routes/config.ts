@@ -23,6 +23,8 @@ export function redact(c: AgentConfig) {
     transcribe: c.transcribe,
     backups: c.backups,
     desktop: c.desktop,
+    telegram: c.telegram ? { configured: true, username: c.telegram.botUsername } : null,
+    research: c.research ? { url: c.research.url, wakeHostId: c.research.wakeHostId ?? null, hasToken: true } : null,
     devices: c.devices.map(({ id, name, createdAt }) => ({ id, name, createdAt })),
   };
 }
@@ -59,6 +61,10 @@ const patchSchema = z.strictObject({
   transcribe: shape.transcribe.optional(),
   desktop: z.strictObject({ clipboardSync: z.boolean() }).optional(),
   backups: z.strictObject({ checks: shape.backups.unwrap().shape.checks }).optional(),
+  research: z
+    .strictObject({ url: z.url({ protocol: /^https?$/ }), token: z.string().min(1).max(200).optional(), wakeHostId: z.string().nullable().optional() })
+    .nullable()
+    .optional(),
 });
 
 export function configRoutes(app: FastifyInstance, ctx: Ctx) {
@@ -95,6 +101,14 @@ export function configRoutes(app: FastifyInstance, ctx: Ctx) {
       if (p.desktop) c.desktop = p.desktop;
       // Checks read the setting every round: no restart needed.
       if (p.backups) c.backups = p.backups;
+      // Research PC (telegram feature): read on every run. The token is kept only while the URL stays the same.
+      if (p.research === null) c.research = null;
+      else if (p.research) {
+        const token = p.research.token ?? (p.research.url === c.research?.url ? c.research?.token : undefined);
+        if (!token) throw new AppError("agent.config.passwordRequired", 400, { field: "research.token" });
+        const wakeHostId = p.research.wakeHostId === undefined ? c.research?.wakeHostId : (p.research.wakeHostId ?? undefined);
+        c.research = { url: p.research.url, token, ...(wakeHostId ? { wakeHostId } : {}) };
+      }
       if (p.alerts) {
         const g = p.alerts.grafana;
         const token = g ? (g.token ?? (g.url === c.alerts.grafana?.url ? c.alerts.grafana?.token : undefined)) : undefined;
@@ -121,13 +135,14 @@ export function configRoutes(app: FastifyInstance, ctx: Ctx) {
     return { ok: true };
   });
 
-  // "Lock everything": all devices' tokens are revoked (including this request's).
+  // "Lock everything": all devices' tokens and service tokens are revoked (including this request's).
   app.post("/v1/devices/revoke-all", async (req) => {
     if (!z.object({ confirm: z.literal(true) }).safeParse(req.body).success) {
       throw new AppError("agent.devices.confirmRequired", 400);
     }
     await ctx.store.update((c) => {
       c.devices = [];
+      c.serviceTokens = [];
       c.push.endpoints = [];
       return c;
     });

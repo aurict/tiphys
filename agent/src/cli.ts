@@ -8,6 +8,7 @@
 //   run -- KOMUT [arg...]      runs the command, sends a notification to the phone when done (for long jobs)
 //   firefox install            registers the Firefox bridge native messaging host (11.2)
 //   vscode-a11y install|remove adds/removes --force-renderer-accessibility in the VS Code launcher (11.4)
+//   service-token create --name N --scope research | list | revoke <id>   scoped tokens for other agents
 import { spawn } from "node:child_process";
 import { hostname } from "node:os";
 import { parseArgs } from "node:util";
@@ -29,6 +30,7 @@ const { values, positionals } = parseArgs({
     features: { type: "string" },
     "tailscale-login": { type: "string" },
     config: { type: "string" },
+    scope: { type: "string", multiple: true },
   },
 });
 const configPath = values.config ?? defaultConfigPath();
@@ -137,6 +139,13 @@ async function main() {
       return;
     }
 
+    case "service-token": {
+      const { serviceTokenCli } = await import("./service_tokens.ts");
+      const store = await ConfigStore.load(configPath);
+      for (const line of await serviceTokenCli(store, positionals, { name: values.name, scopes: values.scope ?? [] })) console.log(line);
+      return;
+    }
+
     case "serve": {
       // Safety net: an uncaught error must not take down the whole agent (and every live Claude session); it's logged.
       process.on("unhandledRejection", (e) => console.error("yakalanmamış hata (ajan çalışmaya devam ediyor):", e));
@@ -176,7 +185,7 @@ async function main() {
     }
 
     default:
-      console.error("komutlar: serve | init | pair | devices | revoke <id> | schema | run -- KOMUT | firefox install | vscode-a11y install|remove");
+      console.error("komutlar: serve | init | pair | devices | revoke <id> | schema | run -- KOMUT | firefox install | vscode-a11y install|remove | service-token create|list|revoke");
       process.exit(2);
   }
 }

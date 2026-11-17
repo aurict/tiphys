@@ -25,6 +25,10 @@ export async function extraModules(ctx: Ctx): Promise<Register[]> {
     const { backupRoutes } = await import("./backups.ts");
     out.push((app, c) => backupRoutes(app, c));
   }
+  if (f.telegram) {
+    const { telegramRoutes } = await import("./telegram/routes.ts");
+    out.push(telegramRoutes());
+  }
   if (f.uptime) {
     const { uptimeRoutes } = await import("./uptime/bridge.ts");
     out.push(uptimeRoutes);
