@@ -12,6 +12,7 @@ import type { Ctx } from "../server.ts";
 import type { Runner } from "./docker.ts";
 import { csvLine } from "./csv.ts";
 import { chartSchema, paramValue } from "./queries.ts";
+import { RestoreService, type RestoreOpts } from "./restore.ts";
 import { DbService, sqlSha256, type DbServiceOpts } from "./service.ts";
 import { LIMITS, toCell, type RowSink } from "./sql.ts";
 
@@ -53,6 +54,8 @@ const patchBody = z.strictObject({
   readCredential: credentialInput.optional(),
   writeCredential: credentialInput.nullable().optional(),
 });
+// Merged with the stored test and validated as a whole (strict: unknown keys are rejected there).
+const restorePatchBody = z.record(z.string(), z.unknown());
 const sql = z.string().min(1).max(LIMITS.maxSqlChars);
 const params = z.array(paramValue).max(LIMITS.maxParams);
 const queryBody = z.strictObject({ sql, params: params.default([]), limit, timeoutMs });
@@ -146,10 +149,14 @@ async function sendCsv(req: FastifyRequest, reply: FastifyReply, conn: string, s
 
 const csvName = (base: string) => `${base}-${new Date().toISOString().slice(0, 19).replace(/[:T]/g, "-")}.csv`;
 
-export function dbRoutes(o: { run?: Runner; now?: () => number; onService?: (svc: DbService) => void; drivers?: DbServiceOpts["drivers"]; previewTtlMs?: number } = {}) {
+export function dbRoutes(o: { run?: Runner; now?: () => number; onService?: (svc: DbService) => void; drivers?: DbServiceOpts["drivers"]; previewTtlMs?: number; restore?: Partial<RestoreOpts>; onRestore?: (svc: RestoreService) => void; restoreTimer?: boolean } = {}) {
   return async (app: FastifyInstance, ctx: Ctx) => {
     const svc = new DbService({ store: ctx.store, run: o.run, now: o.now, drivers: o.drivers, previewTtlMs: o.previewTtlMs });
     o.onService?.(svc);
+    const restore = new RestoreService({ store: ctx.store, notifier: ctx.notifier, ...(o.run ? { run: o.run } : {}), ...o.restore });
+    o.onRestore?.(restore);
+    if (o.restoreTimer !== false) restore.begin();
+    app.addHook("onClose", async () => restore.stop());
 
     await app.register(async (r) => {
       r.setErrorHandler((err, req, reply) => {
@@ -336,6 +343,43 @@ export function dbRoutes(o: { run?: Runner; now?: () => number; onService?: (svc
         const started = Date.now();
         const res = await svc.writeCommit(req.device!.id, id, b.previewToken, (sha, rows) => (req.auditDetail = { conn: id, sqlSha256: sha, rows: rows ?? -1, write: true }));
         return { ...res, elapsedMs: Date.now() - started };
+      });
+
+      // --- Backup restore tests (D-4) ---
+
+      r.get("/v1/db/restore-tests", async () => restore.view());
+
+      r.post("/v1/db/restore-tests", async (req, reply) => {
+        const t = await restore.create(req.body);
+        req.auditDetail = { restoreTest: t.id };
+        return reply.status(201).send(t);
+      });
+
+      r.patch("/v1/db/restore-tests/:id", async (req) => {
+        const { id } = parse(idParams, req.params);
+        req.auditDetail = { restoreTest: id };
+        const b = parse(restorePatchBody, req.body);
+        req.auditDetail = { restoreTest: id, fields: Object.keys(b) };
+        return restore.patch(id, b);
+      });
+
+      r.delete("/v1/db/restore-tests/:id", async (req) => {
+        const { id } = parse(idParams, req.params);
+        req.auditDetail = { restoreTest: id };
+        await restore.remove(id);
+        return { ok: true };
+      });
+
+      r.post("/v1/db/restore-tests/:id/run", async (req, reply) => {
+        const { id } = parse(idParams, req.params);
+        req.auditDetail = { restoreTest: id };
+        const { runId } = restore.start(id, "manual");
+        return reply.status(202).send({ started: true, testId: id, runId });
+      });
+
+      r.get("/v1/db/restore-tests/:id/results", async (req) => {
+        const { id } = parse(idParams, req.params);
+        return { testId: id, results: await restore.results(id) };
       });
 
       r.get("/v1/db/connections/:id/readonly-role-sql", async (req) => {

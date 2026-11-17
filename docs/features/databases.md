@@ -6,8 +6,7 @@ The agent holds the credentials, finds database containers for you, shows the sc
 that always shows how many rows a statement would change before you confirm it.
 
 Engines: PostgreSQL, MySQL/MariaDB and SQLite (SQLite is read-only). Phases: D-1 connections, discovery, schema,
-preview, read-only queries; D-2 saved queries, charts, CSV export, MySQL/MariaDB; D-3 write mode; D-4 (later) restore
-tests.
+preview, read-only queries; D-2 saved queries, charts, CSV export, MySQL/MariaDB; D-3 write mode; D-4 backup restore tests.
 
 API reference: [../agent/api.md#databases](../agent/api.md#databases). Configuration: feature flag `databases`
 (default off) and the [`databases`](../agent/configuration.md#databases) section.
@@ -162,6 +161,29 @@ Connection changes and tests are recorded with the connection id. Queries, saved
 as `{conn, sqlSha256, rows}`; write previews as `{conn, sqlSha256, rows, preview: true}` and commits as
 `{conn, sqlSha256, rows, write: true}`. Neither the SQL text nor any result value is written to the audit log; the
 full SQL of writes is only in `db-writes.jsonl`.
+
+## Backup restore tests
+
+A backup you never restored is a hope. A restore test takes the **newest** dump matching a glob (for example
+`~/backups/app/*.sql.gz`), restores it into a throwaway container and checks that it really contains data.
+
+1. Free space is checked (at least twice the dump size).
+2. `docker run -d --rm --network none --memory 1g --tmpfs <data dir> -e <random password> --name tiphys-restore-<id>-<rand> <image>`:
+   no network, memory capped, data in RAM, nothing touches your real databases. The image must be an official
+   `postgres:`, `mysql:` or `mariadb:` image with an explicit tag, and the **same major version** as the source (checked
+   against the connection's container when `connectionId` is set).
+3. The agent waits for the final server (`pg_isready` / `mysqladmin ping` over loopback).
+4. The dump is streamed into `psql`, `pg_restore` (format `custom`) or `mysql` through `docker exec -i` (format `gz`
+   is gunzipped by the agent). An error stops the restore.
+5. Each sanity query (one number, e.g. `SELECT count(*) FROM users`, compared with `>`, `=`, `>=`, `<`, `<=`) runs in a
+   read-only session.
+6. The container is always removed (also on timeout and when the agent stops). Limit: 30 minutes, one test at a time.
+
+Results (last 20 per test, with durations and failures) are stored on the agent. `db.restoreTest.ok` /
+`db.restoreTest.failed` notifications go out for every run. Tests can run on a schedule (daily, weekly or every N
+minutes) or manually. PostgreSQL dumps restore into the `postgres` database, so sanity queries see tables of a plain
+`pg_dump`; a `pg_dumpall` file that connects to other databases is not supported. Dumps must be inside `allowedRoots`
+or the directory of a `backups` file check.
 
 ## Requirements
 

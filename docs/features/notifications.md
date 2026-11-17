@@ -90,6 +90,8 @@ the screen opened when you tap the notification.
 | `docker.oom` | A container is killed for running out of memory | System | high |
 | `backup.stale` | A backup check becomes stale (older than `maxAgeHours`) | Backups | high |
 | `backup.failed` | A backup check fails (missing, too small, unit failed or never ran) | Backups | high |
+| `db.restoreTest.ok` | A backup restore test restored the newest dump and passed its sanity queries | Databases | default |
+| `db.restoreTest.failed` | A restore test failed (reason: no dump, restore error, corrupt dump, sanity check, timeout…) | Databases | high |
 | `backup.ok` | A backup check is OK again | Backups | normal |
 | `command.done` | A command run with `tiphys-agent run` exits with code 0 | Terminal | normal |
 | `command.failed` | That command exits with a non-zero code | Terminal | normal |

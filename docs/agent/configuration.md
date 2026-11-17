@@ -67,7 +67,7 @@ The file is validated with a zod schema (`agent/src/config.ts`) when it loads. I
 | `stacks` | object | `{roots: ["~/stack"]}` | Where compose stacks are discovered. See [stacks](#stacks). |
 | `incidents` | object | `{links: [], analysis: {mode: "off", language: "tr"}}` | Incident room options (links, AI analysis). See [incidents](#incidents). |
 | `configFiles` | object | `{extraPaths: []}` | Extra `.env` files for the config editor. See [configFiles](#configfiles). |
-| `databases` | object | `{connections: []}` | Database console connections (credentials stay here; saved queries in `db-queries.json`, write log in `db-writes.jsonl`). See [databases](#databases). |
+| `databases` | object | `{connections: [], restoreTests: []}` | Database console connections (credentials stay here; saved queries in `db-queries.json`, write log in `db-writes.jsonl`). See [databases](#databases). |
 
 > **Security:** `requireTailscaleLogin` relies on a header. It only means something when the agent is reachable solely through `tailscale serve` (`listen.host` on loopback). If you bind to a tailnet or LAN address, any client can send that header itself. See [Security](../security.md).
 
@@ -304,6 +304,19 @@ CREATE ROLE tiphys_ro LOGIN PASSWORD '…' NOSUPERUSER NOCREATEDB NOCREATEROLE N
 CREATE USER 'tiphys_ro'@'%' IDENTIFIED BY '…' WITH MAX_USER_CONNECTIONS 5;
 GRANT SELECT, SHOW VIEW ON `shop`.* TO 'tiphys_ro'@'%';
 ```
+
+**Restore tests** (`databases.restoreTests[]`, up to 20; managed through `/v1/db/restore-tests`, not `PATCH /v1/config`):
+
+```json
+"restoreTests": [
+  { "id": "app-db", "name": "App DB dump", "connectionId": "app", "engine": "postgres", "image": "postgres:16-alpine",
+    "dumpGlob": "~/backups/app/*.sql.gz", "format": "gz",
+    "sanity": [{ "sql": "SELECT count(*) FROM users", "expect": { "op": ">", "value": 0 } }],
+    "schedule": { "kind": "weekly", "days": [7], "time": "04:00" }, "enabled": true }
+]
+```
+
+Fields are described in [api.md](api.md#databases) (restore test). The newest dump is streamed into a throwaway container (`docker run -d --rm --network none --memory 1g --tmpfs <data dir> --label tiphys.restore=1`, random password via the environment), then removed. Results: `db-restore-results.json` next to `agent.json` (0600, last 20 per test). Needs `docker` for the agent user and free space of at least twice the dump size. Read on each use.
 
 Next to `agent.json` (both mode 0600): `db-queries.json` holds the saved queries (`{version: 1, queries: [{id, connectionId, name, sql, params, chart, createdAt, updatedAt}]}`, at most 500; managed through `/v1/db/queries`), and `db-writes.jsonl` the write log (one line per commit attempt with the full SQL — a role password literal masked — row count, device, connection and time; kept as `db-writes.jsonl.1` past 5 MB).
 

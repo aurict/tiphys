@@ -4,6 +4,7 @@ import { mkdir, readFile, rename, writeFile, chmod } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { homedir } from "node:os";
 import { z } from "zod";
+import { whenSchema } from "./claude/schedules.ts";
 
 const id = z.string().regex(/^[a-z0-9][a-z0-9-]{0,62}$/);
 
@@ -41,6 +42,42 @@ export const backupCheckSchema = z
   })
   .refine((c) => (c.kind === "file" ? !!c.path : !!c.unit), { message: "file için path, unit için unit gerekli" })
   .refine((c) => !c.path || !/[*?[]/.test(c.path.slice(0, c.path.lastIndexOf("/") + 1)), { message: "joker karakter yalnız son parçada olabilir", path: ["path"] });
+
+const restoreId = z.string().regex(/^[a-z0-9][a-z0-9-]{0,62}$/);
+/** Official images only, with an explicit tag (no `latest`, no digest, no registry/user prefix). */
+export const RESTORE_IMAGE = /^(postgres|mysql|mariadb):(?!latest$)[A-Za-z0-9_][A-Za-z0-9_.-]{0,127}$/;
+
+/**
+ * Backup restore test (D-4): the newest dump matching dumpGlob is restored into a throwaway container of `image`
+ * (no network, memory capped, data on tmpfs) and `sanity` queries are checked. anchorAt (set by the agent) is the start
+ * of interval slots, like claude schedules.
+ */
+export const restoreTestSchema = z
+  .strictObject({
+    id: restoreId,
+    name: z.string().min(1).max(80),
+    connectionId: restoreId.optional(),
+    engine: z.enum(["postgres", "mysql", "mariadb"]),
+    image: z.string().regex(RESTORE_IMAGE),
+    dumpGlob: z.string().min(1).max(1024),
+    format: z.enum(["sql", "custom", "gz"]),
+    sanity: z
+      .array(
+        z.strictObject({
+          sql: z.string().min(1).max(4096),
+          expect: z.strictObject({ op: z.enum([">", "=", ">=", "<", "<="]), value: z.number().finite() }),
+        }),
+      )
+      .max(20)
+      .default([]),
+    schedule: whenSchema.nullable().default(null),
+    enabled: z.boolean().default(true),
+    anchorAt: z.string().optional(),
+  })
+  .refine((t) => t.image.startsWith(`${t.engine}:`), { message: "image engine ile uyuşmalı", path: ["image"] })
+  .refine((t) => t.format !== "custom" || t.engine === "postgres", { message: "custom yalnız postgres için", path: ["format"] })
+  .refine((t) => !/[*?[]/.test(t.dumpGlob.slice(0, t.dumpGlob.lastIndexOf("/") + 1)), { message: "joker karakter yalnız son parçada olabilir", path: ["dumpGlob"] })
+  .refine((t) => !t.dumpGlob.split("/").includes("..") && !t.dumpGlob.includes("\0"), { message: "'..' olamaz", path: ["dumpGlob"] });
 
 /** Container name (docker's rule), used by database connection targets. */
 export const CONTAINER_NAME = /^[A-Za-z0-9][A-Za-z0-9_.-]{0,127}$/;
@@ -275,8 +312,14 @@ export const agentConfigSchema = z.object({
         .max(100)
         .refine((a) => new Set(a.map((c) => c.id)).size === a.length, { message: "bağlantı kimlikleri benzersiz olmalı" })
         .default([]),
+      /** Backup restore tests (D-4); results live in db-restore-results.json next to this file. */
+      restoreTests: z
+        .array(restoreTestSchema)
+        .max(20)
+        .refine((a) => new Set(a.map((t) => t.id)).size === a.length, { message: "test kimlikleri benzersiz olmalı" })
+        .default([]),
     })
-    .default({ connections: [] }),
+    .default({ connections: [], restoreTests: [] }),
 });
 
 export type AgentConfig = z.infer<typeof agentConfigSchema>;
