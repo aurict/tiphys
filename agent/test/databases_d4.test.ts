@@ -158,7 +158,9 @@ describe("restore testi çalıştırma", () => {
     const name = run.argv[run.argv.indexOf("--name") + 1]!;
     expect(name).toMatch(/^tiphys-restore-notes-[a-f0-9]{8}$/);
     expect(run.argv).toEqual([
-      "run", "-d", "--rm", "--network", "none", "--memory", "1g", "--tmpfs", "/var/lib/postgresql/data", "--label", "tiphys.restore=1",
+      "run", "-d", "--rm", "--network", "none", "--memory", "1g", "--memory-swap", "1g", "--cpus", "1", "--pids-limit", "256",
+      "--cap-drop", "ALL", "--cap-add", "CHOWN", "--cap-add", "SETUID", "--cap-add", "SETGID", "--cap-add", "DAC_OVERRIDE", "--cap-add", "FOWNER",
+      "--security-opt", "no-new-privileges", "--tmpfs", "/var/lib/postgresql/data:size=2g", "--label", "tiphys.restore=1",
       "-e", "POSTGRES_PASSWORD", "--name", name, "postgres:16-alpine",
     ]);
     expect(run.env).toEqual({ pg: "set" });
@@ -186,8 +188,8 @@ describe("restore testi çalıştırma", () => {
     expect((await runAndWait(e)).ok).toBe(true);
     let calls = await e.calls();
     expect(calls.find((c) => c.stdin !== undefined)!.stdin).toBe("SELECT 'PLAIN-SQL';");
-    expect(calls.find((c) => c.argv[0] === "run")!.argv).toContain("/var/lib/postgresql");
-    expect(calls.find((c) => c.argv[0] === "run")!.argv).not.toContain("/var/lib/postgresql/data");
+    expect(calls.find((c) => c.argv[0] === "run")!.argv).toContain("/var/lib/postgresql:size=2g");
+    expect(calls.find((c) => c.argv[0] === "run")!.argv).not.toContain("/var/lib/postgresql/data:size=2g");
 
     await writeFile(join(e.dumps, "c.dump"), "PGDMP-binary");
     await e.call("POST", "/v1/db/restore-tests", base(e, { id: "cust", dumpGlob: join(e.dumps, "*.dump"), format: "custom", sanity: [] }));
@@ -204,7 +206,9 @@ describe("restore testi çalıştırma", () => {
     calls = await e.calls();
     const mname = calls.find((c) => c.argv[0] === "run")!.argv.at(-2)!;
     expect(calls.find((c) => c.argv[0] === "run")!.argv).toEqual([
-      "run", "-d", "--rm", "--network", "none", "--memory", "1g", "--tmpfs", "/var/lib/mysql", "--label", "tiphys.restore=1", "-e", "MARIADB_ROOT_PASSWORD", "--name", mname, "mariadb:11",
+      "run", "-d", "--rm", "--network", "none", "--memory", "1g", "--memory-swap", "1g", "--cpus", "1", "--pids-limit", "256",
+      "--cap-drop", "ALL", "--cap-add", "CHOWN", "--cap-add", "SETUID", "--cap-add", "SETGID", "--cap-add", "DAC_OVERRIDE", "--cap-add", "FOWNER",
+      "--security-opt", "no-new-privileges", "--tmpfs", "/var/lib/mysql:size=2g", "--label", "tiphys.restore=1", "-e", "MARIADB_ROOT_PASSWORD", "--name", mname, "mariadb:11",
     ]);
     expect(calls.find((c) => c.tool === "mariadb-admin")!.argv).toEqual(["exec", "-e", "MYSQL_PWD", mname, "mariadb-admin", "-h", "127.0.0.1", "-uroot", "--silent", "ping"]);
     expect(calls.find((c) => c.stdin !== undefined)!.argv).toEqual(["exec", "-i", "-e", "MYSQL_PWD", mname, "mariadb", "-h", "127.0.0.1", "-uroot"]);
@@ -357,7 +361,7 @@ describe("restore testi çalıştırma", () => {
     await e.call("DELETE", "/v1/db/restore-tests/notes");
     expect(JSON.parse(await readFile(file, "utf8"))).toEqual({});
     await e.app.app.close();
-  });
+  }, 30_000); // 22 runs through the fake docker: slow on two pinned cores
 
   it("zamanlayıcı: zamanı gelen etkin test çalışır, kapalı olan çalışmaz, meşgulken atlanır", async () => {
     let now = new Date(2026, 10, 17, 3, 29, 30).getTime();
@@ -388,6 +392,109 @@ describe("restore testi çalıştırma", () => {
     const r = await e.call("POST", "/v1/db/restore-tests", { ...base(e), image: "postgres:latest" });
     expect(r.status).toBe(400);
     expect(JSON.stringify(r.body)).not.toContain("postgres:latest");
+    await e.app.app.close();
+  });
+});
+
+describe("§13 review: restore hardening and scheduler", () => {
+  it("S6: failure detail is redacted (URI password, PEM across lines, the run's own password) and ≤200 chars", async () => {
+    const e = await setup();
+    await writeFile(join(e.dumps, "a.sql"), "SELECT 1;");
+    await e.call("POST", "/v1/db/restore-tests", base(e));
+    await e.cfg({ restoreStderr: `psql:dump.sql:3: ERROR: at or near "postgres://app:Sup3rS3cretPw99@db/app" ${"x".repeat(400)}\n` });
+    const r1 = await runAndWait(e);
+    expect(r1).toMatchObject({ ok: false, reason: "restoreFailed" });
+    expect(r1.detail).not.toContain("Sup3rS3cretPw99");
+    expect(r1.detail.length).toBeLessThanOrEqual(200);
+    await e.cfg({ restoreStderr: `ERROR: bad line -----BEGIN PRIVATE KEY-----\nMIIEvQIBADANBgkqhkiG9w0BAQEFAASCBKcwggSjAgEAAoIBAQC7\n-----END PRIVATE KEY-----\n` });
+    const r2 = await runAndWait(e);
+    expect(r2.detail).not.toContain("MIIEvQIBADANBgkqhkiG9w0BAQEFAASCBKcwggSjAgEAAoIBAQC7");
+    await writeFile(join(e.dumps, "m.sql"), "SELECT 1;");
+    await e.call("POST", "/v1/db/restore-tests", base(e, { id: "my", engine: "mariadb", image: "mariadb:11", dumpGlob: join(e.dumps, "m.sql"), sanity: [{ sql: "SELECT 1", expect: { op: "=", value: 1 } }] }));
+    await e.cfg({ sanityFail: ["SET SESSION TRANSACTION READ ONLY; SELECT 1"], sanityStderr: "ERROR 1045: denied for root using password $PWD\n" });
+    const r3 = await runAndWait(e, "my");
+    expect(r3).toMatchObject({ ok: false, reason: "sanityFailed" });
+    expect(r3.detail).toContain("[GİZLİ");
+    expect(r3.detail).toMatch(/^ERROR 1045: denied for root using password \[GİZLİ/);
+    for (const n of e.app.sent) expect(JSON.stringify(n)).not.toContain("Sup3rS3cretPw99");
+    await e.app.app.close();
+  });
+
+  it("C8: a test due while another runs is queued, not dropped", async () => {
+    let now = new Date(2026, 10, 17, 3, 29, 30).getTime();
+    const e = await setup({ restore: { now: () => now } });
+    await writeFile(join(e.dumps, "a.sql"), "SELECT 1;");
+    await e.call("POST", "/v1/db/restore-tests", base(e, { sanity: [] }));
+    await e.call("POST", "/v1/db/restore-tests", base(e, { id: "second", sanity: [] }));
+    now = new Date(2026, 10, 17, 3, 30, 10).getTime();
+    e.restore.tick();
+    await e.restore.idle();
+    expect((await e.call("GET", "/v1/db/restore-tests/notes/results")).body.results).toMatchObject([{ trigger: "schedule", ok: true }]);
+    expect((await e.call("GET", "/v1/db/restore-tests/second/results")).body.results).toMatchObject([{ trigger: "schedule", ok: true }]);
+    await e.app.app.close();
+  });
+
+  it("C8: minutes missed by a stalled timer are made up within the grace window", async () => {
+    let now = new Date(2026, 10, 17, 3, 20, 0).getTime();
+    const e = await setup({ restore: { now: () => now } });
+    await writeFile(join(e.dumps, "a.sql"), "SELECT 1;");
+    await e.call("POST", "/v1/db/restore-tests", base(e, { sanity: [] }));
+    e.restore.tick();
+    now = new Date(2026, 10, 17, 3, 45, 0).getTime(); // 15 minutes without a tick
+    e.restore.tick();
+    await e.restore.idle();
+    expect((await e.call("GET", "/v1/db/restore-tests/notes/results")).body.results).toHaveLength(1);
+    await e.app.app.close();
+  });
+
+  it("C8: the repeated wall-clock hour when DST ends runs a daily test once", async () => {
+    const tz = process.env.TZ;
+    process.env.TZ = "Europe/Berlin";
+    try {
+      // 2026-10-25: 03:00 CEST → 02:00 CET, so 02:30 comes at 00:30Z and again at 01:30Z.
+      let now = Date.parse("2026-10-25T00:20:00Z");
+      const e = await setup({ restore: { now: () => now } });
+      await writeFile(join(e.dumps, "a.sql"), "SELECT 1;");
+      await e.call("POST", "/v1/db/restore-tests", base(e, { sanity: [], schedule: { kind: "daily", time: "02:30" } }));
+      for (const t of ["2026-10-25T00:30:10Z", "2026-10-25T00:50:00Z", "2026-10-25T01:10:00Z", "2026-10-25T01:30:10Z", "2026-10-25T01:45:00Z"]) {
+        now = Date.parse(t);
+        e.restore.tick();
+        await e.restore.idle();
+      }
+      expect((await e.call("GET", "/v1/db/restore-tests/notes/results")).body.results).toHaveLength(1);
+      await e.app.app.close();
+    } finally {
+      if (tz === undefined) delete process.env.TZ;
+      else process.env.TZ = tz;
+    }
+  });
+
+  it("C8: stop() doesn't hang on a docker run that never returns (image pull)", async () => {
+    const e = await setup();
+    await writeFile(join(e.dumps, "a.sql"), "SELECT 1;");
+    await e.cfg({ runHang: true });
+    await e.call("POST", "/v1/db/restore-tests", base(e));
+    expect((await e.call("POST", "/v1/db/restore-tests/notes/run")).status).toBe(202);
+    for (let i = 0; i < 200 && !(await e.calls()).some((c) => c.argv[0] === "run"); i++) await new Promise((r) => setTimeout(r, 25));
+    const t0 = Date.now();
+    await e.restore.stop();
+    expect(Date.now() - t0).toBeLessThan(3000);
+    const saved = JSON.parse(await readFile(join(e.app.dir, "db-restore-results.json"), "utf8"));
+    expect(saved.notes[0]).toMatchObject({ ok: false, reason: "shutdown" });
+    await e.app.app.close();
+  }, 15_000);
+
+  it("C8: runs wait for the leftover sweep (begin) so it can't remove their container", async () => {
+    const e = await setup();
+    await writeFile(join(e.dumps, "a.sql"), "SELECT 1;");
+    await e.cfg({ psDelayMs: 600 });
+    await e.call("POST", "/v1/db/restore-tests", base(e, { sanity: [] }));
+    e.restore.begin(3_600_000);
+    expect((await e.call("POST", "/v1/db/restore-tests/notes/run")).status).toBe(202);
+    await e.restore.idle();
+    const verbs = (await e.calls()).map((c) => c.argv[0]);
+    expect(verbs.indexOf("ps")).toBeGreaterThanOrEqual(0);
+    expect(verbs.indexOf("ps")).toBeLessThan(verbs.indexOf("run"));
     await e.app.app.close();
   });
 });

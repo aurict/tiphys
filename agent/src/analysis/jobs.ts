@@ -1,4 +1,5 @@
-// Incident analysis job queue (PLAN.md §13.1 I-3): one job runs at a time, at most 3 wait, 3 min per job, finished
+// Incident analysis job queue (PLAN.md §13.1 I-3): one job runs at a time, at most 3 wait (at most 1 per caller, so one
+// service token can't fill the queue), 3 min per job, finished
 // jobs are kept 24 h. Memory only: the bundle (redacted logs) is never written to disk and is dropped once the job
 // ends. Separate from the research queue, so an analysis never waits behind a research job.
 // Used by the PC routes (`analysis` feature, remote mode on a server) and in-process by incidents (local mode).
@@ -85,6 +86,9 @@ export class AnalysisQueue {
     if (this.#closed) throw new AppError("agent.analysis.busy", 429, { reason: "shutdown" });
     const max = this.#o.maxWaiting ?? 3;
     if (this.#queue.length >= max) throw new AppError("agent.analysis.busy", 429, { waiting: this.#queue.length });
+    if (this.#queue.some((id) => this.#jobs.get(id)?.requestedBy === requestedBy)) {
+      throw new AppError("agent.analysis.busy", 429, { reason: "callerWaiting", waiting: this.#queue.length });
+    }
     const job: AnalysisJob = { id: `aj-${randomBytes(8).toString("hex")}`, status: "queued", createdAt: this.#iso(), requestedBy, incidentId: bundle.incident.id };
     this.#jobs.set(job.id, job);
     this.#bundles.set(job.id, bundle);

@@ -522,6 +522,8 @@ describe("storage", () => {
     };
     const list = [sum(1, "resolved", 91), sum(2, "open", 120), ...Array.from({ length: MAX_INCIDENTS + 5 }, (_, i) => sum(100 + i, i < 10 ? "resolved" : "open", 1))];
     await writeFile(join(dir, "index.json"), JSON.stringify(list));
+    // incident files too: index entries without a file are dropped as orphans
+    for (const x of list) await writeFile(join(dir, `${x.id}.json`), JSON.stringify({ ...x, parts: [], signals: [], timeline: [], hints: [] }));
     const store = await ConfigStore.loadOrCreate(join(dir, "agent.json"), "atlas");
     const svc = await IncidentService.open({ store, notifier: new Notifier(() => store.get(), () => {}), dir, now: () => T0, discover: async () => [] });
     await svc.idle();

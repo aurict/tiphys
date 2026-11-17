@@ -32,6 +32,17 @@ export function childEnv(): NodeJS.ProcessEnv {
   return Object.fromEntries(Object.entries(process.env).filter(([k]) => ENV_ALLOW.has(k) || k.startsWith("LC_")));
 }
 
+/** True while the process group still has members. */
+function groupAlive(pid: number | undefined): boolean {
+  if (!pid) return false;
+  try {
+    process.kill(-pid, 0);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 function killGroup(pid: number | undefined, sig: NodeJS.Signals) {
   if (!pid) return;
   try {
@@ -78,8 +89,15 @@ export async function runTool(tool: string, args: string[], o: RunOpts): Promise
       if (failure) return;
       failure = why;
       killGroup(child.pid, "SIGTERM");
-      // Not cleared on close: group members that ignore SIGTERM are still killed after the grace period.
-      setTimeout(() => killGroup(child.pid, "SIGKILL"), o.killGraceMs).unref();
+      // Members that ignore SIGTERM get SIGKILL after the grace period, even after the tool itself has exited. The
+      // group is polled and left alone once empty, so a recycled process-group id is never signalled.
+      const deadline = Date.now() + o.killGraceMs;
+      const poll = () => {
+        if (!groupAlive(child.pid)) return;
+        if (Date.now() >= deadline) return killGroup(child.pid, "SIGKILL");
+        setTimeout(poll, Math.max(1, Math.min(50, deadline - Date.now()))).unref();
+      };
+      setTimeout(poll, Math.max(1, Math.min(50, o.killGraceMs))).unref();
     };
     const timer = setTimeout(() => kill(new AppError(`${o.errorPrefix}.timeout`, 500, { tool })), o.timeoutMs);
     const onAbort = () => kill(o.signal.reason);

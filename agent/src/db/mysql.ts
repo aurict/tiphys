@@ -8,7 +8,7 @@
 // socket is dropped and the statement is killed (KILL QUERY on a second connection), which rolls the transaction back.
 import { AppError } from "../errors.ts";
 import { redact } from "../redact.ts";
-import { buildSchema, LIMITS, quoteIdent, RowCollector, SCHEMA_CAPS, type RowSink, type RowsResult, type SchemaResult, type WriteOutcome } from "./sql.ts";
+import { buildSchema, LIMITS, MYSQL_SYSTEM_SCHEMAS, quoteIdent, RowCollector, SCHEMA_CAPS, type RowSink, type RowsResult, type SchemaResult, type WriteOutcome } from "./sql.ts";
 
 export interface MyEndpoint {
   host: string;
@@ -381,6 +381,11 @@ const TRANSACTIONAL = `('INNODB', 'NDBCLUSTER', 'NDB', 'ROCKSDB', 'TOKUDB')`;
  */
 export function mysqlWrite(ep: MyEndpoint, stmt: string, timeoutMs: number, o: { decide(count: number | null): Promise<boolean> }): Promise<WriteOutcome> {
   return withMysql(ep, { timeoutMs, write: true }, async (s, tx) => {
+    // Unqualified names resolve in the default database: refuse when that is a system schema (the statement check
+    // refuses qualified system names).
+    const [db] = await row1<[unknown]>(s.conn, "SELECT DATABASE()");
+    const dbName = str(db)?.toLowerCase();
+    if (dbName && (MYSQL_SYSTEM_SCHEMAS as readonly string[]).includes(dbName)) throw new AppError("agent.db.systemSchema", 400, { schema: dbName });
     const nt = await q<unknown[][]>(
       s.conn,
       `SELECT TABLE_SCHEMA, TABLE_NAME, ENGINE FROM information_schema.TABLES WHERE TABLE_TYPE = 'BASE TABLE' AND TABLE_SCHEMA NOT IN ${SYSTEM_SCHEMAS}

@@ -174,8 +174,8 @@ describe("analysis queue", () => {
             }),
     });
     const a = q.submit(bundleOf(), "x");
-    const waiting = [1, 2, 3].map(() => q.submit(bundleOf(), "x"));
-    expect(() => q.submit(bundleOf(), "x")).toThrow(expect.objectContaining({ code: "agent.analysis.busy", status: 429 }));
+    const waiting = [1, 2, 3].map((n) => q.submit(bundleOf(), `x${n}`));
+    expect(() => q.submit(bundleOf(), "x4")).toThrow(expect.objectContaining({ code: "agent.analysis.busy", status: 429 }));
     expect(await q.cancel(waiting[2]!.id)).toBe(true);
     expect(q.get(waiting[2]!.id)!.error!.code).toBe("agent.analysis.cancelled");
     expect((await q.wait(a.id))!.error!.code).toBe("agent.analysis.timeout");

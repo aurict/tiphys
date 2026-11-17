@@ -1,6 +1,8 @@
 // Backup restore tests (PLAN.md §13.2, D-4): restores the newest dump matching `dumpGlob` into a throwaway database
 // container and checks sanity queries. Everything runs through argv (no shell):
-//   docker run -d --rm --network none --memory 1g --tmpfs <datadir> -e <PASSWORD_ENV> --name tiphys-restore-<id>-<rand> <image>
+//   docker run -d --rm --network none --memory 1g --memory-swap 1g --cpus 1 --pids-limit 256 --cap-drop ALL
+//     --cap-add CHOWN,SETUID,SETGID,DAC_OVERRIDE,FOWNER (the entrypoint chowns the data dir, then gosu/su-exec)
+//     --security-opt no-new-privileges --tmpfs <datadir>:size=2g -e <PASSWORD_ENV> --name tiphys-restore-<id>-<rand> <image>
 //   → wait ready (pg_isready / mysqladmin ping over loopback, i.e. the final server) → the dump is streamed into
 //   `docker exec -i … psql|pg_restore|mysql` (gz: gunzip in Node) → one `docker exec` client call per sanity query
 //   (read-only session) → `docker rm -f` in finally (also on timeout and agent shutdown).
@@ -19,6 +21,7 @@ import { expandHome, restoreTestSchema, type AgentConfig, type ConfigStore } fro
 import { AppError } from "../errors.ts";
 import { run as execRun } from "../exec.ts";
 import type { Notifier } from "../notify.ts";
+import { redact } from "../redact.ts";
 import { parseImage } from "./docker.ts";
 import { checkReadStatement, firstKeyword } from "./sql.ts";
 
@@ -29,7 +32,18 @@ export const RESULTS_PER_TEST = 20;
 export const RUN_TIMEOUT_MS = 30 * 60_000;
 export const READY_TIMEOUT_MS = 120_000;
 const SANITY_TIMEOUT_MS = 60_000;
+/** Due minutes missed by a stalled timer (suspend, blocked loop) are made up for this long. */
+export const GRACE_MINUTES = 30;
+/** A daily/weekly test that ran on schedule this recently isn't run again (autumn DST repeats the wall time). */
+const REPEAT_GUARD_MS = 2 * 3600_000;
 const LABEL = "tiphys.restore=1";
+/** Resource and privilege limits of the throwaway container (the dump is untrusted input to the server). */
+const HARDENING = [
+  "--memory", "1g", "--memory-swap", "1g", "--cpus", "1", "--pids-limit", "256",
+  "--cap-drop", "ALL", ...["CHOWN", "SETUID", "SETGID", "DAC_OVERRIDE", "FOWNER"].flatMap((c) => ["--cap-add", c]),
+  "--security-opt", "no-new-privileges",
+];
+const TMPFS_SIZE = "2g";
 const SANITY_KEYWORDS = new Set(["select", "with", "values", "table", "show"]);
 
 export type FailureReason =
@@ -60,7 +74,7 @@ export interface RestoreResult {
   finishedAt: string;
   ok: boolean;
   reason: FailureReason | null;
-  /** Short tool output for restoreFailed / queryFailed (last stderr line, ≤200 chars; never the password). */
+  /** Short tool output for restoreFailed / queryFailed (last stderr line, redacted, ≤200 chars; never the password). */
   detail: string | null;
   image: string;
   dumpFile: string | null;
@@ -153,6 +167,8 @@ interface Active {
   runId: string;
   abort: AbortController;
   done: Promise<RestoreResult>;
+  /** done, then #active cleared and the next queued run started. */
+  settled: Promise<void>;
 }
 
 export class RestoreService {
@@ -174,6 +190,14 @@ export class RestoreService {
   #containers = new Set<string>();
   #timer: NodeJS.Timeout | null = null;
   #lastMinute: number;
+  /** Scheduled runs that came due while another test was running (test ids, each once). */
+  #queue: string[] = [];
+  /** Minute (ms) each test was last started or queued by the scheduler. */
+  #lastScheduled = new Map<string, number>();
+  /** begin(): the leftover sweep and the results load; runs wait for it, the scheduler doesn't tick before it. */
+  #ready: Promise<void> = Promise.resolve();
+  #readyDone = true;
+  #stopped = false;
 
   constructor(o: RestoreOpts) {
     this.#store = o.store;
@@ -323,17 +347,23 @@ export class RestoreService {
       await this.#notify(test, result);
       return result;
     });
-    const active: Active = { testId, runId, abort, done };
+    const active = { testId, runId, abort, done } as Active;
     this.#active = active;
-    void done.catch((e) => console.error("geri yükleme testi:", (e as Error).name)).finally(() => {
-      if (this.#active === active) this.#active = null;
-    });
+    active.settled = done
+      .then(
+        () => {},
+        (e) => console.error("geri yükleme testi:", (e as Error).name),
+      )
+      .finally(() => {
+        if (this.#active === active) this.#active = null;
+        this.#drain();
+      });
     return { runId };
   }
 
   /** Resolves when the current run (if any) is finished and recorded. */
   async idle() {
-    await this.#active?.done.catch(() => {});
+    for (let a = this.#active; a; a = this.#active) await a.settled;
     await this.#chain;
   }
 
@@ -349,8 +379,8 @@ export class RestoreService {
       .catch(() => {});
   }
 
-  docker(args: string[], timeoutMs: number, env?: NodeJS.ProcessEnv) {
-    return this.#run(this.#bin, args, { allowFail: true, timeoutMs: Math.max(1000, timeoutMs), ...(env ? { env } : {}) });
+  docker(args: string[], timeoutMs: number, env?: NodeJS.ProcessEnv, signal?: AbortSignal) {
+    return this.#run(this.#bin, args, { allowFail: true, timeoutMs: Math.max(1000, timeoutMs), ...(env ? { env } : {}), ...(signal ? { signal } : {}) });
   }
 
   async #execute(test: RestoreTest, runId: string, trigger: "manual" | "schedule", abort: AbortController): Promise<RestoreResult> {
@@ -376,13 +406,22 @@ export class RestoreService {
     const deadline = t0 + this.#timeoutMs;
     const timer = setTimeout(() => abort.abort("timeout"), this.#timeoutMs);
     const name = `tiphys-restore-${test.id}-${randomBytes(4).toString("hex")}`;
+    const password = randomBytes(18).toString("base64url");
+    // Tool output may quote dump contents (psql echoes the failing line): redacted, the run's password masked too.
+    // Whole stderr is redacted before the line is picked, so a PEM block spanning lines is caught.
+    const scrub = (text: string) => redact(text, [{ key: "RESTORE_PASSWORD", value: password }]);
+    const clean = (detail: string | null) => (detail === null ? null : scrub(detail).slice(0, 200));
     const fail = (reason: FailureReason, detail: string | null = null) => {
       res.reason = abort.signal.aborted ? (abort.signal.reason === "shutdown" ? "shutdown" : "timeout") : reason;
-      res.detail = abort.signal.aborted ? null : detail;
+      res.detail = abort.signal.aborted ? null : clean(detail);
       return res;
     };
     const remaining = () => deadline - this.#now();
+    // Calls that may block (image pull, a hung client) are killed on abort, so stop() can't hang on them.
+    const docker = (args: string[], timeoutMs: number, env?: NodeJS.ProcessEnv) => this.docker(args, timeoutMs, env, abort.signal);
     try {
+      // A leftover sweep (begin) must not remove this run's container.
+      await this.#ready;
       // 1. The dump.
       const cfg = this.#store.get();
       const dump = await newestFile(test.dumpGlob);
@@ -407,16 +446,15 @@ export class RestoreService {
       }
 
       // 4. Start the throwaway container.
-      const password = randomBytes(18).toString("base64url");
       const pwName = passwordEnv[test.engine];
       const tStart = this.#now();
       this.#containers.add(name);
-      const up = await this.docker(
-        ["run", "-d", "--rm", "--network", "none", "--memory", "1g", "--tmpfs", dataDirOf(test.engine, test.image), "--label", LABEL, "-e", pwName, "--name", name, test.image],
+      const up = await docker(
+        ["run", "-d", "--rm", "--network", "none", ...HARDENING, "--tmpfs", `${dataDirOf(test.engine, test.image)}:size=${TMPFS_SIZE}`, "--label", LABEL, "-e", pwName, "--name", name, test.image],
         Math.min(remaining(), 10 * 60_000),
         { [pwName]: password },
       ).catch((e) => ({ code: -1, stdout: "", stderr: e instanceof AppError ? e.code : "error" }));
-      if (up.code !== 0) return fail("dockerFailed", lastLine(up.stderr));
+      if (up.code !== 0) return fail("dockerFailed", lastLine(scrub(up.stderr)));
       res.durations.startMs = this.#now() - tStart;
       if (abort.signal.aborted) return fail("timeout");
 
@@ -431,7 +469,7 @@ export class RestoreService {
       let ready = false;
       const readyBy = Math.min(deadline, this.#now() + this.#readyTimeoutMs);
       while (!abort.signal.aborted && this.#now() < readyBy) {
-        const r = await this.docker(readyArgv, 15_000, clientEnv).catch(() => ({ code: -1 }));
+        const r = await docker(readyArgv, 15_000, clientEnv).catch(() => ({ code: -1 }));
         if (r.code === 0) {
           ready = true;
           break;
@@ -454,7 +492,7 @@ export class RestoreService {
       res.durations.restoreMs = this.#now() - tRestore;
       if (abort.signal.aborted) return fail("timeout");
       if (streamed.corrupt) return fail("dumpCorrupt", streamed.corrupt);
-      if (streamed.code !== 0) return fail("restoreFailed", lastLine(streamed.stderr));
+      if (streamed.code !== 0) return fail("restoreFailed", lastLine(scrub(streamed.stderr)));
 
       // 7. Sanity queries (read-only session).
       const tSanity = this.#now();
@@ -465,11 +503,11 @@ export class RestoreService {
             ? ["exec", "-e", "PGOPTIONS=-c default_transaction_read_only=on", name, "psql", "-X", "-A", "-t", "-v", "ON_ERROR_STOP=1", "-U", "postgres", "-d", "postgres", "-c", s.sql]
             : ["exec", ...envArgs, name, clientBin(test.engine), "-h", "127.0.0.1", "-uroot", "-N", "-B", "-e", `SET SESSION TRANSACTION READ ONLY; ${s.sql}`];
         const expected = `${s.expect.op} ${s.expect.value}`;
-        const r = await this.docker(argv, Math.min(SANITY_TIMEOUT_MS, remaining()), clientEnv).catch(() => ({ code: -1, stdout: "", stderr: "" }));
+        const r = await docker(argv, Math.min(SANITY_TIMEOUT_MS, remaining()), clientEnv).catch(() => ({ code: -1, stdout: "", stderr: "" }));
         if (abort.signal.aborted) return fail("timeout");
         if (r.code !== 0) {
           res.failures.push({ index, reason: "queryFailed", expected });
-          res.detail ??= lastLine(r.stderr);
+          res.detail ??= clean(lastLine(scrub(r.stderr)));
           continue;
         }
         const first = r.stdout.trim().split("\n")[0]?.trim() ?? "";
@@ -537,15 +575,46 @@ export class RestoreService {
 
   // --- scheduling and shutdown ---
 
-  /** Runs tests that are due for the minutes since the last tick (at most the last 2 minutes). */
+  /**
+   * Runs tests that are due for the minutes since the last tick (missed minutes up to GRACE_MINUTES back are made up).
+   * A test due while another runs is queued and starts when that one ends. A daily/weekly test that ran on schedule in
+   * the last 2 hours is skipped (the repeated wall-clock hour when DST ends).
+   */
   tick() {
+    if (!this.#readyDone || this.#stopped) return;
     const now = Math.floor(this.#now() / 60_000);
-    const from = Math.max(this.#lastMinute + 1, now - 2);
+    const from = Math.max(this.#lastMinute + 1, now - GRACE_MINUTES);
     this.#lastMinute = Math.max(this.#lastMinute, now);
     for (let m = from; m <= now; m++) {
+      const d = new Date(m * 60_000);
       for (const t of this.list()) {
-        if (!t.enabled || !t.schedule || this.#active) continue;
-        if (dueAt({ when: t.schedule, anchorAt: t.anchorAt ?? this.#fallbackAnchor }, new Date(m * 60_000))) this.start(t.id, "schedule");
+        if (!t.enabled || !t.schedule) continue;
+        if (!dueAt({ when: t.schedule, anchorAt: t.anchorAt ?? this.#fallbackAnchor }, d)) continue;
+        if (t.schedule.kind !== "interval" && d.getTime() - this.#lastScheduledAt(t.id) < REPEAT_GUARD_MS) continue;
+        if (this.#queue.includes(t.id) || this.#active?.testId === t.id) continue;
+        this.#lastScheduled.set(t.id, d.getTime());
+        this.#queue.push(t.id);
+      }
+    }
+    this.#drain();
+  }
+
+  /** The last scheduled start of a test: this process's scheduler, else the newest scheduled result on disk. */
+  #lastScheduledAt(id: string): number {
+    const mem = this.#lastScheduled.get(id) ?? -Infinity;
+    const r = this.#results?.[id]?.find((x) => x.trigger === "schedule");
+    return Math.max(mem, r ? Date.parse(r.startedAt) : -Infinity);
+  }
+
+  /** Starts the next queued scheduled run when nothing is running. */
+  #drain() {
+    while (!this.#active && !this.#stopped && this.#queue.length) {
+      const id = this.#queue.shift()!;
+      const t = this.list().find((x) => x.id === id);
+      try {
+        if (t?.enabled) this.start(id, "schedule");
+      } catch (e) {
+        console.error("geri yükleme zamanlayıcısı:", (e as Error).name);
       }
     }
   }
@@ -558,7 +627,11 @@ export class RestoreService {
   }
 
   begin(intervalMs = 20_000) {
-    void this.sweep();
+    this.#readyDone = false;
+    this.#ready = Promise.all([this.sweep(), this.#load()]).then(
+      () => {},
+      () => {},
+    ).finally(() => (this.#readyDone = true));
     this.#timer = setInterval(() => {
       try {
         this.tick();
@@ -571,6 +644,8 @@ export class RestoreService {
 
   /** Agent shutdown: stops the timer, aborts the running test and removes its container. */
   async stop() {
+    this.#stopped = true;
+    this.#queue = [];
     if (this.#timer) clearInterval(this.#timer);
     this.#timer = null;
     this.#active?.abort.abort("shutdown");

@@ -395,8 +395,10 @@ describe("rotation tracking", () => {
     const t3 = await setup({ clock, dir: t.dir, jobs: true });
     for (let i = 0; i < 50 && !t3.sent.length; i++) await new Promise((r) => setTimeout(r, 20));
     expect(t3.sent.map((n) => n.params)).toEqual([{ host: "atlas", file: "web/.env", keys: "API_TOKEN,DB_PASSWORD", count: 2 }]);
-    const meta = JSON.parse(await readFile(join(t.dir, "cfg", "secrets-meta.json"), "utf8"));
-    expect(meta.files[id].rotationNotifiedOn).toMatch(/^2027-01-1[67]$/);
+    // The day is persisted after the send.
+    const notifiedOn = async () => JSON.parse(await readFile(join(t.dir, "cfg", "secrets-meta.json"), "utf8")).files[id].rotationNotifiedOn;
+    for (let i = 0; i < 50 && !/^2027/.test(await notifiedOn()); i++) await new Promise((r) => setTimeout(r, 20));
+    expect(await notifiedOn()).toMatch(/^2027-01-1[67]$/);
     await t3.app.close();
   });
 

@@ -145,15 +145,16 @@ export class SecretsMeta {
     f.keys[key] = k;
   }
 
-  /** Writes the file atomically (0600); writes are serialized. */
+  /** Writes the file atomically (0600); writes are serialized. A failed write rejects only its own call. */
   flush(): Promise<void> {
     const body = JSON.stringify(this.#doc, null, 1) + "\n";
-    this.#chain = this.#chain.then(async () => {
+    const p = this.#chain.then(async () => {
       const tmp = `${this.path}.${process.pid}.${randomBytes(4).toString("hex")}.tmp`;
       await writeFile(tmp, body, { mode: 0o600 });
       await chmod(tmp, 0o600);
       await rename(tmp, this.path);
     });
-    return this.#chain;
+    this.#chain = p.catch(() => {});
+    return p;
   }
 }

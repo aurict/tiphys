@@ -1,5 +1,5 @@
 // Incident room, PLAN.md §13.1 I-2: deploy history + rollback tags, compose.rollback, disk.cleanup, deploys route.
-import { chmod, mkdir, mkdtemp, readFile, stat, writeFile } from "node:fs/promises";
+import { appendFile, chmod, mkdir, mkdtemp, readFile, stat, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
@@ -26,7 +26,8 @@ const C = "sha256:" + "c".repeat(64);
 const X = "sha256:" + "e".repeat(64);
 const Y = "sha256:" + "d".repeat(64);
 const REF = "registry.example/web:latest";
-const PREV = "tiphys-rollback/web-app:prev";
+const REPO = rollbackRepo("web", "app");
+const PREV = `${REPO}:prev`;
 
 beforeAll(async () => {
   bin = await mkdtemp(join(tmpdir(), "tiphys-fakeops-"));
@@ -127,8 +128,10 @@ const died = (name = "web-app-1"): Notice => ({
 
 describe("deploy tracking", () => {
   it("rollback repository names are valid docker references and distinct per service", () => {
-    expect(rollbackRepo("web", "app")).toBe("tiphys-rollback/web-app");
-    expect(rollbackTag("web", "app")).toBe(PREV);
+    expect(rollbackRepo("web", "app")).toMatch(/^tiphys-rollback\/web-app-[a-f0-9]{8}$/);
+    expect(rollbackTag("web", "app")).toBe(`${rollbackRepo("web", "app")}:prev`);
+    // review S3: equal readable parts never share a tag
+    expect(rollbackRepo("a-b", "c")).not.toBe(rollbackRepo("a", "b-c"));
     const repoRe = /^tiphys-rollback\/[a-z0-9]+(?:-[a-z0-9]+)*$/;
     const odd = ["My_Proj", "api.v2", "a__b", "-x-", "ÇALIŞAN", "x".repeat(300)];
     for (const p of odd) for (const s of odd) expect(rollbackRepo(p, s)).toMatch(repoRe);
@@ -157,8 +160,8 @@ describe("deploy tracking", () => {
       [A]: { Created: "2026-11-01T00:00:00Z", tags: [] },
       [B]: { Created: "2026-11-10T00:00:00Z", tags: [] },
       [C]: { Created: "2026-11-17T09:00:00Z", tags: [REF] },
-      [X]: { Created: "2026-10-01T00:00:00Z", tags: ["tiphys-rollback/web-app:inuse"] },
-      [Y]: { Created: "2026-09-01T00:00:00Z", tags: ["tiphys-rollback/web-app:old"] },
+      [X]: { Created: "2026-10-01T00:00:00Z", tags: [`${REPO}:inuse`] },
+      [Y]: { Created: "2026-09-01T00:00:00Z", tags: [`${REPO}:old`] },
     };
     await opsState({ psNames: ["web-app-1", "web-db-1"], containers: { "web-app-1": ctr("web-app-1", A), "web-db-1": ctr("web-db-1", X, { service: "db", ref: "postgres:16" }) }, images });
     const first = await t.snapshot();
@@ -180,8 +183,8 @@ describe("deploy tracking", () => {
     const docker = (await calls("docker")).map((c) => c.argv);
     expect(docker).toContainEqual(["tag", A, PREV]);
     // the stale tag goes; the tag on the image the running db container uses stays
-    expect(docker).toContainEqual(["image", "rm", "--no-prune", "tiphys-rollback/web-app:old"]);
-    expect(docker.some((a) => a[0] === "image" && a[1] === "rm" && a.includes("tiphys-rollback/web-app:inuse"))).toBe(false);
+    expect(docker).toContainEqual(["image", "rm", "--no-prune", `${REPO}:old`]);
+    expect(docker.some((a) => a[0] === "image" && a[1] === "rm" && a.includes(`${REPO}:inuse`))).toBe(false);
     let st = await readState();
     expect(st.images[A]!.tags).toEqual([PREV]);
 
@@ -228,6 +231,13 @@ describe("deploy tracking", () => {
   });
 });
 
+/** The tracker's record of the service's last deploy: prev → cur, prev tagged :prev (what rollback verifies against). */
+async function tracked(t: { deploys: DeployTracker }, prev: string, cur = B) {
+  const r = { at: new Date(T0).toISOString(), kind: "changed", project: "web", service: "app", container: "web-app-1", imageId: cur, imageRef: REF, createdAt: "x", prevImageId: prev, prevImageRef: REF, rollbackTag: PREV };
+  await appendFile(t.deploys.file, JSON.stringify(r) + "\n");
+  await t.deploys.load();
+}
+
 describe("compose.rollback", () => {
   const rollbackState = (extra: Partial<{ ref: string; noPrev: boolean }> = {}) => ({
     psNames: ["web-app-1"],
@@ -247,6 +257,7 @@ describe("compose.rollback", () => {
     ] as const) {
       const t = await setup();
       await opsState(st);
+      await tracked(t, A);
       await t.send(died());
       const kinds = (await t.svc.actions(t.svc.list()[0]!.id)).actions.map((a) => a.kind);
       expect(kinds.includes("compose.rollback"), JSON.stringify(st.containers)).toBe(offered);
@@ -257,6 +268,7 @@ describe("compose.rollback", () => {
   it("preview shows both images and the warning; execute runs the exact argv; post-check sees the previous image", async () => {
     const t = await setup();
     await opsState(rollbackState());
+    await tracked(t, A);
     await t.send(died());
     const id = t.svc.list()[0]!.id;
     const { actions } = (await t.req("GET", `/v1/incidents/${id}/actions`)).json();
@@ -288,18 +300,51 @@ describe("compose.rollback", () => {
     await t.app.close();
   });
 
-  it("post-check fails when the service doesn't run the previous image; a changed :prev voids the token", async () => {
+  it("review S3: preview warns when other containers use the same image reference", async () => {
     const t = await setup();
-    await opsState(rollbackState());
+    const st = rollbackState();
+    const standalone = { ...ctr("standalone", B), Config: { Image: REF, Labels: {} } };
+    await opsState({ ...st, psNames: ["web-app-1", "standalone"], containers: { ...st.containers, standalone } });
+    await tracked(t, A);
     await t.send(died());
     const id = t.svc.list()[0]!.id;
     const rb = (await t.svc.actions(id)).actions.find((a) => a.kind === "compose.rollback")!;
-    // :prev moves to another image between preview and execute → 409
+    const pv = await t.svc.preview(id, rb.id, "phone");
+    expect(pv.details).toMatchObject({ warnings: ["dbMigrationsNotReverted", "sharedImageRef"], sharedWith: ["standalone"] });
+    await t.app.close();
+  });
+
+  it("review S3: refused when the tracker's last deploy isn't the current image or :prev isn't the tracked one", async () => {
+    const t = await setup();
+    await opsState(rollbackState());
+    await tracked(t, A, C); // tracker: current C (container runs B) → stale
+    await t.send(died());
+    const id = t.svc.list()[0]!.id;
+    expect((await t.svc.actions(id)).actions.some((a) => a.kind === "compose.rollback")).toBe(false);
+    await tracked(t, C); // current B, but :prev (A) isn't the tracked previous image C
+    expect((await t.svc.actions(id)).actions.some((a) => a.kind === "compose.rollback")).toBe(false);
+    await tracked(t, A);
+    expect((await t.svc.actions(id)).actions.some((a) => a.kind === "compose.rollback")).toBe(true);
+    await t.app.close();
+  });
+
+  it("post-check fails when the service doesn't run the previous image; a changed :prev voids the token", async () => {
+    const t = await setup();
+    await opsState(rollbackState());
+    await tracked(t, A);
+    await t.send(died());
+    const id = t.svc.list()[0]!.id;
+    const rb = (await t.svc.actions(id)).actions.find((a) => a.kind === "compose.rollback")!;
+    // :prev moved by something else (not the tracker) between preview and execute → rollback refused
     const pv1 = await t.svc.preview(id, rb.id, "phone");
     const st = await readState();
     st.images[C] = { Created: "2026-11-12T00:00:00Z", tags: [PREV] };
     st.images[A]!.tags = [];
     await opsState(st);
+    await expect(t.svc.execute(id, rb.id, "phone", pv1.previewToken)).rejects.toThrow();
+    expect((await t.svc.actions(id)).actions.some((a) => a.kind === "compose.rollback")).toBe(false);
+    // the tracker moved it (a newer deploy record) → offered again, but the old token is void (other steps)
+    await tracked(t, C);
     await expect(t.svc.execute(id, rb.id, "phone", pv1.previewToken)).rejects.toThrow("agent.preview.invalid");
     // compose leaves the container on the new image → the post-check fails (otherImage) and the failure is notified
     const pv2 = await t.svc.preview(id, rb.id, "phone");
@@ -311,7 +356,7 @@ describe("compose.rollback", () => {
     expect(inc.timeline.find((e) => e.type === "postCheck")?.data).toMatchObject({ action: "compose.rollback", ok: false, state: "exited/otherImage" });
     expect(inc.workedAction).toBeUndefined();
     await t.app.close();
-  });
+   }, 30_000);
 });
 
 describe("disk.cleanup", () => {

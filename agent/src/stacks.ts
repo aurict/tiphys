@@ -1,9 +1,12 @@
 // Compose stack discovery (PLAN.md §13.0). Every directory directly under a `stacks.roots` entry that holds a compose
 // file is a stack. All paths are resolved with realpath and must stay inside their root (a symlink pointing out of the
-// root is skipped); this list is separate from allowedRoots. Used by the incident room and later by config files (13.3).
+// root is skipped); this list is separate from allowedRoots. Like compose, COMPOSE_PROJECT_NAME and COMPOSE_FILE in the
+// stack's .env take precedence over `name:` and the default file names, and YAML merge keys (`<<: *anchor`) apply.
+// Not supported: `include:` and `extends:` (services/env files they bring in are not seen), COMPOSE_PATH_SEPARATOR. Used by the incident room and later by config files (13.3).
 import { lstat, readdir, readFile, realpath, stat } from "node:fs/promises";
 import { basename, dirname, isAbsolute, join, resolve, sep } from "node:path";
 import { parse } from "yaml";
+import { effective, parseEnv } from "./configfiles/dotenv.ts";
 import { expandHome, type AgentConfig } from "./config.ts";
 
 export interface Stack {
@@ -67,25 +70,47 @@ async function gitTop(root: string, dir: string): Promise<string | undefined> {
   return undefined;
 }
 
+/** COMPOSE_PROJECT_NAME / COMPOSE_FILE from the stack's .env (literal values only; `${…}` isn't expanded). */
+async function composeEnv(root: string, dir: string): Promise<{ project?: string; files?: string[] }> {
+  const p = await confined(root, join(dir, ".env"));
+  if (!p || !(await isFile(p)) || (await stat(p)).size > MAX_COMPOSE_BYTES) return {};
+  const env = effective(parseEnv(await readFile(p, "utf8")));
+  const v = (k: string) => {
+    const e = env.get(k);
+    return e && !e.inherited && e.value && !e.value.includes("$") ? e.value : undefined;
+  };
+  const files = v("COMPOSE_FILE")?.split(":").filter(Boolean);
+  return { project: v("COMPOSE_PROJECT_NAME"), ...(files?.length ? { files } : {}) };
+}
+
 /** Reads one stack directory; null when it has no compose file inside the root or it can't be parsed. */
 export async function readStack(root: string, dir: string): Promise<Stack | null> {
-  let main: string | null = null;
-  let mainName = "";
-  for (const n of COMPOSE_NAMES) {
-    const p = await confined(root, join(dir, n));
-    if (p && (await isFile(p))) {
-      main = p;
-      mainName = n;
-      break;
+  const env = await composeEnv(root, dir);
+  const composeFiles: string[] = [];
+  if (env.files) {
+    // COMPOSE_FILE replaces the defaults (and the automatic override file); every file must exist inside the root.
+    for (const f of env.files) {
+      const p = await confined(root, resolve(dir, f));
+      if (!p || !(await isFile(p))) return null;
+      if (!composeFiles.includes(p)) composeFiles.push(p);
     }
-  }
-  if (!main) return null;
-  const composeFiles = [main];
-  for (const n of OVERRIDE_NAMES[mainName] ?? []) {
-    const p = await confined(root, join(dir, n));
-    if (p && (await isFile(p))) {
-      composeFiles.push(p);
-      break;
+  } else {
+    let mainName = "";
+    for (const n of COMPOSE_NAMES) {
+      const p = await confined(root, join(dir, n));
+      if (p && (await isFile(p))) {
+        composeFiles.push(p);
+        mainName = n;
+        break;
+      }
+    }
+    if (!composeFiles.length) return null;
+    for (const n of OVERRIDE_NAMES[mainName] ?? []) {
+      const p = await confined(root, join(dir, n));
+      if (p && (await isFile(p))) {
+        composeFiles.push(p);
+        break;
+      }
     }
   }
   const services = new Set<string>();
@@ -96,7 +121,7 @@ export async function readStack(root: string, dir: string): Promise<Stack | null
     if (st.size > MAX_COMPOSE_BYTES) return null;
     let doc: unknown;
     try {
-      doc = parse(await readFile(f, "utf8"));
+      doc = parse(await readFile(f, "utf8"), { merge: true });
     } catch {
       return null;
     }
@@ -121,7 +146,7 @@ export async function readStack(root: string, dir: string): Promise<Stack | null
   const id = basename(dir);
   return {
     id,
-    project: projectName ?? composeProjectName(id),
+    project: (env.project ? composeProjectName(env.project) : "") || projectName || composeProjectName(id),
     dir,
     root,
     composeFiles,
@@ -154,12 +179,12 @@ export async function discoverStacks(config: Pick<AgentConfig, "stacks">): Promi
 }
 
 /**
- * Finds the stack of a compose project (from container labels). The label's working directory is only a hint:
- * the result is always a discovered (confined) stack.
+ * Finds the stack of a compose project (from container labels): by project name only, and when the container has a
+ * working-directory label it must be the stack's directory. Ambiguous (several stacks, no label) → undefined.
  */
 export function stackForProject(stacks: Stack[], project: string | undefined, workingDir?: string): Stack | undefined {
   if (!project) return undefined;
   const byProject = stacks.filter((s) => s.project === project);
-  if (byProject.length <= 1) return byProject[0];
-  return byProject.find((s) => s.dir === workingDir) ?? byProject[0];
+  if (workingDir) return byProject.find((s) => s.dir === resolve(workingDir));
+  return byProject.length === 1 ? byProject[0] : undefined;
 }

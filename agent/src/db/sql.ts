@@ -35,6 +35,8 @@ export interface Word {
   depth: number;
   /** The previous token was a ")" that closed back to this depth. */
   afterClose: boolean;
+  /** Followed by "." (a schema or table qualifier). */
+  dot?: boolean;
 }
 
 export interface Lexed {
@@ -42,6 +44,8 @@ export interface Lexed {
   words: Word[];
   /** MySQL/MariaDB executable comment (/*! … *\/, /*M! … *\/) or optimizer hint (/*+ … *\/): run or applied by the server. */
   execComment: boolean;
+  /** PostgreSQL U&"…" / U&'…' (Unicode escapes): the words inside can't be compared with the denylist, so it is refused. */
+  unicodeEscape?: boolean;
 }
 
 const WORD_START = /[A-Za-z_\u0080-￿]/;
@@ -61,21 +65,25 @@ export function lex(sql: string, engine: Engine): Lexed[] {
   let meaningful = false;
   let words: Word[] = [];
   let exec = false;
+  let uesc = false;
   let depth = 0;
   let afterClose = false;
   let i = 0;
   const n = sql.length;
   const push = (end: number) => {
-    if (meaningful) out.push({ text: sql.slice(start, end), words, execComment: exec });
+    if (meaningful) out.push({ text: sql.slice(start, end), words, execComment: exec, ...(uesc ? { unicodeEscape: true } : {}) });
     start = end + 1;
     meaningful = false;
     words = [];
     exec = false;
+    uesc = false;
     depth = 0;
     afterClose = false;
   };
-  const word = (w: string, quoted: boolean) => {
-    words.push({ w: w.toLowerCase(), quoted, depth, afterClose });
+  const word = (w: string, quoted: boolean, end: number) => {
+    let k = end;
+    while (k < n && /\s/.test(sql[k]!)) k++;
+    words.push({ w: w.toLowerCase(), quoted, depth, afterClose, ...(sql[k] === "." ? { dot: true } : {}) });
     afterClose = false;
   };
   while (i < n) {
@@ -131,19 +139,19 @@ export function lex(sql: string, engine: Engine): Lexed[] {
     if (c === '"') {
       const e = skipQuoted(sql, i, '"', d === "mysql");
       // A MySQL "…" is a string; it still counts for the function denylist (quoted=true never matches a keyword).
-      word(sql.slice(i + 1, e - 1).replace(/""/g, '"'), true);
+      word(sql.slice(i + 1, e - 1).replace(/""/g, '"'), true, e);
       i = e;
       continue;
     }
     if (c === "`" && d !== "postgres") {
       const e = skipQuoted(sql, i, "`", false);
-      word(sql.slice(i + 1, e - 1).replace(/``/g, "`"), true);
+      word(sql.slice(i + 1, e - 1).replace(/``/g, "`"), true, e);
       i = e;
       continue;
     }
     if (d === "sqlite" && c === "[") {
       const e = sql.indexOf("]", i + 1);
-      word(sql.slice(i + 1, e < 0 ? n : e), true);
+      word(sql.slice(i + 1, e < 0 ? n : e), true, e < 0 ? n : e + 1);
       i = e < 0 ? n : e + 1;
       continue;
     }
@@ -181,7 +189,8 @@ export function lex(sql: string, engine: Engine): Lexed[] {
     if (WORD_START.test(c)) {
       let j = i + 1;
       while (j < n && WORD_CHAR.test(sql[j]!)) j++;
-      word(sql.slice(i, j), false);
+      if (d === "postgres" && j === i + 1 && (c === "u" || c === "U") && sql[j] === "&" && (sql[j + 1] === '"' || sql[j + 1] === "'")) uesc = true;
+      word(sql.slice(i, j), false, j);
       i = j;
       continue;
     }
@@ -250,13 +259,20 @@ const DENY_PG = new Set([
   "pg_file_write", "pg_file_rename", "pg_file_unlink", "pg_file_sync",
   "lo_import", "lo_export", "lo_from_bytea", "lo_put", "lo_create", "lo_creat", "lo_unlink", "lo_open", "lo_truncate", "lowrite",
   "query_to_xml", "query_to_xmlschema", "query_to_xml_and_xmlschema",
+  // Run SQL text given as a string (ts_stat, ts_rewrite's query form, tablefunc, xml2) or change the session's role
+  // and settings (set_config('role', …) would undo the read role's SET LOCAL ROLE).
+  "ts_stat", "ts_rewrite", "crosstab", "crosstab2", "crosstab3", "crosstab4", "connectby", "xpath_table", "set_config",
+  "pg_stat_statements_reset",
   "pg_terminate_backend", "pg_cancel_backend", "pg_reload_conf", "pg_rotate_logfile", "pg_promote", "pg_switch_wal",
   "pg_create_restore_point", "pg_drop_replication_slot", "pg_create_physical_replication_slot", "pg_create_logical_replication_slot",
 ]);
 const DENY_MYSQL = new Set(["load_file", "outfile", "dumpfile", "sys_exec", "sys_eval"]);
-const denied = (d: Dialect, w: string) => (d === "postgres" ? DENY_PG.has(w) || w.startsWith("dblink") || w.startsWith("pg_replication_origin") : d === "mysql" ? DENY_MYSQL.has(w) : false);
+const denied = (d: Dialect, w: string) => (d === "postgres" ? DENY_PG.has(w) || w.startsWith("dblink") || w.startsWith("pg_replication_origin") || w.startsWith("pg_stat_reset") : d === "mysql" ? DENY_MYSQL.has(w) : false);
 
-type Refusal = { ok: false; code: "agent.db.emptyStatement" | "agent.db.multipleStatements" | "agent.db.statementNotAllowed" | "agent.db.ddlNotPreviewable"; keyword?: string; count?: number };
+type Refusal = { ok: false; code: "agent.db.emptyStatement" | "agent.db.multipleStatements" | "agent.db.statementNotAllowed" | "agent.db.ddlNotPreviewable" | "agent.db.systemSchema"; keyword?: string; count?: number; schema?: string };
+
+/** MySQL/MariaDB system schemas: some of their tables are MyISAM/Aria/CSV, so a write preview there can't be rolled back. */
+export const MYSQL_SYSTEM_SCHEMAS = ["mysql", "sys", "performance_schema", "information_schema"] as const;
 export type StatementCheck = { ok: true } | Refusal;
 
 const notAllowed = (keyword: string): Refusal => ({ ok: false, code: "agent.db.statementNotAllowed", keyword: keyword.slice(0, 64) });
@@ -268,6 +284,7 @@ function single(sql: string, engine: Engine): Refusal | Lexed {
   if (list.length > 1) return { ok: false, code: "agent.db.multipleStatements", count: list.length };
   const s = list[0]!;
   if (s.execComment) return notAllowed("/*!");
+  if (s.unicodeEscape) return notAllowed("u&");
   const d = dialectOf(engine);
   const bad = s.words.find((w) => denied(d, w.w));
   if (bad) return notAllowed(bad.w);
@@ -321,6 +338,10 @@ export function checkWriteStatement(sql: string, engine: Engine): WriteCheck {
   const d = dialectOf(engine);
   if (d === "sqlite") return notAllowed("sqlite");
   const words = s.words;
+  if (d === "mysql") {
+    const sys = words.find((w) => w.dot && (MYSQL_SYSTEM_SCHEMAS as readonly string[]).includes(w.w));
+    if (sys) return { ok: false, code: "agent.db.systemSchema", schema: sys.w };
+  }
   const first = words[0];
   const kw = first && !first.quoted ? first.w : "";
   const returning = d === "postgres" && words.some((w) => w.depth === 0 && !w.quoted && w.w === "returning");

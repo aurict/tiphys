@@ -1,7 +1,8 @@
 // Deploy history and rollback tags (PLAN.md §13.1, I-2). Every 5 minutes and on docker `start` events the agent
 // snapshots its compose containers → {project, service, imageId, imageRef, createdAt} and appends changes to
 // incidents/deploys.jsonl (0600, rotated at 1 MB to deploys.jsonl.1). When a service's image id changes, the previous
-// image is tagged `tiphys-rollback/<project>-<service>:prev` (one per service): `compose pull` / rebuilds leave the old
+// image is tagged `tiphys-rollback/<project>-<service>-<hash>:prev` (one per service; <hash>: 8 hex of sha256 of
+// project + NUL + service, so `a-b`/`c` and `a`/`b-c` never share a tag): `compose pull` / rebuilds leave the old
 // image untagged, and `docker image prune` would delete it; a tagged image is never dangling, so it survives.
 // Commands run without a shell.
 import { spawn, type ChildProcess } from "node:child_process";
@@ -48,15 +49,14 @@ export interface DeployRecord {
   rollbackTag: string | null;
 }
 
-/** One docker repository path component: [a-z0-9]+ joined by single dashes. A changed name gets a hash suffix. */
-function component(s: string): string {
-  const clean = s.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "") || "x";
-  return clean === s ? clean : `${clean.slice(0, 40)}-${createHash("sha256").update(s).digest("hex").slice(0, 6)}`;
-}
-
-/** `tiphys-rollback/<project>-<service>` (valid repository syntax; distinct services never share a name). */
+/**
+ * `tiphys-rollback/<project>-<service>-<hash>`: the readable part is lowercased, other characters become single dashes
+ * (≤ 80 chars); the hash (8 hex of sha256("<project>\0<service>")) is always there, so distinct services never share a
+ * repository even when their readable parts are equal.
+ */
 export function rollbackRepo(project: string, service: string): string {
-  return ROLLBACK_REPO_PREFIX + component(`${project}-${service}`).slice(0, 120);
+  const clean = `${project}-${service}`.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 80).replace(/-+$/, "") || "x";
+  return `${ROLLBACK_REPO_PREFIX}${clean}-${createHash("sha256").update(`${project}\u0000${service}`).digest("hex").slice(0, 8)}`;
 }
 
 export const rollbackTag = (project: string, service: string) => `${rollbackRepo(project, service)}:prev`;
@@ -114,6 +114,34 @@ export async function composeServices(run: Runner, filters: string[]): Promise<S
 /** The newest container of one compose service, or undefined. */
 export async function serviceImage(run: Runner, project: string, service: string): Promise<ServiceImage | undefined> {
   return (await composeServices(run, [`label=com.docker.compose.project=${project}`, `label=com.docker.compose.service=${service}`]))[0];
+}
+
+/** `nginx` → `nginx:latest`, `docker.io/library/x:1` → `x:1` (how docker reads a reference without registry/tag). */
+function normalRef(ref: string): string {
+  let r = ref.replace(/^(?:docker\.io|index\.docker\.io)\//, "").replace(/^library\//, "");
+  if (!r.includes("@") && !r.slice(r.lastIndexOf("/") + 1).includes(":")) r += ":latest";
+  return r;
+}
+
+/** Containers (any, compose or not) configured with the image reference `ref`. */
+export async function containersUsingRef(run: Runner, ref: string): Promise<Array<{ container: string; project: string | null; service: string | null }>> {
+  const ps = await run("docker", ["ps", "-a", "--no-trunc", "--format", "{{.ID}}"], { timeoutMs: 15_000 });
+  const ids = ps.stdout.split("\n").map((s) => s.trim()).filter((s) => /^[A-Za-z0-9_.-]+$/.test(s));
+  if (!ids.length) return [];
+  const r = await run("docker", ["inspect", "--type", "container", ...ids], { allowFail: true, timeoutMs: 15_000 });
+  let list: InspectJson[];
+  try {
+    list = JSON.parse(r.stdout || "[]") as InspectJson[];
+  } catch {
+    return [];
+  }
+  const want = normalRef(ref);
+  return (Array.isArray(list) ? list : [])
+    .filter((c) => typeof c.Config?.Image === "string" && normalRef(c.Config.Image) === want)
+    .map((c) => {
+      const l = c.Config?.Labels ?? {};
+      return { container: (c.Name ?? "").replace(/^\//, ""), project: l["com.docker.compose.project"] ?? null, service: l["com.docker.compose.service"] ?? null };
+    });
 }
 
 /** `{id, created}` of an image (by id or reference), or null when it doesn't exist. */
@@ -211,7 +239,11 @@ export class DeployTracker {
       const last = this.#last.get(key(c.project, c.service));
       if (last && last.imageId === c.imageId) continue;
       let tag: string | null = null;
-      if (last) tag = await this.#tagPrevious(c, last.imageId, runningIds);
+      if (last) {
+        const t = await this.#tagPrevious(c, last.imageId, runningIds);
+        if (t === false) continue; // `docker tag` failed: not recorded, so the next snapshot tries again
+        tag = t;
+      }
       const r: DeployRecord = {
         at,
         kind: last ? "changed" : "seen",
@@ -225,18 +257,20 @@ export class DeployTracker {
         prevImageRef: last?.imageRef ?? null,
         rollbackTag: tag,
       };
-      this.#last.set(key(c.project, c.service), r);
       out.push(r);
     }
+    // Known only once written: after a failed append the next snapshot sees the change again.
     if (out.length) await this.#append(out);
+    for (const r of out) this.#last.set(key(r.project, r.service), r);
     return out;
   }
 
   /**
    * Tags the previous image `…:prev` (moving the tag from an older image), then removes any other tag of the same
-   * rollback repository, unless that image is used by a running container. Null when the previous image is gone.
+   * rollback repository, unless that image is used by a running container. Null when the previous image is gone,
+   * false when `docker tag` failed.
    */
-  async #tagPrevious(c: ServiceImage, prevId: string, runningIds: Set<string>): Promise<string | null> {
+  async #tagPrevious(c: ServiceImage, prevId: string, runningIds: Set<string>): Promise<string | null | false> {
     if (!IMAGE_ID_RE.test(prevId)) return null;
     if (!(await imageInfo(this.#run, prevId))) return null;
     const repo = rollbackRepo(c.project, c.service);
@@ -244,7 +278,7 @@ export class DeployTracker {
     const r = await this.#run("docker", ["tag", prevId, tag], { allowFail: true, timeoutMs: 15_000 });
     if (r.code !== 0) {
       this.#o.log?.("geri alma etiketi konamadı", new Error(r.stderr.slice(0, 300)));
-      return null;
+      return false;
     }
     const ls = await this.#run("docker", ["image", "ls", repo, "--no-trunc", "--format", "{{.Repository}}:{{.Tag}} {{.ID}}"], { allowFail: true, timeoutMs: 15_000 });
     for (const line of ls.stdout.split("\n")) {

@@ -108,6 +108,19 @@ export class ConfigFilesService {
     return { eff, cls, secrets: list.filter((e) => e.secret).map(({ key, value }) => ({ key, value })) };
   }
 
+  /**
+   * Reads and analyzes the file under its read lock (taken by save/restore around read → write → analyze), so an
+   * analysis of content read before a write can't land after the write's own: no false external change, no stale
+   * known secrets.
+   */
+  #readAnalyzed(f: ConfigFile) {
+    return this.#locked(`read:${f.fileId}`, async () => {
+      const r = await readChecked(f);
+      const doc = parseEnv(r.text);
+      return { r, doc, ...(await this.#analyze(f, doc)) };
+    });
+  }
+
   #keyInfo(m: KeyMeta | undefined) {
     if (!m) return {};
     const since = m.lastChangedAt ?? m.firstSeenAt;
@@ -131,9 +144,7 @@ export class ConfigFilesService {
     const out = [];
     for (const f of files) {
       try {
-        const r = await readChecked(f);
-        const doc = parseEnv(r.text);
-        const { cls } = await this.#analyze(f, doc);
+        const { r, cls } = await this.#readAnalyzed(f);
         out.push({
           ...this.#summary(f),
           size: r.content.length,
@@ -153,9 +164,7 @@ export class ConfigFilesService {
 
   async get(fileId: string) {
     const f = await this.#resolve(fileId);
-    const r = await readChecked(f);
-    const doc = parseEnv(r.text);
-    const { eff, cls } = await this.#analyze(f, doc);
+    const { r, doc, eff, cls } = await this.#readAnalyzed(f);
     const meta = this.#o.meta.keys(fileId);
     return {
       ...this.#summary(f),
@@ -191,8 +200,7 @@ export class ConfigFilesService {
     recent.push(now);
     this.#reveals.set(device, recent);
     const f = await this.#resolve(fileId);
-    const r = await readChecked(f);
-    const eff = (await this.#analyze(f, parseEnv(r.text))).eff;
+    const { eff } = await this.#readAnalyzed(f);
     const values: Record<string, string> = {};
     const missing: string[] = [];
     for (const k of new Set(keys)) {
@@ -362,10 +370,8 @@ export class ConfigFilesService {
 
   async preview(fileId: string, baseHash: string, ops: EnvOp[], device: string, restart: Restart = "none") {
     const f = await this.#resolve(fileId);
-    const r = await readChecked(f);
+    const { r, doc: before } = await this.#readAnalyzed(f);
     if (r.hash !== baseHash) throw new AppError("agent.configfiles.conflict", 409, { hash: r.hash });
-    const before = parseEnv(r.text);
-    await this.#analyze(f, before);
     const nextText = editOrThrow(before, ops);
     if (nextText === r.text) throw new AppError("agent.configfiles.noChange", 400);
     const after = parseEnv(nextText);
@@ -382,15 +388,20 @@ export class ConfigFilesService {
     const ops = input.ops!;
     return this.#locked(fileId, async () => {
       const f = await this.#resolve(fileId);
-      const cur = await readChecked(f);
-      if (cur.hash !== input.baseHash) throw new AppError("agent.configfiles.conflict", 409, { hash: cur.hash });
-      const before = parseEnv(cur.text);
-      const { secrets: replaced } = await this.#analyze(f, before, "external");
-      const nextText = editOrThrow(before, ops);
-      const backupId = await writeBackup(this.#o.stateDir, fileId, cur.content, this.#now());
-      const w = await writeAtomic(f, input.baseHash, Buffer.from(nextText, "utf8"), this.#o.hooks);
-      for (const op of ops) if (op.op === "rename") this.#o.meta.rename(fileId, op.key, op.newKey);
-      await this.#analyze(f, parseEnv(nextText), "tiphys");
+      const { w, backupId, replaced } = await this.#locked(`read:${fileId}`, async () => {
+        const cur = await readChecked(f);
+        if (cur.hash !== input.baseHash) throw new AppError("agent.configfiles.conflict", 409, { hash: cur.hash });
+        const before = parseEnv(cur.text);
+        const { secrets: replaced } = await this.#analyze(f, before, "external");
+        const nextText = editOrThrow(before, ops);
+        let backupId = "";
+        const w = await writeAtomic(f, input.baseHash, Buffer.from(nextText, "utf8"), this.#o.hooks, async () => {
+          backupId = await writeBackup(this.#o.stateDir, fileId, cur.content, this.#now());
+        });
+        for (const op of ops) if (op.op === "rename") this.#o.meta.rename(fileId, op.key, op.newKey);
+        await this.#analyze(f, parseEnv(nextText), "tiphys");
+        return { w, backupId, replaced };
+      });
       const keys = keysOf(ops);
       const affected = await this.#affected(f, keys);
       const done = await this.#finish(f, { kind: "config.saved", keys, backupId, input, device, replaced });
@@ -405,10 +416,8 @@ export class ConfigFilesService {
 
   async restorePreview(fileId: string, backupId: string, device: string, restart: Restart = "none") {
     const f = await this.#resolve(fileId);
-    const r = await readChecked(f);
+    const { r, doc: before } = await this.#readAnalyzed(f);
     const backup = await readBackup(this.#o.stateDir, fileId, backupId);
-    const before = parseEnv(r.text);
-    await this.#analyze(f, before);
     const after = parseEnv(backup.toString("utf8"));
     const d = this.#diff(f, before, after, new Map());
     const keys = d.changes.flatMap((c) => (c.from ? [c.from, c.key] : [c.key]));
@@ -423,16 +432,21 @@ export class ConfigFilesService {
     if (input.backupId !== backupId) throw new AppError("agent.preview.invalid", 409);
     return this.#locked(fileId, async () => {
       const f = await this.#resolve(fileId);
-      const cur = await readChecked(f);
-      if (cur.hash !== input.baseHash) throw new AppError("agent.configfiles.conflict", 409, { hash: cur.hash });
-      const content = await readBackup(this.#o.stateDir, fileId, backupId);
-      const before = parseEnv(cur.text);
-      const { secrets: replaced } = await this.#analyze(f, before, "external");
-      const after = parseEnv(content.toString("utf8"));
-      const keys = this.#diff(f, before, after, new Map()).changes.map((c) => c.key);
-      const newBackup = await writeBackup(this.#o.stateDir, fileId, cur.content, this.#now());
-      const w = await writeAtomic(f, input.baseHash, content, this.#o.hooks);
-      await this.#analyze(f, after, "tiphys");
+      const { w, newBackup, replaced, keys } = await this.#locked(`read:${fileId}`, async () => {
+        const cur = await readChecked(f);
+        if (cur.hash !== input.baseHash) throw new AppError("agent.configfiles.conflict", 409, { hash: cur.hash });
+        const content = await readBackup(this.#o.stateDir, fileId, backupId);
+        const before = parseEnv(cur.text);
+        const { secrets: replaced } = await this.#analyze(f, before, "external");
+        const after = parseEnv(content.toString("utf8"));
+        const keys = this.#diff(f, before, after, new Map()).changes.map((c) => c.key);
+        let newBackup = "";
+        const w = await writeAtomic(f, input.baseHash, content, this.#o.hooks, async () => {
+          newBackup = await writeBackup(this.#o.stateDir, fileId, cur.content, this.#now());
+        });
+        await this.#analyze(f, after, "tiphys");
+        return { w, newBackup, replaced, keys };
+      });
       const affected = await this.#affected(f, keys);
       const done = await this.#finish(f, { kind: "config.restored", keys, backupId: newBackup, restoredFrom: backupId, input, device, replaced });
       return { fileId, file: f.label, hash: w.hash, restoredFrom: backupId, backupId: newBackup, warnings: w.warnings, affected, keys, ...done };
@@ -460,7 +474,7 @@ export class ConfigFilesService {
       if (!effective(doc).has(u.key)) throw new AppError("agent.configfiles.keyNotFound", 404, { key: u.key });
       this.#o.meta.setPolicy(u.fileId, f.label, u.key, { maxAgeDays: u.maxAgeDays, mark: u.secret });
     }
-    for (const { f, doc } of docs.values()) await this.#analyze(f, doc);
+    for (const { f } of docs.values()) await this.#readAnalyzed(f);
     await this.#o.meta.flush();
     return this.metaList();
   }
@@ -488,7 +502,7 @@ export class ConfigFilesService {
     const { files } = await this.scanAll();
     const ids = new Set(files.map((f) => f.fileId));
     const day = localDay(this.#now());
-    const out: Array<{ fileId: string; file: string; keys: string[] }> = [];
+    const due: Array<{ fileId: string; file: string; keys: string[] }> = [];
     for (const m of this.#o.meta.files()) {
       if (!ids.has(m.fileId) || m.rotationNotifiedOn === day) continue;
       const keys = Object.entries(m.keys)
@@ -496,17 +510,23 @@ export class ConfigFilesService {
         .map(([k]) => k)
         .sort();
       if (!keys.length) continue;
-      this.#o.meta.setRotationNotified(m.fileId, day);
-      out.push({ fileId: m.fileId, file: m.file, keys });
+      due.push({ fileId: m.fileId, file: m.file, keys });
     }
-    if (!out.length) return out;
-    await this.#o.meta.flush();
+    if (!due.length) return [];
     const host = this.#o.store.get().name;
-    for (const n of out) {
-      await this.#o.notifier
-        ?.send({ key: "secret.rotationDue", params: { host, file: n.file, keys: n.keys.join(","), count: n.keys.length }, data: { fileId: n.fileId } })
-        .catch((err) => this.#o.log?.("bildirim gönderilemedi", err));
+    // The day is marked only after a successful send, so a failed one is retried on the next check.
+    const out: Array<{ fileId: string; file: string; keys: string[] }> = [];
+    for (const n of due) {
+      try {
+        await this.#o.notifier?.send({ key: "secret.rotationDue", params: { host, file: n.file, keys: n.keys.join(","), count: n.keys.length }, data: { fileId: n.fileId } });
+      } catch (err) {
+        this.#o.log?.("bildirim gönderilemedi", err);
+        continue;
+      }
+      this.#o.meta.setRotationNotified(n.fileId, day);
+      out.push(n);
     }
+    if (out.length) await this.#o.meta.flush().catch((err) => this.#o.log?.("sır üst verisi yazılamadı", err));
     return out;
   }
 }

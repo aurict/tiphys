@@ -17,6 +17,10 @@ export interface PgEndpoint {
   user: string;
   password?: string;
   database: string;
+  /** Role user SQL reads run as (SET LOCAL ROLE), e.g. a pg_read_all_data member the login user may switch to. */
+  readRole?: string;
+  /** Without readRole, user SQL reads by a superuser login run only when this is true (agent.db.superuserReadsDisabled). */
+  allowSuperuserReads?: boolean;
 }
 
 const CONNECT_TIMEOUT_MS = 10_000;
@@ -72,6 +76,26 @@ interface SessionOpts {
   write?: boolean;
   /** Wall clock past which the socket is dropped (default: connect + statement timeout + 5 s). */
   backstopMs?: number;
+  /** User SQL reads: apply readGuard (read role / superuser check) before fn. */
+  userSql?: boolean;
+}
+
+type Querier = { query(q: never): Promise<unknown> };
+
+/**
+ * Before user SQL in a read transaction: with a read role, SET LOCAL ROLE to it (refused if that role is a superuser);
+ * without one, a superuser login is refused unless the connection sets allowSuperuserReads. The denylist can't know
+ * every function a superuser could misuse; a non-superuser role makes the server enforce it.
+ */
+export async function readGuard(c: Querier, ep: PgEndpoint): Promise<void> {
+  const su = async (who: "current_user" | "session_user") =>
+    ((await c.query({ text: `SELECT COALESCE((SELECT rolsuper FROM pg_roles WHERE rolname = ${who}), false) AS su`, queryMode: "extended" } as never)) as { rows: Array<{ su: boolean }> }).rows[0]?.su === true;
+  if (ep.readRole) {
+    await c.query({ text: `SET LOCAL ROLE ${quoteIdent(ep.readRole)}`, queryMode: "extended" } as never);
+    if (await su("current_user")) throw new AppError("agent.db.superuserReadsDisabled", 403, { readRole: true });
+    return;
+  }
+  if (!ep.allowSuperuserReads && (await su("session_user"))) throw new AppError("agent.db.superuserReadsDisabled", 403, {});
 }
 
 /**
@@ -119,6 +143,7 @@ export async function withSession<T>(ep: PgEndpoint, o: SessionOpts, fn: (c: PgC
     try {
       await client.query(o.write ? "BEGIN READ WRITE" : "BEGIN READ ONLY");
       await client.query({ text: "SELECT set_config('statement_timeout', $1, true)", values: [String(timeoutMs)], queryMode: "extended" } as never);
+      if (o.userSql && !o.write) await readGuard(client as unknown as Querier, ep);
       const out = await fn(client, m, { commit: () => (commit = true) });
       if (commit) {
         ended = true;
@@ -178,7 +203,7 @@ async function cursorRows(client: PgClient, Cursor: typeof CursorT, sql: string,
 }
 
 export async function pgQuery(ep: PgEndpoint, sql: string, params: unknown[], limit: number, timeoutMs: number): Promise<RowsResult> {
-  return withReadOnly(ep, timeoutMs, (c, m) => cursorRows(c, m.Cursor, sql, params, limit));
+  return withSession(ep, { timeoutMs, userSql: true }, (c, m) => cursorRows(c, m.Cursor, sql, params, limit));
 }
 
 const RELKINDS: Record<string, SchemaTable["kind"]> = { r: "table", p: "partitionedTable", v: "view", m: "materializedView", f: "foreignTable" };
@@ -258,7 +283,7 @@ export async function pgTest(ep: PgEndpoint, timeoutMs: number): Promise<PgTestR
 
 /** CSV export: streams every row of one statement to the sink (read-only, the export's wall clock as backstop). */
 export async function pgStream(ep: PgEndpoint, sql: string, params: unknown[], timeoutMs: number, sink: RowSink): Promise<void> {
-  await withSession(ep, { timeoutMs, backstopMs: LIMITS.exportWallMs }, async (client, m) => {
+  await withSession(ep, { timeoutMs, backstopMs: LIMITS.exportWallMs, userSql: true }, async (client, m) => {
     const cursor = client.query(new m.Cursor(sql, params, { rowMode: "array" }));
     let started = false;
     try {

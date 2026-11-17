@@ -272,6 +272,8 @@ describe("database console API", () => {
       database: "app",
       readCredential: { mode: "password", user: "reader", hasPassword: true },
       writeCredential: null,
+      readRole: null,
+      allowSuperuserReads: false,
       warnings: [],
     });
     expect((await t.call("POST", "/v1/db/connections", { id: "pg-main", name: "x", engine: "postgres", target: { host: "h" }, readCredential: { user: "u" } })).body.error.code).toBe("agent.db.connectionExists");

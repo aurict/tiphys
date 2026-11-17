@@ -65,8 +65,10 @@ Every query is checked by the agent and then constrained by the database:
    `DUMPFILE`, `LOAD_FILE`, executable comments and optimizer hints (`/*! … */`, `/*M! … */`, `/*+ … */` — the server
    runs or applies them, e.g. `SET_VAR(max_execution_time=0)`); PostgreSQL functions that read or write server files,
    run programs or other connections, run SQL text or administer the server (`pg_read_file`, `pg_ls_dir`, `lo_import`,
-   `lo_export`, `dblink…`, `query_to_xml`, `pg_terminate_backend`, `pg_reload_conf` …), quoted or not. This list is
-   defence in depth: it can't know user-defined functions, which is why a dedicated role is recommended.
+   `lo_export`, `dblink…`, `query_to_xml`, `ts_stat`, `ts_rewrite`, `crosstab…`, `set_config`, `pg_terminate_backend`,
+   `pg_reload_conf` …), quoted, schema-qualified or not. Unicode-escaped names and strings (`U&"…"`, `U&'…'`) are
+   refused outright, since they could spell a refused name. This list is defence in depth: it can't know user-defined
+   functions, which is why a dedicated role is recommended.
 3. **Server settings the lexer relies on are pinned.** PostgreSQL sessions get `standard_conforming_strings=on`;
    MySQL sessions drop `NO_BACKSLASH_ESCAPES`, `ANSI_QUOTES` and `ANSI` from `sql_mode`. So the agent and the server
    read quotes the same way.
@@ -81,6 +83,17 @@ Every query is checked by the agent and then constrained by the database:
 6. **SQLite.** The file is opened read-only with `query_only` in a separate process (killed at the timeout), with an
    authorizer that refuses `ATTACH`/`DETACH` and pragmas other than the catalog ones. The path must be inside
    `allowedRoots`.
+7. **PostgreSQL superuser logins.** A superuser can get around every name list above, so user SQL (queries, CSV
+   export, saved query runs) from a superuser login is refused with `403 agent.db.superuserReadsDisabled` until the
+   connection has one of:
+   - `readRole`: a non-superuser role (for example a member of `pg_read_all_data`) that the login can switch to. Each
+     read runs `SET LOCAL ROLE "<readRole>"` first. If that role is itself a superuser, reads stay refused
+     (`agent.db.superuserReadsDisabled` with `readRole: true`). The write mode never uses it.
+   - `allowSuperuserReads: true`: an explicit acknowledgement that reads run as the superuser.
+
+   Both are PostgreSQL only (refused for other engines), set when adding or editing a connection (`readRole: null`
+   removes it). **Test** adds the warning `superuserReadsDisabled` when the login is a superuser and neither is set.
+   Schema browsing and table preview build their own SQL and are not affected.
 
 ## Saved queries and charts
 
@@ -123,11 +136,14 @@ What the write mode accepts:
   implicitly in MySQL, so they can't be previewed and are refused (`agent.db.ddlNotPreviewable`). If any user table
   uses a non-transactional engine (MyISAM, Aria, MEMORY …) the write mode refuses altogether
   (`agent.db.nonTransactionalTables`): a preview on such a table could not be rolled back. The count is the number of
-  matched rows.
+  matched rows. Statements that name a system schema (`mysql.`, `sys.`, `performance_schema.`,
+  `information_schema.`), or run while the connection's default database is one, are refused
+  (`agent.db.systemSchema`): the server's own tables are Aria/MyISAM/CSV, so even a preview would change them for good.
 - Always one statement.
 
 Limits: 10 commits per 10 minutes per device (checked before the token is used, so a refused commit can be retried
-with the same token while it is valid); previews count toward the 30 queries per minute.
+with the same token while it is valid); 30 previews per 10 minutes per device
+(`agent.db.writePreviewRateLimited`), and previews also count toward the 30 queries per minute.
 
 Every commit attempt that ran is written to `db-writes.jsonl` next to `agent.json` (mode `0600`, kept as
 `db-writes.jsonl.1` past 5 MB) **before** the COMMIT: time, device, connection, engine, the full SQL (a password
@@ -146,7 +162,7 @@ transaction is rolled back.
 | Concurrency | 2 calls at once per connection |
 | Rate | 30 queries, previews, saved query runs and write previews per minute per device |
 | CSV export | 100 000 rows, 50 MB, 5 min; 3 per minute per device |
-| Writes | 10 commits per 10 minutes per device; preview token 120 s, single use |
+| Writes | 10 commits and 30 previews per 10 minutes per device; preview token 120 s, single use |
 
 ## Schema and preview
 
@@ -168,8 +184,11 @@ A backup you never restored is a hope. A restore test takes the **newest** dump 
 `~/backups/app/*.sql.gz`), restores it into a throwaway container and checks that it really contains data.
 
 1. Free space is checked (at least twice the dump size).
-2. `docker run -d --rm --network none --memory 1g --tmpfs <data dir> -e <random password> --name tiphys-restore-<id>-<rand> <image>`:
-   no network, memory capped, data in RAM, nothing touches your real databases. The image must be an official
+2. `docker run -d --rm --network none --memory 1g --memory-swap 1g --cpus 1 --pids-limit 256 --cap-drop ALL
+   --cap-add CHOWN,SETUID,SETGID,DAC_OVERRIDE,FOWNER --security-opt no-new-privileges --tmpfs <data dir>:size=2g
+   -e <random password> --name tiphys-restore-<id>-<rand> <image>`: no network, memory, CPU and processes capped, only
+   the capabilities the image's entrypoint needs to chown its data directory and drop to the database user, data in
+   RAM, nothing touches your real databases. The image must be an official
    `postgres:`, `mysql:` or `mariadb:` image with an explicit tag, and the **same major version** as the source (checked
    against the connection's container when `connectionId` is set).
 3. The agent waits for the final server (`pg_isready` / `mysqladmin ping` over loopback).
@@ -177,11 +196,15 @@ A backup you never restored is a hope. A restore test takes the **newest** dump 
    is gunzipped by the agent). An error stops the restore.
 5. Each sanity query (one number, e.g. `SELECT count(*) FROM users`, compared with `>`, `=`, `>=`, `<`, `<=`) runs in a
    read-only session.
-6. The container is always removed (also on timeout and when the agent stops). Limit: 30 minutes, one test at a time.
+6. The container is always removed (also on timeout and when the agent stops: running docker calls are killed, so
+   shutdown never waits for a restore). Limit: 30 minutes, one test at a time; a test that comes due while another
+   runs is queued, not dropped.
 
 Results (last 20 per test, with durations and failures) are stored on the agent. `db.restoreTest.ok` /
-`db.restoreTest.failed` notifications go out for every run. Tests can run on a schedule (daily, weekly or every N
-minutes) or manually. PostgreSQL dumps restore into the `postgres` database, so sanity queries see tables of a plain
+`db.restoreTest.failed` notifications go out for every run; a failure's detail (the stderr tail) is redacted and
+cut to 200 characters first. Tests can run on a schedule (daily, weekly or every N minutes) or manually. A run missed
+(agent busy or asleep) is made up within 30 minutes; a daily or weekly test does not run twice in the repeated hour
+when daylight saving time ends. PostgreSQL dumps restore into the `postgres` database, so sanity queries see tables of a plain
 `pg_dump`; a `pg_dumpall` file that connects to other databases is not supported. Dumps must be inside `allowedRoots`
 or the directory of a `backups` file check.
 

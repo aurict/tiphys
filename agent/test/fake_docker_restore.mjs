@@ -1,7 +1,9 @@
 #!/usr/bin/env node
 // Fake `docker` for the restore test (D-4): logs argv (and a stdin summary for `exec -i`) to $FAKE_DOCKER_LOG;
 // behaviour from the JSON file $FAKE_DOCKER_CFG: {runFail, sourceImage, sanity: {<sql>: "<stdout>"}, sanityFail: [sql],
-// hang: true (the stdin consumer never exits), readyFailures: n}.
+// hang: true (the stdin consumer never exits), readyFailures: n, runHang: true (`docker run` never returns),
+// psDelayMs: n (`docker ps` answers late), restoreStderr: "<text>" (restore fails with it), sanityStderr: "<text>"
+// (failed sanity stderr; $PWD is replaced by $MYSQL_PWD)}.
 import { appendFileSync, existsSync, readFileSync, writeFileSync } from "node:fs";
 
 const argv = process.argv.slice(2);
@@ -11,12 +13,16 @@ const [cmd] = argv;
 
 if (cmd === "run") {
   log({});
+  if (cfg.runHang) setInterval(() => {}, 1000);
   if (cfg.runFail) {
     process.stderr.write("docker: Error response from daemon: pull access denied\n");
     process.exit(125);
   }
-  console.log("a".repeat(64));
-} else if (cmd === "rm" || cmd === "ps") {
+  else console.log("a".repeat(64));
+} else if (cmd === "ps") {
+  if (cfg.psDelayMs) await new Promise((r) => setTimeout(r, cfg.psDelayMs));
+  log({});
+} else if (cmd === "rm") {
   log({});
 } else if (cmd === "inspect") {
   log({});
@@ -42,7 +48,10 @@ if (cmd === "run") {
     const body = Buffer.concat(chunks).toString("utf8");
     log({ tool, stdin: body.slice(0, 200), stdinBytes: body.length });
     if (cfg.hang) setInterval(() => {}, 1000);
-    else if (body.includes("CORRUPT")) {
+    else if (cfg.restoreStderr) {
+      process.stderr.write(cfg.restoreStderr);
+      process.exit(3);
+    } else if (body.includes("CORRUPT")) {
       process.stderr.write("psql: ERROR:  syntax error at or near \"CORRUPT\"\n");
       process.exit(3);
     } else process.exit(0);
@@ -50,7 +59,7 @@ if (cmd === "run") {
     const sql = argv[argv.length - 1];
     log({ tool, sql });
     if ((cfg.sanityFail ?? []).includes(sql)) {
-      process.stderr.write('ERROR:  relation "nope" does not exist\n');
+      process.stderr.write(cfg.sanityStderr ? cfg.sanityStderr.replace("$PWD", process.env.MYSQL_PWD ?? "") : 'ERROR:  relation "nope" does not exist\n');
       process.exit(1);
     }
     process.stdout.write((cfg.sanity?.[sql] ?? "1") + "\n");

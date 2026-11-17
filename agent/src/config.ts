@@ -110,6 +110,14 @@ export const dbConnectionSchema = z
     database: z.string().min(1).max(128).optional(),
     readCredential: dbCredentialSchema.optional(),
     writeCredential: dbCredentialSchema.optional(),
+    /** PostgreSQL: role user SQL reads switch to (SET LOCAL ROLE); the login user must be able to SET ROLE to it. */
+    readRole: z.string().min(1).max(63).optional(),
+    /** PostgreSQL: run user SQL reads with a superuser login and no readRole (otherwise agent.db.superuserReadsDisabled). */
+    allowSuperuserReads: z.boolean().optional(),
+  })
+  .refine((c) => c.engine === "postgres" || (c.readRole === undefined && c.allowSuperuserReads === undefined), {
+    message: "readRole/allowSuperuserReads yalnız postgres",
+    path: ["readRole"],
   })
   .refine((c) => (c.engine === "sqlite" ? "path" in c.target && !c.readCredential && !c.writeCredential : !("path" in c.target) && !!c.readCredential), {
     message: "postgres/mysql/mariadb: container/host hedefi ve readCredential; sqlite: path hedefi, kimlik yok",

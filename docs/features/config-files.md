@@ -58,11 +58,14 @@ an unterminated quote can't be edited (compose would read the lines below into t
    save fails with `409 agent.configfiles.conflict` and nothing is written.
 
 Untouched lines are kept byte for byte. An edited line keeps its indentation, `export`, quoting (when the new value
-fits it, so `${VAR}` interpolation behaves as before) and inline comment. New values are written literally.
+fits it, so `${VAR}` interpolation behaves as before) and inline comment. New values are written literally, and so is
+any value with a `$` that isn't compose syntax (`${…}` or `$$`): compose would read `pa$word` in an unquoted or
+double-quoted entry as `pa` (checked with `docker compose config`), so such a value gets single quotes (or `\$` inside
+double quotes).
 
-The write is atomic: the previous version is copied to
-`~/.local/state/tiphys/config-backups/<fileId>/<time>` (`0600`, last 10 kept), the new content goes to a temp file in
-the same directory, is fsynced, gets the original mode and group, and is renamed over the file. Right before the
+The write is atomic: the new content goes to a temp file in the same directory, is fsynced, and only after the size
+and hash checks pass is the previous version copied to `~/.local/state/tiphys/config-backups/<fileId>/<time>`
+(`0600`, last 10 kept); the temp file gets the original mode and group, and is renamed over the file. Right before the
 rename the agent checks again that the path still resolves to the same regular file with the same content, so a file
 swapped for a symlink in the meantime is never written through. If the original file is readable by everyone, the
 save answers with the warning `worldReadable`.

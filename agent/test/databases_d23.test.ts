@@ -190,11 +190,12 @@ interface FakeLog {
   destroyed: number;
 }
 
-function fakeMysql(o: { version: string; sqlMode?: string; rows?: unknown[][]; header?: { affectedRows: number }; error?: { errno: number; sqlMessage: string }; nonTransactional?: unknown[][] }): { driver: MyDriver; log: FakeLog } {
+function fakeMysql(o: { version: string; sqlMode?: string; rows?: unknown[][]; header?: { affectedRows: number }; error?: { errno: number; sqlMessage: string }; nonTransactional?: unknown[][]; database?: string | null }): { driver: MyDriver; log: FakeLog } {
   const log: FakeLog = { options: [], calls: [], destroyed: 0 };
   const respond = (sql: string): unknown[][] => {
     if (sql.startsWith("SELECT VERSION()")) return [[o.version, o.sqlMode ?? "STRICT_TRANS_TABLES,NO_BACKSLASH_ESCAPES,ANSI_QUOTES"]];
     if (sql.includes("USER_PRIVILEGES")) return [[0]];
+    if (sql === "SELECT DATABASE()") return [[o.database === undefined ? "app" : o.database]];
     if (sql.includes("information_schema.TABLES") && sql.includes("ENGINE")) return o.nonTransactional ?? [];
     return [];
   };
@@ -306,6 +307,11 @@ describe("MySQL driver session (fake mysql2)", () => {
     setMysqlDriverForTests(fake.driver);
     await expect(mysqlWrite(ep, "UPDATE t SET a = 1", 5000, { decide: async () => true })).rejects.toMatchObject({ code: "agent.db.nonTransactionalTables", params: { tables: ["app.logs (MyISAM)"] } });
     expect(fake.log.calls.some((c) => c.sql.startsWith("UPDATE"))).toBe(false);
+    // §13 review S2: a system schema as the default database is refused before the statement runs.
+    fake = fakeMysql({ version: "8.4.3", header: { affectedRows: 3 }, database: "MySQL" });
+    setMysqlDriverForTests(fake.driver);
+    await expect(mysqlWrite(ep, "UPDATE user SET a = 1", 5000, { decide: async () => true })).rejects.toMatchObject({ code: "agent.db.systemSchema", params: { schema: "mysql" } });
+    expect(fake.log.calls.map((c) => c.sql)).not.toContain("UPDATE user SET a = 1");
   });
 
   it("fromContainerEnv for mysql/mariadb images", async () => {
@@ -584,6 +590,63 @@ describe("write mode", () => {
     now += 10 * 60_000;
     expect((await t.call("POST", "/v1/db/connections/pg/write/commit", { previewToken: tok, confirm: true })).body.committed).toBe(true);
     expect(state.commits).toBe(12);
+    await t.app.close();
+  });
+
+  it("§13 review S1: readRole / allowSuperuserReads are stored, shown and passed to PostgreSQL reads only", async () => {
+    const state: FakePg = { rows: 1, commits: 0 };
+    const eps: Array<Record<string, unknown>> = [];
+    const t = await setup({ drivers: fakePgDrivers(state, { query: async (ep) => (eps.push(ep as never), { columns: [], rows: [], rowCount: 0, truncated: false, cellsTruncated: 0 }), test: async () => ({ serverVersion: "16", user: "postgres", database: "d", superuser: true, readOnlyDefault: true }) }) });
+    const tested = await t.call("POST", "/v1/db/connections/pg2/test", {});
+    expect(tested.body.warnings).toEqual(["superuserCredential", "superuserReadsDisabled"]);
+    const p = await t.call("PATCH", "/v1/db/connections/pg2", { readRole: "tiphys_ro" });
+    expect(p.body).toMatchObject({ readRole: "tiphys_ro", allowSuperuserReads: false });
+    expect((await t.call("POST", "/v1/db/connections/pg2/test", {})).body.warnings).toEqual(["superuserCredential"]);
+    await t.call("POST", "/v1/db/connections/pg2/query", { sql: "SELECT 1" });
+    expect(eps.at(-1)).toMatchObject({ readRole: "tiphys_ro" });
+    await t.call("POST", "/v1/db/connections/pg2/write/preview", { sql: "UPDATE t SET a = 1" });
+    expect(state.lastEp).not.toHaveProperty("readRole");
+    const p2 = await t.call("PATCH", "/v1/db/connections/pg2", { readRole: null, allowSuperuserReads: true });
+    expect(p2.body).toMatchObject({ readRole: null, allowSuperuserReads: true });
+    await t.call("POST", "/v1/db/connections/pg2/query", { sql: "SELECT 1" });
+    expect(eps.at(-1)).toMatchObject({ allowSuperuserReads: true });
+    expect(eps.at(-1)).not.toHaveProperty("readRole");
+    expect((await t.call("PATCH", "/v1/db/connections/my", { readRole: "x" })).status).toBe(400);
+    await t.app.close();
+  });
+
+  it("§13 review S2: write previews have their own per-device budget (30 per 10 minutes)", async () => {
+    let now = 20_000_000;
+    const state: FakePg = { rows: 1, commits: 0 };
+    const t = await setup({ now: () => now, drivers: fakePgDrivers(state) });
+    for (let i = 0; i < 30; i++) {
+      now += 2_100; // stays under the 30 per minute query budget
+      expect((await t.call("POST", "/v1/db/connections/pg/write/preview", { sql: `UPDATE t SET a = ${i}` })).status).toBe(200);
+    }
+    now += 2_100;
+    const limited = await t.call("POST", "/v1/db/connections/pg/write/preview", { sql: "UPDATE t SET a = 1" });
+    expect(limited.body.error).toEqual({ code: "agent.db.writePreviewRateLimited", params: { perTenMinutes: 30 } });
+    expect((await t.call("POST", "/v1/db/connections/pg/write/preview", { sql: "UPDATE t SET a = 1" }, t.other)).status).toBe(200);
+    now += 10 * 60_000;
+    expect((await t.call("POST", "/v1/db/connections/pg/write/preview", { sql: "UPDATE t SET a = 1" })).status).toBe(200);
+    expect(state.commits).toBe(0);
+    await t.app.close();
+  });
+
+  it("§13 review S2: MySQL writes naming a system schema are refused before reaching the server", async () => {
+    let calls = 0;
+    const t = await setup({ drivers: { mysql: { write: async () => (calls++, { count: 0, superuser: false, committed: false }) } } });
+    for (const [sql, schema] of [
+      ["UPDATE mysql.global_priv SET Priv = '{}'", "mysql"],
+      ["DELETE FROM `MySQL` . `user`", "mysql"],
+      ["INSERT INTO sys.sys_config VALUES (1)", "sys"],
+      ["UPDATE t JOIN performance_schema.setup_actors a SET t.x = 1", "performance_schema"],
+    ]) {
+      expect((await t.call("POST", "/v1/db/connections/my/write/preview", { sql })).body.error, sql).toEqual({ code: "agent.db.systemSchema", params: { schema } });
+    }
+    // The word in a string or as a column is fine.
+    expect((await t.call("POST", "/v1/db/connections/my/write/preview", { sql: `UPDATE t SET engine = "mysql", sys = 1 WHERE mysql = 'sys.x'` })).status).toBe(200);
+    expect(calls).toBe(1);
     await t.app.close();
   });
 

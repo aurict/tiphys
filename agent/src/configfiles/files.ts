@@ -139,9 +139,17 @@ export interface WriteHooks {
 /**
  * Atomically replaces the file when its current content still hashes to baseHash (409 agent.configfiles.conflict
  * otherwise). Keeps mode and group; re-checks realpath, lstat (same inode, rules) and the content right before the
- * rename (TOCTOU). The original stays untouched on any failure. Returns the new hash and warnings.
+ * rename (TOCTOU). The original stays untouched on any failure. `beforeCommit` (the backup) runs once the
+ * preconditions have passed and the temp file is written, before the final checks and the rename, so a rejected write
+ * leaves no backup behind. Returns the new hash and warnings.
  */
-export async function writeAtomic(f: ConfigFile, baseHash: string, next: Buffer, hooks: WriteHooks = {}): Promise<{ hash: string; warnings: string[] }> {
+export async function writeAtomic(
+  f: ConfigFile,
+  baseHash: string,
+  next: Buffer,
+  hooks: WriteHooks = {},
+  beforeCommit?: () => Promise<void>,
+): Promise<{ hash: string; warnings: string[] }> {
   if (next.length > MAX_FILE_BYTES) throw new AppError("agent.configfiles.tooLarge", 400, { max: MAX_FILE_BYTES });
   const cur = await readChecked(f);
   if (cur.hash !== baseHash) throw new AppError("agent.configfiles.conflict", 409, { hash: cur.hash });
@@ -163,6 +171,7 @@ export async function writeAtomic(f: ConfigFile, baseHash: string, next: Buffer,
     } finally {
       await fh.close();
     }
+    await beforeCommit?.();
     await hooks.beforeRename?.(tmp);
     // TOCTOU: the target must still be the same regular file with the same content.
     const again = await readChecked(f);

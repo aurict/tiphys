@@ -4,7 +4,7 @@
 //   log:<source>#<line>, signal:<n>, inspect:container, deploy:<n>, event:<n>, metric:<name>, git:<hash>, config:<n>.
 // Size: per-section budgets, then the oldest lines of the biggest section go until the bundle is ≤120 KB.
 import { bundleSchema, type AnalysisBundle } from "../analysis/schema.ts";
-import { redact } from "../redact.ts";
+import { redact, type KnownSecret } from "../redact.ts";
 import type { Candidate } from "./actions.ts";
 import type { Incident, IncidentContext } from "./types.ts";
 
@@ -17,8 +17,8 @@ type Evidence = AnalysisBundle["evidence"][number];
 export type SimilarIncident = NonNullable<IncidentContext["similar"]>[number];
 
 /** Redact first (a cut secret would no longer match its pattern), then cap. */
-const clip = (s: string, max = LINE_MAX) => {
-  const r = redact(s);
+const clip = (s: string, max = LINE_MAX, secrets: KnownSecret[] = []) => {
+  const r = redact(s, secrets);
   return r.length > max ? r.slice(0, max - 1) + "…" : r;
 };
 const idPart = (s: string) => s.replace(/[^A-Za-z0-9_.:@/-]/g, "_").slice(0, 120) || "_";
@@ -69,9 +69,9 @@ function metricEvidence(m: NonNullable<IncidentContext["metrics"]>): Evidence[] 
 }
 
 /** Evidence of the incident's context, by section, before budgets. */
-function evidenceOf(inc: Incident): Record<Section, { items: Evidence[]; fromEnd: boolean }> {
+function evidenceOf(inc: Incident, secrets: KnownSecret[]): Record<Section, { items: Evidence[]; fromEnd: boolean }> {
   const ctx = inc.context;
-  const ev = (section: Section, id: string, text: string): Evidence => ({ id, section, text: clip(text) });
+  const ev = (section: Section, id: string, text: string): Evidence => ({ id, section, text: clip(text, LINE_MAX, secrets) });
   const logs = ctx?.logs;
   const src = logs ? idPart(logs.target) : "";
   return {
@@ -80,7 +80,8 @@ function evidenceOf(inc: Incident): Record<Section, { items: Evidence[]; fromEnd
       items: ctx?.inspect ? [ev("inspect", "inspect:container", kv({ ...ctx.inspect }))] : [],
       fromEnd: false,
     },
-    logs: { items: (logs?.lines ?? []).map((l, n) => ev("logs", `log:${src}#${n + 1}`, l)), fromEnd: true },
+    // Redacted joined first: a PEM block spans lines.
+    logs: { items: (logs?.lines.length ? redact(logs.lines.join("\n"), secrets).split("\n") : []).map((l, n) => ev("logs", `log:${src}#${n + 1}`, l)), fromEnd: true },
     deploys: {
       items: (ctx?.deploys ?? []).map((d, n) =>
         ev("deploys", `deploy:${n + 1}`, `${d.at} ${d.kind} ${d.project}/${d.service} image=${d.imageRef} id=${d.imageId.slice(0, 19)} created=${d.createdAt}${d.prevImageRef ? ` prev=${d.prevImageRef} prevId=${(d.prevImageId ?? "").slice(0, 19)}` : ""}`),
@@ -88,7 +89,7 @@ function evidenceOf(inc: Incident): Record<Section, { items: Evidence[]; fromEnd
       fromEnd: false,
     },
     events: { items: (ctx?.events ?? []).map((e, n) => ev("events", `event:${n + 1}`, `${e.at} ${e.key} ${kv(e.params)}`)), fromEnd: false },
-    metrics: { items: ctx?.metrics ? metricEvidence(ctx.metrics).map((e) => ({ ...e, text: clip(e.text) })) : [], fromEnd: false },
+    metrics: { items: ctx?.metrics ? metricEvidence(ctx.metrics).map((e) => ({ ...e, text: clip(e.text, LINE_MAX, secrets) })) : [], fromEnd: false },
     git: {
       items: ctx?.git
         ? [
@@ -110,10 +111,12 @@ export function usefulSimilar(list: SimilarIncident[] | undefined): SimilarIncid
   return (list ?? []).filter((s) => s.resolvedAt && (s.resolutionNote || s.workedAction)).slice(0, 5);
 }
 
-export function buildBundle(inc: Incident, candidates: Candidate[], similar: SimilarIncident[], language: "tr" | "en" = "tr"): AnalysisBundle {
+/** `secrets`: known values for this bundle only (the incident container's secret environment values). */
+export function buildBundle(inc: Incident, candidates: Candidate[], similar: SimilarIncident[], language: "tr" | "en" = "tr", secrets: KnownSecret[] = []): AnalysisBundle {
+  const cl = (s: string, max?: number) => clip(s, max, secrets);
   const truncated = new Set<string>();
   const evidence: Evidence[] = [];
-  for (const [section, { items, fromEnd }] of Object.entries(evidenceOf(inc)) as Array<[Section, { items: Evidence[]; fromEnd: boolean }]>) {
+  for (const [section, { items, fromEnd }] of Object.entries(evidenceOf(inc, secrets)) as Array<[Section, { items: Evidence[]; fromEnd: boolean }]>) {
     const t = take(items, BUDGET[section], fromEnd);
     if (t.cut) truncated.add(section);
     evidence.push(...t.items);
@@ -124,25 +127,25 @@ export function buildBundle(inc: Incident, candidates: Candidate[], similar: Sim
     language,
     incident: {
       id: inc.id,
-      host: clip(inc.host, 100),
+      host: cl(inc.host, 100),
       kind: inc.kind,
-      target: clip(inc.target, 300),
+      target: cl(inc.target, 300),
       severity: inc.severity,
       status: inc.status,
       openedAt: inc.openedAt,
-      ...(inc.stack ? { stack: clip(inc.stack, 100) } : {}),
-      ...(inc.service ? { service: clip(inc.service, 100) } : {}),
-      parts: inc.parts.slice(0, 50).map((p) => ({ kind: p.kind, target: clip(p.target, 300), firstAt: p.firstAt, lastAt: p.lastAt, ...(p.recoveredAt ? { recoveredAt: p.recoveredAt } : {}) })),
+      ...(inc.stack ? { stack: cl(inc.stack, 100) } : {}),
+      ...(inc.service ? { service: cl(inc.service, 100) } : {}),
+      parts: inc.parts.slice(0, 50).map((p) => ({ kind: p.kind, target: cl(p.target, 300), firstAt: p.firstAt, lastAt: p.lastAt, ...(p.recoveredAt ? { recoveredAt: p.recoveredAt } : {}) })),
     },
-    hints: inc.hints.slice(0, 20).map((h) => ({ code: h.code, params: Object.fromEntries(Object.entries(h.params).map(([k, v]) => [k, typeof v === "string" ? clip(v, 300) : v])) })),
+    hints: inc.hints.slice(0, 20).map((h) => ({ code: h.code, params: Object.fromEntries(Object.entries(h.params).map(([k, v]) => [k, typeof v === "string" ? cl(v, 300) : v])) })),
     evidence,
-    candidates: candidates.slice(0, 20).map((c) => ({ id: c.id, kind: c.kind, target: Object.fromEntries(Object.entries(c.target).map(([k, v]) => [k, clip(String(v), 300)])), risk: c.risk })),
+    candidates: candidates.slice(0, 20).map((c) => ({ id: c.id, kind: c.kind, target: Object.fromEntries(Object.entries(c.target).map(([k, v]) => [k, cl(String(v), 300)])), risk: c.risk })),
     similar: similar.slice(0, 5).map((s) => ({
       id: s.id,
       kind: s.kind ?? "",
       openedAt: s.openedAt,
       resolvedAt: s.resolvedAt,
-      resolutionNote: s.resolutionNote ? clip(s.resolutionNote, 500) : null,
+      resolutionNote: s.resolutionNote ? cl(s.resolutionNote, 500) : null,
       workedAction: s.workedAction,
     })),
     truncated: [],

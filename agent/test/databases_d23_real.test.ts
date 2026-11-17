@@ -80,11 +80,11 @@ describe.skipIf(!real)("D-2/D-3 against a real PostgreSQL", () => {
   beforeAll(async () => {
     port = await freePort();
     await run("docker", ["run", "-d", "--rm", "--name", NAME, "-e", `POSTGRES_PASSWORD=${PASSWORD}`, "-p", `127.0.0.1:${port}:5432`, "postgres:16-alpine"], { timeoutMs: 300_000 });
-    const ep: PgEndpoint = { host: "127.0.0.1", port, user: "postgres", password: PASSWORD, database: "postgres" };
+    const ep: PgEndpoint = { host: "127.0.0.1", port, user: "postgres", password: PASSWORD, database: "postgres", allowSuperuserReads: true };
     await waitReady(() => pgQuery(ep, "SELECT 1", [], 1, 2000));
     await psql(`CREATE TABLE w (id int PRIMARY KEY, name text NOT NULL, amount numeric(10,2));
                 INSERT INTO w SELECT g, 'n' || g, g * 1.5 FROM generate_series(1, 20) g;`);
-    api = await apiFor([{ id: "pg", name: "Superuser", engine: "postgres", target: { host: "127.0.0.1", port }, database: "postgres", readCredential: { user: "postgres", password: PASSWORD } }]);
+    api = await apiFor([{ id: "pg", name: "Superuser", engine: "postgres", target: { host: "127.0.0.1", port }, database: "postgres", readCredential: { user: "postgres", password: PASSWORD }, allowSuperuserReads: true }]);
   }, 400_000);
 
   afterAll(async () => {
@@ -195,6 +195,7 @@ describe.skipIf(!real)("D-2/D-3 against a real MariaDB", () => {
     api = await apiFor([
       { id: "maria", name: "Root", engine: "mariadb", target: { host: "127.0.0.1", port }, database: "app", readCredential: { user: "root", password: PASSWORD } },
       { id: "env", name: "Env", engine: "mariadb", target: { container: NAME }, readCredential: { fromContainerEnv: true } },
+      { id: "sysdb", name: "Sys", engine: "mariadb", target: { host: "127.0.0.1", port }, database: "mysql", readCredential: { user: "root", password: PASSWORD } },
     ]);
   }, 400_000);
 
@@ -280,6 +281,11 @@ describe.skipIf(!real)("D-2/D-3 against a real MariaDB", () => {
     const nt = await preview("UPDATE t SET name = 'z' WHERE id = 1");
     expect(nt.body.error).toEqual({ code: "agent.db.nonTransactionalTables", params: { tables: ["app.logs (MyISAM)"], more: false } });
     await sh("DROP TABLE logs");
+    // System schemas (Aria/MyISAM in MariaDB): qualified names and a system default database are refused before running.
+    const sysQ = await preview("UPDATE mysql.global_priv SET Priv = Priv WHERE User = 'nobody'");
+    expect(sysQ.body.error).toEqual({ code: "agent.db.systemSchema", params: { schema: "mysql" } });
+    const sysD = await api.call("POST", "/v1/db/connections/sysdb/write/preview", { sql: "DELETE FROM global_priv WHERE User = 'nobody'" });
+    expect(sysD.body.error).toEqual({ code: "agent.db.systemSchema", params: { schema: "mysql" } });
     // CSV export.
     const csv = await api.call("POST", "/v1/db/connections/maria/export", { sql: "SELECT id, name FROM t WHERE id IN (1, 2) ORDER BY id" });
     expect(csv.raw).toBe("﻿id,name\r\n1,n1\r\n2,n2\r\n");

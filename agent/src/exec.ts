@@ -11,7 +11,7 @@ export interface ExecResult {
 export function run(
   cmd: string,
   args: string[],
-  opts: { timeoutMs?: number; allowFail?: boolean; env?: NodeJS.ProcessEnv; cwd?: string } = {},
+  opts: { timeoutMs?: number; allowFail?: boolean; env?: NodeJS.ProcessEnv; cwd?: string; signal?: AbortSignal } = {},
 ): Promise<ExecResult> {
   return new Promise((resolve, reject) => {
     execFile(
@@ -21,6 +21,8 @@ export function run(
         timeout: opts.timeoutMs ?? 15000,
         maxBuffer: 16 * 1024 * 1024,
         ...(opts.cwd ? { cwd: opts.cwd } : {}),
+        // Aborting kills the child (SIGTERM); with allowFail the call resolves with code -1.
+        ...(opts.signal ? { signal: opts.signal } : {}),
         env: { ...process.env, LC_ALL: "C.UTF-8", ...opts.env },
       },
       (err, stdout, stderr) => {

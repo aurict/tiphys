@@ -16,8 +16,8 @@ import { discoverStacks, stackForProject, type Stack } from "../stacks.ts";
 import { candidatesFor, rollbackable, stepsFor, type Candidate, type RollbackInfo, type Step, type StepExtras } from "./actions.ts";
 import { ruleHints } from "./analysis.ts";
 import { buildBundle, usefulSimilar } from "./bundle.ts";
-import { collectContext, inspectContainer, similarIncidents, type Runner } from "./context.ts";
-import { imageInfo, rollbackTag, serviceImage, type DeployTracker } from "./deploys.ts";
+import { collectContext, containerSecrets, CONTAINER_RE, inspectContainer, similarIncidents, type Runner } from "./context.ts";
+import { containersUsingRef, imageInfo, rollbackTag, serviceImage, type DeployTracker } from "./deploys.ts";
 import { CLEANUP_OPTIONS, estimateCleanup, probeUserJournal, type CleanupEstimate, type CleanupOption, type JournalProbe } from "./disk_cleanup.ts";
 import type { MetricsRing } from "./metrics_ring.ts";
 import { signalOf } from "./signals.ts";
@@ -121,6 +121,9 @@ export class IncidentService {
   #autoAnalyze = new Set<string>();
   #analysisTimers = new Map<string, NodeJS.Timeout>();
   #localQueue: AnalysisQueue | undefined;
+  /** Incidents with an analysis started by this process (a queued/running state without one is from a past run). */
+  #analyzing = new Set<string>();
+  #ticking = false;
 
   private constructor(o: IncidentServiceOptions) {
     this.#o = o;
@@ -137,7 +140,10 @@ export class IncidentService {
     for (const sum of s.db.index.values()) {
       if (sum.status !== "resolved" || (sum.resolvedAt && now - Date.parse(sum.resolvedAt) < REOPEN_WINDOW_MS)) {
         const inc = await s.db.read(sum.id);
-        if (inc) s.live.set(inc.id, inc);
+        if (inc) {
+          s.live.set(inc.id, inc);
+          s.#lostAnalysis(inc);
+        }
       }
     }
     s.db.prune(now);
@@ -172,7 +178,7 @@ export class IncidentService {
       this.#save(inc, now);
       return inc;
     }
-    const stack = sig.stack ? this.#stackId(sig.stack, sig.workingDir) : undefined;
+    const stack = sig.stack ? (sig.targetType === "container" ? this.#containerStack(sig.stack, sig.workingDir) : this.#stackId(sig.stack)) : undefined;
     let inc = this.#activeWith(sig.fingerprint);
     let fresh = false;
     if (!inc) {
@@ -284,9 +290,17 @@ export class IncidentService {
     return this.#stacks;
   }
 
-  /** Stack id for a compose project name or a stack id (links use ids); unknown → the name itself. */
-  #stackId(nameOrId: string, workingDir?: string): string {
-    return this.#stacks.find((s) => s.id === nameOrId)?.id ?? stackForProject(this.#stacks, nameOrId, workingDir)?.id ?? nameOrId;
+  /** Stack id for a configured link's stack id or compose project name; unknown → the name itself. */
+  #stackId(nameOrId: string): string {
+    return this.#stacks.find((s) => s.id === nameOrId)?.id ?? stackForProject(this.#stacks, nameOrId)?.id ?? nameOrId;
+  }
+
+  /**
+   * A container's stack: by compose project label only (never by directory name), and the working-directory label,
+   * when present, must be the stack's directory. No match → no stack, so no stack-scoped actions.
+   */
+  #containerStack(project: string, workingDir?: string): string | undefined {
+    return stackForProject(this.#stacks, project, workingDir)?.id;
   }
 
   stackOf(i: Pick<Incident, "stack">): Stack | undefined {
@@ -359,7 +373,10 @@ export class IncidentService {
   /** The redacted analysis bundle (also the "Claude ile incele" text source). */
   async bundle(id: string): Promise<AnalysisBundle> {
     const { incident, candidates } = await this.candidates(id);
-    return buildBundle(incident, candidates, usefulSimilar(this.similar(incident)), this.#o.store.get().incidents.analysis.language);
+    // The container's secret environment values are redacted from this bundle too (not stored anywhere).
+    const container = incident.parts.find((p) => p.targetType === "container" && CONTAINER_RE.test(p.target))?.target;
+    const secrets = container ? await containerSecrets(container, this.#run) : [];
+    return buildBundle(incident, candidates, usefulSimilar(this.similar(incident)), this.#o.store.get().incidents.analysis.language, secrets);
   }
 
   /** Debounced: a later collection for the same incident restarts the delay. */
@@ -390,20 +407,25 @@ export class IncidentService {
     const cfg = this.#o.store.get().incidents.analysis;
     if (cfg.mode === "off") throw new AppError("agent.incident.analysisOff", 409);
     const inc = await this.get(id);
-    if (inc.analysis?.status === "queued" || inc.analysis?.status === "running") return { ...inc.analysis };
+    // From here to `queued` there's no await: a concurrent call sees the queued state (the live object) and returns it.
+    const cur = this.live.get(id) ?? inc;
+    if (cur.analysis?.status === "queued" || cur.analysis?.status === "running") return { ...cur.analysis };
     const now = this.#now();
     const recent = (this.#analyzeRate.get(id) ?? []).filter((t) => now - t < ANALYZE_WINDOW_MS);
     if (recent.length >= ANALYZE_LIMIT) throw new AppError("agent.incident.analysisRateLimited", 429, { limit: ANALYZE_LIMIT, windowSeconds: ANALYZE_WINDOW_MS / 1000 });
     recent.push(now);
     this.#analyzeRate.set(id, recent);
-    const bundle = await this.bundle(id);
-    const cur = this.live.get(id) ?? inc;
-    const at = new Date(this.#now()).toISOString();
+    const at = new Date(now).toISOString();
     cur.analysis = { status: "queued", mode: cfg.mode, by, requestedAt: at };
     this.#timeline(cur, { at, type: "analysis", by, data: { status: "queued", mode: cfg.mode } });
     this.#keep(cur);
     const state = { ...cur.analysis };
-    void this.#track(this.#runAnalysis(id, bundle, cfg).catch((e) => this.#o.log?.("analiz başarısız", e)));
+    this.#analyzing.add(id);
+    void this.#track(
+      this.#runAnalysis(id, cfg)
+        .catch((e) => this.#o.log?.("analiz başarısız", e))
+        .finally(() => this.#analyzing.delete(id)),
+    );
     return state;
   }
 
@@ -415,7 +437,21 @@ export class IncidentService {
     return inc;
   }
 
-  async #runAnalysis(id: string, bundle: AnalysisBundle, cfg: AgentConfig["incidents"]["analysis"]) {
+  /** A queued/running analysis no live job of this process belongs to (the agent restarted meanwhile) → unavailable/lost. */
+  #lostAnalysis(inc: Incident): boolean {
+    const a = inc.analysis;
+    if (!a || (a.status !== "queued" && a.status !== "running") || this.#analyzing.has(inc.id)) return false;
+    const at = new Date(this.#now()).toISOString();
+    a.status = "unavailable";
+    a.reason = "lost";
+    a.error = { code: "agent.incident.analysis.lost", params: {} };
+    a.finishedAt = at;
+    this.#timeline(inc, { at, type: "analysisResult", data: { status: "unavailable", code: a.error.code } });
+    this.#save(inc, this.#now());
+    return true;
+  }
+
+  async #runAnalysis(id: string, cfg: AgentConfig["incidents"]["analysis"]) {
     const setJob = (jobId: string) =>
       this.#updateAnalysis(id, (a) => {
         a.status = "running";
@@ -425,6 +461,7 @@ export class IncidentService {
     let error: IncidentAnalysis["error"] | undefined;
     let reason: string | undefined;
     try {
+      const bundle: AnalysisBundle = await this.bundle(id);
       const job = cfg.mode === "local" ? await this.#runLocal(id, bundle, setJob) : await this.#runRemote(bundle, cfg, setJob);
       if (job.status === "done") {
         // The PC's (or the local queue's) result is validated again against this host's own bundle.
@@ -545,8 +582,11 @@ export class IncidentService {
   }
 
   async get(id: string): Promise<Incident> {
-    const inc = this.live.get(id) ?? (await this.db.read(id));
+    const live = this.live.get(id);
+    if (live) return live;
+    const inc = await this.db.read(id);
     if (!inc) throw notFound("incident", { id });
+    this.#lostAnalysis(inc);
     return inc;
   }
 
@@ -600,13 +640,19 @@ export class IncidentService {
   }
 
   async remove(id: string) {
-    await this.get(id);
+    // An index entry whose file is unreadable (corrupt) can still be deleted.
+    if (!this.db.index.has(id)) await this.get(id);
     if (this.#running.has(id)) throw new AppError("agent.incident.actionRunning", 409);
     this.live.delete(id);
+    this.#autoAnalyze.delete(id);
+    clearTimeout(this.#analysisTimers.get(id));
+    this.#analysisTimers.delete(id);
     await this.db.remove(id);
   }
 
+  /** Work still running for a deleted incident (context, analysis, post-check) must not bring it back. */
   #keep(inc: Incident) {
+    if (this.db.removed(inc.id)) return inc;
     this.live.set(inc.id, inc);
     this.#save(inc, this.#now());
     return inc;
@@ -618,6 +664,7 @@ export class IncidentService {
   }
 
   #save(inc: Incident, now: number) {
+    if (this.db.removed(inc.id)) return;
     inc.updatedAt = new Date(now).toISOString();
     void this.db.save(inc);
   }
@@ -627,6 +674,17 @@ export class IncidentService {
    * parts all stayed recovered for 10 min with no new signal, drops old entries from memory and applies retention.
    */
   async tick(): Promise<void> {
+    // A slow round (docker inspect timeouts) must not overlap the next one.
+    if (this.#ticking) return;
+    this.#ticking = true;
+    try {
+      await this.#tick();
+    } finally {
+      this.#ticking = false;
+    }
+  }
+
+  async #tick(): Promise<void> {
     await this.refreshStacks();
     const now = this.#now();
     const at = new Date(now).toISOString();
@@ -680,6 +738,10 @@ export class IncidentService {
     const tag = rollbackTag(stack.project, service);
     const [prev, curImg] = await Promise.all([imageInfo(this.#run, tag).catch(() => null), imageInfo(this.#run, cur.imageId).catch(() => null)]);
     if (!prev) return null;
+    // The tag must still point at the image the deploy tracker tagged for this very service (a tag moved by hand or
+    // by anything else is refused).
+    const tracked = this.#o.deploys?.lastKnown(stack.project, service);
+    if (!tracked || tracked.imageId !== cur.imageId || tracked.rollbackTag !== tag || tracked.prevImageId !== prev.id) return null;
     return { tag, imageRef: cur.imageRef, current: { imageId: cur.imageId, created: curImg?.created ?? null }, previous: { imageId: prev.id, created: prev.created || null } };
   }
 
@@ -726,8 +788,15 @@ export class IncidentService {
       return { cleanup: selected };
     });
     if (candidate.kind === "compose.rollback" && rollbackable(rollback)) {
-      // Rolling back the image never rolls back what the newer version did to its data.
-      details = { rollback, warnings: ["dbMigrationsNotReverted"] };
+      // Rolling back the image never rolls back what the newer version did to its data. Re-tagging a shared
+      // reference (nginx:latest) also changes what other containers using it get on their next recreate.
+      const t = candidate.target as { service: string };
+      const project = this.stackOf(incident)?.project;
+      const shared = (await containersUsingRef(this.#run, rollback.imageRef).catch(() => []))
+        .filter((c) => !(c.project === project && c.service === t.service))
+        .map((c) => c.container)
+        .slice(0, 20);
+      details = { rollback, warnings: ["dbMigrationsNotReverted", ...(shared.length ? ["sharedImageRef"] : [])], ...(shared.length ? { sharedWith: shared } : {}) };
     }
     const token = this.previews.issue(device, PREVIEW_KIND, { incidentId: incident.id, candidate, steps });
     return { candidate, steps, risk: candidate.risk, ...(details ? { details } : {}), ...token };

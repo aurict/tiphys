@@ -46,6 +46,8 @@ const createBody = z.strictObject({
   database: z.string().min(1).max(128).optional(),
   readCredential: credentialInput.optional(),
   writeCredential: credentialInput.optional(),
+  readRole: z.string().min(1).max(63).optional(),
+  allowSuperuserReads: z.boolean().optional(),
 });
 const patchBody = z.strictObject({
   name: z.string().min(1).max(80).optional(),
@@ -53,6 +55,8 @@ const patchBody = z.strictObject({
   database: z.string().min(1).max(128).nullable().optional(),
   readCredential: credentialInput.optional(),
   writeCredential: credentialInput.nullable().optional(),
+  readRole: z.string().min(1).max(63).nullable().optional(),
+  allowSuperuserReads: z.boolean().optional(),
 });
 // Merged with the stored test and validated as a whole (strict: unknown keys are rejected there).
 const restorePatchBody = z.record(z.string(), z.unknown());
@@ -330,6 +334,7 @@ export function dbRoutes(o: { run?: Runner; now?: () => number; onService?: (svc
         req.auditDetail = { conn: id, sqlSha256: sqlSha256(b.sql), preview: true };
         svc.get(id);
         svc.checkRate(req.device!.id);
+        svc.checkWritePreviewRate(req.device!.id);
         const started = Date.now();
         const res = await svc.writePreview(req.device!.id, id, b.sql, b.timeoutMs);
         req.auditDetail = { conn: id, sqlSha256: sqlSha256(b.sql), rows: res.count ?? -1, preview: true };

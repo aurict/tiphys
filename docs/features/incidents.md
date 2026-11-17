@@ -50,6 +50,12 @@ Each signal has a fingerprint `kind|host|target`:
   incident's last signal joins it; without a stack, the same target joins;
 - otherwise a new incident opens.
 
+A container belongs to a discovered stack only by its compose project name (the stack's directory name, or
+`COMPOSE_PROJECT_NAME` from the stack's `.env`), and when the container has a `com.docker.compose.project.working_dir`
+label it must equal the stack's directory. Otherwise the container has no stack: no compose actions and no deploy
+context. Stack files are read with YAML merge keys (`<<:`); `include` and `extends` are not followed. `COMPOSE_FILE`
+from the stack's `.env` picks the compose files (they must stay inside the stack root).
+
 The source notification itself carries the incident: `link: tiphys://incidents/<id>` and `data.incidentId`. There is
 no extra "incident opened" notification.
 
@@ -84,8 +90,10 @@ refused connection.
 With `incidents` and `docker` on, the agent snapshots its compose containers every 5 minutes and a few seconds after
 each Docker `start` event: per compose service, the newest container's image id, image reference and creation time.
 When a service's image id differs from the last one seen, a record goes to `incidents/deploys.jsonl` (`0600`, rotated
-at 1 MB) and the **previous** image is tagged `tiphys-rollback/<project>-<service>:prev` (names lowercased, other
-characters turned into `-`; a short hash is added when the name had to change, so two services never share a tag).
+at 1 MB) and the **previous** image is tagged `tiphys-rollback/<project>-<service>-<h>:prev` (names lowercased, other
+characters turned into single `-`, at most 80 characters; `<h>` is the first 8 hex digits of
+sha256(project + NUL + service), always added, so two services never share a tag). Tags under the older names (without
+the hash) are not cleaned up and keep their images until you remove them.
 There is one tag per service: it moves to the newer previous image on the next deploy, and other tags in that
 repository are removed unless a running container uses their image.
 
@@ -106,7 +114,7 @@ change one:
 | `container.restart` | `docker restart <container>` | container signals |
 | `compose.recreate` | `docker compose -f <files> up -d --no-deps <service>` in the stack directory | the container's compose project is a discovered stack with that service. Unlike `compose restart`, this applies `.env` changes. |
 | `unit.restart` | `systemctl [--user] --no-ask-password restart <unit>` | failed units (system units obey polkit) |
-| `compose.rollback` | `docker tag <previous image id> <image reference>`, then `docker compose -f <files> up -d --no-deps --pull never <service>` in the stack directory | the service has a `tiphys-rollback/…:prev` image different from the running one, and its image reference is a tag (not a digest). The preview shows both image ids and creation times and warns that **database migrations are not rolled back**. |
+| `compose.rollback` | `docker tag <previous image id> <image reference>`, then `docker compose -f <files> up -d --no-deps --pull never <service>` in the stack directory | the service has a `tiphys-rollback/…:prev` image different from the running one, its image reference is a tag (not a digest), and the deploy tracker's last record for that project and service matches: running image id, tag name and `:prev` image id (otherwise the rollback is refused). The preview shows both image ids and creation times and warns that **database migrations are not rolled back**; with `sharedImageRef` (and `details.sharedWith`) it warns that other containers use the same image reference, which the re-tag also changes for them. |
 | `disk.cleanup` | the chosen options (below) | disk signals, or a `diskFull` hint |
 
 `disk.cleanup` options, each with an estimate of the space it frees in the preview:
@@ -139,7 +147,8 @@ Rule hints are always there. On top of them a model can read the incident and su
   incidents), and on demand with `POST /v1/incidents/:id/analyze` (3 per 10 minutes per incident, automatic runs
   included). The result is stored in the incident (`analysis`) with timeline entries `analysis` / `analysisResult`.
 - **The bundle** is built on the incident's host and **redacted there, before it leaves** (the patterns plus the
-  known secret values of the stacks' `.env` files, again at build time). Every line has an evidence id
+  known secret values of the stacks' `.env` files and the secret-named variables of the incident container's
+  `docker inspect` environment, again at build time; those values are used, never stored). Every line has an evidence id
   (`log:<source>#<line>`, `deploy:<n>`, `event:<n>`, `metric:<name>`, `signal:<n>`, `inspect:container`,
   `git:<hash>`, `config:<n>`); per-section budgets keep it under 120 KB (the oldest lines go first). It also carries the
   rule hints, the action candidates and similar past incidents (same fingerprint, 90 days) that were resolved with a
@@ -153,7 +162,9 @@ Rule hints are always there. On top of them a model can read the incident and su
   ≤600, cause/why ≤300 characters; plain text only (markdown, HTML, links and control/bidi characters removed). The
   model can only *point at* a candidate: running it still needs the normal preview and confirmation.
 - **PC unavailable**: if the PC can't be reached (or refuses, is busy, or doesn't answer within 5 minutes) the
-  analysis is `unavailable` with a reason; the rule hints stay, the app offers "Yeniden dene", and the PC is never woken.
+  analysis is `unavailable` with a reason (also `lost` when the agent restarted while it was queued or running). The
+  PC queues at most 3 jobs, and at most one waiting job per caller (`429 agent.analysis.busy`,
+  `reason: "callerWaiting"`); the rule hints stay, the app offers "Yeniden dene", and the PC is never woken.
 - **Notification**: `incident.analyzed {host, incidentId, summary ≤140}`, priority low, meant to silently replace the
   incident's source notification: `data.replaceKey` / `data.replaceParams` give the source notification's key and
   params, from which the app derives the same notification id. It is sent only to end-to-end encrypted endpoints and
@@ -170,8 +181,11 @@ Rule hints are always there. On top of them a model can read the incident and su
   opens only the PC's `/v1/analysis/jobs` routes, and a token sees only the jobs it started.
 - The analysis model has no tools, its output is schema-bound and validated, and actions run only from agent-made
   candidate ids after a preview and a confirmation (see [AI analysis](#ai-analysis-i-3)).
-- Logs and other text are redacted before they are stored: JWTs, Bearer/Basic credentials, `password=`/`token=`-style
-  pairs, passwords in URIs, PEM private keys, and AWS/GitHub/Stripe/Slack/Google/Anthropic-style keys.
+- Logs and other text are redacted before they are stored: JWTs, Bearer/Basic credentials, `password=`/`pass=`/
+  `token=`/`*_KEY=`/`*_DSN=`/`secret=`-style pairs, passwords in URIs, PEM private keys (also across lines and when cut
+  off at either end), AWS/GitHub/Stripe/Slack/Google/Anthropic-style keys, and known secret values also in their
+  URL-encoded and base64 forms. Short or plain-word values (under 8 characters, or letters only like `postgres`) are
+  masked only as whole words.
 - Notifications carry ids and names only, never log content (the one exception, the analysis summary of
   `incident.analyzed`, goes only to end-to-end encrypted endpoints).
 - Targets are validated with the same patterns as the Docker and services routes, and stack paths are confined to

@@ -100,7 +100,7 @@ describe("dotenv parser", () => {
     const out = applyOps(doc, [
       { op: "set", key: "INLINE", value: "xyz" },
       { op: "set", key: "EXPORTED", value: "2" },
-      { op: "set", key: "DOUBLE", value: "new $X" },
+      { op: "set", key: "DOUBLE", value: "new ${X}" },
       { op: "unset", key: "PLAIN" },
       { op: "rename", key: "SPACED", newKey: "SPACED2" },
       { op: "set", key: "NEW", value: "p@ss word$1'\"" },
@@ -109,7 +109,7 @@ describe("dotenv parser", () => {
     const lines = out.split("\n");
     expect(lines).toContain("INLINE=xyz # a comment");
     expect(lines).toContain("export EXPORTED=2");
-    expect(lines).toContain('DOUBLE="new $X" # trailing');
+    expect(lines).toContain('DOUBLE="new ${X}" # trailing');
     expect(lines).toContain("SPACED2 = spaced value  ");
     expect(lines).not.toContain("PLAIN=value");
     expect(lines).toContain("DUP=first"); // only the effective (last) occurrence changes

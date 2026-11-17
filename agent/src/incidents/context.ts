@@ -4,7 +4,8 @@
 // names only) and similar past incidents. Commands run without a shell.
 import type { EventLog } from "../events.ts";
 import { run as execRun } from "../exec.ts";
-import { redact } from "../redact.ts";
+import { classify } from "../configfiles/classify.ts";
+import { redact, type KnownSecret } from "../redact.ts";
 import type { Stack } from "../stacks.ts";
 import type { DeployTracker } from "./deploys.ts";
 import type { MetricsRing } from "./metrics_ring.ts";
@@ -23,65 +24,96 @@ const CONFIG_WINDOW_MS = 48 * 3600_000;
 export const CONTAINER_RE = /^[A-Za-z0-9][A-Za-z0-9_.-]{0,127}$/;
 export const UNIT_RE = /^[A-Za-z0-9@._:\\-]{1,200}$/;
 
-/** Keeps the newest lines within the line and byte limits; redacts each line. */
-export function boundLines(lines: string[]): { lines: string[]; truncated: boolean } {
+/**
+ * Keeps the newest lines within the line and byte limits, redacted. The lines are redacted joined (a PEM block spans
+ * lines), so a cut block can't leave its body behind. `secrets`: extra known values (the container's environment).
+ */
+export function boundLines(lines: string[], secrets: KnownSecret[] = []): { lines: string[]; truncated: boolean } {
+  const all = redact(lines.map((l) => (l.length > 4000 ? l.slice(0, 4000) + "…" : l)).join("\n"), secrets).split("\n");
   const out: string[] = [];
   let bytes = 0;
-  for (let i = lines.length - 1; i >= 0 && out.length < MAX_LOG_LINES; i--) {
-    const l = redact(lines[i]!.length > 4000 ? lines[i]!.slice(0, 4000) + "…" : lines[i]!);
+  for (let i = all.length - 1; i >= 0 && out.length < MAX_LOG_LINES; i--) {
+    const l = all[i]!;
     const b = Buffer.byteLength(l) + 1;
     if (bytes + b > MAX_LOG_BYTES) break;
     bytes += b;
     out.push(l);
   }
-  return { lines: out.reverse(), truncated: out.length < lines.length };
+  return { lines: out.reverse(), truncated: out.length < all.length };
 }
 
-export async function inspectContainer(name: string, run: Runner = execRun): Promise<InspectSummary | null> {
+type InspectJson = {
+  Name?: string;
+  Created?: string;
+  Image?: string;
+  RestartCount?: number;
+  State?: { Status?: string; Running?: boolean; ExitCode?: number; OOMKilled?: boolean; StartedAt?: string; FinishedAt?: string; Health?: { Status?: string } };
+  Config?: { Image?: string; Labels?: Record<string, string>; Env?: unknown };
+  HostConfig?: { RestartPolicy?: { Name?: string } };
+};
+
+async function inspectJson(name: string, run: Runner): Promise<InspectJson | null> {
   if (!CONTAINER_RE.test(name)) return null;
   const r = await run("docker", ["inspect", "--type", "container", name], { allowFail: true, timeoutMs: 15_000 });
   if (r.code !== 0) return null;
   try {
-    const [j] = JSON.parse(r.stdout) as Array<{
-      Name?: string;
-      Created?: string;
-      Image?: string;
-      RestartCount?: number;
-      State?: { Status?: string; Running?: boolean; ExitCode?: number; OOMKilled?: boolean; StartedAt?: string; FinishedAt?: string; Health?: { Status?: string } };
-      Config?: { Image?: string; Labels?: Record<string, string> };
-      HostConfig?: { RestartPolicy?: { Name?: string } };
-    }>;
-    if (!j) return null;
-    const zero = (t?: string) => (!t || t.startsWith("0001-") ? null : t);
-    const labels = j.Config?.Labels ?? {};
-    return {
-      name: (j.Name ?? name).replace(/^\//, ""),
-      image: j.Config?.Image ?? "",
-      imageId: j.Image ?? "",
-      created: j.Created ?? "",
-      startedAt: zero(j.State?.StartedAt),
-      finishedAt: zero(j.State?.FinishedAt),
-      status: j.State?.Status ?? "unknown",
-      running: j.State?.Running === true,
-      exitCode: typeof j.State?.ExitCode === "number" ? j.State.ExitCode : null,
-      oomKilled: j.State?.OOMKilled === true,
-      restartCount: j.RestartCount ?? 0,
-      restartPolicy: j.HostConfig?.RestartPolicy?.Name || null,
-      health: j.State?.Health?.Status ?? null,
-      project: labels["com.docker.compose.project"] ?? null,
-      service: labels["com.docker.compose.service"] ?? null,
-    };
+    const [j] = JSON.parse(r.stdout) as InspectJson[];
+    return j ?? null;
   } catch {
     return null;
   }
 }
 
-export async function containerLogs(name: string, run: Runner = execRun) {
+/** The container's environment values whose name (or value) classifies as secret; never stored, only used to redact. */
+function secretEnv(j: InspectJson | null): KnownSecret[] {
+  const env = j?.Config?.Env;
+  if (!Array.isArray(env)) return [];
+  return env.flatMap((e) => {
+    if (typeof e !== "string" || !e.includes("=")) return [];
+    const key = e.slice(0, e.indexOf("="));
+    const value = e.slice(key.length + 1);
+    return value && classify(key, value).secret ? [{ key, value }] : [];
+  });
+}
+
+/** Secret environment values of a container (for redacting its logs and the analysis bundle); [] on any error. */
+export async function containerSecrets(name: string, run: Runner = execRun): Promise<KnownSecret[]> {
+  return secretEnv(await inspectJson(name, run).catch(() => null));
+}
+
+function summarize(j: InspectJson, name: string): InspectSummary {
+  const zero = (t?: string) => (!t || t.startsWith("0001-") ? null : t);
+  const labels = j.Config?.Labels ?? {};
+  return {
+    name: (j.Name ?? name).replace(/^\//, ""),
+    image: j.Config?.Image ?? "",
+    imageId: j.Image ?? "",
+    created: j.Created ?? "",
+    startedAt: zero(j.State?.StartedAt),
+    finishedAt: zero(j.State?.FinishedAt),
+    status: j.State?.Status ?? "unknown",
+    running: j.State?.Running === true,
+    exitCode: typeof j.State?.ExitCode === "number" ? j.State.ExitCode : null,
+    oomKilled: j.State?.OOMKilled === true,
+    restartCount: j.RestartCount ?? 0,
+    restartPolicy: j.HostConfig?.RestartPolicy?.Name || null,
+    health: j.State?.Health?.Status ?? null,
+    project: labels["com.docker.compose.project"] ?? null,
+    service: labels["com.docker.compose.service"] ?? null,
+  };
+}
+
+export async function inspectContainer(name: string, run: Runner = execRun): Promise<InspectSummary | null> {
+  const j = await inspectJson(name, run);
+  return j ? summarize(j, name) : null;
+}
+
+export async function containerLogs(name: string, run: Runner = execRun, secrets: KnownSecret[] = []) {
   const r = await run("docker", ["logs", "--tail", String(MAX_LOG_LINES), "--timestamps", name], { timeoutMs: 20_000 });
   // stdout and stderr come separately; merged by their RFC 3339 timestamps.
   const ts = (l: string) => l.slice(0, Math.max(0, l.indexOf(" ")));
   const lines = [...r.stdout.split("\n"), ...r.stderr.split("\n")].filter(Boolean).sort((a, b) => ts(a).localeCompare(ts(b)));
-  return { source: "docker" as const, target: name, ...boundLines(lines) };
+  return { source: "docker" as const, target: name, ...boundLines(lines, secrets) };
 }
 
 export async function unitLogs(scope: "user" | "system", unit: string, run: Runner = execRun) {
@@ -141,8 +173,18 @@ export async function collectContext(i: Incident, d: ContextDeps): Promise<Incid
   const unit = i.parts.find((p) => p.targetType === "unit");
   const jobs: Array<Promise<void>> = [];
   if (container && CONTAINER_RE.test(container)) {
-    jobs.push(part("inspect", inspectContainer(container, d.run).then((x) => void (x && (ctx.inspect = x)))));
-    jobs.push(part("logs", containerLogs(container, d.run).then((x) => void (ctx.logs = x))));
+    // Inspect first: the container's secret environment values are redacted from its logs.
+    const logs = inspectJson(container, d.run).then(
+      (j) => {
+        if (j) ctx.inspect = summarize(j, container);
+        return secretEnv(j);
+      },
+      (e) => {
+        errors.inspect = codeOf(e);
+        return [];
+      },
+    );
+    jobs.push(part("logs", logs.then((secrets) => containerLogs(container, d.run, secrets)).then((x) => void (ctx.logs = x))));
   } else if (unit && UNIT_RE.test(unit.target)) {
     jobs.push(part("logs", unitLogs(unit.unitScope ?? "user", unit.target, d.run).then((x) => void (ctx.logs = x))));
   }

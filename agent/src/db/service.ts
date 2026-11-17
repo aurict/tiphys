@@ -34,6 +34,8 @@ export const QUERIES_PER_MIN = 30;
 export const EXPORTS_PER_MIN = 3;
 export const WRITES_PER_WINDOW = 10;
 export const WRITE_WINDOW_MS = 10 * 60_000;
+/** Write previews per device per WRITE_WINDOW_MS (a MySQL preview still runs the statement before rolling back). */
+export const WRITE_PREVIEWS_PER_WINDOW = 30;
 export const MAX_CONCURRENT = 2;
 const DEFAULT_PORT = { postgres: 5432, mysql: 3306 } as const;
 const WRITE_KIND = "db.write";
@@ -60,6 +62,8 @@ export function publicConnection(c: DbConnection) {
     database: c.database ?? null,
     readCredential: publicCredential(c.readCredential),
     writeCredential: publicCredential(c.writeCredential),
+    readRole: c.readRole ?? null,
+    allowSuperuserReads: c.allowSuperuserReads === true,
     // The container's POSTGRES_USER / MySQL root is a superuser: only the transaction-level layers protect the data.
     warnings: fromEnv ? ["superuserCredential"] : [],
   };
@@ -75,6 +79,8 @@ export interface CreateInput {
   database?: string;
   readCredential?: CredentialInput;
   writeCredential?: CredentialInput;
+  readRole?: string;
+  allowSuperuserReads?: boolean;
 }
 
 export interface PatchInput {
@@ -84,6 +90,9 @@ export interface PatchInput {
   readCredential?: CredentialInput;
   /** null removes the separate write credential (the write mode then uses the read credential). */
   writeCredential?: CredentialInput | null;
+  /** null removes the read role. */
+  readRole?: string | null;
+  allowSuperuserReads?: boolean;
 }
 
 const sameTarget = (a: DbConnection["target"], b: DbConnection["target"]) => JSON.stringify(a) === JSON.stringify(b);
@@ -206,6 +215,8 @@ export class DbService {
       ...(input.database ? { database: input.database } : {}),
       ...(input.readCredential ? { readCredential: credentialOf(input.readCredential) } : {}),
       ...(input.writeCredential ? { writeCredential: credentialOf(input.writeCredential) } : {}),
+      ...(input.readRole ? { readRole: input.readRole } : {}),
+      ...(input.allowSuperuserReads !== undefined ? { allowSuperuserReads: input.allowSuperuserReads } : {}),
     });
     await this.#store.update((c) => {
       if (c.databases.connections.some((x) => x.id === id)) throw new AppError("agent.db.connectionExists", 409, { id });
@@ -227,6 +238,8 @@ export class DbService {
       const read = mergeCredential(old.readCredential, p.readCredential, moved);
       const write = p.writeCredential === null ? undefined : mergeCredential(old.writeCredential, p.writeCredential, moved);
       const database = p.database === null ? undefined : (p.database ?? old.database);
+      const readRole = p.readRole === null ? undefined : (p.readRole ?? old.readRole);
+      const allowSuperuserReads = p.allowSuperuserReads ?? old.allowSuperuserReads;
       out = this.#validate({
         id,
         name: p.name ?? old.name,
@@ -235,6 +248,8 @@ export class DbService {
         ...(database ? { database } : {}),
         ...(read ? { readCredential: read } : {}),
         ...(write ? { writeCredential: write } : {}),
+        ...(readRole ? { readRole } : {}),
+        ...(allowSuperuserReads !== undefined ? { allowSuperuserReads } : {}),
       });
       c.databases.connections[i] = out;
       return c;
@@ -280,6 +295,10 @@ export class DbService {
     this.#limit(`x:${device}`, EXPORTS_PER_MIN, 60_000, "agent.db.exportRateLimited", { perMinute: EXPORTS_PER_MIN });
   }
 
+  checkWritePreviewRate(device: string) {
+    this.#limit(`wp:${device}`, WRITE_PREVIEWS_PER_WINDOW, WRITE_WINDOW_MS, "agent.db.writePreviewRateLimited", { perTenMinutes: WRITE_PREVIEWS_PER_WINDOW });
+  }
+
   checkWriteRate(device: string) {
     this.#limit(`w:${device}`, WRITES_PER_WINDOW, WRITE_WINDOW_MS, "agent.db.writeRateLimited", { perTenMinutes: WRITES_PER_WINDOW });
   }
@@ -319,7 +338,8 @@ export class DbService {
       const database = c.database ?? (fromEnv ? env!.database : undefined);
       return { family: "mysql", ep: { ...base, ...(database ? { database } : {}) } };
     }
-    return { family: "pg", ep: { ...base, database: c.database ?? (fromEnv ? env!.database : undefined) ?? "postgres" } };
+    const guard = which === "read" ? { ...(c.readRole ? { readRole: c.readRole } : {}), ...(c.allowSuperuserReads ? { allowSuperuserReads: true } : {}) } : {};
+    return { family: "pg", ep: { ...base, database: c.database ?? (fromEnv ? env!.database : undefined) ?? "postgres", ...guard } };
   }
 
   async #sqlitePath(c: DbConnection): Promise<string> {
@@ -339,6 +359,8 @@ export class DbService {
       const r = e.family === "pg" ? await this.#drivers.pg.test(e.ep, timeoutMs) : await this.#drivers.mysql.test(e.ep, timeoutMs);
       const warnings = [...publicConnection(c).warnings];
       if (r.superuser && !warnings.includes("superuserCredential")) warnings.push("superuserCredential");
+      // PostgreSQL: user SQL reads are refused until a read role is set or superuser reads are acknowledged.
+      if (e.family === "pg" && r.superuser && !c.readRole && !c.allowSuperuserReads) warnings.push("superuserReadsDisabled");
       return { ok: true, engine: c.engine, ...r, latencyMs: this.#now() - started, warnings };
     });
   }

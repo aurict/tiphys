@@ -9,27 +9,90 @@ const MASK = "[GİZLİ]";
 /** Known values: source → [{key, value}]. Values shorter than MIN_KNOWN are ignored (too many false hits). */
 const known = new Map<string, Array<{ key: string; value: string }>>();
 const MIN_KNOWN = 6;
+const KNOWN_KEY = /^[A-Za-z_][A-Za-z0-9_.]{0,127}$/;
+
+export type KnownSecret = { key: string; value: string };
+
+const usable = (entries: KnownSecret[]) => entries.filter((e) => e.value.length >= MIN_KNOWN && KNOWN_KEY.test(e.key));
 
 /** Registers (or with an empty list, clears) the known secret values of one source, e.g. a stack's .env file. */
-export function setKnownSecrets(source: string, entries: Array<{ key: string; value: string }>): void {
-  const list = entries.filter((e) => e.value.length >= MIN_KNOWN && /^[A-Za-z_][A-Za-z0-9_.]{0,127}$/.test(e.key));
+export function setKnownSecrets(source: string, entries: KnownSecret[]): void {
+  const list = usable(entries);
   if (list.length) known.set(source, list);
   else known.delete(source);
 }
 
-function replaceKnown(text: string): string {
-  const all = [...known.values()].flat().sort((a, b) => b.value.length - a.value.length);
-  for (const { key, value } of all) {
-    if (text.includes(value)) text = text.split(value).join(`[GİZLİ:${key}]`);
-  }
+const escapeRe = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
+/**
+ * The value as it may appear in text: as is, URL-encoded (in URIs, query strings) and base64 (with and without
+ * padding). Short (< 8) or purely alphabetic values (postgres, admin, changeme) are only replaced as a whole word, so
+ * they don't mask parts of ordinary words.
+ */
+const patterns = new Map<string, RegExp>();
+function knownPattern(value: string): RegExp {
+  const hit = patterns.get(value);
+  if (hit) return hit;
+  if (patterns.size > 2000) patterns.clear();
+  const forms = new Set([value, encodeURIComponent(value)]);
+  const b64 = Buffer.from(value, "utf8").toString("base64");
+  forms.add(b64);
+  forms.add(b64.replace(/=+$/, ""));
+  const alt = [...forms].filter((f) => f.length >= MIN_KNOWN).sort((a, b) => b.length - a.length).map(escapeRe).join("|");
+  const wordy = value.length < 8 || /^[A-Za-z]+$/.test(value);
+  const re = new RegExp(wordy ? `(?<![A-Za-z0-9_])(?:${alt})(?![A-Za-z0-9_])` : `(?:${alt})`, "g");
+  patterns.set(value, re);
+  return re;
+}
+
+function replaceKnown(text: string, extra: KnownSecret[]): string {
+  const all = [...[...known.values()].flat(), ...usable(extra)].sort((a, b) => b.value.length - a.value.length);
+  for (const { key, value } of all) text = text.replace(knownPattern(value), `[GİZLİ:${key}]`);
   return text;
 }
 
-const SECRET_KEY = String.raw`[A-Za-z0-9_.-]{0,40}?(?:passw(?:or)?d|pwd|secret|token|api[_-]?key|apikey|access[_-]?key|private[_-]?key|credentials?|auth[_-]?key|session[_-]?id|cookie)[A-Za-z0-9_.-]{0,40}`;
+// Same names configfiles/classify.ts treats as secret (PASS, *_KEY, DSN, SECRET, TOKEN, CREDENTIAL…); PASS, KEY and DSN
+// only as a whole name component (DB_PASS, SIGNING_KEY, SENTRY_DSN), not inside words (passed, keyboard, monkey).
+const SECRET_KEY = String.raw`[A-Za-z0-9_.-]{0,40}?(?:passw(?:or)?d|pwd|secret|token|api[_-]?key|apikey|access[_-]?key|private[_-]?key|credentials?|auth[_-]?key|session[_-]?id|cookie|(?<![A-Za-z])pass(?:phrase)?(?![A-Za-z])|[_.-]key(?![A-Za-z])|(?<![A-Za-z])dsn(?![A-Za-z]))[A-Za-z0-9_.-]{0,40}`;
+
+/** One base64 line of a PEM body, optionally after a log timestamp. */
+const PEM_LINE = /^[0-9TZ:.+ -]{0,40}[A-Za-z0-9+/=]{16,76}[ \t\r]*$/;
+const PEM_BEGIN = /-----BEGIN [A-Z0-9 ]{0,40}PRIVATE KEY(?: BLOCK)?-----/;
+const PEM_END = /-----END [A-Z0-9 ]{0,40}PRIVATE KEY(?: BLOCK)?-----/;
+const PEM_MAX_LINES = 200;
+
+/**
+ * A PEM block cut at either end (log tail, line limit): BEGIN + the base64 lines after it, or the base64 lines before
+ * an END line. Line based and bounded (a regex over the joined text would be quadratic on long base64 runs).
+ */
+function redactPem(text: string): string {
+  if (!text.includes("PRIVATE KEY-----")) return text;
+  const lines = text.split("\n");
+  const out: string[] = [];
+  for (let i = 0; i < lines.length; i++) {
+    const l = lines[i]!;
+    const begin = PEM_BEGIN.exec(l);
+    if (begin) {
+      out.push(l.slice(0, begin.index) + "[GİZLİ:PEM]");
+      let n = 0;
+      while (n < PEM_MAX_LINES && i + 1 < lines.length && PEM_LINE.test(lines[i + 1]!)) (i++, n++);
+      continue;
+    }
+    const end = PEM_END.exec(l);
+    if (end) {
+      let n = 0;
+      while (n < PEM_MAX_LINES && out.length && PEM_LINE.test(out.at(-1)!)) (out.pop(), n++);
+      out.push("[GİZLİ:PEM]" + l.slice(end.index + end[0].length));
+      continue;
+    }
+    out.push(l);
+  }
+  return out.join("\n");
+}
 
 const RULES: Array<[RegExp, string | ((...m: string[]) => string)]> = [
-  // PEM private keys (also a truncated block with no END line: the rest of the text goes).
-  [/-----BEGIN [A-Z0-9 ]{0,40}PRIVATE KEY(?: BLOCK)?-----[\s\S]*?(?:-----END [A-Z0-9 ]{0,40}PRIVATE KEY(?: BLOCK)?-----|$)/g, "[GİZLİ:PEM]"],
+  // PEM private keys across lines (callers redact joined text, not line by line); blocks cut at either end: redactPem.
+  [/-----BEGIN [A-Z0-9 ]{0,40}PRIVATE KEY(?: BLOCK)?-----[\s\S]{0,20000}?-----END [A-Z0-9 ]{0,40}PRIVATE KEY(?: BLOCK)?-----/g, "[GİZLİ:PEM]"],
   // user:password@ in URIs (postgres://, redis://, https://, amqp://…).
   [/\b([a-z][a-z0-9+.-]{1,20}:\/\/[^\s:/@]{0,200}:)([^\s@/]{1,500})(@)/gi, (_m, a, _p, c) => `${a}${MASK}${c}`],
   // JWT (header.payload[.signature]).
@@ -60,9 +123,12 @@ const RULES: Array<[RegExp, string | ((...m: string[]) => string)]> = [
   ],
 ];
 
-/** Returns the text with secrets replaced. */
-export function redact(text: string): string {
-  let out = known.size ? replaceKnown(text) : text;
+/**
+ * Returns the text with secrets replaced. `extra`: known values for this call only (e.g. the incident container's
+ * secret environment values), on top of the registered ones.
+ */
+export function redact(text: string, extra: KnownSecret[] = []): string {
+  let out = known.size || extra.length ? replaceKnown(text, extra) : text;
   for (const [re, rep] of RULES) out = out.replace(re, rep as never);
-  return out;
+  return redactPem(out);
 }

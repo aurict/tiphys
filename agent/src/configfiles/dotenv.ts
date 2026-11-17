@@ -7,7 +7,8 @@
 //
 // Value model: what compose reads before `${VAR}` interpolation. Double-quoted escapes are resolved (`\$` becomes
 // `$$`, compose's own escape for a literal `$`); single-quoted values are literal. An edit keeps the entry's quoting
-// when it can, so an unquoted or double-quoted value keeps its interpolation; new entries are written literally.
+// when it can, so an unquoted or double-quoted value keeps its interpolation (`${VAR}`, `$$`); new entries, and values
+// with any other `$`, are written literally.
 
 export const KEY_RE = /^[A-Za-z_][A-Za-z0-9_.]*$/;
 /** Longest quoted value scanned across lines; past it the opening line counts as unterminated. */
@@ -202,9 +203,12 @@ function doubleQuoted(v: string, literal: boolean): string {
  * Text written for a value. An existing entry keeps its quoting when that can hold the value (so interpolation
  * semantics don't change); otherwise, and for new entries: unquoted if plain, single quotes (literal) if possible,
  * else double quotes. Double quotes replacing a literal (new or single-quoted) value escape `$`.
+ * A value with a `$` but no explicit compose syntax (`${…}`, `$$`) is written literally even into an unquoted or
+ * double-quoted entry: compose would read `pa$word` there as `pa` + $word (a mangled secret).
  */
 export function encodeValue(value: string, existing?: EntryNode): string {
-  const style = existing && !existing.inherited ? existing.quote : null;
+  let style = existing && !existing.inherited ? existing.quote : null;
+  if ((style === "" || style === '"') && value.includes("$") && !/\$\{|\$\$/.test(value)) style = null;
   if (style === "" && fitsUnquoted(value)) return value;
   if (style === "'" && fitsSingle(value)) return `'${value}'`;
   if (style === '"' || style === "") return doubleQuoted(value, false);

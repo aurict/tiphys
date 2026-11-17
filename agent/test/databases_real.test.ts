@@ -52,7 +52,7 @@ describe.skipIf(!real)("database console against a real PostgreSQL", () => {
       ["run", "-d", "--rm", "--name", NAME, "-e", `POSTGRES_PASSWORD=${PASSWORD}`, "-p", `127.0.0.1:${port}:5432`, "postgres:16-alpine"],
       { timeoutMs: 300_000 },
     );
-    ep = { host: "127.0.0.1", port, user: "postgres", password: PASSWORD, database: "postgres" };
+    ep = { host: "127.0.0.1", port, user: "postgres", password: PASSWORD, database: "postgres", allowSuperuserReads: true };
     // The image restarts the server once after init: wait until a real query works twice in a row.
     let ok = 0;
     for (let i = 0; i < 120 && ok < 2; i++) {
@@ -77,9 +77,11 @@ describe.skipIf(!real)("database console against a real PostgreSQL", () => {
       c.features.databases = true;
       c.devices.push({ id: "phone", name: "Telefon", tokenHash: hashToken(token), createdAt: new Date().toISOString() });
       c.databases.connections = [
-        { id: "pg", name: "Superuser", engine: "postgres", target: { host: "127.0.0.1", port }, database: "postgres", readCredential: { user: "postgres", password: PASSWORD } },
+        { id: "pg", name: "Superuser", engine: "postgres", target: { host: "127.0.0.1", port }, database: "postgres", readCredential: { user: "postgres", password: PASSWORD }, allowSuperuserReads: true },
+        { id: "su-off", name: "Superuser, not acknowledged", engine: "postgres", target: { host: "127.0.0.1", port }, database: "postgres", readCredential: { user: "postgres", password: PASSWORD } },
+        { id: "su-role", name: "Superuser via read role", engine: "postgres", target: { host: "127.0.0.1", port }, database: "postgres", readCredential: { user: "postgres", password: PASSWORD }, readRole: "reader" },
         { id: "reader", name: "Reader", engine: "postgres", target: { host: "127.0.0.1", port }, database: "postgres", readCredential: { user: "reader", password: READER_PASSWORD } },
-        { id: "env", name: "From container", engine: "postgres", target: { container: NAME }, readCredential: { fromContainerEnv: true } },
+        { id: "env", name: "From container", engine: "postgres", target: { container: NAME }, readCredential: { fromContainerEnv: true }, allowSuperuserReads: true },
       ];
       return c;
     });
@@ -102,6 +104,20 @@ describe.skipIf(!real)("database console against a real PostgreSQL", () => {
     const env = await call("POST", "/v1/db/connections/env/test");
     expect(env.body).toMatchObject({ ok: true, user: "postgres", database: "postgres", superuser: true, warnings: ["superuserCredential"] });
     expect(env.raw).not.toContain(PASSWORD);
+  });
+
+  it("§13 review S1: superuser reads need a read role or an acknowledgement; U& and SQL-text functions refused", async () => {
+    expect((await call("POST", "/v1/db/connections/su-off/test", {})).body.warnings).toEqual(["superuserCredential", "superuserReadsDisabled"]);
+    const off = await query("SELECT 1", {}, "su-off");
+    expect(off.status).toBe(403);
+    expect(off.body.error.code).toBe("agent.db.superuserReadsDisabled");
+    const viaRole = await query("SELECT current_user, session_user, (SELECT count(*) FROM t)", {}, "su-role");
+    expect(viaRole.body.rows).toEqual([["reader", "postgres", "20"]]);
+    // The read role can't be undone from user SQL.
+    expect((await query("SELECT pg_catalog.set_config('role', 'postgres', true)", {}, "su-role")).body.error.code).toBe("agent.db.statementNotAllowed");
+    for (const sql of [String.raw`SELECT U&"pg_read_fil\0065"('/etc/passwd')`, `SELECT * FROM ts_stat($q$SELECT to_tsvector(pg_read_file('/etc/passwd'))$q$)`]) {
+      expect((await query(sql)).body.error.code, sql).toBe("agent.db.statementNotAllowed");
+    }
   });
 
   it("reads with params, limits and cell caps", async () => {
@@ -147,11 +163,10 @@ describe.skipIf(!real)("database console against a real PostgreSQL", () => {
     const r = await query("SELECT pg_sleep(100)", { timeoutMs: 2000 });
     expect(r.body.error.code).toBe("agent.db.timeout");
     expect(Date.now() - started).toBeLessThan(6000);
-    // Turning the timeout off inside the statement doesn't help: the timer was armed when it started.
-    started = Date.now();
+    // Turning the timeout off inside the statement is refused up front: set_config is denylisted (it could also reset
+    // the read role, §13 review S1).
     const r2 = await query("SELECT set_config('statement_timeout', '0', true), pg_sleep(100)", { timeoutMs: 2000 });
-    expect(r2.body.error.code).toBe("agent.db.timeout");
-    expect(Date.now() - started).toBeLessThan(6000);
+    expect(r2.body.error.code).toBe("agent.db.statementNotAllowed");
   }, 30_000);
 
   it("schema and preview", async () => {
