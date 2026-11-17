@@ -14,7 +14,7 @@ Source of truth: `agent/src/server.ts` (registration), `agent/src/routes/*.ts`, 
   - [Always available](#always-available)
   - [system](#system) · [services](#services) · [docker](#docker) · [power](#power) · [wake](#wake) · [ports](#ports) · [transcribe](#transcribe) · [git](#git) · [homepage](#homepage)
   - [desktop](#desktop): [clipboard, screenshot, open](#clipboard-screenshot-open) · [media](#media) · [windows and apps](#windows-and-apps) · [Sunshine](#sunshine) · [Firefox bridge](#firefox-bridge) · [mobile view](#mobile-view-at-spi) · [live screen](#live-screen)
-  - [claude](#claude) · [watch](#watch) · [alerts](#alerts) · [backups](#backups) · [uptime](#uptime)
+  - [claude](#claude) · [watch](#watch) · [alerts](#alerts) · [backups](#backups) · [uptime](#uptime) · [research](#research) · [telegram](#telegram)
 - [Protocols](#protocols)
   - [Live screen WebSocket](#live-screen-websocket)
   - [Claude session WebSocket](#claude-session-websocket)
@@ -35,11 +35,12 @@ Source of truth: `agent/src/server.ts` (registration), `agent/src/routes/*.ts`, 
 
 | Mechanism | Applies to | Details |
 | --- | --- | --- |
+| Service token | only routes that declare its scope (today: `research` → `POST /v1/research/jobs`, `GET`/`DELETE /v1/research/jobs/:id`) | `Authorization: Bearer tps_…` (header only, never `?token=`). Issued for another agent with `tiphys-agent service-token create` or `POST /v1/service-tokens`; shown once, stored as a SHA-256 hash. Any other route, including unknown paths, returns `403 agent.auth.scopeDenied`. The Tailscale identity check applies as for devices. The audit log records the caller as `service:<id>`. |
 | Device token | every route except `GET /v1/health` | `Authorization: Bearer tph_…`. Created by `tiphys-agent pair`; only its SHA-256 hash is stored, and comparison is constant-time. For WebSockets the token may also be sent as the `?token=` query parameter. |
 | Tailscale identity | every route except `GET /v1/health` | When `requireTailscaleLogin` is set, the `Tailscale-User-Login` header (added by `tailscale serve`) must equal it. Otherwise `403 agent.auth.tailnetUserNotAllowed`. |
 | Control token | mutating desktop routes, live screen, Firefox tabs, mobile view, Sunshine actions, Claude PC sessions | `X-Tiphys-Control: tpc_…`, obtained from `POST /v1/desktop/control/session`. It must belong to the calling device and not be expired, and the `control` feature must be on. |
 
-Failure codes: `401 agent.auth.missingToken`, `401 agent.auth.invalidToken`, `403 agent.auth.tailnetUserNotAllowed`, `403 agent.control.sessionRequired`, `403 agent.control.disabled`.
+Failure codes: `401 agent.auth.missingToken`, `401 agent.auth.invalidToken`, `403 agent.auth.scopeDenied`, `403 agent.auth.tailnetUserNotAllowed`, `403 agent.control.sessionRequired`, `403 agent.control.disabled`.
 
 ## Control sessions
 
@@ -92,6 +93,22 @@ Every error has the same envelope. The agent sends codes, never sentences; the a
 | `agent.auth.missingToken` | 401 | No bearer token |
 | `agent.auth.invalidToken` | 401 | Unknown token |
 | `agent.auth.tailnetUserNotAllowed` | 403 | Tailscale login mismatch |
+| `agent.auth.scopeDenied` | 403 | Service token used on a route outside its scopes |
+| `agent.serviceToken.notFound` | 404 | Unknown service token id |
+| `agent.research.busy` | 429 | Research queue full (1 running + 5 waiting) |
+| `agent.research.notFound` | 404 | Unknown research job (or another service token's job) |
+| `agent.telegram.notConfigured` | 409 | No bot token stored yet (`PUT /v1/telegram/bot`) |
+| `agent.telegram.invalidToken` | 400 | Bot token malformed or rejected by Telegram (`getMe`) |
+| `agent.telegram.blocked` | 502 | The recipient blocked the bot (Telegram 403); the recipient becomes `unreachable` |
+| `agent.telegram.unreachable` / `.timeout` / `.apiFailed` / `.badRequest` / `.badResponse` / `.apiRateLimited` | 502 / 429 | Telegram API errors (`params.description` for `badRequest`) |
+| `agent.telegram.rateLimited` | 429 | Too many requests to `/v1/telegram/*` from this device |
+| `agent.telegram.feed.notFound` / `.recipient.notFound` / `.invite.notFound` / `.issue.notFound` | 404 | Unknown id |
+| `agent.telegram.feedRunning` | 409 | The feed already has a run in progress (or is sending) |
+| `agent.telegram.noRecipients` | 409 | Run now on a feed with no active subscriber |
+| `agent.telegram.recipientStopped` | 409 | The recipient sent `/stop`; only they can rejoin (new invite) |
+| `agent.telegram.issueNotAwaiting` / `.issueExpired` / `.issueNotRendered` | 409 | Approval or test on an issue in the wrong state |
+| `agent.telegram.tooManyFeeds` / `.tooManyInvites` | 400 | At most 20 feeds / 20 pending invites |
+| `agent.telegram.research.notConfigured` | 409 | `research` (PC URL + service token) is not set in the config |
 | `agent.path.notFound` / `agent.path.notAllowed` | 404 / 403 | Path missing / outside `allowedRoots` |
 | `agent.exec.commandMissing` | 500 | Required binary not installed (`params.command`) |
 | `agent.exec.failed` | 502 | Command exited non-zero (`command`, `code`, `stderr`) |
@@ -178,7 +195,10 @@ Shapes are summarized. The zod schemas in the linked source files are authoritat
 | PATCH | `/v1/config` | token | Strict partial update → `{config, restartRequired}` |
 | GET | `/v1/devices` | token | `{devices: [{id, name, createdAt}]}` |
 | DELETE | `/v1/devices/:id` | token | Revoke one device and its push endpoint |
-| POST | `/v1/devices/revoke-all` | token | `{confirm: true}`. Revokes **every** device, including the caller. |
+| POST | `/v1/devices/revoke-all` | token | `{confirm: true}`. Revokes **every** device, including the caller, and every service token. |
+| GET | `/v1/service-tokens` | device | `{tokens: [{id, name, scopes, createdAt, lastUsedAt?}]}` (never the token or its hash) |
+| POST | `/v1/service-tokens` | device | Strict `{name, scopes: ["research"]}` → `201 {token, serviceToken: {id, name, scopes, createdAt}}`. The `tps_…` token is returned only here. Event `serviceToken.created`. |
+| DELETE | `/v1/service-tokens/:id` | device | Revokes it → `{ok: true}`. Event `serviceToken.revoked`. |
 | PUT | `/v1/push/endpoint` | token | `{url, pubKey?, auth?}`. Registers this device's push endpoint (replaces any previous one). |
 | POST | `/v1/push/test` | token | Sends `push.test` → `{sent: n}` |
 | GET | `/v1/events?since=ISO&limit=1..500` | token | `{events: [{id, at, key, params, link, source, device?}]}`, newest first |
@@ -404,6 +424,66 @@ Feature `uptime` (`uptime/bridge.ts`). The agent keeps a Socket.IO connection to
 | POST | `/v1/uptime/monitors/:id/pause` · `/resume` | Pause / resume |
 | GET / POST | `/v1/uptime/maintenance` | List / create `{title, monitorIds, start, end}` |
 | DELETE | `/v1/uptime/maintenance/:id` | Delete |
+
+### research
+
+Feature `research` (`routes/research.ts`, `research/*.ts`). Web research for another agent (atlas's Telegram digests): Gemini via `agy` drafts, Claude edits. See [Research](../features/research.md) for the pipeline and its sandboxing.
+
+| Method | Path | Auth | Description |
+| --- | --- | --- | --- |
+| POST | `/v1/research/jobs` | service (`research`) or device | Strict body (below) → `202 {id}`. `429 agent.research.busy` when 1 job runs and 5 wait. |
+| GET | `/v1/research/jobs/:id` | service (`research`) or device | `{id, status: queued\|running\|done\|failed, createdAt, startedAt?, finishedAt?, error?: {code, params}, result?}`. A service token sees only jobs it started. |
+| GET | `/v1/research/jobs` | device | Recent jobs for the app, newest first: `{jobs: [{id, status, createdAt, startedAt, finishedAt, error, topic, editor, requestedBy, itemCount, sourceCount, timings}]}` |
+| DELETE | `/v1/research/jobs/:id` | service (`research`) or device | Cancels a queued or running job (kills its processes) → `{cancelled, job}`. `cancelled: false` if it had already finished. A service token can cancel only jobs it started. |
+
+Request body: `{topic (1–500), instructions? (≤4000), windowHours (1–720), language? ("tr"), minItems? (1–20, default 1), maxItems (1–20, ≥ minItems), maxSourcesPerItem? (1–5, default 3), allowDomains? (≤50 hostnames), blockDomains? (≤50), excludeUrls? (≤500 http(s) URLs, ≤100 000 characters in total), editor? (default true)}`.
+
+`result`: `{items: [{headline, summary, published?, sources: [{title, url}]}], seenUrls: [...] (only URLs from successful searxng/firecrawl tool outputs, never model-written text; normalized: no fragment, no utm_*, no trailing slash, same as source URLs; ≤5000), models: {research: "gemini-4-argon-high", editor?: "claude-sonnet"}, timings: {researchSec, editorSec?}}`. The agent enforces the rules on the final items itself: only http(s) sources, allow/block lists, at most `maxSourcesPerItem` sources and `maxItems` items, no story whose source is in `excludeUrls`, no duplicate stories.
+
+Job `error.code` values: `agent.research.toolMissing` (`params.tool`: `agy`/`claude` not on `PATH`), `agent.research.mcpMissing` (`params.server`: no `searxng`/`firecrawl` entry in `~/.claude.json`), `agent.research.toolFailed` (`params.tool`, `status` or `exitCode`), `agent.research.invalidOutput` (`params.tool`), `agent.research.timeout` (20 min per job), `agent.research.cancelled`, `agent.research.interrupted` (the agent stopped). Jobs and their results are kept for 24 h.
+
+### telegram
+
+Feature `telegram` (`telegram/*.ts`). Telegram newsletters: the bot, recipients (invite only), feeds, the scheduler, research on the PC (via [research](#research) with a service token), validation, approval and the archive. See [Telegram newsletters](../features/telegram.md). Mutating routes are rate-limited per device (30/min; runs, previews and test messages also 10 per 10 min) with `429 agent.telegram.rateLimited`.
+
+| Method | Path | Description |
+| --- | --- | --- |
+| GET | `/v1/telegram/status` | `{bot: {configured, username, id}, research: {configured, url, wakeHostId, reachable}, pendingInvites, polling}`. `reachable` probes the PC's `/v1/health` (3 s); `null` if not configured. |
+| PUT | `/v1/telegram/bot` | Strict `{token}` → `{bot: {username, id}}`. Validated with `getMe`, stored in `agent.json`, never returned. |
+| DELETE | `/v1/telegram/bot` | Removes the token |
+| GET | `/v1/telegram/recipients` | `{recipients: [{id, chatId, firstName, lastName?, username?, addedAt, status: active\|paused\|stopped\|unreachable, statusAt?, subscriptions: [feedId]}]}` |
+| PATCH | `/v1/telegram/recipients/:id` | Strict `{status?: active\|paused, subscriptions?: [feedId]}`. A `stopped` recipient can't be re-activated (`recipientStopped`); `unreachable` can. |
+| DELETE | `/v1/telegram/recipients/:id` | Remove |
+| POST | `/v1/telegram/recipients/:id/test` | Sends a short Turkish test message → `{ok, messageIds}` |
+| GET | `/v1/telegram/recipients/:id/deliveries?limit=` | Newsletter deliveries to this recipient, newest first: `[{issueId, feedId, recipientId, status: sent\|failed\|unreachable, messageIds, error?, at, test?}]` |
+| GET | `/v1/telegram/invites` | `{invites: [{id, label, feedIds, createdAt, expiresAt, status: pending\|used\|expired\|revoked, recipientId, code?, link?}]}` (`code`/`link` only while pending) |
+| POST | `/v1/telegram/invites` | Strict `{label?, feedIds?}` → `{invite}` with `link: https://t.me/<bot>?start=<code>`; one use, 24 h. While an invite is pending the agent long-polls `getUpdates`. |
+| DELETE | `/v1/telegram/invites/:id` | Revoke → `{invite}` |
+| GET | `/v1/telegram/templates` | `{templates: [{id: daily-tech-ai\|weekly-tech-ai, feed: <feed input>}]}`: post `feed` (with the user's time) to create one |
+| GET / POST | `/v1/telegram/feeds` | List / create. Body: strict feed input (below) → `{feed}` |
+| GET / PUT / DELETE | `/v1/telegram/feeds/:id` | Get / replace (full input) / delete (also its issues; `409 feedRunning` while running) |
+| POST | `/v1/telegram/feeds/:id/run` | Run now → `202 {issue}` (summary, status `researching`); sends (or asks for approval) when done |
+| POST | `/v1/telegram/feeds/:id/preview` | Same pipeline, sends nothing → issue ends as `preview` |
+| GET | `/v1/telegram/issues?feedId=&limit=` | Archive, newest first: issue summaries `{id, feedId, kind, createdAt, slotAt?, deadlineAt, expiresAt?, status, stats?, models?, error?, finishedAt?, itemCount, partCount, deliveryCounts: {sent, failed, tests}}` |
+| GET | `/v1/telegram/issues/:id` | Full issue: summary fields + `items: [{headline, summary, sources: [{title, url}]}]`, `renderedParts` (Telegram HTML), `deliveries` |
+| POST | `/v1/telegram/issues/:id/approve` | `awaiting_approval` → sending (background) → `{issue}`. Called by the notification's *Gönder* button. |
+| POST | `/v1/telegram/issues/:id/reject` | `awaiting_approval` → `rejected`. The *Vazgeç* button. |
+| POST | `/v1/telegram/issues/:id/test` | Strict `{recipientId}`: sends the issue's rendered parts to one recipient (any subscription) → `{delivery}` (`test: true`) |
+
+**Feed input** (strict; limits match the research job input): `{name (1–80), enabled? (true), when (same as Claude schedules: daily / weekly / interval), topic (1–500), instructions? (≤4000), windowHours? (1–720, 24), language? ("tr"), minItems? (1–20, 5), maxItems? (1–20, 8, ≥ minItems), maxSourcesPerItem? (1–3, 3), allowDomains? / blockDomains? (≤50 hostnames), skipIfNothingNew? (true), approval? ({mode: auto|ask|firstN, n} = {firstN, 3}), deadlineMinutes? (5–360, 30)}`. A feed adds `{id, createdAt, anchorAt, lastSlotAt, approval.sentCount, running, nextRun, recipientIds}`.
+
+**Issue status**: `researching → awaiting_approval → sending → sent`, or `skipped` (nothing new), `failed` (`error` code), `expired` (no decision by deadline + 2 h), `rejected`, `preview`. Issue `error` codes: `agent.telegram.research.unreachable` (PC down; after Wake-on-LAN if configured), `.research.timeout` (deadline), `.research.failed` (`params.error` = the PC job's code), `.research.unauthorized`, `.research.rejected`, `.research.badResponse`, `.research.notConfigured`, `agent.telegram.noItems`, `agent.telegram.deliveryFailed` (every recipient failed), `agent.telegram.notConfigured`, `agent.telegram.interrupted` (agent restarted mid-run).
+
+**Notifications** (keys and params for the app; `link` opens the issue `tiphys://telegram/issues/<issueId>`):
+
+| Key | Params | Notes |
+| --- | --- | --- |
+| `telegram.approval` | `feed, feedId, issueId, items, recipients` | priority high; `data: {feedId, issueId}`; actions **Gönder** (`POST …/approve`), **Vazgeç** (`POST …/reject`), tap = preview |
+| `telegram.sent` | `feed, feedId, issueId, items, recipients, failed` | `recipients` = successful deliveries |
+| `telegram.failed` | `feed, feedId, issueId, reason` | priority high (except `reason: agent.telegram.approvalExpired`) |
+| `telegram.pcUnreachable` | `feed, feedId, issueId` | priority high; the PC couldn't be reached before the deadline |
+
+Event-only keys (ids and counts, never content or names): `telegram.started`, `.skipped` (`reason: nothingNew|noRecipients|running`), `.missed` (`slotAt`), `.previewReady`, `.previewFailed`, `.approved`, `.rejected`, `.testSent`, `.wakeSent`, `.recipientAdded`, `.recipientStopped`, `.recipientRemoved`, `.recipientUnreachable`, `.inviteCreated`, `.groupLeft`, `.botSet`, `.botRemoved`.
 
 ## Protocols
 

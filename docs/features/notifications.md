@@ -58,6 +58,8 @@ then offers a *Subscribe in ntfy* shortcut for it. See [Monitoring](monitoring.m
 | System › Backup alerts | `backup.*` | on |
 | Tell me when a long command finishes | `command.done` only if it ran at least this long; `command.failed` always (Off disables both) | 60 s |
 | Clipboard › Notify when something is copied on the PC | `clipboard.pc` | on |
+| Telegram › Approval requests and failures | `telegram.approval`, `telegram.failed`, `telegram.pcUnreachable` | on |
+| Telegram › When a newsletter is sent | `telegram.sent` | on |
 
 Disk alerts (`disk.full`, `disk.ok`) are always shown. The disk threshold and the alert interval are set per agent
 under **Settings › Hosts › (host) › Agent settings** (see [Monitoring](monitoring.md)).
@@ -93,6 +95,10 @@ the screen opened when you tap the notification.
 | `command.failed` | That command exits with a non-zero code | Terminal | normal |
 | `clipboard.pc` | Text is copied on the PC (sensitive, see below) | none | low, silent |
 | `push.test` | You tap *Send a test notification* | none | normal |
+| `telegram.approval` | A Telegram newsletter issue waits for your approval (**Gönder** / **Vazgeç**) | Issue preview | high |
+| `telegram.sent` | A newsletter issue was sent (item and recipient counts) | Issue | normal |
+| `telegram.failed` | A newsletter run failed or its approval expired (`reason` code) | Issue | high (normal if expired) |
+| `telegram.pcUnreachable` | The research PC could not be reached before the feed's deadline | Issue | high |
 
 Notifications on the same topic replace each other (for example `host.offline` is replaced by `host.online`, and
 `disk.full` by `disk.ok`). When a Claude session finishes or fails, its outstanding approval notifications are
@@ -109,6 +115,7 @@ These are written to the event log but never pushed:
 | `git.committed`, `git.pushed` | A commit or push is made from the app |
 | `control.started`, `control.ended` | A desktop control session opens or closes |
 | `ui.opened` | The mobile view opens a window |
+| `telegram.started`, `telegram.skipped`, `telegram.missed`, `telegram.recipientAdded`, … | Telegram newsletter activity (ids and counts only; see [Telegram newsletters](telegram.md)) |
 | `compose.updated`, `compose.failed` | Reported by the app after a Compose stack update over SSH (`POST /v1/events`) |
 
 ## Notification actions
