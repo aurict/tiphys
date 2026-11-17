@@ -15,9 +15,12 @@ import '../files/files_screen.dart' show formatSize;
 import '../system/agent_providers.dart';
 import 'configfiles_data.dart';
 import 'configfiles_texts.dart';
+import 'rotation_section.dart';
 
 /// "/configfiles/file?host=argo&id=cf-…"
-String configFileRoute(String hostId, String fileId) => '/configfiles/file?host=${Uri.encodeQueryComponent(hostId)}&id=${Uri.encodeQueryComponent(fileId)}';
+/// [key] focuses a key on the file screen (scrolled into view and highlighted).
+String configFileRoute(String hostId, String fileId, {String? key}) =>
+    '/configfiles/file?host=${Uri.encodeQueryComponent(hostId)}&id=${Uri.encodeQueryComponent(fileId)}${key == null ? '' : '&key=${Uri.encodeQueryComponent(key)}'}';
 
 class ConfigFilesScreen extends ConsumerWidget {
   const ConfigFilesScreen({super.key});
@@ -30,6 +33,7 @@ class ConfigFilesScreen extends ConsumerWidget {
       for (final h in hosts.value ?? const <Host>[]) {
         ref.invalidate(configFilesProvider(h.id));
       }
+      ref.invalidate(rotationProvider);
       ref.invalidate(configHostsProvider);
     }
 
@@ -43,6 +47,7 @@ class ConfigFilesScreen extends ConsumerWidget {
         data: (list) => list.isEmpty
             ? [TCard(child: Text(l.cfNoHosts))]
             : [
+                RotationSection(showHost: list.length > 1),
                 for (final h in list) _HostFiles(host: h, showName: list.length > 1),
               ],
       ),

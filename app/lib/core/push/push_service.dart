@@ -95,6 +95,8 @@ const _endpointKey = 'app:pushEndpoint';
             ? l.notifIncidentActionPostCheck(incidentActionName(l, s('action')), s('target'))
             : l.notifIncidentActionCommand(incidentActionName(l, s('action')), s('target')),
       ),
+    // AI analysis done (I-3): the model's one-line summary (plain text) replaces the source notification.
+    'incident.analyzed' => (l.notifIncidentAnalyzedTitle(s('host')), s('summary')),
     // Config files and secrets (PLAN.md §13.3): file and key names only.
     'secret.rotationDue' => (l.notifRotationDueTitle(s('host')), l.notifRotationDueBody(s('file'), s('keys'))),
     'config.restartFailed' => (l.notifConfigRestartFailedTitle(s('host')), l.notifConfigRestartFailedBody(s('file'), s('services'))),
@@ -194,7 +196,7 @@ bool noticeAllowed(Profile p, String key, [Map<String, dynamic> params = const {
       'grafana.alert' || 'grafana.resolved' => p.notifications.grafanaAlerts,
       'docker.died' || 'docker.oom' || 'docker.restarted' => p.notifications.serviceDown,
       'backup.stale' || 'backup.failed' || 'backup.ok' => p.notifications.backupAlerts,
-      'incident.resolved' || 'incident.actionFailed' || 'uptime.down' || 'uptime.up' || 'docker.unhealthy' || 'docker.restartLoop' => p.notifications.incidents,
+      'incident.resolved' || 'incident.actionFailed' || 'incident.analyzed' || 'uptime.down' || 'uptime.up' || 'docker.unhealthy' || 'docker.restartLoop' => p.notifications.incidents,
       // "Long-running command" threshold: 0 = off; successful commands shorter than the threshold aren't notified,
       // a failing command is always notified (if enabled).
       'command.done' => p.notifications.longCommandSeconds > 0 && ((params['seconds'] as num?) ?? 0) >= p.notifications.longCommandSeconds,
@@ -231,7 +233,7 @@ int noticeId(String key, Map<String, dynamic> p, {String? link, String? requestI
     'grafana.alert' || 'grafana.resolved' => 'grafana|${s('name')}',
     'agent.restarted' => 'agent|${s('host')}',
     'docker.died' || 'docker.oom' || 'docker.restarted' || 'docker.unhealthy' || 'docker.restartLoop' => 'docker|${s('host')}|${s('container')}',
-    'incident.resolved' || 'incident.actionFailed' => 'incident|${s('incidentId')}',
+    'incident.resolved' || 'incident.actionFailed' || 'incident.analyzed' => 'incident|${s('incidentId')}',
     'secret.rotationDue' || 'config.restartFailed' => 'config|${s('host')}|${s('file')}',
     'uptime.down' || 'uptime.up' => 'uptime|${s('host')}|${s('monitorId')}',
     'backup.stale' || 'backup.failed' || 'backup.ok' => 'backup|${s('host')}|${s('id')}',
@@ -252,6 +254,28 @@ int noticeId(String key, Map<String, dynamic> p, {String? link, String? requestI
   }
   return h & 0x3fffffff;
 }
+
+/// Id of the notification for a push message. `incident.analyzed` carries the key and params of the incident's source
+/// notification (`data.replaceKey`, `data.replaceParams` as JSON text): it takes that notification's id, so it replaces
+/// it in place. Without them (or with unreadable params) it falls back to the incident's own topic.
+int noticeIdFor(String key, Map<String, dynamic> params, {String? link, String? requestId, Map<String, dynamic>? data}) {
+  if (key == 'incident.analyzed') {
+    final replaceKey = data?['replaceKey'];
+    final raw = data?['replaceParams'];
+    if (replaceKey is String && replaceKey.isNotEmpty) {
+      try {
+        final decoded = raw is String ? jsonDecode(raw) : raw;
+        if (decoded is Map) return noticeId(replaceKey, Map<String, dynamic>.from(decoded));
+      } catch (_) {
+        // Unreadable params: fall back to the incident's own notification id below.
+      }
+    }
+  }
+  return noticeId(key, params, link: link, requestId: requestId);
+}
+
+/// Shown without sound, vibration or heads-up: the agent marks such updates `data.silent == "1"`.
+bool noticeSilent(Map<String, dynamic>? data) => data?['silent'] == '1';
 
 /// Notification buttons (Claude permission request).
 const actionAllow = 'claude-allow';
@@ -769,7 +793,7 @@ class PushService {
     if ((key == 'claude.done' || key == 'claude.error') && link != null) await _cancelWaiting(link);
     if (key == 'clipboard.pc') return _showClipboard(l, '${params['text'] ?? ''}');
     await notifications.show(
-      id: noticeId(key, params, link: link, requestId: data?['requestId'] as String?),
+      id: noticeIdFor(key, params, link: link, requestId: data?['requestId'] as String?, data: data),
       title: text.$1,
       body: text.$2,
       payload: decision
@@ -785,6 +809,9 @@ class PushService {
           high ? 'Tiphys · acil' : 'Tiphys',
           importance: high ? Importance.high : Importance.defaultImportance,
           priority: high ? Priority.high : Priority.defaultPriority,
+          // An update of a notification that already alerted (incident.analyzed): no new sound or vibration.
+          silent: noticeSilent(data),
+          onlyAlertOnce: noticeSilent(data),
           tag: key == 'claude.waiting' ? link : null,
           visibility: visibility,
           // Show the whole multi-line body (e.g. Claude summary + stats) when expanded.

@@ -171,7 +171,29 @@ dynamic fakeConfigRoute(String hostId, String method, String path, Object? body,
         e.ageDays ??= 0;
       }
     }
-    return {'files': <Map<String, dynamic>>[]};
+    // The secrets of every file with their age and limit (no fingerprints), as the agent lists them.
+    return {
+      'files': [
+        for (final f in st.files[hostId] ?? const <FakeConfigFile>[])
+          if (f.entries.any((e) => e.secret && !e.duplicate))
+            {
+              'fileId': f.fileId,
+              'file': f.file,
+              'keys': [
+                for (final e in f.entries)
+                  if (e.secret && !e.duplicate)
+                    {
+                      'key': e.key,
+                      if (e.ageDays != null) ...{'firstSeenAt': _at(e.ageDays!), 'lastChangedAt': _at(e.ageDays!), 'ageDays': e.ageDays},
+                      'changedBy': 'tiphys',
+                      if (e.maxAgeDays != null) 'maxAgeDays': e.maxAgeDays,
+                      if (e.mark != null) 'mark': e.mark,
+                      if (e.maxAgeDays != null && e.ageDays != null) 'due': e.ageDays! >= e.maxAgeDays!,
+                    },
+              ],
+            },
+      ],
+    };
   }
   if (!path.startsWith('/v1/config-files')) return null;
   final list = st.files[hostId] ?? [];

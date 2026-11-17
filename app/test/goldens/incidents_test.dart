@@ -155,17 +155,6 @@ void main() {
     debugDisableShadows = true;
   });
 
-  testWidgets('olay ekranı: yapay zekâ analizi 501 → "yakında"', (tester) async {
-    await _harness().pump(tester, route: _open);
-    _tall(tester);
-    await _load(tester);
-    await tester.tap(find.text('Yapay zekâyla analiz et'));
-    await _load(tester);
-    expect(find.text('Yapay zekâ analizi yakında'), findsOneWidget);
-    await _finish(tester);
-    debugDisableShadows = true;
-  });
-
   testWidgets('eylem önizleme alt sayfası ve onay EN', (tester) async {
     await _harness().pump(tester, route: _open, lang: 'en');
     _tall(tester);

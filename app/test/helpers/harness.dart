@@ -769,6 +769,7 @@ class FakeAgent extends AgentClient {
         'devices': [
           {'id': 'redmi', 'name': 'Redmi', 'createdAt': '2026-11-14T08:00:00Z'},
         ],
+        if (incident.analysisMode != null) 'incidents': {'links': [], 'analysis': {'mode': incident.analysisMode, 'url': null, 'language': 'tr', 'hasToken': false}},
       };
     }
     if (path.startsWith('/v1/config-files') || path == '/v1/secrets/meta') return fakeConfigRoute(hostId, method, path, body, config);

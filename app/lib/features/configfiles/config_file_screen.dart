@@ -35,21 +35,25 @@ bool looksSecretName(String key) => _secretName.hasMatch(key);
 
 /// Route target: [hostHint] is a host id, or the agent's host name when it comes from a notification.
 class ConfigFileRoute extends ConsumerWidget {
-  const ConfigFileRoute({super.key, required this.hostHint, required this.fileId});
+  const ConfigFileRoute({super.key, required this.hostHint, required this.fileId, this.focusKey});
   final String hostHint;
   final String fileId;
+
+  /// A key to scroll to and highlight (from the rotation list).
+  final String? focusKey;
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final p = ref.watch(profileProvider);
     final id = p.host(hostHint) != null ? hostHint : (incidentHostsFor(p, hostHint).hosts.firstOrNull?.id ?? hostHint);
-    return ConfigFileScreen(hostId: id, fileId: fileId);
+    return ConfigFileScreen(hostId: id, fileId: fileId, focusKey: focusKey);
   }
 }
 
 class ConfigFileScreen extends ConsumerStatefulWidget {
-  const ConfigFileScreen({super.key, required this.hostId, required this.fileId});
+  const ConfigFileScreen({super.key, required this.hostId, required this.fileId, this.focusKey});
   final String hostId;
   final String fileId;
+  final String? focusKey;
   @override
   ConsumerState<ConfigFileScreen> createState() => _ConfigFileScreenState();
 }
@@ -64,6 +68,10 @@ class _ConfigFileScreenState extends ConsumerState<ConfigFileScreen> {
   bool _busy = false;
   bool _selecting = false;
   final _selected = <String>{};
+
+  /// The row of `widget.focusKey`: highlighted, and scrolled into view once after the first load.
+  final _focusRow = GlobalKey();
+  bool _focusScrolled = false;
 
   ConfigFileRef get _key => (widget.hostId, widget.fileId);
 
@@ -374,6 +382,14 @@ class _ConfigFileScreenState extends ConsumerState<ConfigFileScreen> {
     final locale = Localizations.localeOf(context).toLanguageTag();
     final rows = _edits.rows(d.entries);
     final hasSecrets = d.entries.any((e) => e.secret && !e.duplicate);
+    final focus = widget.focusKey;
+    if (focus != null && !_focusScrolled && rows.any((r) => r.key == focus)) {
+      _focusScrolled = true;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        final c = _focusRow.currentContext;
+        if (c != null && c.mounted) Scrollable.ensureVisible(c, duration: Duration.zero, alignment: 0.3);
+      });
+    }
     return [
       TCard(
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
@@ -455,6 +471,8 @@ class _ConfigFileScreenState extends ConsumerState<ConfigFileScreen> {
             for (var i = 0; i < rows.length; i++) ...[
               if (i > 0) Divider(color: t.separator, height: 1),
               _EntryTile(
+                key: focus != null && rows[i].key == focus && rows[i].entry?.duplicate != true ? _focusRow : null,
+                highlighted: focus != null && rows[i].key == focus && rows[i].entry?.duplicate != true,
                 row: rows[i],
                 revealed: rows[i].entry != null ? _reveal.valueOf(rows[i].entry!.key) : null,
                 selecting: _selecting,
@@ -509,6 +527,8 @@ class _Pill extends StatelessWidget {
 /// One key: secret icon, name, masked (or revealed) value, age chip and the per-key actions.
 class _EntryTile extends StatelessWidget {
   const _EntryTile({
+    super.key,
+    this.highlighted = false,
     required this.row,
     required this.revealed,
     required this.selecting,
@@ -520,6 +540,9 @@ class _EntryTile extends StatelessWidget {
     this.onCopy,
   });
   final EditRow row;
+
+  /// The key the user came for (from the rotation list).
+  final bool highlighted;
   final String? revealed;
   final bool selecting;
   final bool selected;
@@ -557,7 +580,8 @@ class _EntryTile extends StatelessWidget {
     final age = e != null && secret && e.ageDays != null ? _Pill(e.due ? l.cfAgeDue(e.ageDays!) : l.cfAgeDays(e.ageDays!), e.due ? t.danger : t.textSecondary) : null;
     return InkWell(
       onTap: onTap,
-      child: Padding(
+      child: Container(
+        color: highlighted ? t.accent.withValues(alpha: 0.12) : null,
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
         child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
           if (selecting && secret && !dup)

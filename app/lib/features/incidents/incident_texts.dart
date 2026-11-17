@@ -99,6 +99,9 @@ String incidentErrorText(AppLocalizations l, String code, [Map<String, dynamic> 
       'agent.incident.actionUnavailable' => l.errIncActionUnavailable,
       'agent.incident.rateLimited' => l.errIncRateLimited,
       'agent.incident.analysisUnavailable' => l.incAnalyzeSoon,
+      'agent.incident.analysisOff' => l.errIncAnalysisOff,
+      'agent.incident.analysisRateLimited' => l.errIncAnalysisRateLimited((params['limit'] as num?)?.toInt() ?? 3, ((params['windowSeconds'] as num?)?.toInt() ?? 600) ~/ 60),
+      'agent.incident.bundleRateLimited' => l.errIncBundleRateLimited,
       'agent.incident.cleanupOptionUnavailable' => l.errIncCleanupOption(cleanupOptionName(l, '${params['option'] ?? ''}')),
       'agent.preview.invalid' => l.errPreviewInvalid,
       _ => '${l.commonError} ($code)',
@@ -135,4 +138,59 @@ String cleanupReasonText(AppLocalizations l, String? reason) => switch (reason) 
 String previewWarningText(AppLocalizations l, String code) => switch (code) {
       'dbMigrationsNotReverted' => l.incWarnDbMigrations,
       _ => code,
+    };
+
+/// Why a job failed (`agent.analysis.*` error code of the job).
+String analysisFailedText(AppLocalizations l, String? code) => switch (code) {
+      'agent.analysis.toolMissing' => l.incAiErrToolMissing,
+      'agent.analysis.toolFailed' => l.incAiErrToolFailed,
+      'agent.analysis.invalidOutput' => l.incAiErrInvalidOutput,
+      'agent.analysis.timeout' => l.incAiErrTimeout,
+      'agent.analysis.cancelled' => l.incAiErrCancelled,
+      'agent.analysis.interrupted' => l.incAiErrInterrupted,
+      _ => l.incAiErrOther,
+    };
+
+/// Why the analysis PC could not answer (`reason` of an unavailable analysis).
+String analysisReasonText(AppLocalizations l, String? reason) => switch (reason) {
+      'unreachable' => l.incAiReasonUnreachable,
+      'unauthorized' => l.incAiReasonUnauthorized,
+      'busy' => l.incAiReasonBusy,
+      'rejected' => l.incAiReasonRejected,
+      'badResponse' => l.incAiReasonBadResponse,
+      'timeout' => l.incAiReasonTimeout,
+      'lost' => l.incAiReasonLost,
+      _ => l.incAiErrOther,
+    };
+
+/// Label of an evidence chip from the evidence id (`log:docker#12` → "Log line 12"). Unknown forms show the id itself.
+String evidenceRefLabel(AppLocalizations l, String ref) {
+  final colon = ref.indexOf(':');
+  if (colon <= 0) return ref;
+  final kind = ref.substring(0, colon), rest = ref.substring(colon + 1);
+  return switch (kind) {
+    'log' when rest.contains('#') => l.incEvLog(rest.substring(rest.lastIndexOf('#') + 1)),
+    'signal' => l.incEvSignal(rest),
+    'inspect' => l.incEvContainer,
+    'deploy' => l.incEvDeploy(rest),
+    'event' => l.incEvEvent(rest),
+    'config' => l.incEvConfig(rest),
+    'git' when rest == 'status' => l.incEvGitStatus,
+    'git' => l.incEvGit(rest.length > 7 ? rest.substring(0, 7) : rest),
+    'metric' => l.incEvMetric(rest),
+    _ => ref,
+  };
+}
+
+/// Title of a metric series (`host.memPct`, `disk:/`, `container.cpu`, …).
+String metricTitle(AppLocalizations l, String name) => switch (name) {
+      'host.cpu' => l.incMetricHostCpu,
+      'host.load1' => l.incMetricHostLoad,
+      'host.memPct' => l.incMetricHostMem,
+      'host.swapPct' => l.incMetricHostSwap,
+      'container.cpu' => l.incMetricContainerCpu,
+      'container.memPct' => l.incMetricContainerMem,
+      'container.memMB' => l.incMetricContainerMemMb,
+      final n when n.startsWith('disk:') => l.incMetricDisk(n.substring(5)),
+      _ => name,
     };

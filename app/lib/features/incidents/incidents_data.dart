@@ -7,6 +7,7 @@ import '../../core/profile/model.dart';
 import '../../core/util/refresh.dart';
 import '../../state/providers.dart';
 import '../system/agent_providers.dart';
+import 'incident_analysis.dart';
 import 'incident_texts.dart';
 
 /// The screens poll anyway (autoRefresh); no hidden retry loop on top of it.
@@ -166,12 +167,14 @@ class HintItem {
 
 /// The full incident: summary + timeline, hints and the collected context.
 class IncidentDetail {
-  IncidentDetail(this.host, Map<String, dynamic> j)
+  IncidentDetail(this.host, Map<String, dynamic> j, {this.responseSimilar})
       : summary = IncidentSummary(host, j),
+        analysis = j['analysis'] is Map ? IncidentAnalysis(_map(j['analysis'])) : null,
         resolvedBy = j['resolvedBy'] as String?,
         acknowledgedAt = _timeOrNull(j['acknowledgedAt']),
         timeline = [for (final e in _maps(j['timeline'])) TimelineItem(e)],
         hints = [for (final e in _maps(j['hints'])) HintItem(e)],
+        signalEntries = (j['signals'] as List?)?.length ?? 0,
         context = j['context'] is Map ? _map(j['context']) : null;
   final Host host;
   final IncidentSummary summary;
@@ -180,6 +183,15 @@ class IncidentDetail {
   final List<TimelineItem> timeline;
   final List<HintItem> hints;
 
+  /// Number of signals the agent kept on the incident (the bundle's `signal:<n>` ids count into it).
+  final int signalEntries;
+
+  /// The AI analysis (I-3), null when none was ever requested.
+  final IncidentAnalysis? analysis;
+
+  /// `similar` of the GET response (recomputed on every read), null when the response had none.
+  final List<Map<String, dynamic>>? responseSimilar;
+
   /// Collected context (logs, inspect, git, metrics, events, similar, errors); null while it is being collected.
   final Map<String, dynamic>? context;
 
@@ -187,8 +199,26 @@ class IncidentDetail {
   Map<String, dynamic>? get inspect => context?['inspect'] is Map ? _map(context!['inspect']) : null;
   Map<String, dynamic>? get git => context?['git'] is Map ? _map(context!['git']) : null;
   List<Map<String, dynamic>> get events => _maps(context?['events']);
-  List<Map<String, dynamic>> get similar => _maps(context?['similar']);
+
+  /// Similar incidents: the response's own `similar` (recomputed on every read), else the ones collected with the context.
+  List<Map<String, dynamic>> get similar => responseSimilar ?? _maps(context?['similar']);
+
+  /// Metrics ring excerpt around the opening (host samples and the container's), null when the agent has none.
+  Map<String, dynamic>? get metrics => context?['metrics'] is Map ? _map(context!['metrics']) : null;
   Map<String, dynamic> get errors => _map(context?['errors']);
+
+  /// What an evidence id of the analysis can point at, from the collected context.
+  EvidenceIndex get evidenceIndex => EvidenceIndex(
+        logLines: (logs?['lines'] as List?)?.length ?? 0,
+        deploys: deploys.length,
+        events: events.length,
+        configChanges: configChanges.length,
+        signals: signalEntries,
+        hasInspect: inspect != null,
+        gitHashes: [for (final c in _maps(git?['log'])) '${c['hash']}'],
+        hasGitStatus: ((git?['status'] as List?)?.isNotEmpty ?? false),
+        metricNames: [for (final m in metricSeries(metrics)) m.name],
+      );
 
   /// Deploys of the incident's compose project (last 7 days), newest first.
   List<DeployRecord> get deploys => [for (final e in _maps(context?['deploys'])) DeployRecord(e)];
@@ -289,7 +319,7 @@ final incidentDetailProvider = FutureProvider.autoDispose.family<IncidentDetail,
   for (final h in found.hosts) {
     try {
       final j = await withAgent(ref, h.id, (c) => c.get('/v1/incidents/$id'));
-      return IncidentDetail(h, _map(j['incident']));
+      return IncidentDetail(h, _map(j['incident']), responseSimilar: j['similar'] is List ? _maps(j['similar']) : null);
     } on AgentError catch (e) {
       // An exact host's error is the answer; while searching, keep the most informative one (not found beats the rest).
       if (found.exact) rethrow;
@@ -298,6 +328,18 @@ final incidentDetailProvider = FutureProvider.autoDispose.family<IncidentDetail,
     }
   }
   throw error ?? const AgentError('agent.incident.notFound');
+});
+
+/// `incidents.analysis.mode` of a host from GET /v1/config: local | remote | off; null when it can't be read (then the
+/// analyze button is shown and the agent's own 409 answers).
+final incidentAnalysisModeProvider = FutureProvider.autoDispose.family<String?, String>(retry: _noRetry, (ref, hostId) async {
+  try {
+    final j = await withAgent(ref, hostId, (c) => c.get('/v1/config')).timeout(const Duration(seconds: 10));
+    final mode = _map(_map(_map(j)['incidents'])['analysis'])['mode'];
+    return mode is String ? mode : null;
+  } catch (_) {
+    return null;
+  }
 });
 
 /// An action the agent offers for an incident.

@@ -596,3 +596,92 @@ List<DiffLine> changeDiff(ConfigChange c) => switch (c.kind) {
   final b = c.before, a = c.after;
   return c.secret && b != null && a != null ? (b.length, a.length) : null;
 }
+
+// ---------------------------------------------------------------------------------------------------------------------
+// Rotation list ("Yenilenmesi gerekenler")
+
+/// One secret key of GET /v1/secrets/meta with its age and rotation setting.
+class RotationItem {
+  RotationItem(this.host, this.fileId, this.file, Map<String, dynamic> j)
+      : key = '${j['key']}',
+        maxAgeDays = _int(j['maxAgeDays']),
+        ageDays = _int(j['ageDays']),
+        due = j['due'] == true;
+  final Host host;
+  final String fileId;
+  final String file;
+  final String key;
+
+  /// null = no rotation reminder set for this key.
+  final int? maxAgeDays;
+
+  /// Days since the last change (else since first seen); null when the agent doesn't know yet.
+  final int? ageDays;
+
+  /// The agent's own verdict: older than `maxAgeDays`.
+  final bool due;
+
+  bool get hasPolicy => maxAgeDays != null;
+
+  /// Days past the limit (positive = overdue), null without a limit or an age.
+  int? get overdueDays => maxAgeDays == null || ageDays == null ? null : ageDays! - maxAgeDays!;
+
+  bool get overdue => hasPolicy && (due || (overdueDays ?? 0) > 0);
+}
+
+/// Overdue first (most overdue on top), then the ones nearest to their limit; keys with a limit before keys without one
+/// (those by age, oldest first). Ties by host name, file and key so the order is stable.
+int compareRotation(RotationItem a, RotationItem b) {
+  if (a.hasPolicy != b.hasPolicy) return a.hasPolicy ? -1 : 1;
+  if (a.hasPolicy) {
+    if (a.overdue != b.overdue) return a.overdue ? -1 : 1;
+    // Overdue: the biggest overshoot first; not yet: the fewest days left first. Both are "larger overdueDays first".
+    final c = (b.overdueDays ?? -0x7fffffff).compareTo(a.overdueDays ?? -0x7fffffff);
+    if (c != 0) return c;
+  } else {
+    final c = (b.ageDays ?? -1).compareTo(a.ageDays ?? -1);
+    if (c != 0) return c;
+  }
+  final h = a.host.name.compareTo(b.host.name);
+  if (h != 0) return h;
+  final f = a.file.compareTo(b.file);
+  return f != 0 ? f : a.key.compareTo(b.key);
+}
+
+class RotationFeed {
+  const RotationFeed({required this.items, required this.errors});
+
+  /// Sorted with [compareRotation].
+  final List<RotationItem> items;
+
+  /// Hosts whose meta couldn't be read (host id → error); the others are still listed.
+  final Map<String, Object> errors;
+
+  List<RotationItem> get withPolicy => [for (final i in items) if (i.hasPolicy) i];
+  List<RotationItem> get withoutPolicy => [for (final i in items) if (!i.hasPolicy) i];
+  int get dueCount => items.where((i) => i.hasPolicy && i.overdue).length;
+}
+
+/// Parses one host's GET /v1/secrets/meta response.
+List<RotationItem> parseRotation(Host host, Object? response) => [
+      for (final f in _maps(_map(response)['files']))
+        for (final k in _maps(f['keys'])) RotationItem(host, '${f['fileId']}', '${f['file']}', k),
+    ];
+
+/// GET /v1/secrets/meta of every host with the `configfiles` feature, in parallel, sorted. One host's error doesn't break
+/// the others.
+final rotationProvider = FutureProvider.autoDispose<RotationFeed>(retry: _noRetry, (ref) async {
+  final hosts = await ref.watch(configHostsProvider.future);
+  final results = await Future.wait(hosts.map((h) async {
+    try {
+      final j = await withAgent(ref, h.id, (c) => c.get('/v1/secrets/meta')).timeout(const Duration(seconds: 20));
+      return (h, parseRotation(h, j), null as Object?);
+    } catch (e) {
+      return (h, const <RotationItem>[], e as Object?);
+    }
+  }));
+  return RotationFeed(
+    items: [for (final r in results) ...r.$2]..sort(compareRotation),
+    errors: {for (final r in results) if (r.$3 != null) r.$1.id: r.$3!},
+  );
+});

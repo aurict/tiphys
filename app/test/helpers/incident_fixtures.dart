@@ -122,9 +122,68 @@ Map<String, dynamic> _context() => {
         {'at': _at(300), 'key': 'config.saved', 'file': 'shop/.env', 'keys': ['DB_PASSWORD', 'WORKERS']},
         {'at': _at(1200), 'key': 'config.restored', 'file': 'shop/api.env', 'keys': ['STRIPE_KEY']},
       ],
+      'metrics': _metrics(),
       'similar': [
-        {'id': 'inc-eeeeeeeeeeee', 'openedAt': _at(3000), 'resolvedAt': _at(2990), 'resolutionNote': 'Raised memory limit', 'workedAction': 'container.restart'},
+        {'id': 'inc-eeeeeeeeeeee', 'kind': 'docker.died', 'status': 'resolved', 'openedAt': _at(3000), 'resolvedAt': _at(2990), 'resolutionNote': 'Raised memory limit', 'workedAction': 'container.restart'},
+        {'id': 'inc-ffffffffffff', 'kind': 'docker.oom', 'status': 'resolved', 'openedAt': _at(9000), 'resolvedAt': _at(8990), 'workedAction': null},
       ],
+    };
+
+/// Metrics ring excerpt (epoch-millisecond samples every 3 minutes, ±30 min around the opening): memory climbs to the
+/// limit, CPU is spiky, the disk is flat.
+Map<String, dynamic> _metrics() {
+  final start = _clock.subtract(const Duration(minutes: 45)).millisecondsSinceEpoch;
+  return {
+    'host': [
+      for (var i = 0; i < 16; i++)
+        {
+          't': start + i * 180000,
+          'cpu': 20.0 + (i % 4) * 9,
+          'load1': 0.8 + i * 0.1,
+          'memPct': 40.0 + i * 3.5,
+          'swapPct': i < 8 ? 0.0 : (i - 7) * 4.0,
+          'disks': [
+            {'mount': '/', 'pct': 71.0},
+          ],
+        },
+    ],
+    'container': {
+      'name': 'web',
+      'samples': [
+        for (var i = 0; i < 8; i++) {'t': start + i * 360000, 'cpu': 5.0 + i * 8, 'memPct': 30.0 + i * 9, 'memBytes': (200 + i * 40) * 1048576},
+      ],
+    },
+  };
+}
+
+/// A finished analysis result: three hypotheses (the last one has no evidence → unsupported), two suggested actions (one
+/// of the agent's candidates, one that is not on offer any more), questions. The evidence ids point into [_context].
+Map<String, dynamic> sampleAnalysisResult() => {
+      'summary': 'The web container ran out of memory right after the 1.4.2 deploy and keeps restarting.',
+      'hypotheses': [
+        {'cause': 'The new image 1.4.2 raised memory use past the container limit (exit code 137).', 'confidence': 0.86, 'evidenceRefs': ['log:docker#4', 'inspect:container', 'deploy:1', 'metric:host.memPct'], 'unsupported': false},
+        {'cause': 'The worker count was raised to 8 in a recent commit, so more buffers are allocated.', 'confidence': 0.52, 'evidenceRefs': ['git:9f8e7d6c5b4a', 'config:1', 'event:1'], 'unsupported': false},
+        {'cause': 'A noisy neighbour on the host is starving the container.', 'confidence': 0.18, 'evidenceRefs': <String>[], 'unsupported': true},
+      ],
+      'suggestedActions': [
+        {'candidateId': 'c-aaaaaaaaaaaa', 'kind': 'container.restart', 'why': 'Brings the service back while the limit is reviewed.'},
+        {'candidateId': 'c-999999999999', 'kind': 'compose.rollback', 'why': 'Returns to the previous image.'},
+      ],
+      'questions': ['Was the memory limit changed in the 1.4.2 release notes?', 'Does the worker count of 8 fit the host?'],
+      'dropped': {'actions': 0, 'refs': 0},
+    };
+
+/// `incident.analysis` in the given state. `done` carries [sampleAnalysisResult].
+Map<String, dynamic> sampleAnalysis(String status, {String mode = 'remote', String? reason, String? errorCode, int requestedAgo = 3}) => {
+      'status': status,
+      'mode': mode,
+      'by': 'device:phone',
+      'requestedAt': _at(requestedAgo),
+      if (status == 'done' || status == 'failed' || status == 'unavailable') 'finishedAt': _at(requestedAgo - 1),
+      'jobId': 'aj-0123456789abcdef',
+      if (status == 'done') 'result': sampleAnalysisResult(),
+      if (errorCode != null) 'error': {'code': errorCode, 'params': <String, dynamic>{}},
+      if (reason != null) 'reason': reason,
     };
 
 /// Incidents per host id (argo, atlas); tests may mutate them.
@@ -216,8 +275,19 @@ dynamic fakeIncidentRoute(String hostId, String method, String path, Object? bod
   final inc = list.where((i) => i['id'] == m.group(1)).firstOrNull;
   if (inc == null) throw const AgentError('agent.incident.notFound', {}, 404);
   final op = m.group(2);
-  if (op == null) return {'incident': inc};
   List tl() => inc['timeline'] as List;
+  if (op == null) {
+    // A queued/running analysis moves on with every read of the incident (the app polls).
+    final a = inc['analysis'];
+    if (a is Map && (a['status'] == 'queued' || a['status'] == 'running') && st.analysisSteps.isNotEmpty) {
+      final next = st.analysisSteps.removeAt(0);
+      inc['analysis'] = sampleAnalysis(next, reason: next == 'unavailable' ? 'unreachable' : null, errorCode: next == 'failed' ? 'agent.analysis.invalidOutput' : (next == 'unavailable' ? 'agent.incident.analysis.unreachable' : null));
+      if (next == 'done' || next == 'failed' || next == 'unavailable') {
+        tl().add({'at': _clock.toUtc().toIso8601String(), 'type': 'analysisResult', 'data': {'status': next, if (next == 'done') ...{'hypotheses': 3, 'actions': 2}}});
+      }
+    }
+    return {'incident': inc, 'similar': (inc['context'] as Map?)?['similar'] ?? <Map<String, dynamic>>[]};
+  }
   switch ((method, op)) {
     case ('POST', 'ack'):
       inc['status'] = 'acknowledged';
@@ -239,7 +309,15 @@ dynamic fakeIncidentRoute(String hostId, String method, String path, Object? bod
       tl().add({'at': _clock.toUtc().toIso8601String(), 'type': 'note', 'by': 'device:phone', 'text': (body as Map)['text']});
       return {'incident': inc};
     case ('POST', 'analyze'):
-      throw const AgentError('agent.incident.analysisUnavailable', {}, 501);
+      if (st.analyzeError != null) throw st.analyzeError!;
+      final cur = inc['analysis'];
+      if (cur is Map && (cur['status'] == 'queued' || cur['status'] == 'running')) return {'analysis': cur};
+      inc['analysis'] = sampleAnalysis('queued', mode: 'local', requestedAgo: 0);
+      tl().add({'at': _clock.toUtc().toIso8601String(), 'type': 'analysis', 'by': 'device:phone', 'data': {'status': 'queued', 'mode': 'local'}});
+      return {'analysis': inc['analysis']};
+    case ('GET', 'bundle'):
+      if (st.bundleError != null) throw st.bundleError!;
+      return {'text': st.bundleText, 'bytes': st.bundleText.length, 'evidenceCount': 12, 'truncated': st.bundleTruncated};
     case ('GET', 'actions'):
       return {
         'actions': inc['id'] == 'inc-aaaaaaaaaaaa'
@@ -325,4 +403,18 @@ class FakeIncidentState {
   Duration previewTtl = const Duration(seconds: 118);
   AgentError? executeError;
   Map<String, dynamic> executeResult = {'ok': true, 'code': 0};
+
+  /// `incidents.analysis.mode` GET /v1/config reports; null leaves the section out (an old agent).
+  String? analysisMode;
+
+  /// Thrown by POST .../analyze (analysisOff, analysisRateLimited, …).
+  AgentError? analyzeError;
+
+  /// The states a queued/running analysis goes through, one per read of the incident (the last one stays).
+  final analysisSteps = <String>[];
+
+  /// GET .../bundle?redacted=1: the redacted text (or an error).
+  String bundleText = '[incident bundle]\ncontainer web exited with code 137\npassword=[GİZLİ]';
+  bool bundleTruncated = false;
+  AgentError? bundleError;
 }
