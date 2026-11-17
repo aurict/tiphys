@@ -24,7 +24,7 @@ export function auditRoutes(app: FastifyInstance, ctx: Ctx) {
     if (req.method === "GET" || req.method === "HEAD" || req.method === "OPTIONS") return;
     const entry: AuditEntry = {
       at: new Date().toISOString(),
-      device: req.device?.id ?? null,
+      device: req.device?.id ?? (req.service ? `service:${req.service.id}` : null),
       method: req.method,
       path: req.url.split("?")[0]!,
       status: reply.statusCode,
