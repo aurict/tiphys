@@ -94,3 +94,24 @@ jobs:
           name: golden-failures
           path: app/test/goldens/failures/
           if-no-files-found: ignore
+
+  apk:
+    name: APK (debug build)
+    runs-on: ubuntu-24.04
+    defaults:
+      run:
+        working-directory: app
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: 3.47.9
+          channel: stable
+          cache: true
+      - run: flutter pub get
+      - name: Build (catches Gradle/plugin breakage that unit tests can't)
+        run: flutter build apk --debug --target-platform android-arm64

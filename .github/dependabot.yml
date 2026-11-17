@@ -12,6 +12,10 @@ updates:
     directory: /app
     schedule: { interval: weekly }
     open-pull-requests-limit: 5
+    ignore:
+      # 1.9+ relies on built-in Kotlin (android.builtInKotlin=true); migrate the Android build first.
+      - dependency-name: receive_sharing_intent
+        versions: [">=1.9.0"]
   - package-ecosystem: github-actions
     directory: /
     schedule: { interval: monthly }
