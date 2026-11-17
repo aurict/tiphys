@@ -257,7 +257,7 @@ Every directory directly under a root that holds `compose.yaml`, `compose.yml`, 
 
 Setting up a server (e.g. atlas) against the PC:
 
-1. On the PC: turn on the `analysis` feature (`PATCH /v1/config {"features": {"analysis": true}}` or `agent.json`, then restart) and create a token: `tiphys-agent service-token create --name charon --scope analysis` (or `POST /v1/service-tokens {"name": "charon", "scopes": ["analysis"]}` from the app). The token is printed once.
+1. On the PC: turn on the `analysis` feature (`PATCH /v1/config {"features": {"analysis": true}}` or `agent.json`, then restart) and create a token: `tiphys-agent service-token create --name atlas --scope analysis` (or `POST /v1/service-tokens {"name": "atlas", "scopes": ["analysis"]}` from the app). The token is printed once.
 2. On the server: `PATCH /v1/config {"incidents": {"analysis": {"mode": "remote", "url": "https://pc.my-tailnet.ts.net:7443", "token": "tps_…"}}}`. No restart needed.
 
 Example: `"incidents": {"links": [], "analysis": {"mode": "remote", "url": "https://pc.my-tailnet.ts.net:7443", "token": "tps_…", "language": "tr"}}`. When the PC is off or asleep the analysis is marked `unavailable` and the rule hints stay; the PC is never woken for it. The bundle is redacted on the server before it is sent.

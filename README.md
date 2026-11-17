@@ -77,8 +77,8 @@ More detail: [docs/architecture.md](docs/architecture.md).
 2. Build the APK and install it on your phone.
 3. Run `tools/pair.sh` and scan the QR code in *Settings › Hosts › (host) › Pair with QR code*.
 
-Full instructions, including servers, systemd, signing, push and the optional pieces:
-**[docs/getting-started.md](docs/getting-started.md)**.
+Short version: **[docs/getting-started.md](docs/getting-started.md)**. Everything else (servers, systemd, signing,
+every feature flag and setting, push, upgrades, backups, security checklist): **[docs/setup-guide.md](docs/setup-guide.md)**.
 
 ## Security at a glance
 
@@ -104,7 +104,8 @@ vulnerability, see [SECURITY.md](SECURITY.md).
 
 | Document | Contents |
 |---|---|
-| [Getting started](docs/getting-started.md) | Tailscale, agent install (PC and servers), pairing, building the APK, first run, optional pieces |
+| [Getting started](docs/getting-started.md) | Quick start: Tailscale, PC agent, APK, pairing |
+| [Setup guide](docs/setup-guide.md) | Full installation and configuration: PC and servers, upgrades, pairing, signing, every feature flag and setting, file locations, backups, security checklist |
 | [Architecture](docs/architecture.md) | Components, repo layout, request/auth flow, profile, notifications, live screen, Claude sessions, storage |
 | [Security](docs/security.md) | Threat model, every protection mechanism and its limits |
 | [Agent configuration](docs/agent/configuration.md) | `agent.json` reference and feature flags |
