@@ -2835,5 +2835,505 @@
   "claudePcUiTree": "Read the controls",
   "claudePcUiPress": "Pressed",
   "claudePcUiSetText": "Typed into a field",
-  "claudePcUiSetValue": "Set a value"
+  "claudePcUiSetValue": "Set a value",
+  "errScopeDenied": "This token isn't allowed to do that (scope).",
+  "errServiceTokenNotFound": "Service token not found.",
+  "errResearchBusy": "The research queue is full; try again later.",
+  "errResearchNotFound": "Research job not found.",
+  "errResearchToolMissing": "{tool} is not installed on the PC.",
+  "@errResearchToolMissing": {
+    "placeholders": {
+      "tool": {
+        "type": "String"
+      }
+    }
+  },
+  "errResearchMcpMissing": "The {server} MCP server is not set up on the PC.",
+  "@errResearchMcpMissing": {
+    "placeholders": {
+      "server": {
+        "type": "String"
+      }
+    }
+  },
+  "errResearchToolFailed": "{tool} failed.",
+  "@errResearchToolFailed": {
+    "placeholders": {
+      "tool": {
+        "type": "String"
+      }
+    }
+  },
+  "errResearchInvalidOutput": "{tool} returned unusable output.",
+  "@errResearchInvalidOutput": {
+    "placeholders": {
+      "tool": {
+        "type": "String"
+      }
+    }
+  },
+  "errResearchTimeout": "The research took too long (20 min limit).",
+  "errResearchCancelled": "Cancelled.",
+  "errInterrupted": "Interrupted because the agent restarted.",
+  "errTgNotConfigured": "No bot is set up yet.",
+  "errTgInvalidToken": "The bot token is invalid or Telegram rejected it.",
+  "errTgBlocked": "This person blocked the bot.",
+  "errTgUnreachable": "Telegram couldn't be reached.",
+  "errTgBadRequest": "Telegram rejected the request: {description}",
+  "@errTgBadRequest": {
+    "placeholders": {
+      "description": {
+        "type": "String"
+      }
+    }
+  },
+  "errTgRateLimited": "Too many requests; wait a moment.",
+  "errTgNoRecipients": "Nobody active is subscribed to this newsletter.",
+  "errTgIssueNotAwaiting": "This issue is no longer waiting for approval.",
+  "errTgApprovalExpired": "The approval time ran out; nothing was sent.",
+  "errTgIssueNotRendered": "This issue has no text to send.",
+  "errTgTooManyFeeds": "At most 20 newsletters.",
+  "errTgTooManyInvites": "At most 20 pending invites.",
+  "errTgResearchUnreachable": "The research PC couldn't be reached.",
+  "errTgResearchTimeout": "The research didn't finish before the deadline.",
+  "errTgResearchFailed": "The research on the PC failed.",
+  "errTgResearchUnauthorized": "The PC rejected the research token; connect it again.",
+  "errTgResearchRejected": "The PC rejected the research request.",
+  "errTgNoItems": "No news item passed validation.",
+  "errTgDeliveryFailed": "Couldn't be delivered to anyone.",
+  "notifTgApprovalTitle": "Newsletter waiting for approval: {feed}",
+  "@notifTgApprovalTitle": {
+    "placeholders": {
+      "feed": {
+        "type": "String"
+      }
+    }
+  },
+  "notifTgApprovalBody": "{items, plural, =1{1 item} other{{items} items}} · {recipients, plural, =1{1 person} other{{recipients} people}}",
+  "@notifTgApprovalBody": {
+    "placeholders": {
+      "items": {
+        "type": "int"
+      },
+      "recipients": {
+        "type": "int"
+      }
+    }
+  },
+  "notifTgSentTitle": "Newsletter sent: {feed}",
+  "@notifTgSentTitle": {
+    "placeholders": {
+      "feed": {
+        "type": "String"
+      }
+    }
+  },
+  "notifTgSentFailed": "{count} failed",
+  "@notifTgSentFailed": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "notifTgFailedTitle": "Newsletter not sent: {feed}",
+  "@notifTgFailedTitle": {
+    "placeholders": {
+      "feed": {
+        "type": "String"
+      }
+    }
+  },
+  "notifTgExpiredTitle": "Approval expired: {feed}",
+  "@notifTgExpiredTitle": {
+    "placeholders": {
+      "feed": {
+        "type": "String"
+      }
+    }
+  },
+  "notifTgPcUnreachableTitle": "Research PC unreachable",
+  "notifTgPcUnreachableBody": "{feed} was not sent this time.",
+  "@notifTgPcUnreachableBody": {
+    "placeholders": {
+      "feed": {
+        "type": "String"
+      }
+    }
+  },
+  "notifTgDecisionFailedTitle": "Could not send your decision",
+  "notifTgDecisionFailedBody": "Open Tiphys to approve or cancel the newsletter.",
+  "notifyTelegramAlerts": "Approval requests and failures",
+  "notifyTelegramAlertsHint": "Newsletter waiting for approval, failed, research PC unreachable",
+  "notifyTelegramSent": "When a newsletter is sent",
+  "researchTitle": "Research",
+  "researchRowHint": "For Telegram newsletters",
+  "researchConnectSection": "Research (for Telegram newsletters)",
+  "researchConnect": "Connect to a Telegram agent",
+  "researchConnectHint": "Creates a token on this PC that can only start and read research jobs, and stores it in the Telegram agent's settings. The token is never shown on the phone.",
+  "researchConnectConfirm": "Let {tg} start research jobs on {pc}?",
+  "@researchConnectConfirm": {
+    "placeholders": {
+      "tg": {
+        "type": "String"
+      },
+      "pc": {
+        "type": "String"
+      }
+    }
+  },
+  "researchConnected": "{host} connected",
+  "@researchConnected": {
+    "placeholders": {
+      "host": {
+        "type": "String"
+      }
+    }
+  },
+  "researchConnectFailed": "Couldn't connect: {error}",
+  "@researchConnectFailed": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "researchReachUnknown": "couldn't check the link",
+  "researchOtherPc": "{host} uses another research PC: {url}",
+  "@researchOtherPc": {
+    "placeholders": {
+      "host": {
+        "type": "String"
+      },
+      "url": {
+        "type": "String"
+      }
+    }
+  },
+  "researchTest": "Test the connection",
+  "researchPickHost": "Telegram agent",
+  "researchNoTelegramHost": "No agent with the Telegram feature found.",
+  "researchTokens": "Service tokens",
+  "researchTokensHint": "Other agents use these to start research jobs here. Revoking one cuts that agent off.",
+  "researchTokensEmpty": "No service tokens",
+  "researchTokenCreated": "created {date}",
+  "@researchTokenCreated": {
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "researchTokenUsed": "last used {date}",
+  "@researchTokenUsed": {
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "researchTokenRevokeConfirm": "Revoke the token of {name}? Its newsletters can't research until it is connected again.",
+  "@researchTokenRevokeConfirm": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "researchJobs": "Recent jobs",
+  "researchJobsHint": "Jobs and their results are kept for 24 hours.",
+  "researchJobsEmpty": "No research jobs in the last 24 hours",
+  "researchQueued": "Queued",
+  "researchRunning": "Running",
+  "researchDone": "Done",
+  "researchFailed": "Failed",
+  "researchCancel": "Cancel job",
+  "tgRowHint": "Newsletter bot, people, schedules",
+  "tgNoHost": "No agent has the Telegram feature turned on.",
+  "tgBotSetupTitle": "Set up the bot",
+  "tgBotSetupSteps": "Create a bot with @BotFather in Telegram (/newbot) and paste the token it gives you. The agent checks it and keeps it; it is never shown again.",
+  "tgBotToken": "Bot token",
+  "tgBotTokenHint": "Only sent to the agent; not stored on the phone.",
+  "tgBotSave": "Save and check",
+  "tgBotSaved": "{bot} connected",
+  "@tgBotSaved": {
+    "placeholders": {
+      "bot": {
+        "type": "String"
+      }
+    }
+  },
+  "tgPrivacyNote": "Telegram bot messages are not end-to-end encrypted. Put only public information into newsletters.",
+  "tgBotReady": "Bot ready",
+  "tgBotPolling": "waiting for invites",
+  "tgBotChange": "Replace bot token",
+  "tgBotRemove": "Remove bot",
+  "tgBotRemoveConfirm": "Remove the bot token from the agent? Nothing is sent until a bot is set up again; people and newsletters are kept.",
+  "tgResearchTitle": "Research PC",
+  "tgResearchPc": "Research PC",
+  "tgResearchHint": "Research runs on the PC. Connect it from the PC's page › Research.",
+  "tgResearchNotSet": "No research PC connected",
+  "tgResearchReachable": "reachable",
+  "tgResearchUnreachable": "unreachable",
+  "tgResearchWake": "Wake-on-LAN",
+  "tgRecipients": "People",
+  "tgRecipientsEmpty": "Nobody yet. Invite people with a one-time link.",
+  "tgNoSubscriptions": "No newsletters",
+  "tgStatusActive": "Active",
+  "tgStatusPaused": "Paused",
+  "tgStatusStopped": "Stopped (/stop)",
+  "tgStatusUnreachable": "Unreachable",
+  "tgInviteAdd": "Add person",
+  "tgInviteLabel": "Who is it for? (optional)",
+  "tgInviteLabelHint": "e.g. Mum",
+  "tgInviteFeeds": "Newsletters",
+  "tgInviteHint": "The link works once and for 24 hours. When the person opens it and taps Start, they are added.",
+  "tgInviteCreate": "Create invite link",
+  "tgInviteShareHint": "One use, valid until {date}. Send it only to the person you are inviting.",
+  "@tgInviteShareHint": {
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "tgInviteShareText": "Join my Tiphys newsletter on Telegram: {link}",
+  "@tgInviteShareText": {
+    "placeholders": {
+      "link": {
+        "type": "String"
+      }
+    }
+  },
+  "tgInviteCopied": "Link copied",
+  "tgInvitesPending": "Pending invites",
+  "tgInvitesPendingHint": "While an invite is pending the agent checks Telegram for it.",
+  "tgInviteNoLabel": "Invite",
+  "tgInviteExpires": "valid until {date}",
+  "@tgInviteExpires": {
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "tgInviteRevoke": "Revoke invite",
+  "tgInviteRevokeConfirm": "Revoke this invite? The link stops working.",
+  "tgGone": "Not found (it may have been deleted).",
+  "tgAddedAt": "added {date}",
+  "@tgAddedAt": {
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "tgReceive": "Receive newsletters",
+  "tgStoppedHint": "This person sent /stop. Only a new invite can bring them back.",
+  "tgUnreachableHint": "Telegram refused delivery (bot blocked?). Turn it on to try again.",
+  "tgSubscriptions": "Subscriptions",
+  "tgRecentDeliveries": "Recent deliveries",
+  "tgNoDeliveries": "Nothing sent yet",
+  "tgDeliverySent": "Delivered",
+  "tgDeliveryFailed": "Failed",
+  "tgFeed": "Newsletter",
+  "tgTest": "test",
+  "tgSendTestMessage": "Send a test message",
+  "tgTestSent": "Test message sent",
+  "tgRecipientDelete": "Remove person",
+  "tgRecipientDeleteConfirm": "Remove {name}? They get no more newsletters; inviting them again needs a new link.",
+  "@tgRecipientDeleteConfirm": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "tgFeeds": "Newsletters",
+  "tgFeedsEmpty": "No newsletters yet. Start from a template.",
+  "tgFeedsHint": "Times are in the agent's time zone.",
+  "tgLastIssue": "last: {status}",
+  "@tgLastIssue": {
+    "placeholders": {
+      "status": {
+        "type": "String"
+      }
+    }
+  },
+  "tgRecipientCount": "{count, plural, =0{no recipients} =1{1 recipient} other{{count} recipients}}",
+  "@tgRecipientCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "tgFeedAdd": "New newsletter",
+  "tgFeedEdit": "Edit newsletter",
+  "tgFeedBlank": "Blank",
+  "tgFeedItemsRange": "{min}–{max} items",
+  "@tgFeedItemsRange": {
+    "placeholders": {
+      "min": {
+        "type": "int"
+      },
+      "max": {
+        "type": "int"
+      }
+    }
+  },
+  "tgWindowHours": "last {hours} h",
+  "@tgWindowHours": {
+    "placeholders": {
+      "hours": {
+        "type": "int"
+      }
+    }
+  },
+  "tgApprovalAuto": "Send automatically",
+  "tgApprovalAsk": "Always ask me",
+  "tgApprovalFirstN": "Ask me for the first {n}, then automatic",
+  "@tgApprovalFirstN": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "tgApprovalFirstNShort": "Ask for the first issues",
+  "tgPreviewAction": "Preview",
+  "tgRunConfirmSend": "Research now and send to {count, plural, =1{1 person} other{{count} people}} without asking?",
+  "@tgRunConfirmSend": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "tgRunConfirmApproval": "Research now? You'll be asked before it goes to {count, plural, =1{1 person} other{{count} people}}.",
+  "@tgRunConfirmApproval": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "tgFeedRunning": "This newsletter is running right now.",
+  "tgArchive": "Archive",
+  "tgArchiveEmpty": "No issues yet",
+  "tgItemCount": "{count, plural, =1{1 item} other{{count} items}}",
+  "@tgItemCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "tgSentTo": "sent to {count}",
+  "@tgSentTo": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "tgFeedBasics": "Newsletter",
+  "tgFeedTopic": "Topic",
+  "tgFeedTopicHint": "What should be researched? Be specific.",
+  "tgFeedInstructions": "Extra instructions (optional)",
+  "tgFeedInstructionsHint": "e.g. prefer primary sources, skip rumours",
+  "tgFeedScheduleHint": "If the PC is off, the agent wakes it (if set up) and retries until the deadline.",
+  "tgFeedRules": "Research rules",
+  "tgFeedWindow": "Time window (hours)",
+  "tgFeedWindowHint": "Only news from the last N hours (24 = a day, 168 = a week).",
+  "tgFeedMinItems": "Min items",
+  "tgFeedMaxItems": "Max items",
+  "tgFeedSourcesPerItem": "Sources per item (max)",
+  "tgFeedAllowDomains": "Only these sites (optional)",
+  "tgFeedAllowDomainsHint": "Comma-separated domains. Empty: any site.",
+  "tgFeedBlockDomains": "Never these sites",
+  "tgFeedSkip": "Skip if there is nothing new",
+  "tgFeedSkipHint": "Stories sent in the last 14 days are not repeated.",
+  "tgFeedApproval": "Approval",
+  "tgFeedApprovalN": "Ask for the first … issues",
+  "tgFeedDeadline": "Deadline (minutes after the time)",
+  "tgFeedDeadlineHint": "Not sent if research isn't done by then. Approval waits up to 2 more hours.",
+  "tgFeedRecipients": "Recipients",
+  "tgFeedNeedsNameTopic": "Enter a name and a topic.",
+  "tgFeedBadItems": "Items: 1–20, min not above max.",
+  "tgFeedBadWindow": "Time window: 1–720 hours.",
+  "tgFeedBadDeadline": "Deadline: 5–360 minutes.",
+  "tgFeedBadApprovalN": "Number of issues: 1–100.",
+  "tgFeedDeleteConfirm": "Delete {name} and its archive?",
+  "@tgFeedDeleteConfirm": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "tgIssue": "Issue",
+  "tgIssueResearching": "Researching",
+  "tgIssueResearchingHint": "Researching on the PC… This takes a few minutes; the page updates by itself.",
+  "tgIssueAwaiting": "Waiting for approval",
+  "tgIssueSending": "Sending",
+  "tgIssueSent": "Sent",
+  "tgIssueSkipped": "Skipped (nothing new)",
+  "tgIssueFailed": "Failed",
+  "tgIssueExpired": "Expired",
+  "tgIssueRejected": "Cancelled",
+  "tgIssuePreview": "Preview",
+  "tgScheduled": "scheduled",
+  "tgStats": "{kept} of {received} items passed validation · {dropped} sources dropped",
+  "@tgStats": {
+    "placeholders": {
+      "kept": {
+        "type": "int"
+      },
+      "received": {
+        "type": "int"
+      },
+      "dropped": {
+        "type": "int"
+      }
+    }
+  },
+  "tgApprovalWaiting": "Ready to send to {count, plural, =1{1 person} other{{count} people}}",
+  "@tgApprovalWaiting": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "tgApprovalExpires": "Not sent unless approved by {date}.",
+  "@tgApprovalExpires": {
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "tgApprove": "Send",
+  "tgReject": "Cancel",
+  "tgApproveConfirm": "Send this issue to {count, plural, =1{1 person} other{{count} people}} now?",
+  "@tgApproveConfirm": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "tgApproved": "Approved; sending",
+  "tgRejected": "Cancelled; nothing was sent",
+  "tgPreview": "Preview",
+  "tgItems": "Items and sources",
+  "tgDeliveries": "Deliveries",
+  "tgSendTest": "Send as a test…",
+  "tgSendTestTo": "Send a test to",
+  "tgWindowDay": "last 24 hours",
+  "tgWindowWeek": "last 7 days",
+  "tgFeedEnabled": "Enabled",
+  "notifTgStateCorruptTitle": "Telegram state was reset",
+  "notifTgStateCorruptBody": "A corrupt state file was moved aside; recipients and newsletters need to be added again."
 }

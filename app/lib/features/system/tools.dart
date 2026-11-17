@@ -63,6 +63,22 @@ class ToolsSection extends ConsumerWidget {
         GroupedRow(title: l.mediaTitle, icon: LucideIcons.music, iconBackground: const Color(0xFFFF375F), onTap: () => open(MediaScreen(hostId: host.id))),
         GroupedRow(title: l.toolsScreenshot, icon: LucideIcons.monitor, iconBackground: const Color(0xFF30B0C7), onTap: () => open(ScreenshotScreen(host: host))),
       ],
+      if (f['telegram'] == true)
+        GroupedRow(
+          title: 'Telegram',
+          subtitle: l.tgRowHint,
+          icon: LucideIcons.send,
+          iconBackground: const Color(0xFF2AABEE),
+          onTap: () => context.push('/system/telegram?host=${Uri.encodeQueryComponent(host.id)}'),
+        ),
+      if (f['research'] == true)
+        GroupedRow(
+          title: l.researchTitle,
+          subtitle: l.researchRowHint,
+          icon: LucideIcons.search,
+          iconBackground: const Color(0xFF0A84FF),
+          onTap: () => context.push('/system/research?host=${Uri.encodeQueryComponent(host.id)}'),
+        ),
       if (host.agent != null)
         GroupedRow(title: l.toolsAudit, icon: LucideIcons.scrollText, iconBackground: const Color(0xFF8E8E93), onTap: () => open(AuditScreen(host: host))),
     ];

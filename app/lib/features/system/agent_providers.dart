@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/util/refresh.dart';
 import '../../core/agent/agent_client.dart';
+import '../../core/push/push_service.dart' show telegramReasonText;
 import '../../core/profile/model.dart';
 import '../../l10n/gen/app_localizations.dart';
 import '../../state/providers.dart';
@@ -160,6 +161,9 @@ String agentErrorText(AppLocalizations l, Object e) {
     'agent.media.volumeFailed' => l.mediaVolumeFailed,
     'agent.ports.alreadyPublic' => l.agentPortPublic,
     'agent.processes.permissionDenied' => l.agentPermissionDenied,
+    // Telegram newsletters, research jobs and service tokens (PLAN.md §12).
+    'agent.auth.scopeDenied' || 'agent.serviceToken.notFound' => telegramReasonText(l, e.code, e.params),
+    final c when c.startsWith('agent.telegram.') || c.startsWith('agent.research.') => telegramReasonText(l, c, e.params),
     _ => '${l.commonError} (${e.code})',
   };
 }

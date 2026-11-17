@@ -4680,4 +4680,790 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get claudePcUiSetValue => 'Set a value';
+
+  @override
+  String get errScopeDenied => 'This token isn\'t allowed to do that (scope).';
+
+  @override
+  String get errServiceTokenNotFound => 'Service token not found.';
+
+  @override
+  String get errResearchBusy => 'The research queue is full; try again later.';
+
+  @override
+  String get errResearchNotFound => 'Research job not found.';
+
+  @override
+  String errResearchToolMissing(String tool) {
+    return '$tool is not installed on the PC.';
+  }
+
+  @override
+  String errResearchMcpMissing(String server) {
+    return 'The $server MCP server is not set up on the PC.';
+  }
+
+  @override
+  String errResearchToolFailed(String tool) {
+    return '$tool failed.';
+  }
+
+  @override
+  String errResearchInvalidOutput(String tool) {
+    return '$tool returned unusable output.';
+  }
+
+  @override
+  String get errResearchTimeout => 'The research took too long (20 min limit).';
+
+  @override
+  String get errResearchCancelled => 'Cancelled.';
+
+  @override
+  String get errInterrupted => 'Interrupted because the agent restarted.';
+
+  @override
+  String get errTgNotConfigured => 'No bot is set up yet.';
+
+  @override
+  String get errTgInvalidToken =>
+      'The bot token is invalid or Telegram rejected it.';
+
+  @override
+  String get errTgBlocked => 'This person blocked the bot.';
+
+  @override
+  String get errTgUnreachable => 'Telegram couldn\'t be reached.';
+
+  @override
+  String errTgBadRequest(String description) {
+    return 'Telegram rejected the request: $description';
+  }
+
+  @override
+  String get errTgRateLimited => 'Too many requests; wait a moment.';
+
+  @override
+  String get errTgNoRecipients =>
+      'Nobody active is subscribed to this newsletter.';
+
+  @override
+  String get errTgIssueNotAwaiting =>
+      'This issue is no longer waiting for approval.';
+
+  @override
+  String get errTgApprovalExpired =>
+      'The approval time ran out; nothing was sent.';
+
+  @override
+  String get errTgIssueNotRendered => 'This issue has no text to send.';
+
+  @override
+  String get errTgTooManyFeeds => 'At most 20 newsletters.';
+
+  @override
+  String get errTgTooManyInvites => 'At most 20 pending invites.';
+
+  @override
+  String get errTgResearchUnreachable =>
+      'The research PC couldn\'t be reached.';
+
+  @override
+  String get errTgResearchTimeout =>
+      'The research didn\'t finish before the deadline.';
+
+  @override
+  String get errTgResearchFailed => 'The research on the PC failed.';
+
+  @override
+  String get errTgResearchUnauthorized =>
+      'The PC rejected the research token; connect it again.';
+
+  @override
+  String get errTgResearchRejected => 'The PC rejected the research request.';
+
+  @override
+  String get errTgNoItems => 'No news item passed validation.';
+
+  @override
+  String get errTgDeliveryFailed => 'Couldn\'t be delivered to anyone.';
+
+  @override
+  String notifTgApprovalTitle(String feed) {
+    return 'Newsletter waiting for approval: $feed';
+  }
+
+  @override
+  String notifTgApprovalBody(int items, int recipients) {
+    String _temp0 = intl.Intl.pluralLogic(
+      items,
+      locale: localeName,
+      other: '$items items',
+      one: '1 item',
+    );
+    String _temp1 = intl.Intl.pluralLogic(
+      recipients,
+      locale: localeName,
+      other: '$recipients people',
+      one: '1 person',
+    );
+    return '$_temp0 · $_temp1';
+  }
+
+  @override
+  String notifTgSentTitle(String feed) {
+    return 'Newsletter sent: $feed';
+  }
+
+  @override
+  String notifTgSentFailed(int count) {
+    return '$count failed';
+  }
+
+  @override
+  String notifTgFailedTitle(String feed) {
+    return 'Newsletter not sent: $feed';
+  }
+
+  @override
+  String notifTgExpiredTitle(String feed) {
+    return 'Approval expired: $feed';
+  }
+
+  @override
+  String get notifTgPcUnreachableTitle => 'Research PC unreachable';
+
+  @override
+  String notifTgPcUnreachableBody(String feed) {
+    return '$feed was not sent this time.';
+  }
+
+  @override
+  String get notifTgDecisionFailedTitle => 'Could not send your decision';
+
+  @override
+  String get notifTgDecisionFailedBody =>
+      'Open Tiphys to approve or cancel the newsletter.';
+
+  @override
+  String get notifyTelegramAlerts => 'Approval requests and failures';
+
+  @override
+  String get notifyTelegramAlertsHint =>
+      'Newsletter waiting for approval, failed, research PC unreachable';
+
+  @override
+  String get notifyTelegramSent => 'When a newsletter is sent';
+
+  @override
+  String get researchTitle => 'Research';
+
+  @override
+  String get researchRowHint => 'For Telegram newsletters';
+
+  @override
+  String get researchConnectSection => 'Research (for Telegram newsletters)';
+
+  @override
+  String get researchConnect => 'Connect to a Telegram agent';
+
+  @override
+  String get researchConnectHint =>
+      'Creates a token on this PC that can only start and read research jobs, and stores it in the Telegram agent\'s settings. The token is never shown on the phone.';
+
+  @override
+  String researchConnectConfirm(String tg, String pc) {
+    return 'Let $tg start research jobs on $pc?';
+  }
+
+  @override
+  String researchConnected(String host) {
+    return '$host connected';
+  }
+
+  @override
+  String researchConnectFailed(String error) {
+    return 'Couldn\'t connect: $error';
+  }
+
+  @override
+  String get researchReachUnknown => 'couldn\'t check the link';
+
+  @override
+  String researchOtherPc(String host, String url) {
+    return '$host uses another research PC: $url';
+  }
+
+  @override
+  String get researchTest => 'Test the connection';
+
+  @override
+  String get researchPickHost => 'Telegram agent';
+
+  @override
+  String get researchNoTelegramHost =>
+      'No agent with the Telegram feature found.';
+
+  @override
+  String get researchTokens => 'Service tokens';
+
+  @override
+  String get researchTokensHint =>
+      'Other agents use these to start research jobs here. Revoking one cuts that agent off.';
+
+  @override
+  String get researchTokensEmpty => 'No service tokens';
+
+  @override
+  String researchTokenCreated(String date) {
+    return 'created $date';
+  }
+
+  @override
+  String researchTokenUsed(String date) {
+    return 'last used $date';
+  }
+
+  @override
+  String researchTokenRevokeConfirm(String name) {
+    return 'Revoke the token of $name? Its newsletters can\'t research until it is connected again.';
+  }
+
+  @override
+  String get researchJobs => 'Recent jobs';
+
+  @override
+  String get researchJobsHint =>
+      'Jobs and their results are kept for 24 hours.';
+
+  @override
+  String get researchJobsEmpty => 'No research jobs in the last 24 hours';
+
+  @override
+  String get researchQueued => 'Queued';
+
+  @override
+  String get researchRunning => 'Running';
+
+  @override
+  String get researchDone => 'Done';
+
+  @override
+  String get researchFailed => 'Failed';
+
+  @override
+  String get researchCancel => 'Cancel job';
+
+  @override
+  String get tgRowHint => 'Newsletter bot, people, schedules';
+
+  @override
+  String get tgNoHost => 'No agent has the Telegram feature turned on.';
+
+  @override
+  String get tgBotSetupTitle => 'Set up the bot';
+
+  @override
+  String get tgBotSetupSteps =>
+      'Create a bot with @BotFather in Telegram (/newbot) and paste the token it gives you. The agent checks it and keeps it; it is never shown again.';
+
+  @override
+  String get tgBotToken => 'Bot token';
+
+  @override
+  String get tgBotTokenHint =>
+      'Only sent to the agent; not stored on the phone.';
+
+  @override
+  String get tgBotSave => 'Save and check';
+
+  @override
+  String tgBotSaved(String bot) {
+    return '$bot connected';
+  }
+
+  @override
+  String get tgPrivacyNote =>
+      'Telegram bot messages are not end-to-end encrypted. Put only public information into newsletters.';
+
+  @override
+  String get tgBotReady => 'Bot ready';
+
+  @override
+  String get tgBotPolling => 'waiting for invites';
+
+  @override
+  String get tgBotChange => 'Replace bot token';
+
+  @override
+  String get tgBotRemove => 'Remove bot';
+
+  @override
+  String get tgBotRemoveConfirm =>
+      'Remove the bot token from the agent? Nothing is sent until a bot is set up again; people and newsletters are kept.';
+
+  @override
+  String get tgResearchTitle => 'Research PC';
+
+  @override
+  String get tgResearchPc => 'Research PC';
+
+  @override
+  String get tgResearchHint =>
+      'Research runs on the PC. Connect it from the PC\'s page › Research.';
+
+  @override
+  String get tgResearchNotSet => 'No research PC connected';
+
+  @override
+  String get tgResearchReachable => 'reachable';
+
+  @override
+  String get tgResearchUnreachable => 'unreachable';
+
+  @override
+  String get tgResearchWake => 'Wake-on-LAN';
+
+  @override
+  String get tgRecipients => 'People';
+
+  @override
+  String get tgRecipientsEmpty =>
+      'Nobody yet. Invite people with a one-time link.';
+
+  @override
+  String get tgNoSubscriptions => 'No newsletters';
+
+  @override
+  String get tgStatusActive => 'Active';
+
+  @override
+  String get tgStatusPaused => 'Paused';
+
+  @override
+  String get tgStatusStopped => 'Stopped (/stop)';
+
+  @override
+  String get tgStatusUnreachable => 'Unreachable';
+
+  @override
+  String get tgInviteAdd => 'Add person';
+
+  @override
+  String get tgInviteLabel => 'Who is it for? (optional)';
+
+  @override
+  String get tgInviteLabelHint => 'e.g. Mum';
+
+  @override
+  String get tgInviteFeeds => 'Newsletters';
+
+  @override
+  String get tgInviteHint =>
+      'The link works once and for 24 hours. When the person opens it and taps Start, they are added.';
+
+  @override
+  String get tgInviteCreate => 'Create invite link';
+
+  @override
+  String tgInviteShareHint(String date) {
+    return 'One use, valid until $date. Send it only to the person you are inviting.';
+  }
+
+  @override
+  String tgInviteShareText(String link) {
+    return 'Join my Tiphys newsletter on Telegram: $link';
+  }
+
+  @override
+  String get tgInviteCopied => 'Link copied';
+
+  @override
+  String get tgInvitesPending => 'Pending invites';
+
+  @override
+  String get tgInvitesPendingHint =>
+      'While an invite is pending the agent checks Telegram for it.';
+
+  @override
+  String get tgInviteNoLabel => 'Invite';
+
+  @override
+  String tgInviteExpires(String date) {
+    return 'valid until $date';
+  }
+
+  @override
+  String get tgInviteRevoke => 'Revoke invite';
+
+  @override
+  String get tgInviteRevokeConfirm =>
+      'Revoke this invite? The link stops working.';
+
+  @override
+  String get tgGone => 'Not found (it may have been deleted).';
+
+  @override
+  String tgAddedAt(String date) {
+    return 'added $date';
+  }
+
+  @override
+  String get tgReceive => 'Receive newsletters';
+
+  @override
+  String get tgStoppedHint =>
+      'This person sent /stop. Only a new invite can bring them back.';
+
+  @override
+  String get tgUnreachableHint =>
+      'Telegram refused delivery (bot blocked?). Turn it on to try again.';
+
+  @override
+  String get tgSubscriptions => 'Subscriptions';
+
+  @override
+  String get tgRecentDeliveries => 'Recent deliveries';
+
+  @override
+  String get tgNoDeliveries => 'Nothing sent yet';
+
+  @override
+  String get tgDeliverySent => 'Delivered';
+
+  @override
+  String get tgDeliveryFailed => 'Failed';
+
+  @override
+  String get tgFeed => 'Newsletter';
+
+  @override
+  String get tgTest => 'test';
+
+  @override
+  String get tgSendTestMessage => 'Send a test message';
+
+  @override
+  String get tgTestSent => 'Test message sent';
+
+  @override
+  String get tgRecipientDelete => 'Remove person';
+
+  @override
+  String tgRecipientDeleteConfirm(String name) {
+    return 'Remove $name? They get no more newsletters; inviting them again needs a new link.';
+  }
+
+  @override
+  String get tgFeeds => 'Newsletters';
+
+  @override
+  String get tgFeedsEmpty => 'No newsletters yet. Start from a template.';
+
+  @override
+  String get tgFeedsHint => 'Times are in the agent\'s time zone.';
+
+  @override
+  String tgLastIssue(String status) {
+    return 'last: $status';
+  }
+
+  @override
+  String tgRecipientCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count recipients',
+      one: '1 recipient',
+      zero: 'no recipients',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get tgFeedAdd => 'New newsletter';
+
+  @override
+  String get tgFeedEdit => 'Edit newsletter';
+
+  @override
+  String get tgFeedBlank => 'Blank';
+
+  @override
+  String tgFeedItemsRange(int min, int max) {
+    return '$min–$max items';
+  }
+
+  @override
+  String tgWindowHours(int hours) {
+    return 'last $hours h';
+  }
+
+  @override
+  String get tgApprovalAuto => 'Send automatically';
+
+  @override
+  String get tgApprovalAsk => 'Always ask me';
+
+  @override
+  String tgApprovalFirstN(int n) {
+    return 'Ask me for the first $n, then automatic';
+  }
+
+  @override
+  String get tgApprovalFirstNShort => 'Ask for the first issues';
+
+  @override
+  String get tgPreviewAction => 'Preview';
+
+  @override
+  String tgRunConfirmSend(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count people',
+      one: '1 person',
+    );
+    return 'Research now and send to $_temp0 without asking?';
+  }
+
+  @override
+  String tgRunConfirmApproval(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count people',
+      one: '1 person',
+    );
+    return 'Research now? You\'ll be asked before it goes to $_temp0.';
+  }
+
+  @override
+  String get tgFeedRunning => 'This newsletter is running right now.';
+
+  @override
+  String get tgArchive => 'Archive';
+
+  @override
+  String get tgArchiveEmpty => 'No issues yet';
+
+  @override
+  String tgItemCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count items',
+      one: '1 item',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String tgSentTo(int count) {
+    return 'sent to $count';
+  }
+
+  @override
+  String get tgFeedBasics => 'Newsletter';
+
+  @override
+  String get tgFeedTopic => 'Topic';
+
+  @override
+  String get tgFeedTopicHint => 'What should be researched? Be specific.';
+
+  @override
+  String get tgFeedInstructions => 'Extra instructions (optional)';
+
+  @override
+  String get tgFeedInstructionsHint =>
+      'e.g. prefer primary sources, skip rumours';
+
+  @override
+  String get tgFeedScheduleHint =>
+      'If the PC is off, the agent wakes it (if set up) and retries until the deadline.';
+
+  @override
+  String get tgFeedRules => 'Research rules';
+
+  @override
+  String get tgFeedWindow => 'Time window (hours)';
+
+  @override
+  String get tgFeedWindowHint =>
+      'Only news from the last N hours (24 = a day, 168 = a week).';
+
+  @override
+  String get tgFeedMinItems => 'Min items';
+
+  @override
+  String get tgFeedMaxItems => 'Max items';
+
+  @override
+  String get tgFeedSourcesPerItem => 'Sources per item (max)';
+
+  @override
+  String get tgFeedAllowDomains => 'Only these sites (optional)';
+
+  @override
+  String get tgFeedAllowDomainsHint =>
+      'Comma-separated domains. Empty: any site.';
+
+  @override
+  String get tgFeedBlockDomains => 'Never these sites';
+
+  @override
+  String get tgFeedSkip => 'Skip if there is nothing new';
+
+  @override
+  String get tgFeedSkipHint =>
+      'Stories sent in the last 14 days are not repeated.';
+
+  @override
+  String get tgFeedApproval => 'Approval';
+
+  @override
+  String get tgFeedApprovalN => 'Ask for the first … issues';
+
+  @override
+  String get tgFeedDeadline => 'Deadline (minutes after the time)';
+
+  @override
+  String get tgFeedDeadlineHint =>
+      'Not sent if research isn\'t done by then. Approval waits up to 2 more hours.';
+
+  @override
+  String get tgFeedRecipients => 'Recipients';
+
+  @override
+  String get tgFeedNeedsNameTopic => 'Enter a name and a topic.';
+
+  @override
+  String get tgFeedBadItems => 'Items: 1–20, min not above max.';
+
+  @override
+  String get tgFeedBadWindow => 'Time window: 1–720 hours.';
+
+  @override
+  String get tgFeedBadDeadline => 'Deadline: 5–360 minutes.';
+
+  @override
+  String get tgFeedBadApprovalN => 'Number of issues: 1–100.';
+
+  @override
+  String tgFeedDeleteConfirm(String name) {
+    return 'Delete $name and its archive?';
+  }
+
+  @override
+  String get tgIssue => 'Issue';
+
+  @override
+  String get tgIssueResearching => 'Researching';
+
+  @override
+  String get tgIssueResearchingHint =>
+      'Researching on the PC… This takes a few minutes; the page updates by itself.';
+
+  @override
+  String get tgIssueAwaiting => 'Waiting for approval';
+
+  @override
+  String get tgIssueSending => 'Sending';
+
+  @override
+  String get tgIssueSent => 'Sent';
+
+  @override
+  String get tgIssueSkipped => 'Skipped (nothing new)';
+
+  @override
+  String get tgIssueFailed => 'Failed';
+
+  @override
+  String get tgIssueExpired => 'Expired';
+
+  @override
+  String get tgIssueRejected => 'Cancelled';
+
+  @override
+  String get tgIssuePreview => 'Preview';
+
+  @override
+  String get tgScheduled => 'scheduled';
+
+  @override
+  String tgStats(int kept, int received, int dropped) {
+    return '$kept of $received items passed validation · $dropped sources dropped';
+  }
+
+  @override
+  String tgApprovalWaiting(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count people',
+      one: '1 person',
+    );
+    return 'Ready to send to $_temp0';
+  }
+
+  @override
+  String tgApprovalExpires(String date) {
+    return 'Not sent unless approved by $date.';
+  }
+
+  @override
+  String get tgApprove => 'Send';
+
+  @override
+  String get tgReject => 'Cancel';
+
+  @override
+  String tgApproveConfirm(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count people',
+      one: '1 person',
+    );
+    return 'Send this issue to $_temp0 now?';
+  }
+
+  @override
+  String get tgApproved => 'Approved; sending';
+
+  @override
+  String get tgRejected => 'Cancelled; nothing was sent';
+
+  @override
+  String get tgPreview => 'Preview';
+
+  @override
+  String get tgItems => 'Items and sources';
+
+  @override
+  String get tgDeliveries => 'Deliveries';
+
+  @override
+  String get tgSendTest => 'Send as a test…';
+
+  @override
+  String get tgSendTestTo => 'Send a test to';
+
+  @override
+  String get tgWindowDay => 'last 24 hours';
+
+  @override
+  String get tgWindowWeek => 'last 7 days';
+
+  @override
+  String get tgFeedEnabled => 'Enabled';
+
+  @override
+  String get notifTgStateCorruptTitle => 'Telegram state was reset';
+
+  @override
+  String get notifTgStateCorruptBody =>
+      'A corrupt state file was moved aside; recipients and newsletters need to be added again.';
 }

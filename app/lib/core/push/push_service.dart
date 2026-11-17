@@ -74,6 +74,18 @@ const _endpointKey = 'app:pushEndpoint';
         ].join(' · '),
       ),
     'ui.opened' => (l.notifUiOpenedTitle, s('class')),
+    'telegram.stateCorrupt' => (l.notifTgStateCorruptTitle, l.notifTgStateCorruptBody),
+    // Telegram newsletters (atlas): approval request (Send / Cancel buttons), sent, failed, research PC unreachable.
+    'telegram.approval' => (l.notifTgApprovalTitle(s('feed')), l.notifTgApprovalBody(n('items'), n('recipients'))),
+    'telegram.sent' => (
+        l.notifTgSentTitle(s('feed')),
+        [l.notifTgApprovalBody(n('items'), n('recipients')), if (n('failed') > 0) l.notifTgSentFailed(n('failed'))].join(' · '),
+      ),
+    'telegram.failed' => (
+        s('reason') == 'agent.telegram.approvalExpired' ? l.notifTgExpiredTitle(s('feed')) : l.notifTgFailedTitle(s('feed')),
+        telegramReasonText(l, s('reason')),
+      ),
+    'telegram.pcUnreachable' => (l.notifTgPcUnreachableTitle, l.notifTgPcUnreachableBody(s('feed'))),
     _ => null,
   };
 }
@@ -84,6 +96,48 @@ String scheduleReasonText(AppLocalizations l, String reason) => switch (reason) 
       'agent.claude.folderNotAllowed' => l.agentPathNotAllowed,
       _ => '${l.commonError} ($reason)',
     };
+
+/// Telegram / research error codes (agent: telegram/*.ts, research/*.ts) → text; also used by agentErrorText.
+String telegramReasonText(AppLocalizations l, String code, [Map<String, dynamic> params = const {}]) {
+  String s(String k) => '${params[k] ?? ''}';
+  return switch (code) {
+    'agent.auth.scopeDenied' => l.errScopeDenied,
+    'agent.serviceToken.notFound' => l.errServiceTokenNotFound,
+    'agent.research.busy' || 'agent.telegram.research.busy' => l.errResearchBusy,
+    'agent.research.notFound' => l.errResearchNotFound,
+    'agent.research.toolMissing' => l.errResearchToolMissing(s('tool')),
+    'agent.research.mcpMissing' => l.errResearchMcpMissing(s('server')),
+    'agent.research.toolFailed' => l.errResearchToolFailed(s('tool')),
+    'agent.research.invalidOutput' => l.errResearchInvalidOutput(s('tool')),
+    'agent.research.timeout' => l.errResearchTimeout,
+    'agent.research.cancelled' => l.errResearchCancelled,
+    'agent.research.interrupted' || 'agent.telegram.interrupted' || 'agent.telegram.aborted' || 'agent.telegram.shutdown' => l.errInterrupted,
+    'agent.telegram.notConfigured' => l.errTgNotConfigured,
+    'agent.telegram.invalidToken' => l.errTgInvalidToken,
+    'agent.telegram.blocked' => l.errTgBlocked,
+    'agent.telegram.unreachable' || 'agent.telegram.timeout' || 'agent.telegram.apiFailed' || 'agent.telegram.badResponse' => l.errTgUnreachable,
+    'agent.telegram.badRequest' => l.errTgBadRequest(s('description')),
+    'agent.telegram.apiRateLimited' || 'agent.telegram.rateLimited' => l.errTgRateLimited,
+    'agent.telegram.feed.notFound' || 'agent.telegram.recipient.notFound' || 'agent.telegram.invite.notFound' || 'agent.telegram.issue.notFound' => l.tgGone,
+    'agent.telegram.feedRunning' => l.tgFeedRunning,
+    'agent.telegram.noRecipients' => l.errTgNoRecipients,
+    'agent.telegram.recipientStopped' => l.tgStoppedHint,
+    'agent.telegram.issueNotAwaiting' => l.errTgIssueNotAwaiting,
+    'agent.telegram.issueExpired' || 'agent.telegram.approvalExpired' => l.errTgApprovalExpired,
+    'agent.telegram.issueNotRendered' => l.errTgIssueNotRendered,
+    'agent.telegram.tooManyFeeds' => l.errTgTooManyFeeds,
+    'agent.telegram.tooManyInvites' => l.errTgTooManyInvites,
+    'agent.telegram.research.notConfigured' => l.tgResearchNotSet,
+    'agent.telegram.research.unreachable' => l.errTgResearchUnreachable,
+    'agent.telegram.research.timeout' => l.errTgResearchTimeout,
+    'agent.telegram.research.failed' => l.errTgResearchFailed,
+    'agent.telegram.research.unauthorized' => l.errTgResearchUnauthorized,
+    'agent.telegram.research.rejected' || 'agent.telegram.research.badResponse' => l.errTgResearchRejected,
+    'agent.telegram.noItems' => l.errTgNoItems,
+    'agent.telegram.deliveryFailed' || 'agent.telegram.sendFailed' => l.errTgDeliveryFailed,
+    _ => '${l.commonError} ($code)',
+  };
+}
 
 /// Machine-readable detail of the backup check (agent: backups.ts) → text.
 String backupReasonText(AppLocalizations l, String? reason) => switch (reason) {
@@ -126,16 +180,18 @@ bool noticeAllowed(Profile p, String key, [Map<String, dynamic> params = const {
       'command.done' => p.notifications.longCommandSeconds > 0 && ((params['seconds'] as num?) ?? 0) >= p.notifications.longCommandSeconds,
       'command.failed' => p.notifications.longCommandSeconds > 0,
       'clipboard.pc' => p.notifications.clipboardFromPc,
+      'telegram.sent' => p.notifications.telegramSent,
+      'telegram.approval' || 'telegram.failed' || 'telegram.pcUnreachable' => p.notifications.telegramAlerts,
       _ => true,
     };
 
 /// Notification never shown on the lock screen (secret): those whose buttons run in the background without unlocking
 /// and affect the PC — a PC session's permission request ("Allow": payment, sending a message, command) and "Extend".
 /// PC session: the agent's `pc: 1` param or the PC session held on the phone ([heldPcSession]). "Stop" (ongoing
-/// notification) stays on the lock screen: stopping is safe.
+/// notification) stays on the lock screen: stopping is safe. A Telegram approval too: "Send" messages other people.
 NotificationVisibility? lockScreenVisibility(String key, Map<String, dynamic> params, String? sessionId, String? heldPcSession) {
   final pc = key == 'claude.pcExpiring' || (key == 'claude.waiting' && (params['pc'] == 1 || (sessionId != null && sessionId == heldPcSession)));
-  return pc ? NotificationVisibility.secret : null;
+  return pc || key == 'telegram.approval' ? NotificationVisibility.secret : null;
 }
 
 /// Notification id. Ones on the same topic replace each other (offline → back online, disk full → resolved, last
@@ -158,6 +214,8 @@ int noticeId(String key, Map<String, dynamic> p, {String? link, String? requestI
     'backup.stale' || 'backup.failed' || 'backup.ok' => 'backup|${s('host')}|${s('id')}',
     'compose.updated' || 'compose.failed' => 'compose|${s('host')}|${s('stack')}',
     'claude.scheduleFailed' => 'claude-schedule|${s('id')}',
+    // One notification per issue: the approval request is replaced by its outcome.
+    'telegram.approval' || 'telegram.sent' || 'telegram.failed' || 'telegram.pcUnreachable' => 'telegram|${s('issueId')}',
     'push.test' => 'test',
     // PC clipboard: each new text replaces the previous one.
     'clipboard.pc' => 'clipboard',
@@ -176,7 +234,12 @@ int noticeId(String key, Map<String, dynamic> p, {String? link, String? requestI
 const actionAllow = 'claude-allow';
 const actionDeny = 'claude-deny';
 
-/// Notification payload: a plain link, or for a notification with buttons, JSON {link, sessionId, requestId}.
+/// Notification buttons (Telegram issue approval).
+const actionTgApprove = 'telegram-approve';
+const actionTgReject = 'telegram-reject';
+
+/// Notification payload: a plain link, or for a notification with buttons, JSON {link, sessionId, requestId} /
+/// {link, issueId}.
 String? routeForPayload(String? payload) {
   if (payload != null && payload.startsWith('{')) {
     try {
@@ -217,6 +280,55 @@ Future<bool> decideFromNotification(
   } finally {
     c.close();
   }
+}
+
+/// "Send / Cancel" in a telegram.approval notification: approves or rejects the issue without opening the app. The
+/// push doesn't say which agent sent it, so agents are tried in turn (the ones whose saved config has the telegram
+/// feature first); issue ids are random, so another agent can only answer "not found". True on success.
+Future<bool> telegramDecideFromNotification(
+  String payload,
+  bool approve, {
+  required Profile profile,
+  required SecretStore secrets,
+  AgentClient Function(String url, String token)? clientFor,
+}) async {
+  final String issueId;
+  try {
+    issueId = '${(jsonDecode(payload) as Map)['issueId']}';
+  } catch (_) {
+    return false;
+  }
+  if (!RegExp(r'^[A-Za-z0-9_-]{1,64}$').hasMatch(issueId)) return false;
+  bool tg(Host h) => (profile.agentConfigs[h.id]?['features'] as Map?)?['telegram'] == true;
+  final hosts = profile.hosts.where((h) => h.agent != null).toList()..sort((a, b) => (tg(a) ? 0 : 1).compareTo(tg(b) ? 0 : 1));
+  for (final h in hosts) {
+    final token = await secrets.read(secretIdOf(h.agent!.tokenRef));
+    if (token == null) continue;
+    final c = (clientFor ?? (u, t) => AgentClient(baseUrl: u, token: t))(h.agent!.url, token);
+    try {
+      await c.post('/v1/telegram/issues/$issueId/${approve ? 'approve' : 'reject'}');
+      return true;
+    } on AgentError catch (e) {
+      // This agent doesn't have the issue (or the feature): try the next one. Any other answer is final.
+      if (e.code != 'agent.telegram.issue.notFound' && e.code != 'agent.route.notFound' && !e.code.startsWith('net.') && !e.code.startsWith('agent.auth.')) return false;
+    } catch (_) {
+      // Unreachable agent: next.
+    } finally {
+      c.close();
+    }
+  }
+  return false;
+}
+
+Future<void> _showTelegramDecisionFailed(FlutterLocalNotificationsPlugin n, Profile profile, {bool init = false}) async {
+  if (init) await n.initialize(settings: const InitializationSettings(android: AndroidInitializationSettings('ic_notification')));
+  final l = lookupAppLocalizations(_localeOf(profile));
+  await n.show(
+    id: 9003,
+    title: l.notifTgDecisionFailedTitle,
+    body: l.notifTgDecisionFailedBody,
+    notificationDetails: const NotificationDetails(android: AndroidNotificationDetails('tiphys-urgent', 'Tiphys · acil', importance: Importance.high)),
+  );
 }
 
 // ---- Claude using the PC (10.3) ----
@@ -365,10 +477,16 @@ Future<void> _showPcFailed(FlutterLocalNotificationsPlugin n, AppLocalizations l
 /// Entry point Android runs when a notification button is pressed while the app is closed (separate isolate).
 @pragma('vm:entry-point')
 Future<void> onNotificationActionBackground(NotificationResponse r) async {
-  const handled = {actionAllow, actionDeny, actionCopyClipboard, actionPcStop, actionPcExtend};
+  const handled = {actionAllow, actionDeny, actionCopyClipboard, actionPcStop, actionPcExtend, actionTgApprove, actionTgReject};
   if (!handled.contains(r.actionId)) return;
   DartPluginRegistrant.ensureInitialized();
   final docs = await getApplicationDocumentsDirectory();
+  if (r.actionId == actionTgApprove || r.actionId == actionTgReject) {
+    final profile = Profile.fromJson(jsonDecode(await File('${docs.path}/profile.json').readAsString()) as Map<String, dynamic>);
+    final ok = await telegramDecideFromNotification(r.payload ?? '', r.actionId == actionTgApprove, profile: profile, secrets: KeystoreSecretStore());
+    if (!ok) await _showTelegramDecisionFailed(FlutterLocalNotificationsPlugin(), profile, init: true);
+    return;
+  }
   if (r.actionId == actionPcStop || r.actionId == actionPcExtend) {
     final n = FlutterLocalNotificationsPlugin();
     await n.initialize(settings: const InitializationSettings(android: AndroidInitializationSettings('ic_notification')));
@@ -437,6 +555,9 @@ String? routeForLink(String? link) {
   if (rest == 'sites') return '/monitor/sites';
   if (rest == 'monitor/grafana') return '/monitor/grafana';
   if (rest == 'terminal') return '/terminal';
+  if (rest == 'telegram') return '/system/telegram';
+  final issue = RegExp(r'^telegram/issues/([A-Za-z0-9_-]{1,64})$').firstMatch(rest);
+  if (issue != null) return '/telegram/issues/${issue.group(1)}';
   return null;
 }
 
@@ -466,6 +587,12 @@ class PushService {
         if (r.actionId == actionPcStop || r.actionId == actionPcExtend) {
           if (await onPcAction?.call(r.actionId!) ?? false) return;
           await handlePcAction(r.actionId!, notifications, profile: await loadProfile(), secrets: secrets);
+          return;
+        }
+        if (r.actionId == actionTgApprove || r.actionId == actionTgReject) {
+          final profile = await loadProfile();
+          final ok = await telegramDecideFromNotification(r.payload ?? '', r.actionId == actionTgApprove, profile: profile, secrets: secrets);
+          if (!ok) await _showTelegramDecisionFailed(notifications, profile);
           return;
         }
         if (r.actionId == actionAllow || r.actionId == actionDeny) {
@@ -576,7 +703,10 @@ class PushService {
     final l = lookupAppLocalizations(_localeOf(profile));
     final text = noticeText(l, key, params);
     if (text == null) return;
-    final high = const {'claude.pcExpiring', 'claude.pcEnded', 'claude.waiting', 'host.offline', 'disk.full', 'service.failed', 'grafana.alert', 'agent.restarted', 'docker.died', 'docker.oom', 'backup.stale', 'backup.failed', 'claude.scheduleFailed'}.contains(key);
+    final high = const {'claude.pcExpiring', 'claude.pcEnded', 'claude.waiting', 'host.offline', 'disk.full', 'service.failed', 'grafana.alert', 'agent.restarted', 'docker.died', 'docker.oom', 'backup.stale', 'backup.failed', 'claude.scheduleFailed', 'telegram.approval', 'telegram.pcUnreachable'}.contains(key) ||
+        (key == 'telegram.failed' && params['reason'] != 'agent.telegram.approvalExpired');
+    // Telegram issue waiting for approval: "Send / Cancel" buttons (decision without opening the app).
+    final tgDecision = key == 'telegram.approval' && data?['issueId'] != null;
     // Claude permission request: "Allow / Deny" buttons in the notification (decision without opening the app).
     final extend = key == 'claude.pcExpiring' && data?['sessionId'] != null;
     final decision = key == 'claude.waiting' && data?['sessionId'] != null && data?['requestId'] != null;
@@ -591,7 +721,11 @@ class PushService {
       body: text.$2,
       payload: decision
           ? jsonEncode({'link': link, 'sessionId': data!['sessionId'], 'requestId': data['requestId']})
-          : (extend ? jsonEncode({'link': link, 'sessionId': data!['sessionId']}) : link),
+          : extend
+              ? jsonEncode({'link': link, 'sessionId': data!['sessionId']})
+              : tgDecision
+                  ? jsonEncode({'link': link, 'issueId': data!['issueId'], 'feedId': data['feedId']})
+                  : link,
       notificationDetails: NotificationDetails(
         android: AndroidNotificationDetails(
           high ? 'tiphys-urgent' : 'tiphys',
@@ -608,7 +742,14 @@ class PushService {
                   AndroidNotificationAction(actionAllow, l.claudeAllow, cancelNotification: true),
                   AndroidNotificationAction(actionDeny, l.claudeDeny, cancelNotification: true),
                 ]
-              : (extend ? [AndroidNotificationAction(actionPcExtend, l.pcExtend, cancelNotification: true)] : null),
+              : extend
+                  ? [AndroidNotificationAction(actionPcExtend, l.pcExtend, cancelNotification: true)]
+                  : tgDecision
+                      ? [
+                          AndroidNotificationAction(actionTgApprove, l.tgApprove, cancelNotification: true),
+                          AndroidNotificationAction(actionTgReject, l.tgReject, cancelNotification: true),
+                        ]
+                      : null,
         ),
       ),
     );

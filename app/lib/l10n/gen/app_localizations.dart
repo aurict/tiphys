@@ -8143,6 +8143,1260 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Set a value'**
   String get claudePcUiSetValue;
+
+  /// No description provided for @errScopeDenied.
+  ///
+  /// In en, this message translates to:
+  /// **'This token isn\'t allowed to do that (scope).'**
+  String get errScopeDenied;
+
+  /// No description provided for @errServiceTokenNotFound.
+  ///
+  /// In en, this message translates to:
+  /// **'Service token not found.'**
+  String get errServiceTokenNotFound;
+
+  /// No description provided for @errResearchBusy.
+  ///
+  /// In en, this message translates to:
+  /// **'The research queue is full; try again later.'**
+  String get errResearchBusy;
+
+  /// No description provided for @errResearchNotFound.
+  ///
+  /// In en, this message translates to:
+  /// **'Research job not found.'**
+  String get errResearchNotFound;
+
+  /// No description provided for @errResearchToolMissing.
+  ///
+  /// In en, this message translates to:
+  /// **'{tool} is not installed on the PC.'**
+  String errResearchToolMissing(String tool);
+
+  /// No description provided for @errResearchMcpMissing.
+  ///
+  /// In en, this message translates to:
+  /// **'The {server} MCP server is not set up on the PC.'**
+  String errResearchMcpMissing(String server);
+
+  /// No description provided for @errResearchToolFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'{tool} failed.'**
+  String errResearchToolFailed(String tool);
+
+  /// No description provided for @errResearchInvalidOutput.
+  ///
+  /// In en, this message translates to:
+  /// **'{tool} returned unusable output.'**
+  String errResearchInvalidOutput(String tool);
+
+  /// No description provided for @errResearchTimeout.
+  ///
+  /// In en, this message translates to:
+  /// **'The research took too long (20 min limit).'**
+  String get errResearchTimeout;
+
+  /// No description provided for @errResearchCancelled.
+  ///
+  /// In en, this message translates to:
+  /// **'Cancelled.'**
+  String get errResearchCancelled;
+
+  /// No description provided for @errInterrupted.
+  ///
+  /// In en, this message translates to:
+  /// **'Interrupted because the agent restarted.'**
+  String get errInterrupted;
+
+  /// No description provided for @errTgNotConfigured.
+  ///
+  /// In en, this message translates to:
+  /// **'No bot is set up yet.'**
+  String get errTgNotConfigured;
+
+  /// No description provided for @errTgInvalidToken.
+  ///
+  /// In en, this message translates to:
+  /// **'The bot token is invalid or Telegram rejected it.'**
+  String get errTgInvalidToken;
+
+  /// No description provided for @errTgBlocked.
+  ///
+  /// In en, this message translates to:
+  /// **'This person blocked the bot.'**
+  String get errTgBlocked;
+
+  /// No description provided for @errTgUnreachable.
+  ///
+  /// In en, this message translates to:
+  /// **'Telegram couldn\'t be reached.'**
+  String get errTgUnreachable;
+
+  /// No description provided for @errTgBadRequest.
+  ///
+  /// In en, this message translates to:
+  /// **'Telegram rejected the request: {description}'**
+  String errTgBadRequest(String description);
+
+  /// No description provided for @errTgRateLimited.
+  ///
+  /// In en, this message translates to:
+  /// **'Too many requests; wait a moment.'**
+  String get errTgRateLimited;
+
+  /// No description provided for @errTgNoRecipients.
+  ///
+  /// In en, this message translates to:
+  /// **'Nobody active is subscribed to this newsletter.'**
+  String get errTgNoRecipients;
+
+  /// No description provided for @errTgIssueNotAwaiting.
+  ///
+  /// In en, this message translates to:
+  /// **'This issue is no longer waiting for approval.'**
+  String get errTgIssueNotAwaiting;
+
+  /// No description provided for @errTgApprovalExpired.
+  ///
+  /// In en, this message translates to:
+  /// **'The approval time ran out; nothing was sent.'**
+  String get errTgApprovalExpired;
+
+  /// No description provided for @errTgIssueNotRendered.
+  ///
+  /// In en, this message translates to:
+  /// **'This issue has no text to send.'**
+  String get errTgIssueNotRendered;
+
+  /// No description provided for @errTgTooManyFeeds.
+  ///
+  /// In en, this message translates to:
+  /// **'At most 20 newsletters.'**
+  String get errTgTooManyFeeds;
+
+  /// No description provided for @errTgTooManyInvites.
+  ///
+  /// In en, this message translates to:
+  /// **'At most 20 pending invites.'**
+  String get errTgTooManyInvites;
+
+  /// No description provided for @errTgResearchUnreachable.
+  ///
+  /// In en, this message translates to:
+  /// **'The research PC couldn\'t be reached.'**
+  String get errTgResearchUnreachable;
+
+  /// No description provided for @errTgResearchTimeout.
+  ///
+  /// In en, this message translates to:
+  /// **'The research didn\'t finish before the deadline.'**
+  String get errTgResearchTimeout;
+
+  /// No description provided for @errTgResearchFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'The research on the PC failed.'**
+  String get errTgResearchFailed;
+
+  /// No description provided for @errTgResearchUnauthorized.
+  ///
+  /// In en, this message translates to:
+  /// **'The PC rejected the research token; connect it again.'**
+  String get errTgResearchUnauthorized;
+
+  /// No description provided for @errTgResearchRejected.
+  ///
+  /// In en, this message translates to:
+  /// **'The PC rejected the research request.'**
+  String get errTgResearchRejected;
+
+  /// No description provided for @errTgNoItems.
+  ///
+  /// In en, this message translates to:
+  /// **'No news item passed validation.'**
+  String get errTgNoItems;
+
+  /// No description provided for @errTgDeliveryFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t be delivered to anyone.'**
+  String get errTgDeliveryFailed;
+
+  /// No description provided for @notifTgApprovalTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Newsletter waiting for approval: {feed}'**
+  String notifTgApprovalTitle(String feed);
+
+  /// No description provided for @notifTgApprovalBody.
+  ///
+  /// In en, this message translates to:
+  /// **'{items, plural, =1{1 item} other{{items} items}} · {recipients, plural, =1{1 person} other{{recipients} people}}'**
+  String notifTgApprovalBody(int items, int recipients);
+
+  /// No description provided for @notifTgSentTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Newsletter sent: {feed}'**
+  String notifTgSentTitle(String feed);
+
+  /// No description provided for @notifTgSentFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} failed'**
+  String notifTgSentFailed(int count);
+
+  /// No description provided for @notifTgFailedTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Newsletter not sent: {feed}'**
+  String notifTgFailedTitle(String feed);
+
+  /// No description provided for @notifTgExpiredTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Approval expired: {feed}'**
+  String notifTgExpiredTitle(String feed);
+
+  /// No description provided for @notifTgPcUnreachableTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Research PC unreachable'**
+  String get notifTgPcUnreachableTitle;
+
+  /// No description provided for @notifTgPcUnreachableBody.
+  ///
+  /// In en, this message translates to:
+  /// **'{feed} was not sent this time.'**
+  String notifTgPcUnreachableBody(String feed);
+
+  /// No description provided for @notifTgDecisionFailedTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not send your decision'**
+  String get notifTgDecisionFailedTitle;
+
+  /// No description provided for @notifTgDecisionFailedBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Open Tiphys to approve or cancel the newsletter.'**
+  String get notifTgDecisionFailedBody;
+
+  /// No description provided for @notifyTelegramAlerts.
+  ///
+  /// In en, this message translates to:
+  /// **'Approval requests and failures'**
+  String get notifyTelegramAlerts;
+
+  /// No description provided for @notifyTelegramAlertsHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Newsletter waiting for approval, failed, research PC unreachable'**
+  String get notifyTelegramAlertsHint;
+
+  /// No description provided for @notifyTelegramSent.
+  ///
+  /// In en, this message translates to:
+  /// **'When a newsletter is sent'**
+  String get notifyTelegramSent;
+
+  /// No description provided for @researchTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Research'**
+  String get researchTitle;
+
+  /// No description provided for @researchRowHint.
+  ///
+  /// In en, this message translates to:
+  /// **'For Telegram newsletters'**
+  String get researchRowHint;
+
+  /// No description provided for @researchConnectSection.
+  ///
+  /// In en, this message translates to:
+  /// **'Research (for Telegram newsletters)'**
+  String get researchConnectSection;
+
+  /// No description provided for @researchConnect.
+  ///
+  /// In en, this message translates to:
+  /// **'Connect to a Telegram agent'**
+  String get researchConnect;
+
+  /// No description provided for @researchConnectHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Creates a token on this PC that can only start and read research jobs, and stores it in the Telegram agent\'s settings. The token is never shown on the phone.'**
+  String get researchConnectHint;
+
+  /// No description provided for @researchConnectConfirm.
+  ///
+  /// In en, this message translates to:
+  /// **'Let {tg} start research jobs on {pc}?'**
+  String researchConnectConfirm(String tg, String pc);
+
+  /// No description provided for @researchConnected.
+  ///
+  /// In en, this message translates to:
+  /// **'{host} connected'**
+  String researchConnected(String host);
+
+  /// No description provided for @researchConnectFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t connect: {error}'**
+  String researchConnectFailed(String error);
+
+  /// No description provided for @researchReachUnknown.
+  ///
+  /// In en, this message translates to:
+  /// **'couldn\'t check the link'**
+  String get researchReachUnknown;
+
+  /// No description provided for @researchOtherPc.
+  ///
+  /// In en, this message translates to:
+  /// **'{host} uses another research PC: {url}'**
+  String researchOtherPc(String host, String url);
+
+  /// No description provided for @researchTest.
+  ///
+  /// In en, this message translates to:
+  /// **'Test the connection'**
+  String get researchTest;
+
+  /// No description provided for @researchPickHost.
+  ///
+  /// In en, this message translates to:
+  /// **'Telegram agent'**
+  String get researchPickHost;
+
+  /// No description provided for @researchNoTelegramHost.
+  ///
+  /// In en, this message translates to:
+  /// **'No agent with the Telegram feature found.'**
+  String get researchNoTelegramHost;
+
+  /// No description provided for @researchTokens.
+  ///
+  /// In en, this message translates to:
+  /// **'Service tokens'**
+  String get researchTokens;
+
+  /// No description provided for @researchTokensHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Other agents use these to start research jobs here. Revoking one cuts that agent off.'**
+  String get researchTokensHint;
+
+  /// No description provided for @researchTokensEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'No service tokens'**
+  String get researchTokensEmpty;
+
+  /// No description provided for @researchTokenCreated.
+  ///
+  /// In en, this message translates to:
+  /// **'created {date}'**
+  String researchTokenCreated(String date);
+
+  /// No description provided for @researchTokenUsed.
+  ///
+  /// In en, this message translates to:
+  /// **'last used {date}'**
+  String researchTokenUsed(String date);
+
+  /// No description provided for @researchTokenRevokeConfirm.
+  ///
+  /// In en, this message translates to:
+  /// **'Revoke the token of {name}? Its newsletters can\'t research until it is connected again.'**
+  String researchTokenRevokeConfirm(String name);
+
+  /// No description provided for @researchJobs.
+  ///
+  /// In en, this message translates to:
+  /// **'Recent jobs'**
+  String get researchJobs;
+
+  /// No description provided for @researchJobsHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Jobs and their results are kept for 24 hours.'**
+  String get researchJobsHint;
+
+  /// No description provided for @researchJobsEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'No research jobs in the last 24 hours'**
+  String get researchJobsEmpty;
+
+  /// No description provided for @researchQueued.
+  ///
+  /// In en, this message translates to:
+  /// **'Queued'**
+  String get researchQueued;
+
+  /// No description provided for @researchRunning.
+  ///
+  /// In en, this message translates to:
+  /// **'Running'**
+  String get researchRunning;
+
+  /// No description provided for @researchDone.
+  ///
+  /// In en, this message translates to:
+  /// **'Done'**
+  String get researchDone;
+
+  /// No description provided for @researchFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Failed'**
+  String get researchFailed;
+
+  /// No description provided for @researchCancel.
+  ///
+  /// In en, this message translates to:
+  /// **'Cancel job'**
+  String get researchCancel;
+
+  /// No description provided for @tgRowHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Newsletter bot, people, schedules'**
+  String get tgRowHint;
+
+  /// No description provided for @tgNoHost.
+  ///
+  /// In en, this message translates to:
+  /// **'No agent has the Telegram feature turned on.'**
+  String get tgNoHost;
+
+  /// No description provided for @tgBotSetupTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Set up the bot'**
+  String get tgBotSetupTitle;
+
+  /// No description provided for @tgBotSetupSteps.
+  ///
+  /// In en, this message translates to:
+  /// **'Create a bot with @BotFather in Telegram (/newbot) and paste the token it gives you. The agent checks it and keeps it; it is never shown again.'**
+  String get tgBotSetupSteps;
+
+  /// No description provided for @tgBotToken.
+  ///
+  /// In en, this message translates to:
+  /// **'Bot token'**
+  String get tgBotToken;
+
+  /// No description provided for @tgBotTokenHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Only sent to the agent; not stored on the phone.'**
+  String get tgBotTokenHint;
+
+  /// No description provided for @tgBotSave.
+  ///
+  /// In en, this message translates to:
+  /// **'Save and check'**
+  String get tgBotSave;
+
+  /// No description provided for @tgBotSaved.
+  ///
+  /// In en, this message translates to:
+  /// **'{bot} connected'**
+  String tgBotSaved(String bot);
+
+  /// No description provided for @tgPrivacyNote.
+  ///
+  /// In en, this message translates to:
+  /// **'Telegram bot messages are not end-to-end encrypted. Put only public information into newsletters.'**
+  String get tgPrivacyNote;
+
+  /// No description provided for @tgBotReady.
+  ///
+  /// In en, this message translates to:
+  /// **'Bot ready'**
+  String get tgBotReady;
+
+  /// No description provided for @tgBotPolling.
+  ///
+  /// In en, this message translates to:
+  /// **'waiting for invites'**
+  String get tgBotPolling;
+
+  /// No description provided for @tgBotChange.
+  ///
+  /// In en, this message translates to:
+  /// **'Replace bot token'**
+  String get tgBotChange;
+
+  /// No description provided for @tgBotRemove.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove bot'**
+  String get tgBotRemove;
+
+  /// No description provided for @tgBotRemoveConfirm.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove the bot token from the agent? Nothing is sent until a bot is set up again; people and newsletters are kept.'**
+  String get tgBotRemoveConfirm;
+
+  /// No description provided for @tgResearchTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Research PC'**
+  String get tgResearchTitle;
+
+  /// No description provided for @tgResearchPc.
+  ///
+  /// In en, this message translates to:
+  /// **'Research PC'**
+  String get tgResearchPc;
+
+  /// No description provided for @tgResearchHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Research runs on the PC. Connect it from the PC\'s page › Research.'**
+  String get tgResearchHint;
+
+  /// No description provided for @tgResearchNotSet.
+  ///
+  /// In en, this message translates to:
+  /// **'No research PC connected'**
+  String get tgResearchNotSet;
+
+  /// No description provided for @tgResearchReachable.
+  ///
+  /// In en, this message translates to:
+  /// **'reachable'**
+  String get tgResearchReachable;
+
+  /// No description provided for @tgResearchUnreachable.
+  ///
+  /// In en, this message translates to:
+  /// **'unreachable'**
+  String get tgResearchUnreachable;
+
+  /// No description provided for @tgResearchWake.
+  ///
+  /// In en, this message translates to:
+  /// **'Wake-on-LAN'**
+  String get tgResearchWake;
+
+  /// No description provided for @tgRecipients.
+  ///
+  /// In en, this message translates to:
+  /// **'People'**
+  String get tgRecipients;
+
+  /// No description provided for @tgRecipientsEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'Nobody yet. Invite people with a one-time link.'**
+  String get tgRecipientsEmpty;
+
+  /// No description provided for @tgNoSubscriptions.
+  ///
+  /// In en, this message translates to:
+  /// **'No newsletters'**
+  String get tgNoSubscriptions;
+
+  /// No description provided for @tgStatusActive.
+  ///
+  /// In en, this message translates to:
+  /// **'Active'**
+  String get tgStatusActive;
+
+  /// No description provided for @tgStatusPaused.
+  ///
+  /// In en, this message translates to:
+  /// **'Paused'**
+  String get tgStatusPaused;
+
+  /// No description provided for @tgStatusStopped.
+  ///
+  /// In en, this message translates to:
+  /// **'Stopped (/stop)'**
+  String get tgStatusStopped;
+
+  /// No description provided for @tgStatusUnreachable.
+  ///
+  /// In en, this message translates to:
+  /// **'Unreachable'**
+  String get tgStatusUnreachable;
+
+  /// No description provided for @tgInviteAdd.
+  ///
+  /// In en, this message translates to:
+  /// **'Add person'**
+  String get tgInviteAdd;
+
+  /// No description provided for @tgInviteLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Who is it for? (optional)'**
+  String get tgInviteLabel;
+
+  /// No description provided for @tgInviteLabelHint.
+  ///
+  /// In en, this message translates to:
+  /// **'e.g. Mum'**
+  String get tgInviteLabelHint;
+
+  /// No description provided for @tgInviteFeeds.
+  ///
+  /// In en, this message translates to:
+  /// **'Newsletters'**
+  String get tgInviteFeeds;
+
+  /// No description provided for @tgInviteHint.
+  ///
+  /// In en, this message translates to:
+  /// **'The link works once and for 24 hours. When the person opens it and taps Start, they are added.'**
+  String get tgInviteHint;
+
+  /// No description provided for @tgInviteCreate.
+  ///
+  /// In en, this message translates to:
+  /// **'Create invite link'**
+  String get tgInviteCreate;
+
+  /// No description provided for @tgInviteShareHint.
+  ///
+  /// In en, this message translates to:
+  /// **'One use, valid until {date}. Send it only to the person you are inviting.'**
+  String tgInviteShareHint(String date);
+
+  /// No description provided for @tgInviteShareText.
+  ///
+  /// In en, this message translates to:
+  /// **'Join my Tiphys newsletter on Telegram: {link}'**
+  String tgInviteShareText(String link);
+
+  /// No description provided for @tgInviteCopied.
+  ///
+  /// In en, this message translates to:
+  /// **'Link copied'**
+  String get tgInviteCopied;
+
+  /// No description provided for @tgInvitesPending.
+  ///
+  /// In en, this message translates to:
+  /// **'Pending invites'**
+  String get tgInvitesPending;
+
+  /// No description provided for @tgInvitesPendingHint.
+  ///
+  /// In en, this message translates to:
+  /// **'While an invite is pending the agent checks Telegram for it.'**
+  String get tgInvitesPendingHint;
+
+  /// No description provided for @tgInviteNoLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Invite'**
+  String get tgInviteNoLabel;
+
+  /// No description provided for @tgInviteExpires.
+  ///
+  /// In en, this message translates to:
+  /// **'valid until {date}'**
+  String tgInviteExpires(String date);
+
+  /// No description provided for @tgInviteRevoke.
+  ///
+  /// In en, this message translates to:
+  /// **'Revoke invite'**
+  String get tgInviteRevoke;
+
+  /// No description provided for @tgInviteRevokeConfirm.
+  ///
+  /// In en, this message translates to:
+  /// **'Revoke this invite? The link stops working.'**
+  String get tgInviteRevokeConfirm;
+
+  /// No description provided for @tgGone.
+  ///
+  /// In en, this message translates to:
+  /// **'Not found (it may have been deleted).'**
+  String get tgGone;
+
+  /// No description provided for @tgAddedAt.
+  ///
+  /// In en, this message translates to:
+  /// **'added {date}'**
+  String tgAddedAt(String date);
+
+  /// No description provided for @tgReceive.
+  ///
+  /// In en, this message translates to:
+  /// **'Receive newsletters'**
+  String get tgReceive;
+
+  /// No description provided for @tgStoppedHint.
+  ///
+  /// In en, this message translates to:
+  /// **'This person sent /stop. Only a new invite can bring them back.'**
+  String get tgStoppedHint;
+
+  /// No description provided for @tgUnreachableHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Telegram refused delivery (bot blocked?). Turn it on to try again.'**
+  String get tgUnreachableHint;
+
+  /// No description provided for @tgSubscriptions.
+  ///
+  /// In en, this message translates to:
+  /// **'Subscriptions'**
+  String get tgSubscriptions;
+
+  /// No description provided for @tgRecentDeliveries.
+  ///
+  /// In en, this message translates to:
+  /// **'Recent deliveries'**
+  String get tgRecentDeliveries;
+
+  /// No description provided for @tgNoDeliveries.
+  ///
+  /// In en, this message translates to:
+  /// **'Nothing sent yet'**
+  String get tgNoDeliveries;
+
+  /// No description provided for @tgDeliverySent.
+  ///
+  /// In en, this message translates to:
+  /// **'Delivered'**
+  String get tgDeliverySent;
+
+  /// No description provided for @tgDeliveryFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Failed'**
+  String get tgDeliveryFailed;
+
+  /// No description provided for @tgFeed.
+  ///
+  /// In en, this message translates to:
+  /// **'Newsletter'**
+  String get tgFeed;
+
+  /// No description provided for @tgTest.
+  ///
+  /// In en, this message translates to:
+  /// **'test'**
+  String get tgTest;
+
+  /// No description provided for @tgSendTestMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'Send a test message'**
+  String get tgSendTestMessage;
+
+  /// No description provided for @tgTestSent.
+  ///
+  /// In en, this message translates to:
+  /// **'Test message sent'**
+  String get tgTestSent;
+
+  /// No description provided for @tgRecipientDelete.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove person'**
+  String get tgRecipientDelete;
+
+  /// No description provided for @tgRecipientDeleteConfirm.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove {name}? They get no more newsletters; inviting them again needs a new link.'**
+  String tgRecipientDeleteConfirm(String name);
+
+  /// No description provided for @tgFeeds.
+  ///
+  /// In en, this message translates to:
+  /// **'Newsletters'**
+  String get tgFeeds;
+
+  /// No description provided for @tgFeedsEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'No newsletters yet. Start from a template.'**
+  String get tgFeedsEmpty;
+
+  /// No description provided for @tgFeedsHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Times are in the agent\'s time zone.'**
+  String get tgFeedsHint;
+
+  /// No description provided for @tgLastIssue.
+  ///
+  /// In en, this message translates to:
+  /// **'last: {status}'**
+  String tgLastIssue(String status);
+
+  /// No description provided for @tgRecipientCount.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =0{no recipients} =1{1 recipient} other{{count} recipients}}'**
+  String tgRecipientCount(int count);
+
+  /// No description provided for @tgFeedAdd.
+  ///
+  /// In en, this message translates to:
+  /// **'New newsletter'**
+  String get tgFeedAdd;
+
+  /// No description provided for @tgFeedEdit.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit newsletter'**
+  String get tgFeedEdit;
+
+  /// No description provided for @tgFeedBlank.
+  ///
+  /// In en, this message translates to:
+  /// **'Blank'**
+  String get tgFeedBlank;
+
+  /// No description provided for @tgFeedItemsRange.
+  ///
+  /// In en, this message translates to:
+  /// **'{min}–{max} items'**
+  String tgFeedItemsRange(int min, int max);
+
+  /// No description provided for @tgWindowHours.
+  ///
+  /// In en, this message translates to:
+  /// **'last {hours} h'**
+  String tgWindowHours(int hours);
+
+  /// No description provided for @tgApprovalAuto.
+  ///
+  /// In en, this message translates to:
+  /// **'Send automatically'**
+  String get tgApprovalAuto;
+
+  /// No description provided for @tgApprovalAsk.
+  ///
+  /// In en, this message translates to:
+  /// **'Always ask me'**
+  String get tgApprovalAsk;
+
+  /// No description provided for @tgApprovalFirstN.
+  ///
+  /// In en, this message translates to:
+  /// **'Ask me for the first {n}, then automatic'**
+  String tgApprovalFirstN(int n);
+
+  /// No description provided for @tgApprovalFirstNShort.
+  ///
+  /// In en, this message translates to:
+  /// **'Ask for the first issues'**
+  String get tgApprovalFirstNShort;
+
+  /// No description provided for @tgPreviewAction.
+  ///
+  /// In en, this message translates to:
+  /// **'Preview'**
+  String get tgPreviewAction;
+
+  /// No description provided for @tgRunConfirmSend.
+  ///
+  /// In en, this message translates to:
+  /// **'Research now and send to {count, plural, =1{1 person} other{{count} people}} without asking?'**
+  String tgRunConfirmSend(int count);
+
+  /// No description provided for @tgRunConfirmApproval.
+  ///
+  /// In en, this message translates to:
+  /// **'Research now? You\'ll be asked before it goes to {count, plural, =1{1 person} other{{count} people}}.'**
+  String tgRunConfirmApproval(int count);
+
+  /// No description provided for @tgFeedRunning.
+  ///
+  /// In en, this message translates to:
+  /// **'This newsletter is running right now.'**
+  String get tgFeedRunning;
+
+  /// No description provided for @tgArchive.
+  ///
+  /// In en, this message translates to:
+  /// **'Archive'**
+  String get tgArchive;
+
+  /// No description provided for @tgArchiveEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'No issues yet'**
+  String get tgArchiveEmpty;
+
+  /// No description provided for @tgItemCount.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 item} other{{count} items}}'**
+  String tgItemCount(int count);
+
+  /// No description provided for @tgSentTo.
+  ///
+  /// In en, this message translates to:
+  /// **'sent to {count}'**
+  String tgSentTo(int count);
+
+  /// No description provided for @tgFeedBasics.
+  ///
+  /// In en, this message translates to:
+  /// **'Newsletter'**
+  String get tgFeedBasics;
+
+  /// No description provided for @tgFeedTopic.
+  ///
+  /// In en, this message translates to:
+  /// **'Topic'**
+  String get tgFeedTopic;
+
+  /// No description provided for @tgFeedTopicHint.
+  ///
+  /// In en, this message translates to:
+  /// **'What should be researched? Be specific.'**
+  String get tgFeedTopicHint;
+
+  /// No description provided for @tgFeedInstructions.
+  ///
+  /// In en, this message translates to:
+  /// **'Extra instructions (optional)'**
+  String get tgFeedInstructions;
+
+  /// No description provided for @tgFeedInstructionsHint.
+  ///
+  /// In en, this message translates to:
+  /// **'e.g. prefer primary sources, skip rumours'**
+  String get tgFeedInstructionsHint;
+
+  /// No description provided for @tgFeedScheduleHint.
+  ///
+  /// In en, this message translates to:
+  /// **'If the PC is off, the agent wakes it (if set up) and retries until the deadline.'**
+  String get tgFeedScheduleHint;
+
+  /// No description provided for @tgFeedRules.
+  ///
+  /// In en, this message translates to:
+  /// **'Research rules'**
+  String get tgFeedRules;
+
+  /// No description provided for @tgFeedWindow.
+  ///
+  /// In en, this message translates to:
+  /// **'Time window (hours)'**
+  String get tgFeedWindow;
+
+  /// No description provided for @tgFeedWindowHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Only news from the last N hours (24 = a day, 168 = a week).'**
+  String get tgFeedWindowHint;
+
+  /// No description provided for @tgFeedMinItems.
+  ///
+  /// In en, this message translates to:
+  /// **'Min items'**
+  String get tgFeedMinItems;
+
+  /// No description provided for @tgFeedMaxItems.
+  ///
+  /// In en, this message translates to:
+  /// **'Max items'**
+  String get tgFeedMaxItems;
+
+  /// No description provided for @tgFeedSourcesPerItem.
+  ///
+  /// In en, this message translates to:
+  /// **'Sources per item (max)'**
+  String get tgFeedSourcesPerItem;
+
+  /// No description provided for @tgFeedAllowDomains.
+  ///
+  /// In en, this message translates to:
+  /// **'Only these sites (optional)'**
+  String get tgFeedAllowDomains;
+
+  /// No description provided for @tgFeedAllowDomainsHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Comma-separated domains. Empty: any site.'**
+  String get tgFeedAllowDomainsHint;
+
+  /// No description provided for @tgFeedBlockDomains.
+  ///
+  /// In en, this message translates to:
+  /// **'Never these sites'**
+  String get tgFeedBlockDomains;
+
+  /// No description provided for @tgFeedSkip.
+  ///
+  /// In en, this message translates to:
+  /// **'Skip if there is nothing new'**
+  String get tgFeedSkip;
+
+  /// No description provided for @tgFeedSkipHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Stories sent in the last 14 days are not repeated.'**
+  String get tgFeedSkipHint;
+
+  /// No description provided for @tgFeedApproval.
+  ///
+  /// In en, this message translates to:
+  /// **'Approval'**
+  String get tgFeedApproval;
+
+  /// No description provided for @tgFeedApprovalN.
+  ///
+  /// In en, this message translates to:
+  /// **'Ask for the first … issues'**
+  String get tgFeedApprovalN;
+
+  /// No description provided for @tgFeedDeadline.
+  ///
+  /// In en, this message translates to:
+  /// **'Deadline (minutes after the time)'**
+  String get tgFeedDeadline;
+
+  /// No description provided for @tgFeedDeadlineHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Not sent if research isn\'t done by then. Approval waits up to 2 more hours.'**
+  String get tgFeedDeadlineHint;
+
+  /// No description provided for @tgFeedRecipients.
+  ///
+  /// In en, this message translates to:
+  /// **'Recipients'**
+  String get tgFeedRecipients;
+
+  /// No description provided for @tgFeedNeedsNameTopic.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter a name and a topic.'**
+  String get tgFeedNeedsNameTopic;
+
+  /// No description provided for @tgFeedBadItems.
+  ///
+  /// In en, this message translates to:
+  /// **'Items: 1–20, min not above max.'**
+  String get tgFeedBadItems;
+
+  /// No description provided for @tgFeedBadWindow.
+  ///
+  /// In en, this message translates to:
+  /// **'Time window: 1–720 hours.'**
+  String get tgFeedBadWindow;
+
+  /// No description provided for @tgFeedBadDeadline.
+  ///
+  /// In en, this message translates to:
+  /// **'Deadline: 5–360 minutes.'**
+  String get tgFeedBadDeadline;
+
+  /// No description provided for @tgFeedBadApprovalN.
+  ///
+  /// In en, this message translates to:
+  /// **'Number of issues: 1–100.'**
+  String get tgFeedBadApprovalN;
+
+  /// No description provided for @tgFeedDeleteConfirm.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete {name} and its archive?'**
+  String tgFeedDeleteConfirm(String name);
+
+  /// No description provided for @tgIssue.
+  ///
+  /// In en, this message translates to:
+  /// **'Issue'**
+  String get tgIssue;
+
+  /// No description provided for @tgIssueResearching.
+  ///
+  /// In en, this message translates to:
+  /// **'Researching'**
+  String get tgIssueResearching;
+
+  /// No description provided for @tgIssueResearchingHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Researching on the PC… This takes a few minutes; the page updates by itself.'**
+  String get tgIssueResearchingHint;
+
+  /// No description provided for @tgIssueAwaiting.
+  ///
+  /// In en, this message translates to:
+  /// **'Waiting for approval'**
+  String get tgIssueAwaiting;
+
+  /// No description provided for @tgIssueSending.
+  ///
+  /// In en, this message translates to:
+  /// **'Sending'**
+  String get tgIssueSending;
+
+  /// No description provided for @tgIssueSent.
+  ///
+  /// In en, this message translates to:
+  /// **'Sent'**
+  String get tgIssueSent;
+
+  /// No description provided for @tgIssueSkipped.
+  ///
+  /// In en, this message translates to:
+  /// **'Skipped (nothing new)'**
+  String get tgIssueSkipped;
+
+  /// No description provided for @tgIssueFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Failed'**
+  String get tgIssueFailed;
+
+  /// No description provided for @tgIssueExpired.
+  ///
+  /// In en, this message translates to:
+  /// **'Expired'**
+  String get tgIssueExpired;
+
+  /// No description provided for @tgIssueRejected.
+  ///
+  /// In en, this message translates to:
+  /// **'Cancelled'**
+  String get tgIssueRejected;
+
+  /// No description provided for @tgIssuePreview.
+  ///
+  /// In en, this message translates to:
+  /// **'Preview'**
+  String get tgIssuePreview;
+
+  /// No description provided for @tgScheduled.
+  ///
+  /// In en, this message translates to:
+  /// **'scheduled'**
+  String get tgScheduled;
+
+  /// No description provided for @tgStats.
+  ///
+  /// In en, this message translates to:
+  /// **'{kept} of {received} items passed validation · {dropped} sources dropped'**
+  String tgStats(int kept, int received, int dropped);
+
+  /// No description provided for @tgApprovalWaiting.
+  ///
+  /// In en, this message translates to:
+  /// **'Ready to send to {count, plural, =1{1 person} other{{count} people}}'**
+  String tgApprovalWaiting(int count);
+
+  /// No description provided for @tgApprovalExpires.
+  ///
+  /// In en, this message translates to:
+  /// **'Not sent unless approved by {date}.'**
+  String tgApprovalExpires(String date);
+
+  /// No description provided for @tgApprove.
+  ///
+  /// In en, this message translates to:
+  /// **'Send'**
+  String get tgApprove;
+
+  /// No description provided for @tgReject.
+  ///
+  /// In en, this message translates to:
+  /// **'Cancel'**
+  String get tgReject;
+
+  /// No description provided for @tgApproveConfirm.
+  ///
+  /// In en, this message translates to:
+  /// **'Send this issue to {count, plural, =1{1 person} other{{count} people}} now?'**
+  String tgApproveConfirm(int count);
+
+  /// No description provided for @tgApproved.
+  ///
+  /// In en, this message translates to:
+  /// **'Approved; sending'**
+  String get tgApproved;
+
+  /// No description provided for @tgRejected.
+  ///
+  /// In en, this message translates to:
+  /// **'Cancelled; nothing was sent'**
+  String get tgRejected;
+
+  /// No description provided for @tgPreview.
+  ///
+  /// In en, this message translates to:
+  /// **'Preview'**
+  String get tgPreview;
+
+  /// No description provided for @tgItems.
+  ///
+  /// In en, this message translates to:
+  /// **'Items and sources'**
+  String get tgItems;
+
+  /// No description provided for @tgDeliveries.
+  ///
+  /// In en, this message translates to:
+  /// **'Deliveries'**
+  String get tgDeliveries;
+
+  /// No description provided for @tgSendTest.
+  ///
+  /// In en, this message translates to:
+  /// **'Send as a test…'**
+  String get tgSendTest;
+
+  /// No description provided for @tgSendTestTo.
+  ///
+  /// In en, this message translates to:
+  /// **'Send a test to'**
+  String get tgSendTestTo;
+
+  /// No description provided for @tgWindowDay.
+  ///
+  /// In en, this message translates to:
+  /// **'last 24 hours'**
+  String get tgWindowDay;
+
+  /// No description provided for @tgWindowWeek.
+  ///
+  /// In en, this message translates to:
+  /// **'last 7 days'**
+  String get tgWindowWeek;
+
+  /// No description provided for @tgFeedEnabled.
+  ///
+  /// In en, this message translates to:
+  /// **'Enabled'**
+  String get tgFeedEnabled;
+
+  /// No description provided for @notifTgStateCorruptTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Telegram state was reset'**
+  String get notifTgStateCorruptTitle;
+
+  /// No description provided for @notifTgStateCorruptBody.
+  ///
+  /// In en, this message translates to:
+  /// **'A corrupt state file was moved aside; recipients and newsletters need to be added again.'**
+  String get notifTgStateCorruptBody;
 }
 
 class _AppLocalizationsDelegate

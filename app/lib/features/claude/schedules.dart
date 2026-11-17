@@ -264,14 +264,10 @@ class ScheduleEditSheet extends ConsumerStatefulWidget {
 }
 
 class _ScheduleEditSheetState extends ConsumerState<ScheduleEditSheet> {
-  static const _intervals = [15, 30, 60, 120, 180, 360, 720, 1440];
   late final _name = TextEditingController(text: widget.existing?['name'] as String?);
   late final _prompt = TextEditingController(text: widget.existing?['prompt'] as String?);
   late String _cwd;
-  late String _kind;
-  late String _time;
-  late Set<int> _days;
-  late int _every;
+  late Map<String, dynamic> _when;
   late String _mode;
   late String _effort;
   bool _busy = false;
@@ -282,12 +278,8 @@ class _ScheduleEditSheetState extends ConsumerState<ScheduleEditSheet> {
     super.initState();
     final c = ref.read(profileProvider).claude;
     final e = widget.existing;
-    final when = (e?['when'] as Map?) ?? const {'kind': 'daily', 'time': '09:00'};
     _cwd = e?['cwd'] as String? ?? c.favoriteFolders.firstOrNull ?? '~';
-    _kind = '${when['kind']}';
-    _time = when['time'] as String? ?? '09:00';
-    _days = {...((when['days'] as List?) ?? const [1, 2, 3, 4, 5]).cast<num>().map((d) => d.toInt())};
-    _every = (when['everyMinutes'] as num?)?.toInt() ?? 60;
+    _when = ScheduleWhenPicker.normalize(e?['when'] as Map?);
     _mode = e?['permissionMode'] as String? ?? c.permissionMode;
     _effort = e?['effort'] as String? ?? c.effort;
   }
@@ -306,23 +298,13 @@ class _ScheduleEditSheetState extends ConsumerState<ScheduleEditSheet> {
     if (picked != null) setState(() => _cwd = picked);
   }
 
-  Future<void> _pickTime() async {
-    final p = _time.split(':').map(int.parse).toList();
-    final r = await showTimePicker(
-      context: context,
-      initialTime: TimeOfDay(hour: p[0], minute: p[1]),
-      builder: (c, child) => MediaQuery(data: MediaQuery.of(c).copyWith(alwaysUse24HourFormat: true), child: child!),
-    );
-    if (r != null) setState(() => _time = '${'${r.hour}'.padLeft(2, '0')}:${'${r.minute}'.padLeft(2, '0')}');
-  }
-
   Future<void> _save() async {
     final l = AppLocalizations.of(context);
     final host = ref.read(claudeHostProvider);
     if (host == null) return;
     final error = _name.text.trim().isEmpty || _prompt.text.trim().isEmpty
         ? l.claudeScheduleNeedsNameAndPrompt
-        : _kind == 'weekly' && _days.isEmpty
+        : !scheduleWhenValid(_when)
             ? l.claudeScheduleNeedsDays
             : null;
     if (error != null) return setState(() => _error = error);
@@ -331,11 +313,7 @@ class _ScheduleEditSheetState extends ConsumerState<ScheduleEditSheet> {
       'name': _name.text.trim(),
       'cwd': _cwd,
       'prompt': _prompt.text.trim(),
-      'when': switch (_kind) {
-        'interval' => {'kind': 'interval', 'everyMinutes': _every},
-        'weekly' => {'kind': 'weekly', 'time': _time, 'days': (_days.toList()..sort())},
-        _ => {'kind': 'daily', 'time': _time},
-      },
+      'when': _when,
       'permissionMode': _mode,
       'effort': _effort,
       if (model.isNotEmpty) 'model': model,
@@ -380,18 +358,9 @@ class _ScheduleEditSheetState extends ConsumerState<ScheduleEditSheet> {
   Widget build(BuildContext context) {
     final l = AppLocalizations.of(context);
     final t = context.tokens;
-    final locale = Localizations.localeOf(context).toLanguageTag();
     final favorites = ref.watch(profileProvider.select((p) => p.claude.favoriteFolders));
-    Widget label(String s) => Padding(padding: const EdgeInsets.only(top: 12, bottom: 6), child: Text(s, style: Theme.of(context).textTheme.labelMedium));
-    Widget chip(String text, bool selected, VoidCallback onTap) => ChoiceChip(
-          label: Text(text),
-          selected: selected,
-          onSelected: (_) => onTap(),
-          showCheckmark: false,
-          selectedColor: t.isDark ? t.tabActive : const Color(0xFF111114),
-          labelStyle: TextStyle(color: selected ? (t.isDark ? Colors.black : Colors.white) : t.text, fontWeight: FontWeight.w600),
-        );
-    final intervals = {..._intervals, _every}.toList()..sort();
+    Widget label(String s) => scheduleLabel(context, s);
+    Widget chip(String text, bool selected, VoidCallback onTap) => scheduleChip(context, text, selected, onTap);
     return SafeArea(
       child: SingleChildScrollView(
         padding: const EdgeInsets.fromLTRB(18, 0, 18, 18),
@@ -419,42 +388,7 @@ class _ScheduleEditSheetState extends ConsumerState<ScheduleEditSheet> {
             ),
           const SizedBox(height: 10),
           TextField(controller: _prompt, minLines: 3, maxLines: 8, decoration: InputDecoration(labelText: l.claudeSchedulePrompt, hintText: l.claudeSchedulePromptHint)),
-          label(l.claudeScheduleWhen),
-          SegmentedButton<String>(
-            segments: [
-              ButtonSegment(value: 'daily', label: Text(l.claudeScheduleDaily)),
-              ButtonSegment(value: 'weekly', label: Text(l.claudeScheduleWeekly)),
-              ButtonSegment(value: 'interval', label: Text(l.claudeScheduleInterval)),
-            ],
-            selected: {_kind},
-            onSelectionChanged: (s) => setState(() => _kind = s.first),
-          ),
-          if (_kind != 'interval') ...[
-            const SizedBox(height: 10),
-            Align(
-              alignment: Alignment.centerLeft,
-              child: OutlinedButton.icon(
-                onPressed: _pickTime,
-                icon: const Icon(LucideIcons.clock, size: 18),
-                label: Text('${l.claudeScheduleTime}: $_time'),
-                style: OutlinedButton.styleFrom(minimumSize: const Size(44, 48)),
-              ),
-            ),
-          ],
-          if (_kind == 'weekly') ...[
-            label(l.claudeScheduleDays),
-            Wrap(spacing: 6, runSpacing: 6, children: [
-              for (var d = 1; d <= 7; d++)
-                chip(weekdayShort(locale, d), _days.contains(d), () => setState(() => _days.contains(d) ? _days.remove(d) : _days.add(d))),
-            ]),
-          ],
-          if (_kind == 'interval') ...[
-            label(l.claudeScheduleEveryLabel),
-            Wrap(spacing: 6, runSpacing: 6, children: [
-              for (final m in intervals)
-                chip(m % 60 == 0 ? l.claudeScheduleEveryHours(m ~/ 60) : l.claudeScheduleEveryMinutes(m), m == _every, () => setState(() => _every = m)),
-            ]),
-          ],
+          ScheduleWhenPicker(initial: _when, onChanged: (w) => setState(() => _when = w)),
           label(l.claudePermissionMode),
           Wrap(spacing: 8, runSpacing: 8, children: [
             for (final (v, name) in [
@@ -481,5 +415,133 @@ class _ScheduleEditSheetState extends ConsumerState<ScheduleEditSheet> {
         ]),
       ),
     );
+  }
+}
+
+/// Field label used in the schedule editors.
+Widget scheduleLabel(BuildContext context, String s) =>
+    Padding(padding: const EdgeInsets.only(top: 12, bottom: 6), child: Text(s, style: Theme.of(context).textTheme.labelMedium));
+
+/// Single-choice chip used in the schedule editors.
+Widget scheduleChip(BuildContext context, String text, bool selected, VoidCallback onTap) {
+  final t = context.tokens;
+  return ChoiceChip(
+    label: Text(text),
+    selected: selected,
+    onSelected: (_) => onTap(),
+    showCheckmark: false,
+    selectedColor: t.isDark ? t.tabActive : const Color(0xFF111114),
+    labelStyle: TextStyle(color: selected ? (t.isDark ? Colors.black : Colors.white) : t.text, fontWeight: FontWeight.w600),
+  );
+}
+
+/// A weekly `when` needs at least one day.
+bool scheduleWhenValid(Map when) => when['kind'] != 'weekly' || ((when['days'] as List?) ?? const []).isNotEmpty;
+
+/// The agent's `when` (daily / weekly / interval) as a picker: kind, time, weekdays or interval. Used by Claude
+/// schedules and Telegram feeds; [onChanged] gets the agent-format map (a weekly one may have no days: check with
+/// [scheduleWhenValid]).
+class ScheduleWhenPicker extends StatefulWidget {
+  const ScheduleWhenPicker({super.key, required this.initial, required this.onChanged});
+  final Map initial;
+  final ValueChanged<Map<String, dynamic>> onChanged;
+
+  static const intervals = [15, 30, 60, 120, 180, 360, 720, 1440];
+
+  /// Agent-format copy of [when]; null → daily 09:00.
+  static Map<String, dynamic> normalize(Map? when) {
+    final w = when ?? const {'kind': 'daily', 'time': '09:00'};
+    return switch (w['kind']) {
+      'interval' => {'kind': 'interval', 'everyMinutes': (w['everyMinutes'] as num?)?.toInt() ?? 60},
+      'weekly' => {'kind': 'weekly', 'time': w['time'] as String? ?? '09:00', 'days': [for (final d in (w['days'] as List?) ?? const []) (d as num).toInt()]..sort()},
+      _ => {'kind': 'daily', 'time': w['time'] as String? ?? '09:00'},
+    };
+  }
+
+  @override
+  State<ScheduleWhenPicker> createState() => _ScheduleWhenPickerState();
+}
+
+class _ScheduleWhenPickerState extends State<ScheduleWhenPicker> {
+  late String _kind;
+  late String _time;
+  late Set<int> _days;
+  late int _every;
+
+  @override
+  void initState() {
+    super.initState();
+    final when = widget.initial;
+    _kind = '${when['kind'] ?? 'daily'}';
+    _time = when['time'] as String? ?? '09:00';
+    _days = {...((when['days'] as List?) ?? const [1, 2, 3, 4, 5]).cast<num>().map((d) => d.toInt())};
+    _every = (when['everyMinutes'] as num?)?.toInt() ?? 60;
+  }
+
+  void _emit() => widget.onChanged(switch (_kind) {
+        'interval' => {'kind': 'interval', 'everyMinutes': _every},
+        'weekly' => {'kind': 'weekly', 'time': _time, 'days': (_days.toList()..sort())},
+        _ => {'kind': 'daily', 'time': _time},
+      });
+
+  void _set(VoidCallback f) {
+    setState(f);
+    _emit();
+  }
+
+  Future<void> _pickTime() async {
+    final p = _time.split(':').map(int.parse).toList();
+    final r = await showTimePicker(
+      context: context,
+      initialTime: TimeOfDay(hour: p[0], minute: p[1]),
+      builder: (c, child) => MediaQuery(data: MediaQuery.of(c).copyWith(alwaysUse24HourFormat: true), child: child!),
+    );
+    if (r != null) _set(() => _time = '${'${r.hour}'.padLeft(2, '0')}:${'${r.minute}'.padLeft(2, '0')}');
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final l = AppLocalizations.of(context);
+    final locale = Localizations.localeOf(context).toLanguageTag();
+    Widget label(String s) => scheduleLabel(context, s);
+    Widget chip(String text, bool selected, VoidCallback onTap) => scheduleChip(context, text, selected, onTap);
+    final intervals = {...ScheduleWhenPicker.intervals, _every}.toList()..sort();
+    return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+      label(l.claudeScheduleWhen),
+      SegmentedButton<String>(
+        segments: [
+          ButtonSegment(value: 'daily', label: Text(l.claudeScheduleDaily)),
+          ButtonSegment(value: 'weekly', label: Text(l.claudeScheduleWeekly)),
+          ButtonSegment(value: 'interval', label: Text(l.claudeScheduleInterval)),
+        ],
+        selected: {_kind},
+        onSelectionChanged: (s) => _set(() => _kind = s.first),
+      ),
+      if (_kind != 'interval') ...[
+        const SizedBox(height: 10),
+        Align(
+          alignment: Alignment.centerLeft,
+          child: OutlinedButton.icon(
+            onPressed: _pickTime,
+            icon: const Icon(LucideIcons.clock, size: 18),
+            label: Text('${l.claudeScheduleTime}: $_time'),
+            style: OutlinedButton.styleFrom(minimumSize: const Size(44, 48)),
+          ),
+        ),
+      ],
+      if (_kind == 'weekly') ...[
+        label(l.claudeScheduleDays),
+        Wrap(spacing: 6, runSpacing: 6, children: [
+          for (var d = 1; d <= 7; d++) chip(weekdayShort(locale, d), _days.contains(d), () => _set(() => _days.contains(d) ? _days.remove(d) : _days.add(d))),
+        ]),
+      ],
+      if (_kind == 'interval') ...[
+        label(l.claudeScheduleEveryLabel),
+        Wrap(spacing: 6, runSpacing: 6, children: [
+          for (final m in intervals)
+            chip(m % 60 == 0 ? l.claudeScheduleEveryHours(m ~/ 60) : l.claudeScheduleEveryMinutes(m), m == _every, () => _set(() => _every = m)),
+        ]),
+      ],
+    ]);
   }
 }
