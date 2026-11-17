@@ -4626,4 +4626,743 @@ class AppLocalizationsTr extends AppLocalizations {
 
   @override
   String get claudePcUiSetValue => 'Değer ayarladı';
+
+  @override
+  String get errScopeDenied =>
+      'Bu belirteç bu işlem için yetkili değil (kapsam).';
+
+  @override
+  String get errServiceTokenNotFound => 'Hizmet belirteci bulunamadı.';
+
+  @override
+  String get errResearchBusy =>
+      'Araştırma kuyruğu dolu; biraz sonra yeniden dene.';
+
+  @override
+  String get errResearchNotFound => 'Araştırma işi bulunamadı.';
+
+  @override
+  String errResearchToolMissing(String tool) {
+    return 'PC\'de $tool kurulu değil.';
+  }
+
+  @override
+  String errResearchMcpMissing(String server) {
+    return 'PC\'de $server MCP sunucusu tanımlı değil.';
+  }
+
+  @override
+  String errResearchToolFailed(String tool) {
+    return '$tool başarısız oldu.';
+  }
+
+  @override
+  String errResearchInvalidOutput(String tool) {
+    return '$tool kullanılamaz çıktı verdi.';
+  }
+
+  @override
+  String get errResearchTimeout => 'Araştırma süre sınırını aştı (20 dk).';
+
+  @override
+  String get errResearchCancelled => 'İptal edildi.';
+
+  @override
+  String get errInterrupted => 'Ajan yeniden başladığı için yarıda kaldı.';
+
+  @override
+  String get errTgNotConfigured => 'Henüz bot kurulmadı.';
+
+  @override
+  String get errTgInvalidToken =>
+      'Bot belirteci geçersiz ya da Telegram reddetti.';
+
+  @override
+  String get errTgBlocked => 'Bu kişi botu engellemiş.';
+
+  @override
+  String get errTgUnreachable => 'Telegram\'a ulaşılamadı.';
+
+  @override
+  String errTgBadRequest(String description) {
+    return 'Telegram isteği reddetti: $description';
+  }
+
+  @override
+  String get errTgRateLimited => 'Çok fazla istek; biraz bekle.';
+
+  @override
+  String get errTgNoRecipients => 'Bu bültene abone etkin kimse yok.';
+
+  @override
+  String get errTgIssueNotAwaiting => 'Bu sayı artık onay beklemiyor.';
+
+  @override
+  String get errTgApprovalExpired =>
+      'Onay süresi doldu; hiçbir şey gönderilmedi.';
+
+  @override
+  String get errTgIssueNotRendered => 'Bu sayının gönderilecek metni yok.';
+
+  @override
+  String get errTgTooManyFeeds => 'En çok 20 bülten olabilir.';
+
+  @override
+  String get errTgTooManyInvites => 'En çok 20 bekleyen davet olabilir.';
+
+  @override
+  String get errTgResearchUnreachable => 'Araştırma PC\'sine ulaşılamadı.';
+
+  @override
+  String get errTgResearchTimeout => 'Araştırma son saate kadar bitmedi.';
+
+  @override
+  String get errTgResearchFailed => 'PC\'deki araştırma başarısız oldu.';
+
+  @override
+  String get errTgResearchUnauthorized =>
+      'PC araştırma belirtecini reddetti; yeniden bağla.';
+
+  @override
+  String get errTgResearchRejected => 'PC araştırma isteğini reddetti.';
+
+  @override
+  String get errTgNoItems => 'Doğrulamadan geçen haber yok.';
+
+  @override
+  String get errTgDeliveryFailed => 'Hiç kimseye gönderilemedi.';
+
+  @override
+  String notifTgApprovalTitle(String feed) {
+    return 'Bülten onay bekliyor: $feed';
+  }
+
+  @override
+  String notifTgApprovalBody(int items, int recipients) {
+    return '$items madde · $recipients kişi';
+  }
+
+  @override
+  String notifTgSentTitle(String feed) {
+    return 'Bülten gönderildi: $feed';
+  }
+
+  @override
+  String notifTgSentFailed(int count) {
+    return '$count başarısız';
+  }
+
+  @override
+  String notifTgFailedTitle(String feed) {
+    return 'Bülten gönderilmedi: $feed';
+  }
+
+  @override
+  String notifTgExpiredTitle(String feed) {
+    return 'Onay süresi doldu: $feed';
+  }
+
+  @override
+  String get notifTgPcUnreachableTitle => 'Araştırma PC\'sine ulaşılamadı';
+
+  @override
+  String notifTgPcUnreachableBody(String feed) {
+    return '$feed bu sefer gönderilmedi.';
+  }
+
+  @override
+  String get notifTgDecisionFailedTitle => 'Kararın iletilemedi';
+
+  @override
+  String get notifTgDecisionFailedBody =>
+      'Bülteni onaylamak ya da vazgeçmek için Tiphys\'i aç.';
+
+  @override
+  String get notifyTelegramAlerts => 'Onay istekleri ve hatalar';
+
+  @override
+  String get notifyTelegramAlertsHint =>
+      'Onay bekleyen, gönderilemeyen bülten; araştırma PC\'sine ulaşılamadı';
+
+  @override
+  String get notifyTelegramSent => 'Bülten gönderilince';
+
+  @override
+  String get researchTitle => 'Araştırma';
+
+  @override
+  String get researchRowHint => 'Telegram bültenleri için';
+
+  @override
+  String get researchConnectSection => 'Araştırma (Telegram bültenleri için)';
+
+  @override
+  String get researchConnect => 'Telegram ajanına bağla';
+
+  @override
+  String get researchConnectHint =>
+      'Bu PC\'de yalnız araştırma işi başlatıp okuyabilen bir belirteç oluşturur ve Telegram ajanının ayarlarına kaydeder. Belirteç telefonda gösterilmez.';
+
+  @override
+  String researchConnectConfirm(String tg, String pc) {
+    return '$tg, $pc üzerinde araştırma işi başlatabilsin mi?';
+  }
+
+  @override
+  String researchConnected(String host) {
+    return '$host bağlandı';
+  }
+
+  @override
+  String researchConnectFailed(String error) {
+    return 'Bağlanamadı: $error';
+  }
+
+  @override
+  String get researchReachUnknown => 'bağlantı denetlenemedi';
+
+  @override
+  String researchOtherPc(String host, String url) {
+    return '$host başka bir araştırma PC\'si kullanıyor: $url';
+  }
+
+  @override
+  String get researchTest => 'Bağlantıyı test et';
+
+  @override
+  String get researchPickHost => 'Telegram ajanı';
+
+  @override
+  String get researchNoTelegramHost =>
+      'Telegram özelliği açık bir ajan bulunamadı.';
+
+  @override
+  String get researchTokens => 'Hizmet belirteçleri';
+
+  @override
+  String get researchTokensHint =>
+      'Diğer ajanlar bunlarla burada araştırma işi başlatır. İptal edilen ajanın erişimi kesilir.';
+
+  @override
+  String get researchTokensEmpty => 'Hizmet belirteci yok';
+
+  @override
+  String researchTokenCreated(String date) {
+    return 'oluşturuldu $date';
+  }
+
+  @override
+  String researchTokenUsed(String date) {
+    return 'son kullanım $date';
+  }
+
+  @override
+  String researchTokenRevokeConfirm(String name) {
+    return '$name belirteci iptal edilsin mi? Yeniden bağlanana kadar bültenleri araştırma yapamaz.';
+  }
+
+  @override
+  String get researchJobs => 'Son işler';
+
+  @override
+  String get researchJobsHint => 'İşler ve sonuçları 24 saat saklanır.';
+
+  @override
+  String get researchJobsEmpty => 'Son 24 saatte araştırma işi yok';
+
+  @override
+  String get researchQueued => 'Sırada';
+
+  @override
+  String get researchRunning => 'Çalışıyor';
+
+  @override
+  String get researchDone => 'Bitti';
+
+  @override
+  String get researchFailed => 'Başarısız';
+
+  @override
+  String get researchCancel => 'İşi iptal et';
+
+  @override
+  String get tgRowHint => 'Bülten botu, kişiler, zamanlama';
+
+  @override
+  String get tgNoHost => 'Hiçbir ajanda Telegram özelliği açık değil.';
+
+  @override
+  String get tgBotSetupTitle => 'Botu kur';
+
+  @override
+  String get tgBotSetupSteps =>
+      'Telegram\'da @BotFather ile bir bot oluştur (/newbot) ve verdiği belirteci yapıştır. Ajan doğrular ve saklar; bir daha gösterilmez.';
+
+  @override
+  String get tgBotToken => 'Bot belirteci';
+
+  @override
+  String get tgBotTokenHint => 'Yalnız ajana gönderilir; telefonda saklanmaz.';
+
+  @override
+  String get tgBotSave => 'Kaydet ve doğrula';
+
+  @override
+  String tgBotSaved(String bot) {
+    return '$bot bağlandı';
+  }
+
+  @override
+  String get tgPrivacyNote =>
+      'Telegram bot mesajları uçtan uca şifreli değildir. Bültenlere yalnız kamuya açık bilgi koy.';
+
+  @override
+  String get tgBotReady => 'Bot hazır';
+
+  @override
+  String get tgBotPolling => 'davet bekleniyor';
+
+  @override
+  String get tgBotChange => 'Bot belirtecini değiştir';
+
+  @override
+  String get tgBotRemove => 'Botu kaldır';
+
+  @override
+  String get tgBotRemoveConfirm =>
+      'Bot belirteci ajandan kaldırılsın mı? Yeniden kurulana kadar hiçbir şey gönderilmez; kişiler ve bültenler kalır.';
+
+  @override
+  String get tgResearchTitle => 'Araştırma PC\'si';
+
+  @override
+  String get tgResearchPc => 'Araştırma PC\'si';
+
+  @override
+  String get tgResearchHint =>
+      'Araştırma PC\'de çalışır. PC\'nin sayfasında › Araştırma bölümünden bağla.';
+
+  @override
+  String get tgResearchNotSet => 'Araştırma PC\'si bağlı değil';
+
+  @override
+  String get tgResearchReachable => 'ulaşılıyor';
+
+  @override
+  String get tgResearchUnreachable => 'ulaşılamıyor';
+
+  @override
+  String get tgResearchWake => 'Wake-on-LAN';
+
+  @override
+  String get tgRecipients => 'Kişiler';
+
+  @override
+  String get tgRecipientsEmpty =>
+      'Henüz kimse yok. Kişileri tek kullanımlık bağlantıyla davet et.';
+
+  @override
+  String get tgNoSubscriptions => 'Bülten yok';
+
+  @override
+  String get tgStatusActive => 'Etkin';
+
+  @override
+  String get tgStatusPaused => 'Duraklatıldı';
+
+  @override
+  String get tgStatusStopped => 'Ayrıldı (/stop)';
+
+  @override
+  String get tgStatusUnreachable => 'Ulaşılamıyor';
+
+  @override
+  String get tgInviteAdd => 'Kişi ekle';
+
+  @override
+  String get tgInviteLabel => 'Kimin için? (isteğe bağlı)';
+
+  @override
+  String get tgInviteLabelHint => 'ör. Annem';
+
+  @override
+  String get tgInviteFeeds => 'Bültenler';
+
+  @override
+  String get tgInviteHint =>
+      'Bağlantı bir kez ve 24 saat geçerlidir. Kişi açıp Başlat\'a dokununca eklenir.';
+
+  @override
+  String get tgInviteCreate => 'Davet bağlantısı oluştur';
+
+  @override
+  String tgInviteShareHint(String date) {
+    return 'Tek kullanımlık, $date tarihine kadar geçerli. Yalnız davet ettiğin kişiye gönder.';
+  }
+
+  @override
+  String tgInviteShareText(String link) {
+    return 'Telegram\'daki Tiphys bültenime katıl: $link';
+  }
+
+  @override
+  String get tgInviteCopied => 'Bağlantı kopyalandı';
+
+  @override
+  String get tgInvitesPending => 'Bekleyen davetler';
+
+  @override
+  String get tgInvitesPendingHint =>
+      'Bekleyen davet varken ajan Telegram\'ı yoklar.';
+
+  @override
+  String get tgInviteNoLabel => 'Davet';
+
+  @override
+  String tgInviteExpires(String date) {
+    return '$date tarihine kadar geçerli';
+  }
+
+  @override
+  String get tgInviteRevoke => 'Daveti iptal et';
+
+  @override
+  String get tgInviteRevokeConfirm =>
+      'Bu davet iptal edilsin mi? Bağlantı çalışmaz.';
+
+  @override
+  String get tgGone => 'Bulunamadı (silinmiş olabilir).';
+
+  @override
+  String tgAddedAt(String date) {
+    return 'eklendi $date';
+  }
+
+  @override
+  String get tgReceive => 'Bülten alsın';
+
+  @override
+  String get tgStoppedHint =>
+      'Bu kişi /stop gönderdi. Yalnız yeni bir davetle geri dönebilir.';
+
+  @override
+  String get tgUnreachableHint =>
+      'Telegram teslimi reddetti (bot engellenmiş olabilir). Yeniden denemek için aç.';
+
+  @override
+  String get tgSubscriptions => 'Abonelikler';
+
+  @override
+  String get tgRecentDeliveries => 'Son gönderimler';
+
+  @override
+  String get tgNoDeliveries => 'Henüz gönderim yok';
+
+  @override
+  String get tgDeliverySent => 'İletildi';
+
+  @override
+  String get tgDeliveryFailed => 'Başarısız';
+
+  @override
+  String get tgFeed => 'Bülten';
+
+  @override
+  String get tgTest => 'test';
+
+  @override
+  String get tgSendTestMessage => 'Test mesajı gönder';
+
+  @override
+  String get tgTestSent => 'Test mesajı gönderildi';
+
+  @override
+  String get tgRecipientDelete => 'Kişiyi kaldır';
+
+  @override
+  String tgRecipientDeleteConfirm(String name) {
+    return '$name kaldırılsın mı? Artık bülten almaz; yeniden eklemek için yeni bağlantı gerekir.';
+  }
+
+  @override
+  String get tgFeeds => 'Bültenler';
+
+  @override
+  String get tgFeedsEmpty => 'Henüz bülten yok. Bir şablonla başla.';
+
+  @override
+  String get tgFeedsHint => 'Saatler ajanın saat dilimindedir.';
+
+  @override
+  String tgLastIssue(String status) {
+    return 'son: $status';
+  }
+
+  @override
+  String tgRecipientCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count alıcı',
+      zero: 'alıcı yok',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get tgFeedAdd => 'Yeni bülten';
+
+  @override
+  String get tgFeedEdit => 'Bülteni düzenle';
+
+  @override
+  String get tgFeedBlank => 'Boş';
+
+  @override
+  String tgFeedItemsRange(int min, int max) {
+    return '$min–$max madde';
+  }
+
+  @override
+  String tgWindowHours(int hours) {
+    return 'son $hours saat';
+  }
+
+  @override
+  String get tgApprovalAuto => 'Otomatik gönder';
+
+  @override
+  String get tgApprovalAsk => 'Her seferinde bana sor';
+
+  @override
+  String tgApprovalFirstN(int n) {
+    return 'İlk $n sayıda bana sor, sonra otomatik';
+  }
+
+  @override
+  String get tgApprovalFirstNShort => 'İlk sayılarda sor';
+
+  @override
+  String get tgPreviewAction => 'Önizle';
+
+  @override
+  String tgRunConfirmSend(int count) {
+    return 'Şimdi araştırılıp sormadan $count kişiye gönderilsin mi?';
+  }
+
+  @override
+  String tgRunConfirmApproval(int count) {
+    return 'Şimdi araştırılsın mı? $count kişiye gitmeden önce sana sorulacak.';
+  }
+
+  @override
+  String get tgFeedRunning => 'Bu bülten şu an çalışıyor.';
+
+  @override
+  String get tgArchive => 'Arşiv';
+
+  @override
+  String get tgArchiveEmpty => 'Henüz sayı yok';
+
+  @override
+  String tgItemCount(int count) {
+    return '$count madde';
+  }
+
+  @override
+  String tgSentTo(int count) {
+    return '$count kişiye gitti';
+  }
+
+  @override
+  String get tgFeedBasics => 'Bülten';
+
+  @override
+  String get tgFeedTopic => 'Konu';
+
+  @override
+  String get tgFeedTopicHint => 'Ne araştırılsın? Açık yaz.';
+
+  @override
+  String get tgFeedInstructions => 'Ek talimatlar (isteğe bağlı)';
+
+  @override
+  String get tgFeedInstructionsHint =>
+      'ör. birincil kaynakları tercih et, söylentileri atla';
+
+  @override
+  String get tgFeedScheduleHint =>
+      'PC kapalıysa ajan (ayarlıysa) uyandırır ve son saate kadar yeniden dener.';
+
+  @override
+  String get tgFeedRules => 'Araştırma kuralları';
+
+  @override
+  String get tgFeedWindow => 'Zaman aralığı (saat)';
+
+  @override
+  String get tgFeedWindowHint =>
+      'Yalnız son N saatin haberleri (24 = bir gün, 168 = bir hafta).';
+
+  @override
+  String get tgFeedMinItems => 'En az madde';
+
+  @override
+  String get tgFeedMaxItems => 'En çok madde';
+
+  @override
+  String get tgFeedSourcesPerItem => 'Madde başına kaynak (en çok)';
+
+  @override
+  String get tgFeedAllowDomains => 'Yalnız bu siteler (isteğe bağlı)';
+
+  @override
+  String get tgFeedAllowDomainsHint =>
+      'Virgülle ayrılmış alan adları. Boş: her site.';
+
+  @override
+  String get tgFeedBlockDomains => 'Asla bu siteler';
+
+  @override
+  String get tgFeedSkip => 'Yeni bir şey yoksa gönderme';
+
+  @override
+  String get tgFeedSkipHint => 'Son 14 günde gönderilen haberler yinelenmez.';
+
+  @override
+  String get tgFeedApproval => 'Onay';
+
+  @override
+  String get tgFeedApprovalN => 'İlk kaç sayıda sorulsun';
+
+  @override
+  String get tgFeedDeadline => 'Son saat (zamandan sonra dakika)';
+
+  @override
+  String get tgFeedDeadlineHint =>
+      'Araştırma o zamana kadar bitmezse gönderilmez. Onay en çok 2 saat daha bekler.';
+
+  @override
+  String get tgFeedRecipients => 'Alıcılar';
+
+  @override
+  String get tgFeedNeedsNameTopic => 'Ad ve konu gir.';
+
+  @override
+  String get tgFeedBadItems =>
+      'Madde sayısı 1–20 olmalı, en az en çoktan büyük olamaz.';
+
+  @override
+  String get tgFeedBadWindow => 'Zaman aralığı 1–720 saat olmalı.';
+
+  @override
+  String get tgFeedBadDeadline => 'Son saat 5–360 dakika olmalı.';
+
+  @override
+  String get tgFeedBadApprovalN => 'Sayı adedi 1–100 olmalı.';
+
+  @override
+  String tgFeedDeleteConfirm(String name) {
+    return '$name ve arşivi silinsin mi?';
+  }
+
+  @override
+  String get tgIssue => 'Sayı';
+
+  @override
+  String get tgIssueResearching => 'Araştırılıyor';
+
+  @override
+  String get tgIssueResearchingHint =>
+      'PC\'de araştırılıyor… Birkaç dakika sürer; sayfa kendiliğinden güncellenir.';
+
+  @override
+  String get tgIssueAwaiting => 'Onay bekliyor';
+
+  @override
+  String get tgIssueSending => 'Gönderiliyor';
+
+  @override
+  String get tgIssueSent => 'Gönderildi';
+
+  @override
+  String get tgIssueSkipped => 'Atlandı (yeni bir şey yok)';
+
+  @override
+  String get tgIssueFailed => 'Başarısız';
+
+  @override
+  String get tgIssueExpired => 'Süresi doldu';
+
+  @override
+  String get tgIssueRejected => 'Vazgeçildi';
+
+  @override
+  String get tgIssuePreview => 'Önizleme';
+
+  @override
+  String get tgScheduled => 'zamanlanmış';
+
+  @override
+  String tgStats(int kept, int received, int dropped) {
+    return '$received maddeden $kept tanesi doğrulandı · $dropped kaynak düştü';
+  }
+
+  @override
+  String tgApprovalWaiting(int count) {
+    return '$count kişiye gönderilmeye hazır';
+  }
+
+  @override
+  String tgApprovalExpires(String date) {
+    return '$date tarihine kadar onaylanmazsa gönderilmez.';
+  }
+
+  @override
+  String get tgApprove => 'Gönder';
+
+  @override
+  String get tgReject => 'Vazgeç';
+
+  @override
+  String tgApproveConfirm(int count) {
+    return 'Bu sayı şimdi $count kişiye gönderilsin mi?';
+  }
+
+  @override
+  String get tgApproved => 'Onaylandı; gönderiliyor';
+
+  @override
+  String get tgRejected => 'Vazgeçildi; hiçbir şey gönderilmedi';
+
+  @override
+  String get tgPreview => 'Önizleme';
+
+  @override
+  String get tgItems => 'Maddeler ve kaynaklar';
+
+  @override
+  String get tgDeliveries => 'Gönderimler';
+
+  @override
+  String get tgSendTest => 'Test olarak gönder…';
+
+  @override
+  String get tgSendTestTo => 'Test gönderilecek kişi';
+
+  @override
+  String get tgWindowDay => 'son 24 saat';
+
+  @override
+  String get tgWindowWeek => 'son 7 gün';
+
+  @override
+  String get tgFeedEnabled => 'Etkin';
+
+  @override
+  String get notifTgStateCorruptTitle => 'Telegram durumu sıfırlandı';
+
+  @override
+  String get notifTgStateCorruptBody =>
+      'Bozuk durum dosyası kenara alındı; kişiler ve bültenler yeniden eklenmeli.';
 }

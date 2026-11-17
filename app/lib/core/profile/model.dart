@@ -683,6 +683,8 @@ class NotificationSettings {
     this.clipboardFromPc = true,
     this.clipboardToPc = false,
     this.clipboardHostId,
+    this.telegramSent = true,
+    this.telegramAlerts = true,
   });
   final int longCommandSeconds;
   final bool serviceDown;
@@ -700,6 +702,12 @@ class NotificationSettings {
 
   /// PC whose clipboard is synced; null: the Claude host or the first host with an agent ([clipboardHost]).
   final String? clipboardHostId;
+
+  /// Telegram newsletters: "issue sent" (telegram.sent).
+  final bool telegramSent;
+
+  /// Telegram newsletters: approval requests, failures and "research PC unreachable".
+  final bool telegramAlerts;
   factory NotificationSettings.fromJson(Json j) => NotificationSettings(
         longCommandSeconds: _get(j, 'longCommandSeconds', 60),
         serviceDown: _get(j, 'serviceDown', true),
@@ -711,6 +719,8 @@ class NotificationSettings {
         clipboardFromPc: _get(j, 'clipboardFromPc', true),
         clipboardToPc: _get(j, 'clipboardToPc', false),
         clipboardHostId: j['clipboardHostId'] as String?,
+        telegramSent: _get(j, 'telegramSent', true),
+        telegramAlerts: _get(j, 'telegramAlerts', true),
       );
   Json toJson() => {
         'longCommandSeconds': longCommandSeconds,
@@ -723,6 +733,8 @@ class NotificationSettings {
         'clipboardFromPc': clipboardFromPc,
         'clipboardToPc': clipboardToPc,
         'clipboardHostId': clipboardHostId,
+        'telegramSent': telegramSent,
+        'telegramAlerts': telegramAlerts,
       };
   NotificationSettings copyWith({
     int? longCommandSeconds,
@@ -735,6 +747,8 @@ class NotificationSettings {
     bool? clipboardFromPc,
     bool? clipboardToPc,
     String? Function()? clipboardHostId,
+    bool? telegramSent,
+    bool? telegramAlerts,
   }) =>
       NotificationSettings(
         longCommandSeconds: longCommandSeconds ?? this.longCommandSeconds,
@@ -747,6 +761,8 @@ class NotificationSettings {
         clipboardFromPc: clipboardFromPc ?? this.clipboardFromPc,
         clipboardToPc: clipboardToPc ?? this.clipboardToPc,
         clipboardHostId: clipboardHostId == null ? this.clipboardHostId : clipboardHostId(),
+        telegramSent: telegramSent ?? this.telegramSent,
+        telegramAlerts: telegramAlerts ?? this.telegramAlerts,
       );
 }
 

@@ -170,6 +170,11 @@ class NotificationsScreen extends ConsumerWidget {
         SwitchRow(title: l.notifyGrafana, value: n.grafanaAlerts, onChanged: (v) => setN(n.copyWith(grafanaAlerts: v))),
         SwitchRow(title: l.notifyBackups, value: n.backupAlerts, onChanged: (v) => setN(n.copyWith(backupAlerts: v))),
       ]),
+      // Telegram newsletters (atlas): approval requests and failures; "sent" separately (daily, easy to mute).
+      GroupedSection(title: 'Telegram', children: [
+        SwitchRow(title: l.notifyTelegramAlerts, subtitle: l.notifyTelegramAlertsHint, value: n.telegramAlerts, onChanged: (v) => setN(n.copyWith(telegramAlerts: v))),
+        SwitchRow(title: l.notifyTelegramSent, value: n.telegramSent, onChanged: (v) => setN(n.copyWith(telegramSent: v))),
+      ]),
       ChoiceSection<int>(
         title: l.notifyLongCommand,
         value: n.longCommandSeconds,

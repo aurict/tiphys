@@ -27,6 +27,9 @@ import 'features/system/media.dart';
 import 'features/desktop/desktop_screen.dart';
 import 'features/desktop/live_screen.dart';
 import 'features/system/system_screen.dart';
+import 'features/telegram/issue_screen.dart';
+import 'features/telegram/research_screen.dart';
+import 'features/telegram/telegram_screen.dart';
 import 'features/terminal/terminal_screen.dart';
 import 'features/lock/lock_gate.dart';
 import 'features/vault/vault_screen.dart';
@@ -109,6 +112,9 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(path: '/claude/schedules', builder: (c, s) => const ClaudeSchedulesScreen()),
       GoRoute(path: '/share', builder: (c, s) => ShareToPcScreen(items: (s.extra as List?)?.cast<SharedMediaFile>() ?? const [])),
       GoRoute(path: '/git', builder: (c, s) => GitScreen(hostId: s.uri.queryParameters['host'] ?? '', path: s.uri.queryParameters['path'] ?? '~')),
+      GoRoute(path: '/system/telegram', builder: (c, s) => TelegramScreen(hostId: s.uri.queryParameters['host'])),
+      GoRoute(path: '/system/research', builder: (c, s) => ResearchScreen(hostId: s.uri.queryParameters['host'] ?? '')),
+      GoRoute(path: '/telegram/issues/:id', builder: (c, s) => IssueScreen(hostId: s.uri.queryParameters['host'], issueId: s.pathParameters['id']!)),
       GoRoute(path: '/claude/session/:id', builder: (c, s) => ClaudeChatScreen(sessionId: s.pathParameters['id'])),
       GoRoute(
         path: '/claude/history/:id',
