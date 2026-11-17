@@ -67,6 +67,7 @@ The file is validated with a zod schema (`agent/src/config.ts`) when it loads. I
 | `stacks` | object | `{roots: ["~/stack"]}` | Where compose stacks are discovered. See [stacks](#stacks). |
 | `incidents` | object | `{links: [], analysis: {mode: "off", language: "tr"}}` | Incident room options (links, AI analysis). See [incidents](#incidents). |
 | `configFiles` | object | `{extraPaths: []}` | Extra `.env` files for the config editor. See [configFiles](#configfiles). |
+| `databases` | object | `{connections: []}` | Database console connections (credentials stay here; saved queries in `db-queries.json`, write log in `db-writes.jsonl`). See [databases](#databases). |
 
 > **Security:** `requireTailscaleLogin` relies on a header. It only means something when the agent is reachable solely through `tailscale serve` (`listen.host` on loopback). If you bind to a tailnet or LAN address, any client can send that header itself. See [Security](../security.md).
 
@@ -101,6 +102,7 @@ Risk levels below are a guide to how much a holder of a device token can do with
 | `telegram` | `false` | Telegram newsletters: bot, invite-only recipients, feeds on a schedule, research on another agent (`research` section), approval, delivery and archive. Outbound HTTPS only (`api.telegram.org`, the PC agent, link checks); no webhook. See [Telegram newsletters](../features/telegram.md). | low (sends messages to people you invited) |
 | `incidents` | `false` | Incident room: alert notifications (alerts, Docker events, watch, backups, Uptime Kuma) become incidents with context (logs, inspect, git, metrics, events, deploys, config changes), rule hints and confirmed actions (container restart, compose recreate, unit restart, compose rollback, disk cleanup). Turns on the `uptime.down/up`, `docker.unhealthy` and `docker.restartLoop` notifications. Local signals need `alerts` (and `docker`); with `docker` on it also tags previous images `tiphys-rollback/*:prev`. See [Incidents](../features/incidents.md). | medium (restarts/rolls back containers, prunes Docker data after confirmation) |
 | `configfiles` | `false` | Config and secrets: view and edit the stacks' `.env` / `env_file` files and `configFiles.extraPaths` with masked values, reveal (rate limited), masked diff preview → confirmed atomic save (optionally recreating the affected compose services with `up -d --no-deps`), backups and restore, secret rotation metadata, a daily rotation reminder (`secret.rotationDue`). Known secret values of all discovered files (rescanned every 10 minutes and on each save) are redacted from incident context. See [Config files and secrets](../features/config-files.md). | high (writes service secrets after confirmation) |
+| `databases` | `false` | Database console: discover database containers; PostgreSQL, MySQL/MariaDB and SQLite connections, schema browser, table preview and read-only queries (layered: statement allowlist + function denylist, read-only session + transaction, statement timeout, single statement, always rolled back; SQLite opened read-only in a child process); saved queries with chart hints, CSV export; write mode (PostgreSQL, MySQL/MariaDB: preview in a rolled-back transaction → confirmed commit if the row count is unchanged, logged in `db-writes.jsonl`). Loads `pg`/`pg-cursor`/`mysql2` only when on. See [Database console](../features/databases.md). | high (reads any data the configured roles can read; writes after preview and confirmation) |
 | `analysis` | `false` | Incident analysis jobs (`/v1/analysis/jobs`) for another agent holding an `analysis` service token (a server's incident room in `remote` mode): a tool-less `claude -p` (no built-in tools, no MCP, no user settings) reads the redacted bundle; output is schema-checked. Turn on only where Claude Code is installed. See [Incidents › AI analysis](../features/incidents.md#ai-analysis-i-3). | low (spends the user's Claude subscription; the model can't act) |
 | `research` | `false` | Web research jobs (`/v1/research/jobs`) run with `agy` (Gemini) and `claude` for another agent holding a `research` service token. The tools may only use the searxng/firecrawl MCP servers and write in the job's work directory; shell commands are denied. See [Research](../features/research.md). | medium (spends the user's AI subscriptions) |
 
@@ -272,6 +274,39 @@ With `docker` also on, the incident room tracks deploys (no setting): every 5 mi
 
 `.env` files to offer besides the ones found in [stacks](#stacks). Each must be a regular file whose real path is in the configured file's own directory (a symlink to another directory is refused), owned by the agent user, at most 256 KB, and named `.env`, `*.env` or `.env.*`. The same rules apply to stack files (their real path must stay inside the stack root). Files that don't qualify are listed under `skipped` with a reason. Read on each use.
 
+### databases
+
+```json
+"databases": {
+  "connections": [
+    { "id": "app", "name": "App DB", "engine": "postgres", "target": { "container": "app-db-1" }, "database": "app",
+      "readCredential": { "user": "tiphys_ro", "password": "…" } },
+    { "id": "app-env", "name": "App DB (container env)", "engine": "postgres", "target": { "container": "app-db-1", "network": "app_default" },
+      "readCredential": { "fromContainerEnv": true } },
+    { "id": "remote", "name": "Remote", "engine": "postgres", "target": { "host": "10.0.0.5", "port": 5432 }, "readCredential": { "user": "ro", "password": "…" },
+      "writeCredential": { "user": "app_writer", "password": "…" } },
+    { "id": "shop", "name": "Shop", "engine": "mariadb", "target": { "container": "shop-db-1" }, "database": "shop",
+      "readCredential": { "user": "tiphys_ro", "password": "…" } },
+    { "id": "notes", "name": "Notes", "engine": "sqlite", "target": { "path": "~/apps/notes/notes.db" } }
+  ]
+}
+```
+
+Managed from the app through `/v1/db/connections` (not `PATCH /v1/config`; `GET /v1/config` leaves this section out). Read on each use. Fields: `id` (`[a-z0-9-]`, unique), `name`, `engine` (`postgres`, `mysql`, `mariadb` or `sqlite`; `mysql` and `mariadb` share the driver and the flavor is detected from the server), `target`, `database` (PostgreSQL default: `POSTGRES_DB` with `fromContainerEnv`, else `postgres`; MySQL: `MYSQL_DATABASE`/`MARIADB_DATABASE` with `fromContainerEnv`, else none), `readCredential`, `writeCredential` (optional; the write mode uses it, else the read credential with a `readCredentialUsed` warning).
+
+- **target** `{container, network?, port?}`: the container's IP is read with `docker inspect` on every connect (the given network's, else the first one with an IP; `127.0.0.1` for host networking); port default 5432 (PostgreSQL) / 3306 (MySQL). `{host, port?}`: a fixed address. `{path}` (SQLite): resolved with `realpath` on every use and must be inside `allowedRoots`.
+- **readCredential** / **writeCredential** `{user, password?}` is stored here and never returned. `{fromContainerEnv: true}` (container targets only) reads the image's variables from `docker inspect` at connect time and stores nothing: PostgreSQL `POSTGRES_USER` (default `postgres`), `POSTGRES_PASSWORD`, `POSTGRES_DB`; MySQL/MariaDB (`MARIADB_*` before `MYSQL_*`) root with `*_ROOT_PASSWORD` (or an allowed empty root password), else `*_USER` + `*_PASSWORD`, and `*_DATABASE`. That user is usually a **superuser**, so the connection shows the `superuserCredential` warning. Prefer a separate read-only role; `GET /v1/db/connections/:id/readonly-role-sql` generates the SQL with a random password (PostgreSQL: runnable through the write mode):
+
+```sql
+-- PostgreSQL 14+ (or GRANT CONNECT/USAGE/SELECT per schema on older versions)
+CREATE ROLE tiphys_ro LOGIN PASSWORD '…' NOSUPERUSER NOCREATEDB NOCREATEROLE NOREPLICATION NOBYPASSRLS CONNECTION LIMIT 5 IN ROLE pg_read_all_data;
+-- MySQL/MariaDB (run with the mysql client: account statements can't be previewed)
+CREATE USER 'tiphys_ro'@'%' IDENTIFIED BY '…' WITH MAX_USER_CONNECTIONS 5;
+GRANT SELECT, SHOW VIEW ON `shop`.* TO 'tiphys_ro'@'%';
+```
+
+Next to `agent.json` (both mode 0600): `db-queries.json` holds the saved queries (`{version: 1, queries: [{id, connectionId, name, sql, params, chart, createdAt, updatedAt}]}`, at most 500; managed through `/v1/db/queries`), and `db-writes.jsonl` the write log (one line per commit attempt with the full SQL — a role password literal masked — row count, device, connection and time; kept as `db-writes.jsonl.1` past 5 MB).
+
 ## Editing from the app
 
 The app reads the redacted config with `GET /v1/config` and changes it with `PATCH /v1/config` (agent settings screens).
@@ -283,6 +318,7 @@ The app reads the redacted config with `GET /v1/config` and changes it with `PAT
 - for `uptimeKuma`, `sunshine` and `alerts.grafana`, the password or token becomes `hasPassword` / `hasToken`
 - `telegram` becomes `{configured, username}` and `research` becomes `{url, wakeHostId, hasToken}`
 - `incidents.analysis` becomes `{mode, url, language, hasToken}`
+- `databases` is left out (connections are read through `/v1/db/connections`, without passwords)
 
 **Patchable fields:** `name`, `features` (partial), `allowedRoots`, `claude`, `homepage`, `pushToken` (string or `null`), `uptimeKuma`, `sunshine`, `wake`, `watch`, `alerts`, `transcribe`, `desktop`, `backups`, `research` (`{url, token?, wakeHostId?}` or `null`), `stacks` (`{roots}`), `incidents` (`{links?, analysis?: {mode, url? (null clears), token?, language?}}`; an omitted part is kept), `configFiles` (`{extraPaths}`). The bot token has its own route (`PUT /v1/telegram/bot`). Unknown keys are rejected. The phone **cannot** change `listen`, `requireTailscaleLogin`, `devices`, `serviceTokens` or push endpoints this way (service tokens have their own routes, `/v1/service-tokens`; they are not part of `GET /v1/config`).
 

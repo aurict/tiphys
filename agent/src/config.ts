@@ -42,6 +42,46 @@ export const backupCheckSchema = z
   .refine((c) => (c.kind === "file" ? !!c.path : !!c.unit), { message: "file için path, unit için unit gerekli" })
   .refine((c) => !c.path || !/[*?[]/.test(c.path.slice(0, c.path.lastIndexOf("/") + 1)), { message: "joker karakter yalnız son parçada olabilir", path: ["path"] });
 
+/** Container name (docker's rule), used by database connection targets. */
+export const CONTAINER_NAME = /^[A-Za-z0-9][A-Za-z0-9_.-]{0,127}$/;
+
+export const dbCredentialSchema = z.union([
+  z.strictObject({ user: z.string().min(1).max(128), password: z.string().max(1024).optional() }),
+  z.strictObject({ fromContainerEnv: z.literal(true) }),
+]);
+
+export const dbTargetSchema = z.union([
+  z.strictObject({
+    container: z.string().regex(CONTAINER_NAME),
+    network: z.string().regex(/^[A-Za-z0-9][A-Za-z0-9_.-]{0,127}$/).optional(),
+    port: z.number().int().min(1).max(65535).optional(),
+  }),
+  z.strictObject({ host: z.string().min(1).max(253).regex(/^[A-Za-z0-9.:_-]+$/), port: z.number().int().min(1).max(65535).optional() }),
+  z.strictObject({ path: z.string().min(1).max(1024) }),
+]);
+
+/**
+ * A database connection (PLAN.md §13.2). postgres/mysql/mariadb: container or host target and readCredential
+ * (writeCredential optional: the write mode uses it, else the read credential); sqlite: path target, no credentials.
+ */
+export const dbConnectionSchema = z
+  .object({
+    id,
+    name: z.string().min(1).max(80),
+    engine: z.enum(["postgres", "mysql", "mariadb", "sqlite"]),
+    target: dbTargetSchema,
+    database: z.string().min(1).max(128).optional(),
+    readCredential: dbCredentialSchema.optional(),
+    writeCredential: dbCredentialSchema.optional(),
+  })
+  .refine((c) => (c.engine === "sqlite" ? "path" in c.target && !c.readCredential && !c.writeCredential : !("path" in c.target) && !!c.readCredential), {
+    message: "postgres/mysql/mariadb: container/host hedefi ve readCredential; sqlite: path hedefi, kimlik yok",
+  })
+  .refine((c) => ![c.readCredential, c.writeCredential].some((k) => k && "fromContainerEnv" in k) || "container" in c.target, {
+    message: "fromContainerEnv yalnız container hedefiyle",
+    path: ["readCredential"],
+  });
+
 export const agentConfigSchema = z.object({
   version: z.literal(1),
   name: z.string().min(1).max(80),
@@ -79,6 +119,8 @@ export const agentConfigSchema = z.object({
     configfiles: z.boolean().default(false),
     /** Incident analysis jobs for other agents (PLAN.md §13.1 I-3): tool-less claude -p; reached with an "analysis" service token. */
     analysis: z.boolean().default(false),
+    /** Database console (PLAN.md §13.2): connections, discovery, schema browser, read-only queries (D-1). */
+    databases: z.boolean().default(false),
   }),
   devices: z.array(deviceSchema).default([]),
   /** Scoped service tokens (tps_…): they open only routes that declare one of their scopes. */
@@ -221,9 +263,24 @@ export const agentConfigSchema = z.object({
    * regular file (not a symlink out of its directory), owned by the agent user, ≤256 KB, named .env / *.env / .env.*.
    */
   configFiles: z.object({ extraPaths: z.array(z.string().min(1).max(1024)).max(50).default([]) }).default({ extraPaths: [] }),
+  /**
+   * Database console ("databases" feature). Credentials live only here (never returned by the API); fromContainerEnv
+   * reads POSTGRES_* / MYSQL_* / MARIADB_* from `docker inspect` at connect time and stores nothing. Saved queries
+   * live in db-queries.json and the write log in db-writes.jsonl, both next to this file (0600).
+   */
+  databases: z
+    .object({
+      connections: z
+        .array(dbConnectionSchema)
+        .max(100)
+        .refine((a) => new Set(a.map((c) => c.id)).size === a.length, { message: "bağlantı kimlikleri benzersiz olmalı" })
+        .default([]),
+    })
+    .default({ connections: [] }),
 });
 
 export type AgentConfig = z.infer<typeof agentConfigSchema>;
+export type DbConnection = z.infer<typeof dbConnectionSchema>;
 export type Device = z.infer<typeof deviceSchema>;
 export type ServiceToken = z.infer<typeof serviceTokenSchema>;
 export type ServiceScope = (typeof SERVICE_SCOPES)[number];
