@@ -30,7 +30,8 @@ The file is validated with a zod schema (`agent/src/config.ts`) when it loads. I
     "system": true, "services": true, "docker": true, "power": true,
     "homepage": false, "claude": true, "uptime": false, "wake": false,
     "watch": false, "git": true, "desktop": true, "control": true,
-    "ports": false, "transcribe": false, "alerts": true, "backups": false
+    "ports": false, "transcribe": false, "alerts": true, "backups": false,
+    "research": false, "telegram": false
   },
   "devices": [],
   "allowedRoots": ["~"]
@@ -48,6 +49,7 @@ The file is validated with a zod schema (`agent/src/config.ts`) when it loads. I
 | `requireTailscaleLogin` | string or `null` | `null` | If set, every authenticated request must carry a `Tailscale-User-Login` header equal to this value. `tailscale serve` adds that header. `null` disables the check. |
 | `features` | object | see below | Feature flags. Routes for a disabled feature are not registered at all. |
 | `devices` | array | `[]` | Paired devices: `{id, name, tokenHash, createdAt}`. Only the SHA-256 hash of each token is stored. Managed by `pair`/`revoke`. Do not edit by hand. |
+| `serviceTokens` | array | `[]` | Scoped tokens for other agents: `{id, name, scopes: ["research"], tokenHash, createdAt, lastUsedAt?}`. Only the hash is stored; `lastUsedAt` is updated at most hourly. Managed by `service-token` and the app. A service token can call only routes of its scopes (see [api.md](api.md#authentication)). |
 | `allowedRoots` | string[] | `["~"]` | Directories that path-based features may touch: git, the Claude working directory and the folder picker. Paths are resolved with `realpath` (symlinks followed) before the check. `~` is expanded. |
 | `claude` | object | see [claude](#claude) | Claude Code profiles. |
 | `homepage` | object | see [homepage](#homepage) | Homepage dashboard integration. |
@@ -60,6 +62,8 @@ The file is validated with a zod schema (`agent/src/config.ts`) when it loads. I
 | `sunshine` | object or `null` | `null` | Sunshine web UI credentials (Moonlight pairing). |
 | `desktop` | object | `{clipboardSync: true}` | Desktop options. |
 | `transcribe` | object | see [transcribe](#transcribe) | Voice-to-text command. |
+| `telegram` | object or `null` | `null` | Telegram bot (`{botToken, botUsername, botId}`). Set with `PUT /v1/telegram/bot`; the token is never returned. See [telegram](#telegram-and-research). |
+| `research` | object or `null` | `null` | The PC agent that runs research jobs for the `telegram` feature. See [telegram](#telegram-and-research). |
 
 > **Security:** `requireTailscaleLogin` relies on a header. It only means something when the agent is reachable solely through `tailscale serve` (`listen.host` on loopback). If you bind to a tailnet or LAN address, any client can send that header itself. See [Security](../security.md).
 
@@ -91,6 +95,8 @@ Risk levels below are a guide to how much a holder of a device token can do with
 | `transcribe` | `false` | `/v1/transcribe`: runs the configured transcription command on uploaded audio. | low |
 | `alerts` | `false` | Background checks: disk usage, failed systemd units, Grafana firing alerts, and Docker crash/OOM events (needs `docker`). Sends notifications. | low |
 | `backups` | `false` | Evaluates `backups.checks` every 15 minutes and notifies on state changes. | low |
+| `telegram` | `false` | Telegram newsletters: bot, invite-only recipients, feeds on a schedule, research on another agent (`research` section), approval, delivery and archive. Outbound HTTPS only (`api.telegram.org`, the PC agent, link checks); no webhook. See [Telegram newsletters](../features/telegram.md). | low (sends messages to people you invited) |
+| `research` | `false` | Web research jobs (`/v1/research/jobs`) run with `agy` (Gemini) and `claude` for another agent holding a `research` service token. The tools may only use the searxng/firecrawl MCP servers and write in the job's work directory; shell commands are denied. See [Research](../features/research.md). | medium (spends the user's AI subscriptions) |
 
 Endpoints that are always on, whatever the flags: health, config, devices, push endpoint registration, events, audit log and agent status. See [api.md](api.md#always-available).
 
@@ -204,6 +210,20 @@ Each check has one of four states: `ok`, `stale`, `failed` or `missing`. When th
 | `command` | `~/.local/bin/transcribe` | Executable called as `command FILE -m MODEL [-l LANG]`. It must print the text on stdout and exit 0. |
 | `model` | `small` | `small` or `large-v3`. Requests can override it. |
 
+### telegram and research
+
+Used by the `telegram` feature (the agent that sends the newsletters, e.g. atlas).
+
+| Field | Meaning |
+| --- | --- |
+| `telegram.botToken` | BotFather token. Set only through `PUT /v1/telegram/bot` (validated with `getMe`). Never returned, logged or written to the event log. |
+| `telegram.botUsername`, `telegram.botId` | From `getMe`; used for invite links. |
+| `research.url` | Base URL of the PC agent with the `research` feature, e.g. `https://pc.my-tailnet.ts.net`. |
+| `research.token` | Service token with the `research` scope from that agent (`tiphys-agent service-token create --name atlas --scope research`). Returned only as `hasToken`. |
+| `research.wakeHostId` | Optional `wake.targets[].hostId`. When the PC can't be reached at run time, one Wake-on-LAN packet is sent to it and the run keeps retrying until the feed's deadline. Without it an unreachable PC fails the run at once. The `wake` feature flag is not needed for this. |
+
+Example: `"research": {"url": "https://pc.my-tailnet.ts.net", "token": "tps_…", "wakeHostId": "pc"}`.
+
 ## Editing from the app
 
 The app reads the redacted config with `GET /v1/config` and changes it with `PATCH /v1/config` (agent settings screens).
@@ -213,16 +233,17 @@ The app reads the redacted config with `GET /v1/config` and changes it with `PAT
 - token hashes are dropped, and devices are returned as `{id, name, createdAt}` only
 - `push.endpoints` is reduced to `{deviceId}`, and `push.token` becomes `hasToken`
 - for `uptimeKuma`, `sunshine` and `alerts.grafana`, the password or token becomes `hasPassword` / `hasToken`
+- `telegram` becomes `{configured, username}` and `research` becomes `{url, wakeHostId, hasToken}`
 
-**Patchable fields:** `name`, `features` (partial), `allowedRoots`, `claude`, `homepage`, `pushToken` (string or `null`), `uptimeKuma`, `sunshine`, `wake`, `watch`, `alerts`, `transcribe`, `desktop`, `backups`. Unknown keys are rejected. The phone **cannot** change `listen`, `requireTailscaleLogin`, `devices` or push endpoints this way.
+**Patchable fields:** `name`, `features` (partial), `allowedRoots`, `claude`, `homepage`, `pushToken` (string or `null`), `uptimeKuma`, `sunshine`, `wake`, `watch`, `alerts`, `transcribe`, `desktop`, `backups`, `research` (`{url, token?, wakeHostId?}` or `null`). The bot token has its own route (`PUT /v1/telegram/bot`). Unknown keys are rejected. The phone **cannot** change `listen`, `requireTailscaleLogin`, `devices`, `serviceTokens` or push endpoints this way (service tokens have their own routes, `/v1/service-tokens`; they are not part of `GET /v1/config`).
 
-**Password fields.** For `uptimeKuma.password`, `sunshine.password` and `alerts.grafana.token`, an omitted value keeps the stored secret, but only if the URL is unchanged. If the URL changes and no new secret is sent, the request fails with `agent.config.passwordRequired`, so an old secret is never sent to a new host. Sending `null` for the section removes it.
+**Password fields.** For `uptimeKuma.password`, `sunshine.password`, `alerts.grafana.token` and `research.token`, an omitted value keeps the stored secret, but only if the URL is unchanged. If the URL changes and no new secret is sent, the request fails with `agent.config.passwordRequired`, so an old secret is never sent to a new host. Sending `null` for the section removes it.
 
 **Restart.** The response is `{config, restartRequired}`. `restartRequired` is `true` when the patch contained `features` or `alerts`. The agent does not restart itself. Restart the service, for example `systemctl --user restart tiphys-agent` if you installed it as a user unit. In practice, these settings take effect as follows:
 
 | Setting | Takes effect |
 | --- | --- |
-| `name`, `allowedRoots`, `claude`, `homepage`, `pushToken`, `wake`, `transcribe`, `sunshine`, `desktop.clipboardSync`, `backups.checks` | Immediately (read on each use) |
+| `name`, `allowedRoots`, `claude`, `homepage`, `pushToken`, `wake`, `transcribe`, `sunshine`, `desktop.clipboardSync`, `backups.checks`, `research` | Immediately (read on each use) |
 | `features.control = false` | Immediately. The open control session ends at once. |
 | other `features`, `alerts` | After restart (`restartRequired: true`) |
 | `uptimeKuma`, `watch` | After restart. The bridge and watcher read these only at startup, but the response does **not** set `restartRequired` for them. |
@@ -238,6 +259,9 @@ The binary is `tiphys-agent`, which is `node agent/dist/cli.js` after `npm run b
 | `tiphys-agent pair --name "Phone" [--url https://argo.my-tailnet.ts.net]` | Adds a device and prints a QR code. The QR holds `{"v":1,"type":"tiphys-pair","agent","url","token"}`. The address and token are also printed for manual entry. The token (`tph_…`) is shown only once. Scan it in the app's agent pairing screen. **Always pass `--url`**: the default is `http://<listen.host>:<listen.port>`, which is a loopback address the phone cannot reach. |
 | `tiphys-agent devices` | Lists paired devices (`id`, `name`, `createdAt`, tab-separated). |
 | `tiphys-agent revoke <device-id>` | Removes a device and its push endpoint. |
+| `tiphys-agent service-token create --name NAME --scope research` | Creates a scoped service token (`tps_…`) and prints it **once**; only its hash is stored. Give it to the other agent (e.g. atlas's `research.token`). |
+| `tiphys-agent service-token list` | Lists service tokens (`id`, `name`, `scopes`, `createdAt`, `lastUsedAt`, tab-separated). |
+| `tiphys-agent service-token revoke <id>` | Revokes a service token. |
 | `tiphys-agent run -- CMD [ARGS…]` | Runs a command with inherited stdio. When it exits, sends `command.done` (exit 0) or `command.failed` with the duration and exit code, then exits with the same code. Only the program name of the command is written to the event log; the notification shows up to 120 characters of the full command line. |
 | `tiphys-agent schema` | Prints the JSON Schema of the app's `.tiphys.json` profile file (`npm run schema` writes it to `schema/tiphys.schema.json`). This is the app profile, not `agent.json`. |
 | `tiphys-agent firefox install` | Registers the Firefox native-messaging host. It writes the manifest `~/.mozilla/native-messaging-hosts/dev.tiphys.bridge.json` and the launcher `$XDG_DATA_HOME/tiphys/firefox-host`, and prints the path of the newest unsigned XPI in `firefox/dist/` if one exists. Needs a built agent (`npm run build`). See [Firefox bridge](../features/firefox-bridge.md). |
@@ -259,6 +283,8 @@ All state files sit next to `agent.json` (by default in `~/.config/tiphys/`) and
 | `a11y-state.json` | `desktop` + mobile view | The previous `org.a11y.Status.IsEnabled` value. Restored when the last view closes or on startup. |
 | `claude-sessions.json` | `claude` | Live Claude sessions, restored after an agent restart. |
 | `claude-schedules.json` | `claude` | Scheduled Claude tasks. |
+| `telegram-state.json` | `telegram` | Recipients (chat id, names, status, subscriptions), invites, feeds, the `getUpdates` offset and the newsletter archive (last 60 issues per feed with items, rendered parts and deliveries). No tokens. A corrupt file is moved aside to `telegram-state.json.corrupt-<time>` and the agent starts empty (event `telegram.stateCorrupt`). |
+| `research-jobs.json` | `research` | Research jobs of the last 24 h with their results (public news; no tokens, no MCP settings). |
 | `claude-shots/` | `claude` + PC sessions | JPEG screenshots taken by PC sessions. The last 60 are kept. |
 
 Other locations:
@@ -268,6 +294,7 @@ Other locations:
 | `$XDG_RUNTIME_DIR/tiphys/firefox.sock` | Unix socket for the Firefox bridge (directory `0700`, socket `0600`). Override with `TIPHYS_FIREFOX_SOCKET`. |
 | `~/.mozilla/native-messaging-hosts/dev.tiphys.bridge.json`, `$XDG_DATA_HOME/tiphys/firefox-host` | Written by `firefox install`. |
 | `~/.local/share/applications/com.visualstudio.code.desktop` | Written by `vscode-a11y install`. |
+| `$XDG_RUNTIME_DIR/tiphys/research/<job-id>/` (fallback `~/.cache/tiphys/research/`) | Research job work directory (`0700`): `draft.schema.json`, `draft.json`, `notes.md` (no MCP config: it is passed to Claude inline). Deleted 24 h after the job ends. |
 | `$TMPDIR/tiphys-voice-*` | Temporary audio for `/v1/transcribe`, deleted after each request. |
 | `services.yaml` (`homepage.servicesPath`) | Rewritten in place when a service is added from the app. |
 
@@ -279,4 +306,4 @@ Other locations:
 | `TIPHYS_FIREFOX_SOCKET` | Firefox bridge socket path. Must match between the agent and the native host. |
 | `XDG_RUNTIME_DIR`, `WAYLAND_DISPLAY`, `HYPRLAND_INSTANCE_SIGNATURE`, `DBUS_SESSION_BUS_ADDRESS` | Desktop features. If they are missing from the service environment, the agent finds them under `$XDG_RUNTIME_DIR`. |
 | `YDOTOOL_SOCKET` | `ydotool` daemon socket used for input. |
-| `TZ` | Time zone for Claude schedules. |
+| `TZ` | Time zone for Claude schedules and Telegram feed schedules (also the date and time shown in newsletters). |
