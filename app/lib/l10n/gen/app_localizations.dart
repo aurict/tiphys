@@ -11893,6 +11893,1512 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'{host}: could not load ({error})'**
   String cfRotationHostError(String host, String error);
+
+  /// No description provided for @dbTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Databases'**
+  String get dbTitle;
+
+  /// No description provided for @dbNoHosts.
+  ///
+  /// In en, this message translates to:
+  /// **'No connected agent has the database console turned on (feature databases).'**
+  String get dbNoHosts;
+
+  /// No description provided for @dbNoConnections.
+  ///
+  /// In en, this message translates to:
+  /// **'No connections yet. Use “Discover” to find running database containers, or add one by hand.'**
+  String get dbNoConnections;
+
+  /// No description provided for @dbDiscover.
+  ///
+  /// In en, this message translates to:
+  /// **'Discover'**
+  String get dbDiscover;
+
+  /// No description provided for @dbAddManual.
+  ///
+  /// In en, this message translates to:
+  /// **'Add manually'**
+  String get dbAddManual;
+
+  /// No description provided for @dbSqliteUnavailable.
+  ///
+  /// In en, this message translates to:
+  /// **'This agent\'s Node has no SQLite (Node 22.13 or newer is needed).'**
+  String get dbSqliteUnavailable;
+
+  /// No description provided for @dbSuperuserBadge.
+  ///
+  /// In en, this message translates to:
+  /// **'superuser'**
+  String get dbSuperuserBadge;
+
+  /// No description provided for @dbConnectionMenu.
+  ///
+  /// In en, this message translates to:
+  /// **'Connection menu'**
+  String get dbConnectionMenu;
+
+  /// No description provided for @dbTestOk.
+  ///
+  /// In en, this message translates to:
+  /// **'Connected: {version} · user {user} · {ms} ms'**
+  String dbTestOk(String version, String user, String ms);
+
+  /// No description provided for @dbWarnSuperuser.
+  ///
+  /// In en, this message translates to:
+  /// **'This credential is a superuser: read-only protection works only at the transaction level. A separate read-only role is recommended.'**
+  String get dbWarnSuperuser;
+
+  /// No description provided for @dbWarnReadUsed.
+  ///
+  /// In en, this message translates to:
+  /// **'No separate write credential is set: writes use the read credential.'**
+  String get dbWarnReadUsed;
+
+  /// No description provided for @dbDeleteConfirm.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete the connection “{name}”? Its saved queries stay (but can\'t run).'**
+  String dbDeleteConfirm(String name);
+
+  /// No description provided for @dbSaved.
+  ///
+  /// In en, this message translates to:
+  /// **'Saved.'**
+  String get dbSaved;
+
+  /// No description provided for @dbDiscoverTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Discover databases'**
+  String get dbDiscoverTitle;
+
+  /// No description provided for @dbDiscoverHint.
+  ///
+  /// In en, this message translates to:
+  /// **'The agent looks at the image names of running containers. Only environment variable names are known; values are never shown.'**
+  String get dbDiscoverHint;
+
+  /// No description provided for @dbDiscoverNone.
+  ///
+  /// In en, this message translates to:
+  /// **'No running database container found.'**
+  String get dbDiscoverNone;
+
+  /// No description provided for @dbDiscoverUnsupported.
+  ///
+  /// In en, this message translates to:
+  /// **'not supported'**
+  String get dbDiscoverUnsupported;
+
+  /// No description provided for @dbDiscoverConnected.
+  ///
+  /// In en, this message translates to:
+  /// **'{n, plural, =1{1 connection} other{{n} connections}}'**
+  String dbDiscoverConnected(int n);
+
+  /// No description provided for @dbFormNew.
+  ///
+  /// In en, this message translates to:
+  /// **'New connection'**
+  String get dbFormNew;
+
+  /// No description provided for @dbFormEdit.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit connection'**
+  String get dbFormEdit;
+
+  /// No description provided for @dbFromContainer.
+  ///
+  /// In en, this message translates to:
+  /// **'Container {container} ({image})'**
+  String dbFromContainer(String container, String image);
+
+  /// No description provided for @dbFieldName.
+  ///
+  /// In en, this message translates to:
+  /// **'Name'**
+  String get dbFieldName;
+
+  /// No description provided for @dbFieldEngine.
+  ///
+  /// In en, this message translates to:
+  /// **'Engine'**
+  String get dbFieldEngine;
+
+  /// No description provided for @dbFieldTarget.
+  ///
+  /// In en, this message translates to:
+  /// **'Target'**
+  String get dbFieldTarget;
+
+  /// No description provided for @dbTargetContainer.
+  ///
+  /// In en, this message translates to:
+  /// **'Container'**
+  String get dbTargetContainer;
+
+  /// No description provided for @dbTargetHost.
+  ///
+  /// In en, this message translates to:
+  /// **'Host and port'**
+  String get dbTargetHost;
+
+  /// No description provided for @dbFieldContainer.
+  ///
+  /// In en, this message translates to:
+  /// **'Container name'**
+  String get dbFieldContainer;
+
+  /// No description provided for @dbFieldNetwork.
+  ///
+  /// In en, this message translates to:
+  /// **'Docker network'**
+  String get dbFieldNetwork;
+
+  /// No description provided for @dbNetworkAuto.
+  ///
+  /// In en, this message translates to:
+  /// **'Automatic'**
+  String get dbNetworkAuto;
+
+  /// No description provided for @dbFieldHost.
+  ///
+  /// In en, this message translates to:
+  /// **'Host'**
+  String get dbFieldHost;
+
+  /// No description provided for @dbFieldPort.
+  ///
+  /// In en, this message translates to:
+  /// **'Port'**
+  String get dbFieldPort;
+
+  /// No description provided for @dbFieldPath.
+  ///
+  /// In en, this message translates to:
+  /// **'File path'**
+  String get dbFieldPath;
+
+  /// No description provided for @dbFieldPathHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Must be inside one of the agent\'s allowed folders.'**
+  String get dbFieldPathHint;
+
+  /// No description provided for @dbFieldDatabase.
+  ///
+  /// In en, this message translates to:
+  /// **'Database'**
+  String get dbFieldDatabase;
+
+  /// No description provided for @dbDatabaseHint.
+  ///
+  /// In en, this message translates to:
+  /// **'empty: default'**
+  String get dbDatabaseHint;
+
+  /// No description provided for @dbCredentialTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Credential'**
+  String get dbCredentialTitle;
+
+  /// No description provided for @dbCredPassword.
+  ///
+  /// In en, this message translates to:
+  /// **'Dedicated user + password (recommended)'**
+  String get dbCredPassword;
+
+  /// No description provided for @dbCredPasswordHint.
+  ///
+  /// In en, this message translates to:
+  /// **'A read-only role is best. The password is stored only on the agent and never comes back to the phone.'**
+  String get dbCredPasswordHint;
+
+  /// No description provided for @dbCredEnv.
+  ///
+  /// In en, this message translates to:
+  /// **'From the container environment (superuser)'**
+  String get dbCredEnv;
+
+  /// No description provided for @dbCredEnvHint.
+  ///
+  /// In en, this message translates to:
+  /// **'The password isn\'t stored; the agent reads it from the container\'s environment on each connect.'**
+  String get dbCredEnvHint;
+
+  /// No description provided for @dbEnvUnavailable.
+  ///
+  /// In en, this message translates to:
+  /// **'This container\'s environment has no usable credential (it may use a password file or a random root password).'**
+  String get dbEnvUnavailable;
+
+  /// No description provided for @dbSuperuserWarnTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Superuser warning'**
+  String get dbSuperuserWarnTitle;
+
+  /// No description provided for @dbSuperuserWarnBody.
+  ///
+  /// In en, this message translates to:
+  /// **'The user in the container\'s environment (POSTGRES_USER or MySQL root) is most likely a superuser. Then only the transaction-level protections apply (one statement, allowlist, read-only transaction); the database role does not protect you. After connecting, create a separate role with “Create a read-only role” and use that instead.'**
+  String get dbSuperuserWarnBody;
+
+  /// No description provided for @dbFieldUser.
+  ///
+  /// In en, this message translates to:
+  /// **'User'**
+  String get dbFieldUser;
+
+  /// No description provided for @dbFieldPassword.
+  ///
+  /// In en, this message translates to:
+  /// **'Password'**
+  String get dbFieldPassword;
+
+  /// No description provided for @dbPasswordKept.
+  ///
+  /// In en, this message translates to:
+  /// **'The stored password is kept; type a new one to change it.'**
+  String get dbPasswordKept;
+
+  /// No description provided for @dbWriteCredTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Write credential'**
+  String get dbWriteCredTitle;
+
+  /// No description provided for @dbWriteCredSwitch.
+  ///
+  /// In en, this message translates to:
+  /// **'Separate user for writes'**
+  String get dbWriteCredSwitch;
+
+  /// No description provided for @dbWriteCredHint.
+  ///
+  /// In en, this message translates to:
+  /// **'When off, the write mode uses the read credential.'**
+  String get dbWriteCredHint;
+
+  /// No description provided for @dbTabSchema.
+  ///
+  /// In en, this message translates to:
+  /// **'Schema'**
+  String get dbTabSchema;
+
+  /// No description provided for @dbTabQueries.
+  ///
+  /// In en, this message translates to:
+  /// **'Queries'**
+  String get dbTabQueries;
+
+  /// No description provided for @dbTabEditor.
+  ///
+  /// In en, this message translates to:
+  /// **'Editor'**
+  String get dbTabEditor;
+
+  /// No description provided for @dbSchemaEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'No user schemas found.'**
+  String get dbSchemaEmpty;
+
+  /// No description provided for @dbSchemaTruncated.
+  ///
+  /// In en, this message translates to:
+  /// **'The schema is very large: the list was cut.'**
+  String get dbSchemaTruncated;
+
+  /// No description provided for @dbTablesCount.
+  ///
+  /// In en, this message translates to:
+  /// **'{n, plural, =1{1 table} other{{n} tables}}'**
+  String dbTablesCount(int n);
+
+  /// No description provided for @dbEstRows.
+  ///
+  /// In en, this message translates to:
+  /// **'~{n} rows'**
+  String dbEstRows(int n);
+
+  /// No description provided for @dbKindTable.
+  ///
+  /// In en, this message translates to:
+  /// **'Table'**
+  String get dbKindTable;
+
+  /// No description provided for @dbKindView.
+  ///
+  /// In en, this message translates to:
+  /// **'View'**
+  String get dbKindView;
+
+  /// No description provided for @dbKindMatView.
+  ///
+  /// In en, this message translates to:
+  /// **'Materialized view'**
+  String get dbKindMatView;
+
+  /// No description provided for @dbKindForeign.
+  ///
+  /// In en, this message translates to:
+  /// **'Foreign table'**
+  String get dbKindForeign;
+
+  /// No description provided for @dbKindPartitioned.
+  ///
+  /// In en, this message translates to:
+  /// **'Partitioned table'**
+  String get dbKindPartitioned;
+
+  /// No description provided for @dbColumns.
+  ///
+  /// In en, this message translates to:
+  /// **'Columns'**
+  String get dbColumns;
+
+  /// No description provided for @dbIndexes.
+  ///
+  /// In en, this message translates to:
+  /// **'Indexes'**
+  String get dbIndexes;
+
+  /// No description provided for @dbUnique.
+  ///
+  /// In en, this message translates to:
+  /// **'unique'**
+  String get dbUnique;
+
+  /// No description provided for @dbPreviewTable.
+  ///
+  /// In en, this message translates to:
+  /// **'Table preview'**
+  String get dbPreviewTable;
+
+  /// No description provided for @dbPreviewLoad.
+  ///
+  /// In en, this message translates to:
+  /// **'Show the first {n} rows'**
+  String dbPreviewLoad(int n);
+
+  /// No description provided for @dbQueriesEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'No saved queries. Write one in the editor and use “Save as query”.'**
+  String get dbQueriesEmpty;
+
+  /// No description provided for @dbQueryNew.
+  ///
+  /// In en, this message translates to:
+  /// **'New query'**
+  String get dbQueryNew;
+
+  /// No description provided for @dbQueryEdit.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit query'**
+  String get dbQueryEdit;
+
+  /// No description provided for @dbQueryName.
+  ///
+  /// In en, this message translates to:
+  /// **'Name'**
+  String get dbQueryName;
+
+  /// No description provided for @dbQuerySql.
+  ///
+  /// In en, this message translates to:
+  /// **'SQL (read-only)'**
+  String get dbQuerySql;
+
+  /// No description provided for @dbQueryRun.
+  ///
+  /// In en, this message translates to:
+  /// **'Run again'**
+  String get dbQueryRun;
+
+  /// No description provided for @dbQueryChart.
+  ///
+  /// In en, this message translates to:
+  /// **'Chart'**
+  String get dbQueryChart;
+
+  /// No description provided for @dbQueryDeleteConfirm.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete the query “{name}”?'**
+  String dbQueryDeleteConfirm(String name);
+
+  /// No description provided for @dbOpenInEditor.
+  ///
+  /// In en, this message translates to:
+  /// **'Open in editor'**
+  String get dbOpenInEditor;
+
+  /// No description provided for @dbSaveAsQuery.
+  ///
+  /// In en, this message translates to:
+  /// **'Save as query'**
+  String get dbSaveAsQuery;
+
+  /// No description provided for @dbChartTable.
+  ///
+  /// In en, this message translates to:
+  /// **'Table'**
+  String get dbChartTable;
+
+  /// No description provided for @dbChartStat.
+  ///
+  /// In en, this message translates to:
+  /// **'Number'**
+  String get dbChartStat;
+
+  /// No description provided for @dbChartLine.
+  ///
+  /// In en, this message translates to:
+  /// **'Line'**
+  String get dbChartLine;
+
+  /// No description provided for @dbChartBar.
+  ///
+  /// In en, this message translates to:
+  /// **'Bar'**
+  String get dbChartBar;
+
+  /// No description provided for @dbChartX.
+  ///
+  /// In en, this message translates to:
+  /// **'X axis column'**
+  String get dbChartX;
+
+  /// No description provided for @dbChartY.
+  ///
+  /// In en, this message translates to:
+  /// **'Y columns (numeric)'**
+  String get dbChartY;
+
+  /// No description provided for @dbChartStatColumn.
+  ///
+  /// In en, this message translates to:
+  /// **'Numeric column to show'**
+  String get dbChartStatColumn;
+
+  /// No description provided for @dbChartLoadColumns.
+  ///
+  /// In en, this message translates to:
+  /// **'Load columns'**
+  String get dbChartLoadColumns;
+
+  /// No description provided for @dbChartNoColumns.
+  ///
+  /// In en, this message translates to:
+  /// **'The query runs once to offer its columns.'**
+  String get dbChartNoColumns;
+
+  /// No description provided for @dbChartNoNumeric.
+  ///
+  /// In en, this message translates to:
+  /// **'The result has no numeric column.'**
+  String get dbChartNoNumeric;
+
+  /// No description provided for @dbChartNoRows.
+  ///
+  /// In en, this message translates to:
+  /// **'The result is empty: nothing to draw.'**
+  String get dbChartNoRows;
+
+  /// No description provided for @dbChartMissing.
+  ///
+  /// In en, this message translates to:
+  /// **'The chart\'s columns are not in the result. Edit the query and pick the columns again.'**
+  String get dbChartMissing;
+
+  /// No description provided for @dbChartFirstPoints.
+  ///
+  /// In en, this message translates to:
+  /// **'The chart shows the first {n} rows.'**
+  String dbChartFirstPoints(int n);
+
+  /// No description provided for @dbEditorHint.
+  ///
+  /// In en, this message translates to:
+  /// **'SELECT * FROM table LIMIT 10'**
+  String get dbEditorHint;
+
+  /// No description provided for @dbRun.
+  ///
+  /// In en, this message translates to:
+  /// **'Run'**
+  String get dbRun;
+
+  /// No description provided for @dbLimit.
+  ///
+  /// In en, this message translates to:
+  /// **'Row limit'**
+  String get dbLimit;
+
+  /// No description provided for @dbTimeout.
+  ///
+  /// In en, this message translates to:
+  /// **'Timeout (s)'**
+  String get dbTimeout;
+
+  /// No description provided for @dbRowsSummary.
+  ///
+  /// In en, this message translates to:
+  /// **'{rows, plural, =0{No rows} =1{1 row} other{{rows} rows}} · {ms} ms'**
+  String dbRowsSummary(int rows, int ms);
+
+  /// No description provided for @dbTruncatedBanner.
+  ///
+  /// In en, this message translates to:
+  /// **'The result was cut at {n} rows. Raise the limit or add WHERE/LIMIT to the query.'**
+  String dbTruncatedBanner(int n);
+
+  /// No description provided for @dbCellsTruncated.
+  ///
+  /// In en, this message translates to:
+  /// **'{n, plural, =1{1 cell was cut at 4 KB.} other{{n} cells were cut at 4 KB.}}'**
+  String dbCellsTruncated(int n);
+
+  /// No description provided for @dbNoRows.
+  ///
+  /// In en, this message translates to:
+  /// **'The query returned no rows.'**
+  String get dbNoRows;
+
+  /// No description provided for @dbPageOf.
+  ///
+  /// In en, this message translates to:
+  /// **'Page {page}/{pages}'**
+  String dbPageOf(int page, int pages);
+
+  /// No description provided for @dbPrevPage.
+  ///
+  /// In en, this message translates to:
+  /// **'Previous page'**
+  String get dbPrevPage;
+
+  /// No description provided for @dbNextPage.
+  ///
+  /// In en, this message translates to:
+  /// **'Next page'**
+  String get dbNextPage;
+
+  /// No description provided for @dbCellTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Cell'**
+  String get dbCellTitle;
+
+  /// No description provided for @dbCsvShare.
+  ///
+  /// In en, this message translates to:
+  /// **'Share CSV'**
+  String get dbCsvShare;
+
+  /// No description provided for @dbCsvBusy.
+  ///
+  /// In en, this message translates to:
+  /// **'Preparing CSV…'**
+  String get dbCsvBusy;
+
+  /// No description provided for @dbCsvDone.
+  ///
+  /// In en, this message translates to:
+  /// **'{rows, plural, =1{1 row exported.} other{{rows} rows exported.}}'**
+  String dbCsvDone(int rows);
+
+  /// No description provided for @dbCsvMaybeTruncated.
+  ///
+  /// In en, this message translates to:
+  /// **'The 100,000-row cap was reached: the file may be cut.'**
+  String get dbCsvMaybeTruncated;
+
+  /// No description provided for @dbWriteMode.
+  ///
+  /// In en, this message translates to:
+  /// **'Write mode'**
+  String get dbWriteMode;
+
+  /// No description provided for @dbWriteModeHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Read-only while off. Turning it on needs the app lock; it turns off when you leave the screen.'**
+  String get dbWriteModeHint;
+
+  /// No description provided for @dbWriteBanner.
+  ///
+  /// In en, this message translates to:
+  /// **'WRITE MODE ON: statements really change the database after a preview and your confirmation.'**
+  String get dbWriteBanner;
+
+  /// No description provided for @dbWriteNeedsLock.
+  ///
+  /// In en, this message translates to:
+  /// **'Set an app lock (PIN or fingerprint) first: the write mode needs it.'**
+  String get dbWriteNeedsLock;
+
+  /// No description provided for @dbWriteDoneNote.
+  ///
+  /// In en, this message translates to:
+  /// **'The change was applied.'**
+  String get dbWriteDoneNote;
+
+  /// No description provided for @dbPreviewBtn.
+  ///
+  /// In en, this message translates to:
+  /// **'Preview'**
+  String get dbPreviewBtn;
+
+  /// No description provided for @dbPreviewTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Write preview'**
+  String get dbPreviewTitle;
+
+  /// No description provided for @dbPreviewAffected.
+  ///
+  /// In en, this message translates to:
+  /// **'{n, plural, =0{No rows will be affected} =1{1 row will be affected} other{{n} rows will be affected}}'**
+  String dbPreviewAffected(int n);
+
+  /// No description provided for @dbPreviewDdl.
+  ///
+  /// In en, this message translates to:
+  /// **'Schema change ({statement}); no row count'**
+  String dbPreviewDdl(String statement);
+
+  /// No description provided for @dbPreviewSample.
+  ///
+  /// In en, this message translates to:
+  /// **'Sample rows (first {n})'**
+  String dbPreviewSample(int n);
+
+  /// No description provided for @dbPreviewNoSample.
+  ///
+  /// In en, this message translates to:
+  /// **'No sample rows can be shown for this statement.'**
+  String get dbPreviewNoSample;
+
+  /// No description provided for @dbPreviewCredWrite.
+  ///
+  /// In en, this message translates to:
+  /// **'Ran with the write credential.'**
+  String get dbPreviewCredWrite;
+
+  /// No description provided for @dbPreviewCredRead.
+  ///
+  /// In en, this message translates to:
+  /// **'Ran with the read credential (no separate write credential).'**
+  String get dbPreviewCredRead;
+
+  /// No description provided for @dbPreviewRolledBack.
+  ///
+  /// In en, this message translates to:
+  /// **'The preview was rolled back; nothing has changed yet.'**
+  String get dbPreviewRolledBack;
+
+  /// No description provided for @dbCommit.
+  ///
+  /// In en, this message translates to:
+  /// **'Apply'**
+  String get dbCommit;
+
+  /// No description provided for @dbCommitting.
+  ///
+  /// In en, this message translates to:
+  /// **'Applying…'**
+  String get dbCommitting;
+
+  /// No description provided for @dbCommitConfirm.
+  ///
+  /// In en, this message translates to:
+  /// **'This {statement} statement will permanently change the database. Apply it?'**
+  String dbCommitConfirm(String statement);
+
+  /// No description provided for @dbCommitted.
+  ///
+  /// In en, this message translates to:
+  /// **'Applied: {n, plural, =1{1 row} other{{n} rows}} changed.'**
+  String dbCommitted(int n);
+
+  /// No description provided for @dbCommittedDdl.
+  ///
+  /// In en, this message translates to:
+  /// **'Applied.'**
+  String get dbCommittedDdl;
+
+  /// No description provided for @dbCountChangedBody.
+  ///
+  /// In en, this message translates to:
+  /// **'The data changed after the preview: {expected} rows were expected but the statement now affects {actual}. Nothing was applied. Preview again and check.'**
+  String dbCountChangedBody(int expected, int actual);
+
+  /// No description provided for @dbRePreview.
+  ///
+  /// In en, this message translates to:
+  /// **'Preview again'**
+  String get dbRePreview;
+
+  /// No description provided for @dbRoleTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Create a read-only role'**
+  String get dbRoleTitle;
+
+  /// No description provided for @dbRoleHint.
+  ///
+  /// In en, this message translates to:
+  /// **'The agent prepares SQL that creates a role with read-only privileges. Nothing is run or stored.'**
+  String get dbRoleHint;
+
+  /// No description provided for @dbRoleShow.
+  ///
+  /// In en, this message translates to:
+  /// **'Prepare the SQL'**
+  String get dbRoleShow;
+
+  /// No description provided for @dbRolePasswordNote.
+  ///
+  /// In en, this message translates to:
+  /// **'The password was generated at random and shows only here. After creating the role, enter it as the connection\'s read credential.'**
+  String get dbRolePasswordNote;
+
+  /// No description provided for @dbRoleClient.
+  ///
+  /// In en, this message translates to:
+  /// **'Account statements can\'t be previewed: run this SQL with the mysql/mariadb client.'**
+  String get dbRoleClient;
+
+  /// No description provided for @dbRoleRunWrite.
+  ///
+  /// In en, this message translates to:
+  /// **'Run in write mode'**
+  String get dbRoleRunWrite;
+
+  /// No description provided for @errDbConnectionNotFound.
+  ///
+  /// In en, this message translates to:
+  /// **'Database connection not found.'**
+  String get errDbConnectionNotFound;
+
+  /// No description provided for @errDbConnectionExists.
+  ///
+  /// In en, this message translates to:
+  /// **'A connection with this id already exists.'**
+  String get errDbConnectionExists;
+
+  /// No description provided for @errDbPasswordRequired.
+  ///
+  /// In en, this message translates to:
+  /// **'The target changed: the stored password is never sent to a new address, enter the password again.'**
+  String get errDbPasswordRequired;
+
+  /// No description provided for @errDbContainerNotFound.
+  ///
+  /// In en, this message translates to:
+  /// **'Container not found: {container}.'**
+  String errDbContainerNotFound(String container);
+
+  /// No description provided for @errDbContainerNotRunning.
+  ///
+  /// In en, this message translates to:
+  /// **'Container is not running: {container}.'**
+  String errDbContainerNotRunning(String container);
+
+  /// No description provided for @errDbNetworkNotFound.
+  ///
+  /// In en, this message translates to:
+  /// **'The container is not on the network {network}.'**
+  String errDbNetworkNotFound(String network);
+
+  /// No description provided for @errDbContainerNoAddress.
+  ///
+  /// In en, this message translates to:
+  /// **'The container has no reachable address.'**
+  String get errDbContainerNoAddress;
+
+  /// No description provided for @errDbCredentialUnavailable.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not read a credential from the container environment ({reason}). It may use a password file or a random root password; enter a user and password.'**
+  String errDbCredentialUnavailable(String reason);
+
+  /// No description provided for @errDbUnreachable.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not connect to the database ({reason}).'**
+  String errDbUnreachable(String reason);
+
+  /// No description provided for @errDbAuthFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'The database refused the login: wrong user or password.'**
+  String get errDbAuthFailed;
+
+  /// No description provided for @errDbDatabaseNotFound.
+  ///
+  /// In en, this message translates to:
+  /// **'Database not found.'**
+  String get errDbDatabaseNotFound;
+
+  /// No description provided for @errDbEmptyStatement.
+  ///
+  /// In en, this message translates to:
+  /// **'The SQL is empty.'**
+  String get errDbEmptyStatement;
+
+  /// No description provided for @errDbMultipleStatements.
+  ///
+  /// In en, this message translates to:
+  /// **'Only one statement can run at a time.'**
+  String get errDbMultipleStatements;
+
+  /// No description provided for @errDbStatementNotAllowed.
+  ///
+  /// In en, this message translates to:
+  /// **'This kind of statement is not allowed ({keyword}). The read mode only runs reads such as SELECT, WITH, VALUES, EXPLAIN.'**
+  String errDbStatementNotAllowed(String keyword);
+
+  /// No description provided for @errDbReadOnly.
+  ///
+  /// In en, this message translates to:
+  /// **'The database refused a write: the connection is read-only. Use the write mode to change data.'**
+  String get errDbReadOnly;
+
+  /// No description provided for @errDbPermissionDenied.
+  ///
+  /// In en, this message translates to:
+  /// **'This role lacks the privilege. {message}'**
+  String errDbPermissionDenied(String message);
+
+  /// No description provided for @errDbQueryFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Query failed: {message}'**
+  String errDbQueryFailed(String message);
+
+  /// No description provided for @errDbTimeout.
+  ///
+  /// In en, this message translates to:
+  /// **'The query timed out. Raise the timeout or narrow the query.'**
+  String get errDbTimeout;
+
+  /// No description provided for @errDbTableNotFound.
+  ///
+  /// In en, this message translates to:
+  /// **'Table not found in the catalog.'**
+  String get errDbTableNotFound;
+
+  /// No description provided for @errDbFileNotFound.
+  ///
+  /// In en, this message translates to:
+  /// **'SQLite file not found.'**
+  String get errDbFileNotFound;
+
+  /// No description provided for @errDbSqliteUnavailable.
+  ///
+  /// In en, this message translates to:
+  /// **'This agent\'s Node has no SQLite (22.13 or newer is needed).'**
+  String get errDbSqliteUnavailable;
+
+  /// No description provided for @errDbBusy.
+  ///
+  /// In en, this message translates to:
+  /// **'This connection already has 2 calls running; wait a moment.'**
+  String get errDbBusy;
+
+  /// No description provided for @errDbRateLimited.
+  ///
+  /// In en, this message translates to:
+  /// **'Too many queries: at most {perMinute} per minute.'**
+  String errDbRateLimited(String perMinute);
+
+  /// No description provided for @errDbExportRateLimited.
+  ///
+  /// In en, this message translates to:
+  /// **'Too many CSV exports: at most {perMinute} per minute.'**
+  String errDbExportRateLimited(String perMinute);
+
+  /// No description provided for @errDbWriteRateLimited.
+  ///
+  /// In en, this message translates to:
+  /// **'Too many writes: at most {perTenMinutes} per 10 minutes. The preview token wasn\'t spent; apply again in a while.'**
+  String errDbWriteRateLimited(String perTenMinutes);
+
+  /// No description provided for @errDbQueryNotFound.
+  ///
+  /// In en, this message translates to:
+  /// **'Saved query not found.'**
+  String get errDbQueryNotFound;
+
+  /// No description provided for @errDbTooManyQueries.
+  ///
+  /// In en, this message translates to:
+  /// **'At most {max} saved queries are allowed.'**
+  String errDbTooManyQueries(String max);
+
+  /// No description provided for @errDbWriteUnsupported.
+  ///
+  /// In en, this message translates to:
+  /// **'The write mode isn\'t available for SQLite connections.'**
+  String get errDbWriteUnsupported;
+
+  /// No description provided for @errDbDdlNotPreviewable.
+  ///
+  /// In en, this message translates to:
+  /// **'On MySQL/MariaDB, schema and account statements such as {keyword} commit implicitly and can\'t be previewed. Run it with the mysql client.'**
+  String errDbDdlNotPreviewable(String keyword);
+
+  /// No description provided for @errDbNonTransactionalTables.
+  ///
+  /// In en, this message translates to:
+  /// **'The write mode is refused: non-transactional tables exist ({tables}); a preview could not be rolled back.'**
+  String errDbNonTransactionalTables(String tables);
+
+  /// No description provided for @errDbCountChanged.
+  ///
+  /// In en, this message translates to:
+  /// **'The data changed after the preview: {expected} rows expected, {actual} now. Nothing was applied.'**
+  String errDbCountChanged(String expected, String actual);
+
+  /// No description provided for @errDbFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'The database call failed unexpectedly.'**
+  String get errDbFailed;
+
+  /// No description provided for @dbRestoreTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Restore tests'**
+  String get dbRestoreTitle;
+
+  /// No description provided for @dbRestoreHint.
+  ///
+  /// In en, this message translates to:
+  /// **'A backup you never restored is just a hope. The agent restores the newest dump into a throwaway container and runs your sanity queries; real databases are never touched.'**
+  String get dbRestoreHint;
+
+  /// No description provided for @dbRestoreAdd.
+  ///
+  /// In en, this message translates to:
+  /// **'Add test'**
+  String get dbRestoreAdd;
+
+  /// No description provided for @dbRestoreEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'No restore tests yet.'**
+  String get dbRestoreEmpty;
+
+  /// No description provided for @dbRestoreRunning.
+  ///
+  /// In en, this message translates to:
+  /// **'Running'**
+  String get dbRestoreRunning;
+
+  /// No description provided for @dbRestoreRunningHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Restoring in a throwaway container; the result shows here when done.'**
+  String get dbRestoreRunningHint;
+
+  /// No description provided for @dbRestoreNever.
+  ///
+  /// In en, this message translates to:
+  /// **'Never ran'**
+  String get dbRestoreNever;
+
+  /// No description provided for @dbRestoreOk.
+  ///
+  /// In en, this message translates to:
+  /// **'Passed'**
+  String get dbRestoreOk;
+
+  /// No description provided for @dbRestoreFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Failed'**
+  String get dbRestoreFailed;
+
+  /// No description provided for @dbRestoreRunNow.
+  ///
+  /// In en, this message translates to:
+  /// **'Run now'**
+  String get dbRestoreRunNow;
+
+  /// No description provided for @dbRestoreHistory.
+  ///
+  /// In en, this message translates to:
+  /// **'Results history'**
+  String get dbRestoreHistory;
+
+  /// No description provided for @dbRestoreNoResults.
+  ///
+  /// In en, this message translates to:
+  /// **'No results yet.'**
+  String get dbRestoreNoResults;
+
+  /// No description provided for @dbRestoreManualOnly.
+  ///
+  /// In en, this message translates to:
+  /// **'Manual runs only'**
+  String get dbRestoreManualOnly;
+
+  /// No description provided for @dbRestoreDisabled.
+  ///
+  /// In en, this message translates to:
+  /// **'Schedule is off'**
+  String get dbRestoreDisabled;
+
+  /// No description provided for @dbRestoreNext.
+  ///
+  /// In en, this message translates to:
+  /// **'next: {time}'**
+  String dbRestoreNext(String time);
+
+  /// No description provided for @dbRestoreDeleteConfirm.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete the test “{name}” and its results?'**
+  String dbRestoreDeleteConfirm(String name);
+
+  /// No description provided for @dbRestoreTriggerManual.
+  ///
+  /// In en, this message translates to:
+  /// **'manual'**
+  String get dbRestoreTriggerManual;
+
+  /// No description provided for @dbRestoreTriggerSchedule.
+  ///
+  /// In en, this message translates to:
+  /// **'scheduled'**
+  String get dbRestoreTriggerSchedule;
+
+  /// No description provided for @dbRestoreChecked.
+  ///
+  /// In en, this message translates to:
+  /// **'{n, plural, =1{1 query checked} other{{n} queries checked}}'**
+  String dbRestoreChecked(int n);
+
+  /// No description provided for @dbRestoreDuration.
+  ///
+  /// In en, this message translates to:
+  /// **'{s} s'**
+  String dbRestoreDuration(int s);
+
+  /// No description provided for @dbRfQueryFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'query failed'**
+  String get dbRfQueryFailed;
+
+  /// No description provided for @dbRfNotNumeric.
+  ///
+  /// In en, this message translates to:
+  /// **'query returned no number'**
+  String get dbRfNotNumeric;
+
+  /// No description provided for @dbRfExpectation.
+  ///
+  /// In en, this message translates to:
+  /// **'expectation not met'**
+  String get dbRfExpectation;
+
+  /// No description provided for @dbRfActual.
+  ///
+  /// In en, this message translates to:
+  /// **'got {actual}, expected {expected}'**
+  String dbRfActual(String actual, String expected);
+
+  /// No description provided for @dbRrNoDump.
+  ///
+  /// In en, this message translates to:
+  /// **'No dump file matches the pattern.'**
+  String get dbRrNoDump;
+
+  /// No description provided for @dbRrDumpOutside.
+  ///
+  /// In en, this message translates to:
+  /// **'The dump is outside the allowed folders.'**
+  String get dbRrDumpOutside;
+
+  /// No description provided for @dbRrDisk.
+  ///
+  /// In en, this message translates to:
+  /// **'Not enough free disk (twice the dump size is needed).'**
+  String get dbRrDisk;
+
+  /// No description provided for @dbRrImageVersion.
+  ///
+  /// In en, this message translates to:
+  /// **'The image\'s major version differs from the connection\'s container.'**
+  String get dbRrImageVersion;
+
+  /// No description provided for @dbRrDocker.
+  ///
+  /// In en, this message translates to:
+  /// **'Docker could not start the throwaway container.'**
+  String get dbRrDocker;
+
+  /// No description provided for @dbRrNotReady.
+  ///
+  /// In en, this message translates to:
+  /// **'The throwaway database did not become ready in time.'**
+  String get dbRrNotReady;
+
+  /// No description provided for @dbRrRestoreFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'The dump failed to restore.'**
+  String get dbRrRestoreFailed;
+
+  /// No description provided for @dbRrCorrupt.
+  ///
+  /// In en, this message translates to:
+  /// **'The dump is corrupt (bad gz stream).'**
+  String get dbRrCorrupt;
+
+  /// No description provided for @dbRrSanity.
+  ///
+  /// In en, this message translates to:
+  /// **'The sanity queries did not pass.'**
+  String get dbRrSanity;
+
+  /// No description provided for @dbRrTimeout.
+  ///
+  /// In en, this message translates to:
+  /// **'The test did not finish within 30 minutes.'**
+  String get dbRrTimeout;
+
+  /// No description provided for @dbRrShutdown.
+  ///
+  /// In en, this message translates to:
+  /// **'The test was interrupted by an agent shutdown.'**
+  String get dbRrShutdown;
+
+  /// No description provided for @dbRestoreFormNew.
+  ///
+  /// In en, this message translates to:
+  /// **'New restore test'**
+  String get dbRestoreFormNew;
+
+  /// No description provided for @dbRestoreFormEdit.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit restore test'**
+  String get dbRestoreFormEdit;
+
+  /// No description provided for @dbRestoreImage.
+  ///
+  /// In en, this message translates to:
+  /// **'Image (explicit tag)'**
+  String get dbRestoreImage;
+
+  /// No description provided for @dbRestoreImageHint.
+  ///
+  /// In en, this message translates to:
+  /// **'An official postgres/mysql/mariadb image, e.g. postgres:16. No “latest”.'**
+  String get dbRestoreImageHint;
+
+  /// No description provided for @dbRestoreImageInvalid.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter an image like {engine}:<tag> with an explicit tag (not latest).'**
+  String dbRestoreImageInvalid(String engine);
+
+  /// No description provided for @dbRestoreConnection.
+  ///
+  /// In en, this message translates to:
+  /// **'Connection (optional)'**
+  String get dbRestoreConnection;
+
+  /// No description provided for @dbRestoreConnectionHint.
+  ///
+  /// In en, this message translates to:
+  /// **'If set, the image\'s major version is compared with the connection\'s container.'**
+  String get dbRestoreConnectionHint;
+
+  /// No description provided for @dbRestoreDump.
+  ///
+  /// In en, this message translates to:
+  /// **'Dump'**
+  String get dbRestoreDump;
+
+  /// No description provided for @dbRestoreGlob.
+  ///
+  /// In en, this message translates to:
+  /// **'Dump pattern'**
+  String get dbRestoreGlob;
+
+  /// No description provided for @dbRestoreGlobHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Absolute path; wildcards only in the last part. The newest matching file is restored.'**
+  String get dbRestoreGlobHint;
+
+  /// No description provided for @dbRestoreFormat.
+  ///
+  /// In en, this message translates to:
+  /// **'Format'**
+  String get dbRestoreFormat;
+
+  /// No description provided for @dbRestoreFormatSql.
+  ///
+  /// In en, this message translates to:
+  /// **'SQL (plain)'**
+  String get dbRestoreFormatSql;
+
+  /// No description provided for @dbRestoreFormatGz.
+  ///
+  /// In en, this message translates to:
+  /// **'SQL, gzip'**
+  String get dbRestoreFormatGz;
+
+  /// No description provided for @dbRestoreFormatCustom.
+  ///
+  /// In en, this message translates to:
+  /// **'pg_dump custom (PostgreSQL only)'**
+  String get dbRestoreFormatCustom;
+
+  /// No description provided for @dbRestoreSanity.
+  ///
+  /// In en, this message translates to:
+  /// **'Sanity queries'**
+  String get dbRestoreSanity;
+
+  /// No description provided for @dbRestoreSanityHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Each query must be one read statement returning a number in its first column; the result is compared with the expectation.'**
+  String get dbRestoreSanityHint;
+
+  /// No description provided for @dbRestoreSanityAdd.
+  ///
+  /// In en, this message translates to:
+  /// **'Add query'**
+  String get dbRestoreSanityAdd;
+
+  /// No description provided for @dbRestoreSanitySql.
+  ///
+  /// In en, this message translates to:
+  /// **'SQL'**
+  String get dbRestoreSanitySql;
+
+  /// No description provided for @dbRestoreExpect.
+  ///
+  /// In en, this message translates to:
+  /// **'Condition'**
+  String get dbRestoreExpect;
+
+  /// No description provided for @dbRestoreValue.
+  ///
+  /// In en, this message translates to:
+  /// **'Value'**
+  String get dbRestoreValue;
+
+  /// No description provided for @dbRestoreSchedule.
+  ///
+  /// In en, this message translates to:
+  /// **'Schedule'**
+  String get dbRestoreSchedule;
+
+  /// No description provided for @dbRestoreScheduleSwitch.
+  ///
+  /// In en, this message translates to:
+  /// **'Run automatically'**
+  String get dbRestoreScheduleSwitch;
+
+  /// No description provided for @dbRestoreEnabled.
+  ///
+  /// In en, this message translates to:
+  /// **'Schedule enabled'**
+  String get dbRestoreEnabled;
+
+  /// No description provided for @errDbRestoreTestNotFound.
+  ///
+  /// In en, this message translates to:
+  /// **'Restore test not found.'**
+  String get errDbRestoreTestNotFound;
+
+  /// No description provided for @errDbRestoreTestExists.
+  ///
+  /// In en, this message translates to:
+  /// **'A restore test with this name already exists.'**
+  String get errDbRestoreTestExists;
+
+  /// No description provided for @errDbRestoreBusy.
+  ///
+  /// In en, this message translates to:
+  /// **'A restore test is running; only one runs at a time.'**
+  String get errDbRestoreBusy;
+
+  /// No description provided for @errDbRestoreEngineMismatch.
+  ///
+  /// In en, this message translates to:
+  /// **'The connection\'s engine differs from the test\'s engine.'**
+  String get errDbRestoreEngineMismatch;
+
+  /// No description provided for @errDbSanityNotAllowed.
+  ///
+  /// In en, this message translates to:
+  /// **'Sanity query {n} is not allowed ({keyword}).'**
+  String errDbSanityNotAllowed(int n, String keyword);
+
+  /// No description provided for @errDbDumpOutsideRoots.
+  ///
+  /// In en, this message translates to:
+  /// **'The dump folder is outside the allowed folders.'**
+  String get errDbDumpOutsideRoots;
+
+  /// No description provided for @notifRestoreOkTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'{host}: restore test passed'**
+  String notifRestoreOkTitle(String host);
+
+  /// No description provided for @notifRestoreFailedTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'{host}: restore test failed'**
+  String notifRestoreFailedTitle(String host);
+
+  /// No description provided for @notifRestoreFailedBody.
+  ///
+  /// In en, this message translates to:
+  /// **'{name}: {reason}'**
+  String notifRestoreFailedBody(String name, String reason);
+
+  /// No description provided for @hostPickHint.
+  ///
+  /// In en, this message translates to:
+  /// **'This link doesn\'t say clearly which host it belongs to. Pick the host:'**
+  String get hostPickHint;
+
+  /// No description provided for @hostPickNone.
+  ///
+  /// In en, this message translates to:
+  /// **'No host with an agent matches this link.'**
+  String get hostPickNone;
+
+  /// No description provided for @dbCommitUnknownTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Outcome unknown'**
+  String get dbCommitUnknownTitle;
+
+  /// No description provided for @dbCommitUnknownBody.
+  ///
+  /// In en, this message translates to:
+  /// **'The commit was sent but no answer came back: it may have been applied. Don\'t run it again before checking. Write a read query below (e.g. SELECT count(*) FROM …) to see the rows as they are now.'**
+  String get dbCommitUnknownBody;
+
+  /// No description provided for @dbCheckRows.
+  ///
+  /// In en, this message translates to:
+  /// **'Check the row count'**
+  String get dbCheckRows;
+
+  /// No description provided for @dbCheckHint.
+  ///
+  /// In en, this message translates to:
+  /// **'SELECT count(*) FROM …'**
+  String get dbCheckHint;
+
+  /// No description provided for @errDbSuperuserReadsDisabled.
+  ///
+  /// In en, this message translates to:
+  /// **'Read queries are off for this connection: it logs in as a superuser, and the read-only checks can\'t fully contain a superuser. Use a read-only role, or accept the risk.'**
+  String get errDbSuperuserReadsDisabled;
+
+  /// No description provided for @errDbReadRoleSuperuser.
+  ///
+  /// In en, this message translates to:
+  /// **'The read role is a superuser itself, so reads are refused. Set a role without superuser rights.'**
+  String get errDbReadRoleSuperuser;
+
+  /// No description provided for @dbUseReadRole.
+  ///
+  /// In en, this message translates to:
+  /// **'Use a read-only role'**
+  String get dbUseReadRole;
+
+  /// No description provided for @dbAcceptRisk.
+  ///
+  /// In en, this message translates to:
+  /// **'Accept the risk'**
+  String get dbAcceptRisk;
+
+  /// No description provided for @dbAcceptRiskConfirm.
+  ///
+  /// In en, this message translates to:
+  /// **'Allow read queries with the superuser login of {name}? A superuser can read every database and call functions that reach files or the server; the agent\'s read-only checks can\'t block all of them. A read-only role is the safer choice.'**
+  String dbAcceptRiskConfirm(String name);
+
+  /// No description provided for @dbAcceptRiskCheck.
+  ///
+  /// In en, this message translates to:
+  /// **'I understand the risk'**
+  String get dbAcceptRiskCheck;
+
+  /// No description provided for @dbAcceptRiskBtn.
+  ///
+  /// In en, this message translates to:
+  /// **'Allow superuser reads'**
+  String get dbAcceptRiskBtn;
+
+  /// No description provided for @dbReadsViaRole.
+  ///
+  /// In en, this message translates to:
+  /// **'Reads run as role {role}'**
+  String dbReadsViaRole(String role);
+
+  /// No description provided for @dbReadsSuperuserAllowed.
+  ///
+  /// In en, this message translates to:
+  /// **'Superuser reads allowed (risk accepted)'**
+  String get dbReadsSuperuserAllowed;
+
+  /// No description provided for @dbRoleSetRead.
+  ///
+  /// In en, this message translates to:
+  /// **'Use as read role'**
+  String get dbRoleSetRead;
+
+  /// No description provided for @dbReadAccessTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Read access'**
+  String get dbReadAccessTitle;
+
+  /// No description provided for @dbFieldReadRole.
+  ///
+  /// In en, this message translates to:
+  /// **'Read role'**
+  String get dbFieldReadRole;
+
+  /// No description provided for @dbReadRoleHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Reads switch to this role first (SET ROLE). Empty: none.'**
+  String get dbReadRoleHint;
+
+  /// No description provided for @dbAllowSuperuserReadsHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Only matters without a read role. Risky.'**
+  String get dbAllowSuperuserReadsHint;
 }
 
 class _AppLocalizationsDelegate

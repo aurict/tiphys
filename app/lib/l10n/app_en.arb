@@ -4619,5 +4619,603 @@
         "type": "String"
       }
     }
-  }
+  },
+  "dbTitle": "Databases",
+  "dbNoHosts": "No connected agent has the database console turned on (feature databases).",
+  "dbNoConnections": "No connections yet. Use “Discover” to find running database containers, or add one by hand.",
+  "dbDiscover": "Discover",
+  "dbAddManual": "Add manually",
+  "dbSqliteUnavailable": "This agent's Node has no SQLite (Node 22.13 or newer is needed).",
+  "dbSuperuserBadge": "superuser",
+  "dbConnectionMenu": "Connection menu",
+  "dbTestOk": "Connected: {version} · user {user} · {ms} ms",
+  "@dbTestOk": {
+    "placeholders": {
+      "version": {
+        "type": "String"
+      },
+      "user": {
+        "type": "String"
+      },
+      "ms": {
+        "type": "String"
+      }
+    }
+  },
+  "dbWarnSuperuser": "This credential is a superuser: read-only protection works only at the transaction level. A separate read-only role is recommended.",
+  "dbWarnReadUsed": "No separate write credential is set: writes use the read credential.",
+  "dbDeleteConfirm": "Delete the connection “{name}”? Its saved queries stay (but can't run).",
+  "@dbDeleteConfirm": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "dbSaved": "Saved.",
+  "dbDiscoverTitle": "Discover databases",
+  "dbDiscoverHint": "The agent looks at the image names of running containers. Only environment variable names are known; values are never shown.",
+  "dbDiscoverNone": "No running database container found.",
+  "dbDiscoverUnsupported": "not supported",
+  "dbDiscoverConnected": "{n, plural, =1{1 connection} other{{n} connections}}",
+  "@dbDiscoverConnected": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "dbFormNew": "New connection",
+  "dbFormEdit": "Edit connection",
+  "dbFromContainer": "Container {container} ({image})",
+  "@dbFromContainer": {
+    "placeholders": {
+      "container": {
+        "type": "String"
+      },
+      "image": {
+        "type": "String"
+      }
+    }
+  },
+  "dbFieldName": "Name",
+  "dbFieldEngine": "Engine",
+  "dbFieldTarget": "Target",
+  "dbTargetContainer": "Container",
+  "dbTargetHost": "Host and port",
+  "dbFieldContainer": "Container name",
+  "dbFieldNetwork": "Docker network",
+  "dbNetworkAuto": "Automatic",
+  "dbFieldHost": "Host",
+  "dbFieldPort": "Port",
+  "dbFieldPath": "File path",
+  "dbFieldPathHint": "Must be inside one of the agent's allowed folders.",
+  "dbFieldDatabase": "Database",
+  "dbDatabaseHint": "empty: default",
+  "dbCredentialTitle": "Credential",
+  "dbCredPassword": "Dedicated user + password (recommended)",
+  "dbCredPasswordHint": "A read-only role is best. The password is stored only on the agent and never comes back to the phone.",
+  "dbCredEnv": "From the container environment (superuser)",
+  "dbCredEnvHint": "The password isn't stored; the agent reads it from the container's environment on each connect.",
+  "dbEnvUnavailable": "This container's environment has no usable credential (it may use a password file or a random root password).",
+  "dbSuperuserWarnTitle": "Superuser warning",
+  "dbSuperuserWarnBody": "The user in the container's environment (POSTGRES_USER or MySQL root) is most likely a superuser. Then only the transaction-level protections apply (one statement, allowlist, read-only transaction); the database role does not protect you. After connecting, create a separate role with “Create a read-only role” and use that instead.",
+  "dbFieldUser": "User",
+  "dbFieldPassword": "Password",
+  "dbPasswordKept": "The stored password is kept; type a new one to change it.",
+  "dbWriteCredTitle": "Write credential",
+  "dbWriteCredSwitch": "Separate user for writes",
+  "dbWriteCredHint": "When off, the write mode uses the read credential.",
+  "dbTabSchema": "Schema",
+  "dbTabQueries": "Queries",
+  "dbTabEditor": "Editor",
+  "dbSchemaEmpty": "No user schemas found.",
+  "dbSchemaTruncated": "The schema is very large: the list was cut.",
+  "dbTablesCount": "{n, plural, =1{1 table} other{{n} tables}}",
+  "@dbTablesCount": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "dbEstRows": "~{n} rows",
+  "@dbEstRows": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "dbKindTable": "Table",
+  "dbKindView": "View",
+  "dbKindMatView": "Materialized view",
+  "dbKindForeign": "Foreign table",
+  "dbKindPartitioned": "Partitioned table",
+  "dbColumns": "Columns",
+  "dbIndexes": "Indexes",
+  "dbUnique": "unique",
+  "dbPreviewTable": "Table preview",
+  "dbPreviewLoad": "Show the first {n} rows",
+  "@dbPreviewLoad": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "dbQueriesEmpty": "No saved queries. Write one in the editor and use “Save as query”.",
+  "dbQueryNew": "New query",
+  "dbQueryEdit": "Edit query",
+  "dbQueryName": "Name",
+  "dbQuerySql": "SQL (read-only)",
+  "dbQueryRun": "Run again",
+  "dbQueryChart": "Chart",
+  "dbQueryDeleteConfirm": "Delete the query “{name}”?",
+  "@dbQueryDeleteConfirm": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "dbOpenInEditor": "Open in editor",
+  "dbSaveAsQuery": "Save as query",
+  "dbChartTable": "Table",
+  "dbChartStat": "Number",
+  "dbChartLine": "Line",
+  "dbChartBar": "Bar",
+  "dbChartX": "X axis column",
+  "dbChartY": "Y columns (numeric)",
+  "dbChartStatColumn": "Numeric column to show",
+  "dbChartLoadColumns": "Load columns",
+  "dbChartNoColumns": "The query runs once to offer its columns.",
+  "dbChartNoNumeric": "The result has no numeric column.",
+  "dbChartNoRows": "The result is empty: nothing to draw.",
+  "dbChartMissing": "The chart's columns are not in the result. Edit the query and pick the columns again.",
+  "dbChartFirstPoints": "The chart shows the first {n} rows.",
+  "@dbChartFirstPoints": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "dbEditorHint": "SELECT * FROM table LIMIT 10",
+  "dbRun": "Run",
+  "dbLimit": "Row limit",
+  "dbTimeout": "Timeout (s)",
+  "dbRowsSummary": "{rows, plural, =0{No rows} =1{1 row} other{{rows} rows}} · {ms} ms",
+  "@dbRowsSummary": {
+    "placeholders": {
+      "rows": {
+        "type": "int"
+      },
+      "ms": {
+        "type": "int"
+      }
+    }
+  },
+  "dbTruncatedBanner": "The result was cut at {n} rows. Raise the limit or add WHERE/LIMIT to the query.",
+  "@dbTruncatedBanner": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "dbCellsTruncated": "{n, plural, =1{1 cell was cut at 4 KB.} other{{n} cells were cut at 4 KB.}}",
+  "@dbCellsTruncated": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "dbNoRows": "The query returned no rows.",
+  "dbPageOf": "Page {page}/{pages}",
+  "@dbPageOf": {
+    "placeholders": {
+      "page": {
+        "type": "int"
+      },
+      "pages": {
+        "type": "int"
+      }
+    }
+  },
+  "dbPrevPage": "Previous page",
+  "dbNextPage": "Next page",
+  "dbCellTitle": "Cell",
+  "dbCsvShare": "Share CSV",
+  "dbCsvBusy": "Preparing CSV…",
+  "dbCsvDone": "{rows, plural, =1{1 row exported.} other{{rows} rows exported.}}",
+  "@dbCsvDone": {
+    "placeholders": {
+      "rows": {
+        "type": "int"
+      }
+    }
+  },
+  "dbCsvMaybeTruncated": "The 100,000-row cap was reached: the file may be cut.",
+  "dbWriteMode": "Write mode",
+  "dbWriteModeHint": "Read-only while off. Turning it on needs the app lock; it turns off when you leave the screen.",
+  "dbWriteBanner": "WRITE MODE ON: statements really change the database after a preview and your confirmation.",
+  "dbWriteNeedsLock": "Set an app lock (PIN or fingerprint) first: the write mode needs it.",
+  "dbWriteDoneNote": "The change was applied.",
+  "dbPreviewBtn": "Preview",
+  "dbPreviewTitle": "Write preview",
+  "dbPreviewAffected": "{n, plural, =0{No rows will be affected} =1{1 row will be affected} other{{n} rows will be affected}}",
+  "@dbPreviewAffected": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "dbPreviewDdl": "Schema change ({statement}); no row count",
+  "@dbPreviewDdl": {
+    "placeholders": {
+      "statement": {
+        "type": "String"
+      }
+    }
+  },
+  "dbPreviewSample": "Sample rows (first {n})",
+  "@dbPreviewSample": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "dbPreviewNoSample": "No sample rows can be shown for this statement.",
+  "dbPreviewCredWrite": "Ran with the write credential.",
+  "dbPreviewCredRead": "Ran with the read credential (no separate write credential).",
+  "dbPreviewRolledBack": "The preview was rolled back; nothing has changed yet.",
+  "dbCommit": "Apply",
+  "dbCommitting": "Applying…",
+  "dbCommitConfirm": "This {statement} statement will permanently change the database. Apply it?",
+  "@dbCommitConfirm": {
+    "placeholders": {
+      "statement": {
+        "type": "String"
+      }
+    }
+  },
+  "dbCommitted": "Applied: {n, plural, =1{1 row} other{{n} rows}} changed.",
+  "@dbCommitted": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "dbCommittedDdl": "Applied.",
+  "dbCountChangedBody": "The data changed after the preview: {expected} rows were expected but the statement now affects {actual}. Nothing was applied. Preview again and check.",
+  "@dbCountChangedBody": {
+    "placeholders": {
+      "expected": {
+        "type": "int"
+      },
+      "actual": {
+        "type": "int"
+      }
+    }
+  },
+  "dbRePreview": "Preview again",
+  "dbRoleTitle": "Create a read-only role",
+  "dbRoleHint": "The agent prepares SQL that creates a role with read-only privileges. Nothing is run or stored.",
+  "dbRoleShow": "Prepare the SQL",
+  "dbRolePasswordNote": "The password was generated at random and shows only here. After creating the role, enter it as the connection's read credential.",
+  "dbRoleClient": "Account statements can't be previewed: run this SQL with the mysql/mariadb client.",
+  "dbRoleRunWrite": "Run in write mode",
+  "errDbConnectionNotFound": "Database connection not found.",
+  "errDbConnectionExists": "A connection with this id already exists.",
+  "errDbPasswordRequired": "The target changed: the stored password is never sent to a new address, enter the password again.",
+  "errDbContainerNotFound": "Container not found: {container}.",
+  "@errDbContainerNotFound": {
+    "placeholders": {
+      "container": {
+        "type": "String"
+      }
+    }
+  },
+  "errDbContainerNotRunning": "Container is not running: {container}.",
+  "@errDbContainerNotRunning": {
+    "placeholders": {
+      "container": {
+        "type": "String"
+      }
+    }
+  },
+  "errDbNetworkNotFound": "The container is not on the network {network}.",
+  "@errDbNetworkNotFound": {
+    "placeholders": {
+      "network": {
+        "type": "String"
+      }
+    }
+  },
+  "errDbContainerNoAddress": "The container has no reachable address.",
+  "errDbCredentialUnavailable": "Could not read a credential from the container environment ({reason}). It may use a password file or a random root password; enter a user and password.",
+  "@errDbCredentialUnavailable": {
+    "placeholders": {
+      "reason": {
+        "type": "String"
+      }
+    }
+  },
+  "errDbUnreachable": "Could not connect to the database ({reason}).",
+  "@errDbUnreachable": {
+    "placeholders": {
+      "reason": {
+        "type": "String"
+      }
+    }
+  },
+  "errDbAuthFailed": "The database refused the login: wrong user or password.",
+  "errDbDatabaseNotFound": "Database not found.",
+  "errDbEmptyStatement": "The SQL is empty.",
+  "errDbMultipleStatements": "Only one statement can run at a time.",
+  "errDbStatementNotAllowed": "This kind of statement is not allowed ({keyword}). The read mode only runs reads such as SELECT, WITH, VALUES, EXPLAIN.",
+  "@errDbStatementNotAllowed": {
+    "placeholders": {
+      "keyword": {
+        "type": "String"
+      }
+    }
+  },
+  "errDbReadOnly": "The database refused a write: the connection is read-only. Use the write mode to change data.",
+  "errDbPermissionDenied": "This role lacks the privilege. {message}",
+  "@errDbPermissionDenied": {
+    "placeholders": {
+      "message": {
+        "type": "String"
+      }
+    }
+  },
+  "errDbQueryFailed": "Query failed: {message}",
+  "@errDbQueryFailed": {
+    "placeholders": {
+      "message": {
+        "type": "String"
+      }
+    }
+  },
+  "errDbTimeout": "The query timed out. Raise the timeout or narrow the query.",
+  "errDbTableNotFound": "Table not found in the catalog.",
+  "errDbFileNotFound": "SQLite file not found.",
+  "errDbSqliteUnavailable": "This agent's Node has no SQLite (22.13 or newer is needed).",
+  "errDbBusy": "This connection already has 2 calls running; wait a moment.",
+  "errDbRateLimited": "Too many queries: at most {perMinute} per minute.",
+  "@errDbRateLimited": {
+    "placeholders": {
+      "perMinute": {
+        "type": "String"
+      }
+    }
+  },
+  "errDbExportRateLimited": "Too many CSV exports: at most {perMinute} per minute.",
+  "@errDbExportRateLimited": {
+    "placeholders": {
+      "perMinute": {
+        "type": "String"
+      }
+    }
+  },
+  "errDbWriteRateLimited": "Too many writes: at most {perTenMinutes} per 10 minutes. The preview token wasn't spent; apply again in a while.",
+  "@errDbWriteRateLimited": {
+    "placeholders": {
+      "perTenMinutes": {
+        "type": "String"
+      }
+    }
+  },
+  "errDbQueryNotFound": "Saved query not found.",
+  "errDbTooManyQueries": "At most {max} saved queries are allowed.",
+  "@errDbTooManyQueries": {
+    "placeholders": {
+      "max": {
+        "type": "String"
+      }
+    }
+  },
+  "errDbWriteUnsupported": "The write mode isn't available for SQLite connections.",
+  "errDbDdlNotPreviewable": "On MySQL/MariaDB, schema and account statements such as {keyword} commit implicitly and can't be previewed. Run it with the mysql client.",
+  "@errDbDdlNotPreviewable": {
+    "placeholders": {
+      "keyword": {
+        "type": "String"
+      }
+    }
+  },
+  "errDbNonTransactionalTables": "The write mode is refused: non-transactional tables exist ({tables}); a preview could not be rolled back.",
+  "@errDbNonTransactionalTables": {
+    "placeholders": {
+      "tables": {
+        "type": "String"
+      }
+    }
+  },
+  "errDbCountChanged": "The data changed after the preview: {expected} rows expected, {actual} now. Nothing was applied.",
+  "@errDbCountChanged": {
+    "placeholders": {
+      "expected": {
+        "type": "String"
+      },
+      "actual": {
+        "type": "String"
+      }
+    }
+  },
+  "errDbFailed": "The database call failed unexpectedly.",
+  "dbRestoreTitle": "Restore tests",
+  "dbRestoreHint": "A backup you never restored is just a hope. The agent restores the newest dump into a throwaway container and runs your sanity queries; real databases are never touched.",
+  "dbRestoreAdd": "Add test",
+  "dbRestoreEmpty": "No restore tests yet.",
+  "dbRestoreRunning": "Running",
+  "dbRestoreRunningHint": "Restoring in a throwaway container; the result shows here when done.",
+  "dbRestoreNever": "Never ran",
+  "dbRestoreOk": "Passed",
+  "dbRestoreFailed": "Failed",
+  "dbRestoreRunNow": "Run now",
+  "dbRestoreHistory": "Results history",
+  "dbRestoreNoResults": "No results yet.",
+  "dbRestoreManualOnly": "Manual runs only",
+  "dbRestoreDisabled": "Schedule is off",
+  "dbRestoreNext": "next: {time}",
+  "@dbRestoreNext": {
+    "placeholders": {
+      "time": {
+        "type": "String"
+      }
+    }
+  },
+  "dbRestoreDeleteConfirm": "Delete the test “{name}” and its results?",
+  "@dbRestoreDeleteConfirm": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "dbRestoreTriggerManual": "manual",
+  "dbRestoreTriggerSchedule": "scheduled",
+  "dbRestoreChecked": "{n, plural, =1{1 query checked} other{{n} queries checked}}",
+  "@dbRestoreChecked": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "dbRestoreDuration": "{s} s",
+  "@dbRestoreDuration": {
+    "placeholders": {
+      "s": {
+        "type": "int"
+      }
+    }
+  },
+  "dbRfQueryFailed": "query failed",
+  "dbRfNotNumeric": "query returned no number",
+  "dbRfExpectation": "expectation not met",
+  "dbRfActual": "got {actual}, expected {expected}",
+  "@dbRfActual": {
+    "placeholders": {
+      "actual": {
+        "type": "String"
+      },
+      "expected": {
+        "type": "String"
+      }
+    }
+  },
+  "dbRrNoDump": "No dump file matches the pattern.",
+  "dbRrDumpOutside": "The dump is outside the allowed folders.",
+  "dbRrDisk": "Not enough free disk (twice the dump size is needed).",
+  "dbRrImageVersion": "The image's major version differs from the connection's container.",
+  "dbRrDocker": "Docker could not start the throwaway container.",
+  "dbRrNotReady": "The throwaway database did not become ready in time.",
+  "dbRrRestoreFailed": "The dump failed to restore.",
+  "dbRrCorrupt": "The dump is corrupt (bad gz stream).",
+  "dbRrSanity": "The sanity queries did not pass.",
+  "dbRrTimeout": "The test did not finish within 30 minutes.",
+  "dbRrShutdown": "The test was interrupted by an agent shutdown.",
+  "dbRestoreFormNew": "New restore test",
+  "dbRestoreFormEdit": "Edit restore test",
+  "dbRestoreImage": "Image (explicit tag)",
+  "dbRestoreImageHint": "An official postgres/mysql/mariadb image, e.g. postgres:16. No “latest”.",
+  "dbRestoreImageInvalid": "Enter an image like {engine}:<tag> with an explicit tag (not latest).",
+  "@dbRestoreImageInvalid": {
+    "placeholders": {
+      "engine": {
+        "type": "String"
+      }
+    }
+  },
+  "dbRestoreConnection": "Connection (optional)",
+  "dbRestoreConnectionHint": "If set, the image's major version is compared with the connection's container.",
+  "dbRestoreDump": "Dump",
+  "dbRestoreGlob": "Dump pattern",
+  "dbRestoreGlobHint": "Absolute path; wildcards only in the last part. The newest matching file is restored.",
+  "dbRestoreFormat": "Format",
+  "dbRestoreFormatSql": "SQL (plain)",
+  "dbRestoreFormatGz": "SQL, gzip",
+  "dbRestoreFormatCustom": "pg_dump custom (PostgreSQL only)",
+  "dbRestoreSanity": "Sanity queries",
+  "dbRestoreSanityHint": "Each query must be one read statement returning a number in its first column; the result is compared with the expectation.",
+  "dbRestoreSanityAdd": "Add query",
+  "dbRestoreSanitySql": "SQL",
+  "dbRestoreExpect": "Condition",
+  "dbRestoreValue": "Value",
+  "dbRestoreSchedule": "Schedule",
+  "dbRestoreScheduleSwitch": "Run automatically",
+  "dbRestoreEnabled": "Schedule enabled",
+  "errDbRestoreTestNotFound": "Restore test not found.",
+  "errDbRestoreTestExists": "A restore test with this name already exists.",
+  "errDbRestoreBusy": "A restore test is running; only one runs at a time.",
+  "errDbRestoreEngineMismatch": "The connection's engine differs from the test's engine.",
+  "errDbSanityNotAllowed": "Sanity query {n} is not allowed ({keyword}).",
+  "@errDbSanityNotAllowed": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      },
+      "keyword": {
+        "type": "String"
+      }
+    }
+  },
+  "errDbDumpOutsideRoots": "The dump folder is outside the allowed folders.",
+  "notifRestoreOkTitle": "{host}: restore test passed",
+  "@notifRestoreOkTitle": {
+    "placeholders": {
+      "host": {
+        "type": "String"
+      }
+    }
+  },
+  "notifRestoreFailedTitle": "{host}: restore test failed",
+  "@notifRestoreFailedTitle": {
+    "placeholders": {
+      "host": {
+        "type": "String"
+      }
+    }
+  },
+  "notifRestoreFailedBody": "{name}: {reason}",
+  "@notifRestoreFailedBody": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      },
+      "reason": {
+        "type": "String"
+      }
+    }
+  },
+  "hostPickHint": "This link doesn't say clearly which host it belongs to. Pick the host:",
+  "hostPickNone": "No host with an agent matches this link.",
+  "dbCommitUnknownTitle": "Outcome unknown",
+  "dbCommitUnknownBody": "The commit was sent but no answer came back: it may have been applied. Don't run it again before checking. Write a read query below (e.g. SELECT count(*) FROM …) to see the rows as they are now.",
+  "dbCheckRows": "Check the row count",
+  "dbCheckHint": "SELECT count(*) FROM …",
+  "errDbSuperuserReadsDisabled": "Read queries are off for this connection: it logs in as a superuser, and the read-only checks can't fully contain a superuser. Use a read-only role, or accept the risk.",
+  "errDbReadRoleSuperuser": "The read role is a superuser itself, so reads are refused. Set a role without superuser rights.",
+  "dbUseReadRole": "Use a read-only role",
+  "dbAcceptRisk": "Accept the risk",
+  "dbAcceptRiskConfirm": "Allow read queries with the superuser login of {name}? A superuser can read every database and call functions that reach files or the server; the agent's read-only checks can't block all of them. A read-only role is the safer choice.",
+  "@dbAcceptRiskConfirm": {"placeholders": {"name": {"type": "String"}}},
+  "dbAcceptRiskCheck": "I understand the risk",
+  "dbAcceptRiskBtn": "Allow superuser reads",
+  "dbReadsViaRole": "Reads run as role {role}",
+  "@dbReadsViaRole": {"placeholders": {"role": {"type": "String"}}},
+  "dbReadsSuperuserAllowed": "Superuser reads allowed (risk accepted)",
+  "dbRoleSetRead": "Use as read role",
+  "dbReadAccessTitle": "Read access",
+  "dbFieldReadRole": "Read role",
+  "dbReadRoleHint": "Reads switch to this role first (SET ROLE). Empty: none.",
+  "dbAllowSuperuserReadsHint": "Only matters without a read role. Risky."
 }

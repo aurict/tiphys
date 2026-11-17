@@ -35,10 +35,12 @@ import 'package:tiphys/features/terminal/sessions.dart';
 
 import 'png.dart';
 import 'config_fixtures.dart';
+import 'db_fixtures.dart';
 import 'incident_fixtures.dart';
 import 'ui_fixtures.dart';
 
 export 'config_fixtures.dart';
+export 'db_fixtures.dart';
 export 'incident_fixtures.dart';
 export 'ui_fixtures.dart';
 
@@ -65,10 +67,13 @@ class NoBiometrics implements Biometrics {
 }
 
 class Harness {
-  Harness({Profile? profile, Map<String, String>? secrets, this.homeData = sampleHomeData, this.pin, this.extra = const [], this.agent, this.biometrics, this.agentFeatures = defaultAgentFeatures})
+  Harness({Profile? profile, Map<String, String>? secrets, this.homeData = sampleHomeData, this.pin, this.extra = const [], this.agent, this.biometrics, this.agentFeatures = defaultAgentFeatures, this.clock})
       : profile = profile ?? exampleProfile(),
         secrets = MemorySecretStore(secrets ?? {'ssh-phone': 'x', 'agent-argo': 'x', 'grafana-atlas': 'x'});
   final Profile profile;
+
+  /// The app's clock (default: a fixed moment); tests that move time pass their own.
+  final DateTime Function()? clock;
   final MemorySecretStore secrets;
   final HomeData homeData;
   final String? pin;
@@ -101,7 +106,7 @@ class Harness {
         repositoryProvider.overrideWithValue(repo),
         initialProfileProvider.overrideWithValue(profile),
         homeDataProvider.overrideWithValue(homeData),
-        clockProvider.overrideWithValue(() => DateTime(2026, 11, 14, 14, 5)),
+        clockProvider.overrideWithValue(clock ?? () => DateTime(2026, 11, 14, 14, 5)),
         appLockProvider.overrideWithValue(AppLock(vault, kdfMemoryKiB: 8192)),
         biometricsProvider.overrideWithValue(biometrics ?? NoBiometrics()),
         sshOpenerProvider.overrideWithValue((h) async => throw const SshFailure('unreachable')),
@@ -233,6 +238,24 @@ class FakeAgent extends AgentClient {
   static FakeConfigState config = FakeConfigState();
 
   static void resetConfig() => config = FakeConfigState();
+
+  /// Database console (GET/POST /v1/db/*).
+  static FakeDbState db = FakeDbState();
+
+  static void resetDb() => db = FakeDbState();
+
+  @override
+  Future<Map<String, String>> download(String method, String path, {Object? body, required void Function(List<int>) onData, Duration timeout = const Duration(minutes: 6)}) async {
+    calls.add((method, path, body));
+    if (!path.startsWith('/v1/db/')) throw const AgentError('agent.route.notFound', {}, 404);
+    fakeDbRoute(hostId, method, path, body, db);
+    if (db.exportError != null) throw db.exportError!;
+    final bytes = fakeCsvBytes(db);
+    // Two chunks, like a stream.
+    onData(bytes.sublist(0, bytes.length ~/ 2));
+    onData(bytes.sublist(bytes.length ~/ 2));
+    return db.csvHeaders;
+  }
 
   static void resetIncidents() {
     incidents = sampleIncidents();
@@ -772,6 +795,7 @@ class FakeAgent extends AgentClient {
         if (incident.analysisMode != null) 'incidents': {'links': [], 'analysis': {'mode': incident.analysisMode, 'url': null, 'language': 'tr', 'hasToken': false}},
       };
     }
+    if (path.startsWith('/v1/db/')) return fakeDbRoute(hostId, method, path, body, db);
     if (path.startsWith('/v1/config-files') || path == '/v1/secrets/meta') return fakeConfigRoute(hostId, method, path, body, config);
     if (path.startsWith('/v1/incidents')) return fakeIncidentRoute(hostId, method, path, body, incidents, incident);
     if (path == '/v1/events' && method == 'POST') {

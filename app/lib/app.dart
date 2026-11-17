@@ -29,6 +29,11 @@ import 'features/desktop/live_screen.dart';
 import 'features/configfiles/config_backups_screen.dart';
 import 'features/configfiles/config_file_screen.dart';
 import 'features/configfiles/configfiles_screen.dart';
+import 'features/databases/db_connection_screen.dart';
+import 'features/databases/db_discover.dart';
+import 'features/databases/db_form.dart';
+import 'features/databases/db_restore_screen.dart';
+import 'features/databases/db_screen.dart';
 import 'features/incidents/incident_screen.dart';
 import 'features/incidents/incidents_screen.dart';
 import 'features/system/system_screen.dart';
@@ -106,6 +111,13 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(path: '/configfiles', builder: (c, s) => const ConfigFilesScreen()),
       GoRoute(path: '/configfiles/file', builder: (c, s) => ConfigFileRoute(hostHint: s.uri.queryParameters['host'] ?? '', fileId: s.uri.queryParameters['id'] ?? '', focusKey: s.uri.queryParameters['key'])),
       GoRoute(path: '/configfiles/backups', builder: (c, s) => ConfigBackupsScreen(hostId: s.uri.queryParameters['host'] ?? '', fileId: s.uri.queryParameters['id'] ?? '')),
+      GoRoute(path: '/db', builder: (c, s) => const DbScreen()),
+      GoRoute(path: '/db/discover', builder: (c, s) => DbDiscoverScreen(hostId: s.uri.queryParameters['host'] ?? '')),
+      // Without its arguments (e.g. the route restored after the process was killed) the form falls back to the list.
+      GoRoute(path: '/db/form', builder: (c, s) => s.extra is DbFormArgs ? DbFormScreen(args: s.extra as DbFormArgs) : const DbScreen()),
+      GoRoute(path: '/db/restore', builder: (c, s) => DbRestoreScreen(hostHint: s.uri.queryParameters['host'], testName: s.uri.queryParameters['test'])),
+      GoRoute(path: '/db/restore/form', builder: (c, s) => s.extra is DbRestoreArgs ? DbRestoreFormScreen(args: s.extra as DbRestoreArgs) : const DbRestoreScreen()),
+      GoRoute(path: '/db/conn', builder: (c, s) => DbConnectionScreen(hostId: s.uri.queryParameters['host'] ?? '', connId: s.uri.queryParameters['id'] ?? '')),
       GoRoute(path: '/incidents', builder: (c, s) => const IncidentsScreen()),
       GoRoute(path: '/incidents/:id', builder: (c, s) => IncidentScreen(incidentId: s.pathParameters['id']!, hostHint: s.uri.queryParameters['host'])),
       GoRoute(path: '/system/backups', builder: (c, s) => const BackupsScreen()),

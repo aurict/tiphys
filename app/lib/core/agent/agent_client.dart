@@ -121,6 +121,42 @@ class AgentClient {
     return AgentError('net.http', {'status': status}, status);
   }
 
+  /// Streams a response body to [onData] without buffering it (the CSV export) and returns the response headers
+  /// (lower-case names). dart:io doesn't expose HTTP trailers; a proxy that merges them into the headers shows up
+  /// here, otherwise the caller counts what it received. Errors before the first byte come as AgentError; a stream
+  /// that breaks half way as net.unreachable. [timeout] bounds the whole transfer.
+  Future<Map<String, String>> download(String method, String path, {Object? body, required void Function(List<int>) onData, Duration timeout = const Duration(minutes: 6)}) async {
+    try {
+      final req = await _http.openUrl(method, _uri(path)).timeout(this.timeout);
+      req.headers.set(HttpHeaders.authorizationHeader, 'Bearer $token');
+      req.headers.set(HttpHeaders.acceptHeader, '*/*');
+      if (body != null) {
+        req.headers.contentType = ContentType.json;
+        req.add(utf8.encode(jsonEncode(body)));
+      }
+      final res = await req.close().timeout(this.timeout);
+      if (res.statusCode >= 400) {
+        final b = BytesBuilder(copy: false);
+        await res.forEach(b.add).timeout(this.timeout);
+        throw _errorOf(res.statusCode, b.takeBytes());
+      }
+      await res.forEach(onData).timeout(timeout);
+      final headers = <String, String>{};
+      res.headers.forEach((name, values) => headers[name.toLowerCase()] = values.join(','));
+      return headers;
+    } on AgentError {
+      rethrow;
+    } on TimeoutException {
+      throw const AgentError('net.timeout');
+    } on SocketException catch (e) {
+      throw AgentError('net.unreachable', {'detail': e.message});
+    } on HttpException catch (e) {
+      throw AgentError('net.unreachable', {'detail': e.message});
+    } on HandshakeException {
+      throw const AgentError('net.tls');
+    }
+  }
+
   /// SSE (text/event-stream): (event name, data) pairs; the stream ends when the connection closes. Opening error:
   /// AgentError; no bytes at all for [idle] (the agent sends a ping every 25 s): net.timeout. When the listener
   /// cancels, the connection closes immediately (same pattern as sse in integrations/http_json.dart).

@@ -39,19 +39,26 @@ Future<ConfigSheetOutcome> showConfigPreviewSheet(
   required Future<dynamic> Function(bool restart) load,
   required Future<dynamic> Function(ConfigPreview preview, bool restart) execute,
 }) async {
+  // Once written, closing the sheet any way (barrier, back) still reports the save, so the screen reloads.
+  ConfigSaveResult? saved;
   final r = await showModalBottomSheet<ConfigSheetOutcome>(
     context: context,
     useRootNavigator: true,
     isScrollControlled: true,
     showDragHandle: true,
-    builder: (_) => ConfigPreviewSheet(file: file, restore: restore, load: load, execute: execute),
+    // No drag-to-dismiss: a drag would close the sheet while the write runs (PopScope only stops back and barrier).
+    enableDrag: false,
+    builder: (_) => ConfigPreviewSheet(file: file, restore: restore, load: load, execute: execute, onSaved: (res) => saved = res),
   );
-  return r ?? const ConfigSheetOutcome();
+  return r ?? (saved != null ? ConfigSheetOutcome(saved: true, result: saved) : const ConfigSheetOutcome());
 }
 
 class ConfigPreviewSheet extends ConsumerStatefulWidget {
-  const ConfigPreviewSheet({super.key, required this.file, required this.restore, required this.load, required this.execute});
+  const ConfigPreviewSheet({super.key, required this.file, required this.restore, required this.load, required this.execute, this.onSaved});
   final String file;
+
+  /// Called once the file was written.
+  final ValueChanged<ConfigSaveResult>? onSaved;
   final bool restore;
   final Future<dynamic> Function(bool restart) load;
   final Future<dynamic> Function(ConfigPreview preview, bool restart) execute;
@@ -65,6 +72,9 @@ class _ConfigPreviewSheetState extends ConsumerState<ConfigPreviewSheet> {
   Object? _error;
   bool _loading = true;
   bool _running = false;
+
+  /// The confirmation dialog is open (a second tap must not open another).
+  bool _confirming = false;
   ConfigSaveResult? _result;
 
   /// Recreate the affected services after writing (the preview token is bound to this choice, so changing it asks for a
@@ -121,13 +131,19 @@ class _ConfigPreviewSheetState extends ConsumerState<ConfigPreviewSheet> {
   Future<void> _confirm() async {
     final l = AppLocalizations.of(context);
     final p = _preview;
-    if (p == null || _running) return;
-    final ok = await confirmDialog(
-      context,
-      message: (widget.restore ? l.cfRestoreConfirm(widget.file) : l.cfSaveConfirm(widget.file)) + (p.restart == 'affected' ? '\n\n${l.cfRestartConfirm}' : ''),
-      confirmLabel: widget.restore ? l.cfRestore : l.commonSave,
-      destructive: true,
-    );
+    if (p == null || _running || _confirming) return;
+    _confirming = true;
+    final bool ok;
+    try {
+      ok = await confirmDialog(
+        context,
+        message: (widget.restore ? l.cfRestoreConfirm(widget.file) : l.cfSaveConfirm(widget.file)) + (p.restart == 'affected' ? '\n\n${l.cfRestartConfirm}' : ''),
+        confirmLabel: widget.restore ? l.cfRestore : l.commonSave,
+        destructive: true,
+      );
+    } finally {
+      _confirming = false;
+    }
     if (!ok || !mounted) return;
     // The confirmation may have taken a while: don't send a token that has surely expired.
     if (p.expired(ref.read(clockProvider)())) {
@@ -140,7 +156,9 @@ class _ConfigPreviewSheetState extends ConsumerState<ConfigPreviewSheet> {
     });
     try {
       final j = await widget.execute(p, p.restart == 'affected');
-      if (mounted) setState(() => _result = ConfigSaveResult(Map<String, dynamic>.from(j as Map)));
+      final res = ConfigSaveResult(Map<String, dynamic>.from(j as Map));
+      widget.onSaved?.call(res);
+      if (mounted) setState(() => _result = res);
     } catch (e) {
       // The token is spent either way (or the file changed): a new preview is needed to try again.
       if (mounted) setState(() => _error = e);

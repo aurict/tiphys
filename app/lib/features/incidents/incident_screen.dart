@@ -23,6 +23,7 @@ import 'incident_action_sheet.dart';
 import 'incident_analysis.dart';
 import 'incident_analysis_view.dart';
 import 'incident_metrics_view.dart';
+import 'host_picker.dart';
 import 'incident_texts.dart';
 import 'incidents_data.dart';
 import 'incidents_screen.dart';
@@ -213,14 +214,18 @@ class _IncidentScreenState extends ConsumerState<IncidentScreen> {
         skipLoadingOnRefresh: true,
         loading: () => [const Padding(padding: EdgeInsets.all(40), child: Center(child: CircularProgressIndicator()))],
         error: (e, _) => [
-          TCard(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Text(agentErrorText(l, e)),
-            const SizedBox(height: 8),
-            TextButton(onPressed: () => ref.invalidate(incidentDetailProvider(_key)), child: Text(l.commonRetry)),
-          ])),
+          if (e is AmbiguousHostError)
+            HostPicker(hosts: e.hosts, onPick: (h) => context.replace('/incidents/${widget.incidentId}?host=${Uri.encodeQueryComponent(h.id)}'))
+          else
+            TCard(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Text(agentErrorText(l, e)),
+              const SizedBox(height: 8),
+              TextButton(onPressed: () => ref.invalidate(incidentDetailProvider(_key)), child: Text(l.commonRetry)),
+            ])),
         ],
         // One child instead of a lazy list: an evidence chip scrolls to a row far below it, which must exist already.
-        data: (det) => [Column(crossAxisAlignment: CrossAxisAlignment.start, children: _body(context, d ?? det))],
+        // Stretched, so every card is as wide as the page (the header cards used to shrink to their content).
+        data: (det) => [Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: _body(context, d ?? det))],
       ),
     );
   }

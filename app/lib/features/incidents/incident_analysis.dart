@@ -1,8 +1,10 @@
 // AI analysis of an incident (PLAN.md §13.1, phase I-3): the models of `incident.analysis`, the polling rule while a
-// job is queued or running, and how an evidence reference of a hypothesis maps to something on screen. Pure Dart; the
-// widgets are in incident_analysis_view.dart. All model text is plain text: the agent already strips markdown/links,
+// job is queued or running, and how an evidence reference of a hypothesis maps to something on screen. The
+// widgets are in incident_analysis_view.dart (only the poller looks at the app lifecycle). All model text is plain text: the agent already strips markdown/links,
 // and the app never renders it as anything else.
 import 'dart:async';
+
+import '../../core/util/refresh.dart' show appVisible;
 
 Map<String, dynamic> _map(Object? v) => v is Map ? Map<String, dynamic>.from(v) : <String, dynamic>{};
 List<Map<String, dynamic>> _maps(Object? v) => v is List ? [for (final e in v) if (e is Map) Map<String, dynamic>.from(e)] : const [];
@@ -82,8 +84,11 @@ class IncidentAnalysis {
 /// none) or after [maxPolls] ticks (the agent gives up after 5 minutes, so this is only a safety net). [sync] is called
 /// with the analysis of every fresh read of the incident.
 class AnalysisPoller {
-  AnalysisPoller({required this.refresh, this.interval = const Duration(seconds: 3), this.maxPolls = 150});
+  AnalysisPoller({required this.refresh, this.interval = const Duration(seconds: 3), this.maxPolls = 150, bool Function()? isVisible}) : isVisible = isVisible ?? (() => appVisible.value);
   final void Function() refresh;
+
+  /// Is the app in the foreground (overridable in tests)?
+  final bool Function() isVisible;
   final Duration interval;
   final int maxPolls;
   Timer? _timer;
@@ -98,6 +103,8 @@ class AnalysisPoller {
       return;
     }
     _timer ??= Timer.periodic(interval, (_) {
+      // In the background nothing is asked (and the round doesn't count); the next tick after returning refreshes.
+      if (!isVisible()) return;
       if (++_polls > maxPolls) return stop();
       refresh();
     });

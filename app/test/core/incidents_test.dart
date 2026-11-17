@@ -29,7 +29,7 @@ void main() {
 
   group('bildirimler', () {
     test('olay bildirim metinleri iki dilde', () {
-      expect(noticeText(tr, 'incident.resolved', {'host': 'argo', 'kind': 'docker.died', 'target': 'web'}), ('Olay çözüldü · argo', 'Container çöktü: web'));
+      expect(noticeText(tr, 'incident.resolved', {'host': 'argo', 'kind': 'docker.died', 'target': 'web'}), ('Olay çözüldü · argo', 'Konteyner çöktü: web'));
       expect(noticeText(en, 'incident.resolved', {'host': 'argo', 'kind': 'docker.died', 'target': 'web'}), ('Incident resolved · argo', 'Container crashed: web'));
       expect(noticeText(en, 'incident.actionFailed', {'host': 'argo', 'target': 'web', 'action': 'container.restart', 'stage': 'command'})!.$2, 'Container restart on web failed');
       expect(noticeText(tr, 'incident.actionFailed', {'host': 'argo', 'target': 'web', 'action': 'container.restart', 'stage': 'postCheck'})!.$2, contains('sonrasında sağlıklı değil'));
@@ -116,6 +116,14 @@ void main() {
       expect(any.exact, isFalse);
       expect(any.hosts.map((h) => h.id), ['argo', 'atlas']);
       expect(incidentHostsFor(profile, null).exact, isFalse);
+    });
+
+    test('host ipucu birden çok hosta uyuyorsa kesin değil (ilk host seçilmez)', () {
+      final twins = [argo, Host(id: 'atlas', name: 'argo (laptop)', address: atlas.address, agent: atlas.agent)];
+      expect(exactHostFor(twins, 'ARGO'), isNull, reason: 'iki ad uyuyor');
+      expect(exactHostFor(twins, 'argo (laptop)')?.id, 'atlas');
+      expect(exactHostFor(twins, 'atlas'), twins[1], reason: 'kimlik önce gelir');
+      expect(exactHostFor(twins, ''), isNull);
     });
   });
 

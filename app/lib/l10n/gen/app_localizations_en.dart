@@ -7050,4 +7050,955 @@ class AppLocalizationsEn extends AppLocalizations {
   String cfRotationHostError(String host, String error) {
     return '$host: could not load ($error)';
   }
+
+  @override
+  String get dbTitle => 'Databases';
+
+  @override
+  String get dbNoHosts =>
+      'No connected agent has the database console turned on (feature databases).';
+
+  @override
+  String get dbNoConnections =>
+      'No connections yet. Use “Discover” to find running database containers, or add one by hand.';
+
+  @override
+  String get dbDiscover => 'Discover';
+
+  @override
+  String get dbAddManual => 'Add manually';
+
+  @override
+  String get dbSqliteUnavailable =>
+      'This agent\'s Node has no SQLite (Node 22.13 or newer is needed).';
+
+  @override
+  String get dbSuperuserBadge => 'superuser';
+
+  @override
+  String get dbConnectionMenu => 'Connection menu';
+
+  @override
+  String dbTestOk(String version, String user, String ms) {
+    return 'Connected: $version · user $user · $ms ms';
+  }
+
+  @override
+  String get dbWarnSuperuser =>
+      'This credential is a superuser: read-only protection works only at the transaction level. A separate read-only role is recommended.';
+
+  @override
+  String get dbWarnReadUsed =>
+      'No separate write credential is set: writes use the read credential.';
+
+  @override
+  String dbDeleteConfirm(String name) {
+    return 'Delete the connection “$name”? Its saved queries stay (but can\'t run).';
+  }
+
+  @override
+  String get dbSaved => 'Saved.';
+
+  @override
+  String get dbDiscoverTitle => 'Discover databases';
+
+  @override
+  String get dbDiscoverHint =>
+      'The agent looks at the image names of running containers. Only environment variable names are known; values are never shown.';
+
+  @override
+  String get dbDiscoverNone => 'No running database container found.';
+
+  @override
+  String get dbDiscoverUnsupported => 'not supported';
+
+  @override
+  String dbDiscoverConnected(int n) {
+    String _temp0 = intl.Intl.pluralLogic(
+      n,
+      locale: localeName,
+      other: '$n connections',
+      one: '1 connection',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get dbFormNew => 'New connection';
+
+  @override
+  String get dbFormEdit => 'Edit connection';
+
+  @override
+  String dbFromContainer(String container, String image) {
+    return 'Container $container ($image)';
+  }
+
+  @override
+  String get dbFieldName => 'Name';
+
+  @override
+  String get dbFieldEngine => 'Engine';
+
+  @override
+  String get dbFieldTarget => 'Target';
+
+  @override
+  String get dbTargetContainer => 'Container';
+
+  @override
+  String get dbTargetHost => 'Host and port';
+
+  @override
+  String get dbFieldContainer => 'Container name';
+
+  @override
+  String get dbFieldNetwork => 'Docker network';
+
+  @override
+  String get dbNetworkAuto => 'Automatic';
+
+  @override
+  String get dbFieldHost => 'Host';
+
+  @override
+  String get dbFieldPort => 'Port';
+
+  @override
+  String get dbFieldPath => 'File path';
+
+  @override
+  String get dbFieldPathHint =>
+      'Must be inside one of the agent\'s allowed folders.';
+
+  @override
+  String get dbFieldDatabase => 'Database';
+
+  @override
+  String get dbDatabaseHint => 'empty: default';
+
+  @override
+  String get dbCredentialTitle => 'Credential';
+
+  @override
+  String get dbCredPassword => 'Dedicated user + password (recommended)';
+
+  @override
+  String get dbCredPasswordHint =>
+      'A read-only role is best. The password is stored only on the agent and never comes back to the phone.';
+
+  @override
+  String get dbCredEnv => 'From the container environment (superuser)';
+
+  @override
+  String get dbCredEnvHint =>
+      'The password isn\'t stored; the agent reads it from the container\'s environment on each connect.';
+
+  @override
+  String get dbEnvUnavailable =>
+      'This container\'s environment has no usable credential (it may use a password file or a random root password).';
+
+  @override
+  String get dbSuperuserWarnTitle => 'Superuser warning';
+
+  @override
+  String get dbSuperuserWarnBody =>
+      'The user in the container\'s environment (POSTGRES_USER or MySQL root) is most likely a superuser. Then only the transaction-level protections apply (one statement, allowlist, read-only transaction); the database role does not protect you. After connecting, create a separate role with “Create a read-only role” and use that instead.';
+
+  @override
+  String get dbFieldUser => 'User';
+
+  @override
+  String get dbFieldPassword => 'Password';
+
+  @override
+  String get dbPasswordKept =>
+      'The stored password is kept; type a new one to change it.';
+
+  @override
+  String get dbWriteCredTitle => 'Write credential';
+
+  @override
+  String get dbWriteCredSwitch => 'Separate user for writes';
+
+  @override
+  String get dbWriteCredHint =>
+      'When off, the write mode uses the read credential.';
+
+  @override
+  String get dbTabSchema => 'Schema';
+
+  @override
+  String get dbTabQueries => 'Queries';
+
+  @override
+  String get dbTabEditor => 'Editor';
+
+  @override
+  String get dbSchemaEmpty => 'No user schemas found.';
+
+  @override
+  String get dbSchemaTruncated => 'The schema is very large: the list was cut.';
+
+  @override
+  String dbTablesCount(int n) {
+    String _temp0 = intl.Intl.pluralLogic(
+      n,
+      locale: localeName,
+      other: '$n tables',
+      one: '1 table',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String dbEstRows(int n) {
+    return '~$n rows';
+  }
+
+  @override
+  String get dbKindTable => 'Table';
+
+  @override
+  String get dbKindView => 'View';
+
+  @override
+  String get dbKindMatView => 'Materialized view';
+
+  @override
+  String get dbKindForeign => 'Foreign table';
+
+  @override
+  String get dbKindPartitioned => 'Partitioned table';
+
+  @override
+  String get dbColumns => 'Columns';
+
+  @override
+  String get dbIndexes => 'Indexes';
+
+  @override
+  String get dbUnique => 'unique';
+
+  @override
+  String get dbPreviewTable => 'Table preview';
+
+  @override
+  String dbPreviewLoad(int n) {
+    return 'Show the first $n rows';
+  }
+
+  @override
+  String get dbQueriesEmpty =>
+      'No saved queries. Write one in the editor and use “Save as query”.';
+
+  @override
+  String get dbQueryNew => 'New query';
+
+  @override
+  String get dbQueryEdit => 'Edit query';
+
+  @override
+  String get dbQueryName => 'Name';
+
+  @override
+  String get dbQuerySql => 'SQL (read-only)';
+
+  @override
+  String get dbQueryRun => 'Run again';
+
+  @override
+  String get dbQueryChart => 'Chart';
+
+  @override
+  String dbQueryDeleteConfirm(String name) {
+    return 'Delete the query “$name”?';
+  }
+
+  @override
+  String get dbOpenInEditor => 'Open in editor';
+
+  @override
+  String get dbSaveAsQuery => 'Save as query';
+
+  @override
+  String get dbChartTable => 'Table';
+
+  @override
+  String get dbChartStat => 'Number';
+
+  @override
+  String get dbChartLine => 'Line';
+
+  @override
+  String get dbChartBar => 'Bar';
+
+  @override
+  String get dbChartX => 'X axis column';
+
+  @override
+  String get dbChartY => 'Y columns (numeric)';
+
+  @override
+  String get dbChartStatColumn => 'Numeric column to show';
+
+  @override
+  String get dbChartLoadColumns => 'Load columns';
+
+  @override
+  String get dbChartNoColumns => 'The query runs once to offer its columns.';
+
+  @override
+  String get dbChartNoNumeric => 'The result has no numeric column.';
+
+  @override
+  String get dbChartNoRows => 'The result is empty: nothing to draw.';
+
+  @override
+  String get dbChartMissing =>
+      'The chart\'s columns are not in the result. Edit the query and pick the columns again.';
+
+  @override
+  String dbChartFirstPoints(int n) {
+    return 'The chart shows the first $n rows.';
+  }
+
+  @override
+  String get dbEditorHint => 'SELECT * FROM table LIMIT 10';
+
+  @override
+  String get dbRun => 'Run';
+
+  @override
+  String get dbLimit => 'Row limit';
+
+  @override
+  String get dbTimeout => 'Timeout (s)';
+
+  @override
+  String dbRowsSummary(int rows, int ms) {
+    String _temp0 = intl.Intl.pluralLogic(
+      rows,
+      locale: localeName,
+      other: '$rows rows',
+      one: '1 row',
+      zero: 'No rows',
+    );
+    return '$_temp0 · $ms ms';
+  }
+
+  @override
+  String dbTruncatedBanner(int n) {
+    return 'The result was cut at $n rows. Raise the limit or add WHERE/LIMIT to the query.';
+  }
+
+  @override
+  String dbCellsTruncated(int n) {
+    String _temp0 = intl.Intl.pluralLogic(
+      n,
+      locale: localeName,
+      other: '$n cells were cut at 4 KB.',
+      one: '1 cell was cut at 4 KB.',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get dbNoRows => 'The query returned no rows.';
+
+  @override
+  String dbPageOf(int page, int pages) {
+    return 'Page $page/$pages';
+  }
+
+  @override
+  String get dbPrevPage => 'Previous page';
+
+  @override
+  String get dbNextPage => 'Next page';
+
+  @override
+  String get dbCellTitle => 'Cell';
+
+  @override
+  String get dbCsvShare => 'Share CSV';
+
+  @override
+  String get dbCsvBusy => 'Preparing CSV…';
+
+  @override
+  String dbCsvDone(int rows) {
+    String _temp0 = intl.Intl.pluralLogic(
+      rows,
+      locale: localeName,
+      other: '$rows rows exported.',
+      one: '1 row exported.',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get dbCsvMaybeTruncated =>
+      'The 100,000-row cap was reached: the file may be cut.';
+
+  @override
+  String get dbWriteMode => 'Write mode';
+
+  @override
+  String get dbWriteModeHint =>
+      'Read-only while off. Turning it on needs the app lock; it turns off when you leave the screen.';
+
+  @override
+  String get dbWriteBanner =>
+      'WRITE MODE ON: statements really change the database after a preview and your confirmation.';
+
+  @override
+  String get dbWriteNeedsLock =>
+      'Set an app lock (PIN or fingerprint) first: the write mode needs it.';
+
+  @override
+  String get dbWriteDoneNote => 'The change was applied.';
+
+  @override
+  String get dbPreviewBtn => 'Preview';
+
+  @override
+  String get dbPreviewTitle => 'Write preview';
+
+  @override
+  String dbPreviewAffected(int n) {
+    String _temp0 = intl.Intl.pluralLogic(
+      n,
+      locale: localeName,
+      other: '$n rows will be affected',
+      one: '1 row will be affected',
+      zero: 'No rows will be affected',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String dbPreviewDdl(String statement) {
+    return 'Schema change ($statement); no row count';
+  }
+
+  @override
+  String dbPreviewSample(int n) {
+    return 'Sample rows (first $n)';
+  }
+
+  @override
+  String get dbPreviewNoSample =>
+      'No sample rows can be shown for this statement.';
+
+  @override
+  String get dbPreviewCredWrite => 'Ran with the write credential.';
+
+  @override
+  String get dbPreviewCredRead =>
+      'Ran with the read credential (no separate write credential).';
+
+  @override
+  String get dbPreviewRolledBack =>
+      'The preview was rolled back; nothing has changed yet.';
+
+  @override
+  String get dbCommit => 'Apply';
+
+  @override
+  String get dbCommitting => 'Applying…';
+
+  @override
+  String dbCommitConfirm(String statement) {
+    return 'This $statement statement will permanently change the database. Apply it?';
+  }
+
+  @override
+  String dbCommitted(int n) {
+    String _temp0 = intl.Intl.pluralLogic(
+      n,
+      locale: localeName,
+      other: '$n rows',
+      one: '1 row',
+    );
+    return 'Applied: $_temp0 changed.';
+  }
+
+  @override
+  String get dbCommittedDdl => 'Applied.';
+
+  @override
+  String dbCountChangedBody(int expected, int actual) {
+    return 'The data changed after the preview: $expected rows were expected but the statement now affects $actual. Nothing was applied. Preview again and check.';
+  }
+
+  @override
+  String get dbRePreview => 'Preview again';
+
+  @override
+  String get dbRoleTitle => 'Create a read-only role';
+
+  @override
+  String get dbRoleHint =>
+      'The agent prepares SQL that creates a role with read-only privileges. Nothing is run or stored.';
+
+  @override
+  String get dbRoleShow => 'Prepare the SQL';
+
+  @override
+  String get dbRolePasswordNote =>
+      'The password was generated at random and shows only here. After creating the role, enter it as the connection\'s read credential.';
+
+  @override
+  String get dbRoleClient =>
+      'Account statements can\'t be previewed: run this SQL with the mysql/mariadb client.';
+
+  @override
+  String get dbRoleRunWrite => 'Run in write mode';
+
+  @override
+  String get errDbConnectionNotFound => 'Database connection not found.';
+
+  @override
+  String get errDbConnectionExists =>
+      'A connection with this id already exists.';
+
+  @override
+  String get errDbPasswordRequired =>
+      'The target changed: the stored password is never sent to a new address, enter the password again.';
+
+  @override
+  String errDbContainerNotFound(String container) {
+    return 'Container not found: $container.';
+  }
+
+  @override
+  String errDbContainerNotRunning(String container) {
+    return 'Container is not running: $container.';
+  }
+
+  @override
+  String errDbNetworkNotFound(String network) {
+    return 'The container is not on the network $network.';
+  }
+
+  @override
+  String get errDbContainerNoAddress =>
+      'The container has no reachable address.';
+
+  @override
+  String errDbCredentialUnavailable(String reason) {
+    return 'Could not read a credential from the container environment ($reason). It may use a password file or a random root password; enter a user and password.';
+  }
+
+  @override
+  String errDbUnreachable(String reason) {
+    return 'Could not connect to the database ($reason).';
+  }
+
+  @override
+  String get errDbAuthFailed =>
+      'The database refused the login: wrong user or password.';
+
+  @override
+  String get errDbDatabaseNotFound => 'Database not found.';
+
+  @override
+  String get errDbEmptyStatement => 'The SQL is empty.';
+
+  @override
+  String get errDbMultipleStatements => 'Only one statement can run at a time.';
+
+  @override
+  String errDbStatementNotAllowed(String keyword) {
+    return 'This kind of statement is not allowed ($keyword). The read mode only runs reads such as SELECT, WITH, VALUES, EXPLAIN.';
+  }
+
+  @override
+  String get errDbReadOnly =>
+      'The database refused a write: the connection is read-only. Use the write mode to change data.';
+
+  @override
+  String errDbPermissionDenied(String message) {
+    return 'This role lacks the privilege. $message';
+  }
+
+  @override
+  String errDbQueryFailed(String message) {
+    return 'Query failed: $message';
+  }
+
+  @override
+  String get errDbTimeout =>
+      'The query timed out. Raise the timeout or narrow the query.';
+
+  @override
+  String get errDbTableNotFound => 'Table not found in the catalog.';
+
+  @override
+  String get errDbFileNotFound => 'SQLite file not found.';
+
+  @override
+  String get errDbSqliteUnavailable =>
+      'This agent\'s Node has no SQLite (22.13 or newer is needed).';
+
+  @override
+  String get errDbBusy =>
+      'This connection already has 2 calls running; wait a moment.';
+
+  @override
+  String errDbRateLimited(String perMinute) {
+    return 'Too many queries: at most $perMinute per minute.';
+  }
+
+  @override
+  String errDbExportRateLimited(String perMinute) {
+    return 'Too many CSV exports: at most $perMinute per minute.';
+  }
+
+  @override
+  String errDbWriteRateLimited(String perTenMinutes) {
+    return 'Too many writes: at most $perTenMinutes per 10 minutes. The preview token wasn\'t spent; apply again in a while.';
+  }
+
+  @override
+  String get errDbQueryNotFound => 'Saved query not found.';
+
+  @override
+  String errDbTooManyQueries(String max) {
+    return 'At most $max saved queries are allowed.';
+  }
+
+  @override
+  String get errDbWriteUnsupported =>
+      'The write mode isn\'t available for SQLite connections.';
+
+  @override
+  String errDbDdlNotPreviewable(String keyword) {
+    return 'On MySQL/MariaDB, schema and account statements such as $keyword commit implicitly and can\'t be previewed. Run it with the mysql client.';
+  }
+
+  @override
+  String errDbNonTransactionalTables(String tables) {
+    return 'The write mode is refused: non-transactional tables exist ($tables); a preview could not be rolled back.';
+  }
+
+  @override
+  String errDbCountChanged(String expected, String actual) {
+    return 'The data changed after the preview: $expected rows expected, $actual now. Nothing was applied.';
+  }
+
+  @override
+  String get errDbFailed => 'The database call failed unexpectedly.';
+
+  @override
+  String get dbRestoreTitle => 'Restore tests';
+
+  @override
+  String get dbRestoreHint =>
+      'A backup you never restored is just a hope. The agent restores the newest dump into a throwaway container and runs your sanity queries; real databases are never touched.';
+
+  @override
+  String get dbRestoreAdd => 'Add test';
+
+  @override
+  String get dbRestoreEmpty => 'No restore tests yet.';
+
+  @override
+  String get dbRestoreRunning => 'Running';
+
+  @override
+  String get dbRestoreRunningHint =>
+      'Restoring in a throwaway container; the result shows here when done.';
+
+  @override
+  String get dbRestoreNever => 'Never ran';
+
+  @override
+  String get dbRestoreOk => 'Passed';
+
+  @override
+  String get dbRestoreFailed => 'Failed';
+
+  @override
+  String get dbRestoreRunNow => 'Run now';
+
+  @override
+  String get dbRestoreHistory => 'Results history';
+
+  @override
+  String get dbRestoreNoResults => 'No results yet.';
+
+  @override
+  String get dbRestoreManualOnly => 'Manual runs only';
+
+  @override
+  String get dbRestoreDisabled => 'Schedule is off';
+
+  @override
+  String dbRestoreNext(String time) {
+    return 'next: $time';
+  }
+
+  @override
+  String dbRestoreDeleteConfirm(String name) {
+    return 'Delete the test “$name” and its results?';
+  }
+
+  @override
+  String get dbRestoreTriggerManual => 'manual';
+
+  @override
+  String get dbRestoreTriggerSchedule => 'scheduled';
+
+  @override
+  String dbRestoreChecked(int n) {
+    String _temp0 = intl.Intl.pluralLogic(
+      n,
+      locale: localeName,
+      other: '$n queries checked',
+      one: '1 query checked',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String dbRestoreDuration(int s) {
+    return '$s s';
+  }
+
+  @override
+  String get dbRfQueryFailed => 'query failed';
+
+  @override
+  String get dbRfNotNumeric => 'query returned no number';
+
+  @override
+  String get dbRfExpectation => 'expectation not met';
+
+  @override
+  String dbRfActual(String actual, String expected) {
+    return 'got $actual, expected $expected';
+  }
+
+  @override
+  String get dbRrNoDump => 'No dump file matches the pattern.';
+
+  @override
+  String get dbRrDumpOutside => 'The dump is outside the allowed folders.';
+
+  @override
+  String get dbRrDisk =>
+      'Not enough free disk (twice the dump size is needed).';
+
+  @override
+  String get dbRrImageVersion =>
+      'The image\'s major version differs from the connection\'s container.';
+
+  @override
+  String get dbRrDocker => 'Docker could not start the throwaway container.';
+
+  @override
+  String get dbRrNotReady =>
+      'The throwaway database did not become ready in time.';
+
+  @override
+  String get dbRrRestoreFailed => 'The dump failed to restore.';
+
+  @override
+  String get dbRrCorrupt => 'The dump is corrupt (bad gz stream).';
+
+  @override
+  String get dbRrSanity => 'The sanity queries did not pass.';
+
+  @override
+  String get dbRrTimeout => 'The test did not finish within 30 minutes.';
+
+  @override
+  String get dbRrShutdown => 'The test was interrupted by an agent shutdown.';
+
+  @override
+  String get dbRestoreFormNew => 'New restore test';
+
+  @override
+  String get dbRestoreFormEdit => 'Edit restore test';
+
+  @override
+  String get dbRestoreImage => 'Image (explicit tag)';
+
+  @override
+  String get dbRestoreImageHint =>
+      'An official postgres/mysql/mariadb image, e.g. postgres:16. No “latest”.';
+
+  @override
+  String dbRestoreImageInvalid(String engine) {
+    return 'Enter an image like $engine:<tag> with an explicit tag (not latest).';
+  }
+
+  @override
+  String get dbRestoreConnection => 'Connection (optional)';
+
+  @override
+  String get dbRestoreConnectionHint =>
+      'If set, the image\'s major version is compared with the connection\'s container.';
+
+  @override
+  String get dbRestoreDump => 'Dump';
+
+  @override
+  String get dbRestoreGlob => 'Dump pattern';
+
+  @override
+  String get dbRestoreGlobHint =>
+      'Absolute path; wildcards only in the last part. The newest matching file is restored.';
+
+  @override
+  String get dbRestoreFormat => 'Format';
+
+  @override
+  String get dbRestoreFormatSql => 'SQL (plain)';
+
+  @override
+  String get dbRestoreFormatGz => 'SQL, gzip';
+
+  @override
+  String get dbRestoreFormatCustom => 'pg_dump custom (PostgreSQL only)';
+
+  @override
+  String get dbRestoreSanity => 'Sanity queries';
+
+  @override
+  String get dbRestoreSanityHint =>
+      'Each query must be one read statement returning a number in its first column; the result is compared with the expectation.';
+
+  @override
+  String get dbRestoreSanityAdd => 'Add query';
+
+  @override
+  String get dbRestoreSanitySql => 'SQL';
+
+  @override
+  String get dbRestoreExpect => 'Condition';
+
+  @override
+  String get dbRestoreValue => 'Value';
+
+  @override
+  String get dbRestoreSchedule => 'Schedule';
+
+  @override
+  String get dbRestoreScheduleSwitch => 'Run automatically';
+
+  @override
+  String get dbRestoreEnabled => 'Schedule enabled';
+
+  @override
+  String get errDbRestoreTestNotFound => 'Restore test not found.';
+
+  @override
+  String get errDbRestoreTestExists =>
+      'A restore test with this name already exists.';
+
+  @override
+  String get errDbRestoreBusy =>
+      'A restore test is running; only one runs at a time.';
+
+  @override
+  String get errDbRestoreEngineMismatch =>
+      'The connection\'s engine differs from the test\'s engine.';
+
+  @override
+  String errDbSanityNotAllowed(int n, String keyword) {
+    return 'Sanity query $n is not allowed ($keyword).';
+  }
+
+  @override
+  String get errDbDumpOutsideRoots =>
+      'The dump folder is outside the allowed folders.';
+
+  @override
+  String notifRestoreOkTitle(String host) {
+    return '$host: restore test passed';
+  }
+
+  @override
+  String notifRestoreFailedTitle(String host) {
+    return '$host: restore test failed';
+  }
+
+  @override
+  String notifRestoreFailedBody(String name, String reason) {
+    return '$name: $reason';
+  }
+
+  @override
+  String get hostPickHint =>
+      'This link doesn\'t say clearly which host it belongs to. Pick the host:';
+
+  @override
+  String get hostPickNone => 'No host with an agent matches this link.';
+
+  @override
+  String get dbCommitUnknownTitle => 'Outcome unknown';
+
+  @override
+  String get dbCommitUnknownBody =>
+      'The commit was sent but no answer came back: it may have been applied. Don\'t run it again before checking. Write a read query below (e.g. SELECT count(*) FROM …) to see the rows as they are now.';
+
+  @override
+  String get dbCheckRows => 'Check the row count';
+
+  @override
+  String get dbCheckHint => 'SELECT count(*) FROM …';
+
+  @override
+  String get errDbSuperuserReadsDisabled =>
+      'Read queries are off for this connection: it logs in as a superuser, and the read-only checks can\'t fully contain a superuser. Use a read-only role, or accept the risk.';
+
+  @override
+  String get errDbReadRoleSuperuser =>
+      'The read role is a superuser itself, so reads are refused. Set a role without superuser rights.';
+
+  @override
+  String get dbUseReadRole => 'Use a read-only role';
+
+  @override
+  String get dbAcceptRisk => 'Accept the risk';
+
+  @override
+  String dbAcceptRiskConfirm(String name) {
+    return 'Allow read queries with the superuser login of $name? A superuser can read every database and call functions that reach files or the server; the agent\'s read-only checks can\'t block all of them. A read-only role is the safer choice.';
+  }
+
+  @override
+  String get dbAcceptRiskCheck => 'I understand the risk';
+
+  @override
+  String get dbAcceptRiskBtn => 'Allow superuser reads';
+
+  @override
+  String dbReadsViaRole(String role) {
+    return 'Reads run as role $role';
+  }
+
+  @override
+  String get dbReadsSuperuserAllowed =>
+      'Superuser reads allowed (risk accepted)';
+
+  @override
+  String get dbRoleSetRead => 'Use as read role';
+
+  @override
+  String get dbReadAccessTitle => 'Read access';
+
+  @override
+  String get dbFieldReadRole => 'Read role';
+
+  @override
+  String get dbReadRoleHint =>
+      'Reads switch to this role first (SET ROLE). Empty: none.';
+
+  @override
+  String get dbAllowSuperuserReadsHint =>
+      'Only matters without a read role. Risky.';
 }

@@ -90,9 +90,9 @@ String eventTypeName(AppLocalizations l, String type) => switch (type) {
 (IconData, Color) eventVisual(TiphysTokens t, String key) {
   const bad = {
     'host.offline', 'disk.full', 'service.failed', 'grafana.alert', 'agent.restarted', 'command.failed', 'claude.error', 'docker.died', 'docker.oom', //
-    'backup.failed', 'backup.stale', 'compose.failed', 'claude.scheduleFailed', 'config.restartFailed',
+    'backup.failed', 'backup.stale', 'compose.failed', 'claude.scheduleFailed', 'config.restartFailed', 'db.restoreTest.failed',
   };
-  const good = {'host.online', 'disk.ok', 'service.recovered', 'grafana.resolved', 'command.done', 'backup.ok', 'compose.updated'};
+  const good = {'host.online', 'disk.ok', 'service.recovered', 'grafana.resolved', 'command.done', 'backup.ok', 'compose.updated', 'db.restoreTest.ok'};
   final icon = key.startsWith('claude.schedule') ? LucideIcons.alarmClock : switch (key.split('.').first) {
     'claude' => LucideIcons.asterisk,
     'host' => LucideIcons.server,

@@ -7,6 +7,7 @@ import '../../core/profile/model.dart';
 import '../../core/util/refresh.dart';
 import '../../state/providers.dart';
 import '../system/agent_providers.dart';
+import 'host_picker.dart' show AmbiguousHostError;
 import 'incident_analysis.dart';
 import 'incident_texts.dart';
 
@@ -298,14 +299,20 @@ final incidentDeploysProvider = FutureProvider.autoDispose.family<List<DeployRec
 /// else every agent host (the notification doesn't say which app host sent it). `exact`: the hint matched.
 ({List<Host> hosts, bool exact}) incidentHostsFor(Profile p, String? hint) {
   final agents = p.hosts.where((h) => h.agent != null).toList();
-  if (hint != null && hint.isNotEmpty) {
-    final byId = agents.where((h) => h.id == hint).toList();
-    if (byId.isNotEmpty) return (hosts: byId, exact: true);
-    final lower = hint.toLowerCase();
-    final byName = agents.where((h) => h.name.toLowerCase() == lower || h.name.toLowerCase().startsWith('$lower ')).toList();
-    if (byName.length == 1) return (hosts: byName, exact: true);
-  }
-  return (hosts: agents, exact: false);
+  final exact = exactHostFor(agents, hint);
+  return exact != null ? (hosts: [exact], exact: true) : (hosts: agents, exact: false);
+}
+
+/// The one host of [hosts] a link's [hint] names: its id, else the only host whose name is the hint or starts with
+/// "hint " (app label "argo (PC)" for the agent's "argo"; case-insensitive). null when none or several fit — the
+/// caller then asks the user, never takes the first.
+Host? exactHostFor(List<Host> hosts, String? hint) {
+  if (hint == null || hint.isEmpty) return null;
+  final byId = hosts.where((h) => h.id == hint).toList();
+  if (byId.length == 1) return byId.single;
+  final lower = hint.toLowerCase();
+  final byName = hosts.where((h) => h.name.toLowerCase() == lower || h.name.toLowerCase().startsWith('$lower ')).toList();
+  return byName.length == 1 ? byName.single : null;
 }
 
 /// Family key: (incident id, host hint).
@@ -315,17 +322,23 @@ final incidentDetailProvider = FutureProvider.autoDispose.family<IncidentDetail,
   autoRefresh(ref, const Duration(seconds: 10));
   final (id, hint) = key;
   final found = incidentHostsFor(ref.watch(profileProvider), hint);
+  IncidentDetail detail(Host h, dynamic j) => IncidentDetail(h, _map(j['incident']), responseSimilar: j['similar'] is List ? _maps(j['similar']) : null);
+  // An exact host's error is the answer.
+  if (found.exact) return detail(found.hosts.single, await withAgent(ref, found.hosts.single.id, (c) => c.get('/v1/incidents/$id')));
+  // Otherwise ask every agent host: the incident is opened only where it exists, and if more than one host has this
+  // id the user picks (never the first one by chance).
+  final answers = await Future.wait([
+    for (final h in found.hosts)
+      withAgent(ref, h.id, (c) => c.get('/v1/incidents/$id')).then<(Host, dynamic, AgentError?)>((j) => (h, j, null), onError: (Object e) => e is AgentError ? (h, null, e) : throw e),
+  ]);
+  final hits = [for (final a in answers) if (a.$3 == null) a];
+  if (hits.length == 1) return detail(hits.single.$1, hits.single.$2);
+  if (hits.length > 1) throw AmbiguousHostError([for (final a in hits) a.$1]);
+  // Keep the most informative error (not found beats the rest).
   Object? error;
-  for (final h in found.hosts) {
-    try {
-      final j = await withAgent(ref, h.id, (c) => c.get('/v1/incidents/$id'));
-      return IncidentDetail(h, _map(j['incident']), responseSimilar: j['similar'] is List ? _maps(j['similar']) : null);
-    } on AgentError catch (e) {
-      // An exact host's error is the answer; while searching, keep the most informative one (not found beats the rest).
-      if (found.exact) rethrow;
-      final cur = error;
-      if (cur is! AgentError || cur.code != 'agent.incident.notFound') error = e;
-    }
+  for (final a in answers) {
+    final cur = error;
+    if (cur is! AgentError || cur.code != 'agent.incident.notFound') error = a.$3;
   }
   throw error ?? const AgentError('agent.incident.notFound');
 });

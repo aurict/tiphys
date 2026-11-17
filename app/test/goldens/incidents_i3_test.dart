@@ -255,7 +255,7 @@ void main() {
     expect(find.descendant(of: _highlighted, matching: find.textContaining('fatal: out of memory', findRichText: true)), findsOneWidget);
 
     await tapChip('Konteyner ayrıntıları');
-    expect(await _tabSelected(tester, 'Container'), isTrue);
+    expect(await _tabSelected(tester, 'Konteyner'), isTrue);
     expect(find.text('137'), findsWidgets);
 
     await tapChip('Metrik host.memPct');

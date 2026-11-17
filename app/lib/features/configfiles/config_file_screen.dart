@@ -15,6 +15,7 @@ import '../../theme/tokens.dart';
 import '../../widgets/forms.dart';
 import '../../widgets/surfaces.dart';
 import '../files/files_screen.dart' show formatSize;
+import '../incidents/host_picker.dart';
 import '../incidents/incidents_data.dart' show incidentHostsFor;
 import '../lock/lock_gate.dart';
 import '../../state/providers.dart' show profileProvider;
@@ -43,9 +44,20 @@ class ConfigFileRoute extends ConsumerWidget {
   final String? focusKey;
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final p = ref.watch(profileProvider);
-    final id = p.host(hostHint) != null ? hostHint : (incidentHostsFor(p, hostHint).hosts.firstOrNull?.id ?? hostHint);
-    return ConfigFileScreen(hostId: id, fileId: fileId, focusKey: focusKey);
+    // Only an exact host (its id, or a name that fits one host) opens the file; otherwise the user picks the host.
+    final found = incidentHostsFor(ref.watch(profileProvider), hostHint);
+    if (found.exact) return ConfigFileScreen(hostId: found.hosts.single.id, fileId: fileId, focusKey: focusKey);
+    return SettingsPage(
+      title: AppLocalizations.of(context).cfTitle,
+      children: [
+        HostPicker(
+          hosts: found.hosts,
+          onPick: (h) => context.replace(
+            '/configfiles/file?host=${Uri.encodeQueryComponent(h.id)}&id=${Uri.encodeQueryComponent(fileId)}${focusKey == null ? '' : '&key=${Uri.encodeQueryComponent(focusKey!)}'}',
+          ),
+        ),
+      ],
+    );
   }
 }
 
@@ -64,6 +76,9 @@ class _ConfigFileScreenState extends ConsumerState<ConfigFileScreen> {
   late final AppLifecycleListener _life;
   late final Future<void> Function(bool) _secure;
   bool _secureOn = false;
+
+  /// Counts trips to the background: a reveal answer that arrives after one is dropped (it was asked for before).
+  int _backgrounded = 0;
   int _editing = 0;
   bool _busy = false;
   bool _selecting = false;
@@ -81,7 +96,10 @@ class _ConfigFileScreenState extends ConsumerState<ConfigFileScreen> {
     _secure = ref.read(secureWindowProvider);
     // Revealed values don't survive the app going to the background.
     _life = AppLifecycleListener(onStateChange: (s) {
-      if (s == AppLifecycleState.hidden || s == AppLifecycleState.paused) _reveal.clear();
+      if (s == AppLifecycleState.hidden || s == AppLifecycleState.paused) {
+        _backgrounded++;
+        _reveal.clear();
+      }
     });
   }
 
@@ -189,12 +207,13 @@ class _ConfigFileScreenState extends ConsumerState<ConfigFileScreen> {
     if (keys.isEmpty || keys.length > maxRevealKeys || _busy) return;
     if (!await _authenticate() || !mounted) return;
     setState(() => _busy = true);
+    final gen = _backgrounded;
     try {
       final j = await agentCall(ref, d.host.id, 'POST', '/v1/config-files/${d.fileId}/reveal', {'keys': keys});
+      if (!mounted || gen != _backgrounded) return;
       final values = <String, String>{
         for (final MapEntry(:key, :value) in ((j as Map)['values'] as Map? ?? const {}).entries) '$key': '$value',
       };
-      if (!mounted) return;
       _reveal.reveal(values);
       setState(() {
         _selecting = false;
@@ -393,6 +412,8 @@ class _ConfigFileScreenState extends ConsumerState<ConfigFileScreen> {
     return [
       TCard(
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          HostBadge(d.host),
+          const SizedBox(height: 6),
           Text(d.file, style: TextStyle(fontFamily: monoFamily, fontSize: 14, fontWeight: FontWeight.w700, color: t.text)),
           const SizedBox(height: 4),
           Text(

@@ -1,10 +1,13 @@
 // Config files and secrets: files list, file screen (masked, staged edits, revealed), preview sheet with the restart
 // option, conflict, backups. Every secret value in these screens is a fake placeholder.
 // To update: flutter test test/goldens/configfiles_test.dart --update-goldens
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:tiphys/core/agent/agent_client.dart';
+import 'package:tiphys/core/profile/model.dart' show Host;
 import 'package:tiphys/core/vault/sensitive_clipboard.dart';
 import 'package:tiphys/features/configfiles/config_file_screen.dart';
 import 'package:tiphys/features/configfiles/configfiles_screen.dart';
@@ -25,13 +28,14 @@ class _Native implements SensitiveClipboardNative {
 }
 
 class _Env {
-  _Env({this.lock = true});
+  _Env({this.lock = true, this.agent});
   final bool lock;
+  final Future<AgentClient> Function(Host)? agent;
   int auths = 0;
   final secure = <bool>[];
   final native = _Native();
 
-  Harness get h => Harness(agentFeatures: [...Harness.defaultAgentFeatures, 'configfiles', 'incidents'], extra: [
+  Harness get h => Harness(agentFeatures: [...Harness.defaultAgentFeatures, 'configfiles', 'incidents'], agent: agent, extra: [
         revealLockAvailableProvider.overrideWith((ref) async => lock),
         vaultAuthProvider.overrideWithValue((c) async {
           auths++;
@@ -441,4 +445,89 @@ void main() {
     expect(tester.takeException(), isNull);
     await _finish(tester);
   });
+
+  // --- §13 review fixes ----------------------------------------------------------------------------------------------
+
+  testWidgets('bildirim bağlantısı: host adı belirsizse dosya açılmaz, host seçtirilir; seçilen host başlıkta', (tester) async {
+    await _Env().h.pump(tester, route: '/configfiles/file?host=bilinmeyen&id=$_fileA');
+    _tall(tester);
+    await _load(tester);
+    expect(find.textContaining('hangi hosta ait olduğu belli değil'), findsOneWidget);
+    expect(find.text('argo (PC)'), findsOneWidget);
+    expect(find.text('atlas'), findsOneWidget);
+    expect(FakeAgent.calls.where((c) => c.$2.startsWith('/v1/config-files/')), isEmpty, reason: 'ilk host tahmin edilmez');
+    await tester.tap(find.text('argo (PC)'));
+    await _load(tester);
+    expect(find.text('shop/.env'), findsWidgets);
+    expect(find.text('argo (PC)'), findsOneWidget, reason: 'dosya ekranında host adı');
+    expect(FakeAgent.calls.where((c) => c.$2 == '/v1/config-files/$_fileA'), isNotEmpty);
+    await _finish(tester);
+  });
+
+  testWidgets('bildirim bağlantısı: ajan adı tek hosta uyuyorsa doğrudan açılır', (tester) async {
+    await _Env().h.pump(tester, route: '/configfiles/file?host=argo&id=$_fileA');
+    _tall(tester);
+    await _load(tester);
+    expect(find.textContaining('hangi hosta ait olduğu belli değil'), findsNothing);
+    expect(find.text('DB_PASSWORD'), findsOneWidget);
+    await _finish(tester);
+  });
+
+  testWidgets('önizleme: sürükleyerek kapanmaz; kaydedildikten sonra dışarı dokunarak kapatınca da ekran yenilenir', (tester) async {
+    await _Env().h.pump(tester, route: _file);
+    _tall(tester);
+    await _load(tester);
+    await _menu(tester, 'DB_PORT', 'Anahtarı sil');
+    await _openPreview(tester);
+    expect(tester.widget<BottomSheet>(find.byType(BottomSheet)).enableDrag, isFalse);
+    // Two quick taps: one confirmation dialog.
+    await tester.tap(find.widgetWithText(FilledButton, 'Kaydet'));
+    await tester.tap(find.widgetWithText(FilledButton, 'Kaydet'), warnIfMissed: false);
+    await settle(tester);
+    expect(find.byType(AlertDialog), findsOneWidget);
+    await _confirmDialog(tester);
+    expect(find.textContaining('Kaydedildi.'), findsOneWidget);
+    await tester.tapAt(const Offset(20, 20));
+    await _load(tester);
+    expect(find.byType(BottomSheet), findsNothing);
+    expect(find.textContaining('değişiklik hazır'), findsNothing, reason: 'hazır değişiklikler temizlendi');
+    expect(find.text('DB_PORT'), findsNothing, reason: 'dosya yeniden okundu');
+    await _finish(tester);
+  });
+
+  testWidgets('Göster: yanıt uygulama arka plandayken gelirse atılır', (tester) async {
+    final gate = Completer<void>();
+    final env = _Env(agent: (h) async => _GatedAgent(h.id, gate));
+    await env.h.pump(tester, route: _file);
+    _tall(tester);
+    await _load(tester);
+    await tester.tap(find.byTooltip('Göster').first);
+    await tester.pump();
+    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.inactive);
+    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.hidden);
+    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.paused);
+    gate.complete();
+    await _load(tester);
+    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.hidden);
+    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.inactive);
+    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
+    await _load(tester);
+    expect(FakeAgent.config.revealCalls, [['DB_PASSWORD']]);
+    expect(find.text(fakeSecretValue), findsNothing);
+    expect(env.secure, isEmpty, reason: 'hiç gösterilmedi');
+    await _finish(tester);
+  });
+}
+
+/// Holds reveal answers until [gate] completes.
+class _GatedAgent extends FakeAgent {
+  _GatedAgent(super.hostId, this.gate);
+  final Completer<void> gate;
+
+  @override
+  Future<dynamic> request(String method, String path, {Object? body, Map<String, String>? query, Duration? timeout, Map<String, String>? headers}) async {
+    final r = await super.request(method, path, body: body, query: query, timeout: timeout, headers: headers);
+    if (path.endsWith('/reveal')) await gate.future;
+    return r;
+  }
 }

@@ -110,6 +110,25 @@ void main() {
     });
   });
 
+  test('yoklama arka planda istek göndermez, öne gelince sürer', () {
+    fakeAsync((async) {
+      var polls = 0;
+      var visible = true;
+      final p = AnalysisPoller(refresh: () => polls++, isVisible: () => visible);
+      p.sync(IncidentAnalysis(sampleAnalysis('running')));
+      async.elapse(const Duration(seconds: 3));
+      expect(polls, 1);
+      visible = false;
+      async.elapse(const Duration(minutes: 5));
+      expect(polls, 1);
+      expect(p.polling, isTrue, reason: 'arka plandaki turlar sınırdan düşmez');
+      visible = true;
+      async.elapse(const Duration(seconds: 3));
+      expect(polls, 2);
+      p.stop();
+    });
+  });
+
   group('kanıt başvurusu çözümleme', () {
     final idx = detail().evidenceIndex;
 

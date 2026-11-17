@@ -5391,7 +5391,7 @@ class AppLocalizationsTr extends AppLocalizations {
   String get incAllKinds => 'Tüm türler';
 
   @override
-  String get incKindContainer => 'Container';
+  String get incKindContainer => 'Konteyner';
 
   @override
   String get incKindService => 'Servis';
@@ -5442,17 +5442,17 @@ class AppLocalizationsTr extends AppLocalizations {
 
   @override
   String incTitleDockerDied(String target) {
-    return 'Container çöktü: $target';
+    return 'Konteyner çöktü: $target';
   }
 
   @override
   String incTitleDockerOom(String target) {
-    return 'Container belleği bitti: $target';
+    return 'Konteyner belleği bitti: $target';
   }
 
   @override
   String incTitleUnhealthy(String target) {
-    return 'Container sağlıksız: $target';
+    return 'Konteyner sağlıksız: $target';
   }
 
   @override
@@ -5563,16 +5563,16 @@ class AppLocalizationsTr extends AppLocalizations {
 
   @override
   String get incHintOom =>
-      'Bellek yetmedi: container bellek yüzünden öldürüldü ya da 137 koduyla çıktı.';
+      'Bellek yetmedi: konteyner bellek yüzünden öldürüldü ya da 137 koduyla çıktı.';
 
   @override
   String incHintExitCode(String code) {
-    return 'Container $code koduyla çıktı.';
+    return 'Konteyner $code koduyla çıktı.';
   }
 
   @override
   String get incHintRestartLoop =>
-      'Yeniden başlama döngüsü: container sürekli yeniden başlıyor.';
+      'Yeniden başlama döngüsü: konteyner sürekli yeniden başlıyor.';
 
   @override
   String incHintRestartLoopCount(int count) {
@@ -5584,7 +5584,7 @@ class AppLocalizationsTr extends AppLocalizations {
 
   @override
   String incHintRecentDeploy(String image) {
-    return 'Container olaydan kısa süre önce oluşturuldu (imaj $image): yakın zamanda dağıtım olmuş olabilir.';
+    return 'Konteyner olaydan kısa süre önce oluşturuldu (imaj $image): yakın zamanda dağıtım olmuş olabilir.';
   }
 
   @override
@@ -5609,7 +5609,7 @@ class AppLocalizationsTr extends AppLocalizations {
   String get incTabLogs => 'Günlükler';
 
   @override
-  String get incTabContainer => 'Container';
+  String get incTabContainer => 'Konteyner';
 
   @override
   String get incTabGit => 'Git';
@@ -5634,7 +5634,7 @@ class AppLocalizationsTr extends AppLocalizations {
 
   @override
   String incActionRestart(String target) {
-    return '$target containerını yeniden başlat';
+    return '$target konteynerini yeniden başlat';
   }
 
   @override
@@ -5653,7 +5653,7 @@ class AppLocalizationsTr extends AppLocalizations {
   }
 
   @override
-  String get incActionKindRestart => 'Container yeniden başlatma';
+  String get incActionKindRestart => 'Konteyner yeniden başlatma';
 
   @override
   String get incActionKindRecreate => 'Servis yeniden oluşturma';
@@ -6450,7 +6450,7 @@ class AppLocalizationsTr extends AppLocalizations {
   String get incCleanImages => 'Sarkan imajlar';
 
   @override
-  String get incCleanContainers => 'Durmuş container\'lar';
+  String get incCleanContainers => 'Durmuş konteynerler';
 
   @override
   String get incCleanUserJournal => 'Kullanıcı journal\'ı';
@@ -6893,4 +6893,954 @@ class AppLocalizationsTr extends AppLocalizations {
   String cfRotationHostError(String host, String error) {
     return '$host: yüklenemedi ($error)';
   }
+
+  @override
+  String get dbTitle => 'Veritabanları';
+
+  @override
+  String get dbNoHosts =>
+      'Bağlı hiçbir ajanda veritabanı konsolu açık değil (özellik databases).';
+
+  @override
+  String get dbNoConnections =>
+      'Henüz bağlantı yok. «Keşfet» ile çalışan veritabanı konteynerlerini bulun ya da elle ekleyin.';
+
+  @override
+  String get dbDiscover => 'Keşfet';
+
+  @override
+  String get dbAddManual => 'Elle ekle';
+
+  @override
+  String get dbSqliteUnavailable =>
+      'Bu ajanın Node sürümünde SQLite yok (Node 22.13 ya da üstü gerekir).';
+
+  @override
+  String get dbSuperuserBadge => 'süper kullanıcı';
+
+  @override
+  String get dbConnectionMenu => 'Bağlantı menüsü';
+
+  @override
+  String dbTestOk(String version, String user, String ms) {
+    return 'Bağlandı: $version · kullanıcı $user · $ms ms';
+  }
+
+  @override
+  String get dbWarnSuperuser =>
+      'Bu kimlik süper kullanıcı: salt okunur koruma yalnızca işlem düzeyinde çalışır. Ayrı bir salt okunur rol kullanmanız önerilir.';
+
+  @override
+  String get dbWarnReadUsed =>
+      'Ayrı yazma kimliği tanımlı değil: yazma, okuma kimliğiyle yapılır.';
+
+  @override
+  String dbDeleteConfirm(String name) {
+    return '«$name» bağlantısı silinsin mi? Kayıtlı sorguları durur (silinmez).';
+  }
+
+  @override
+  String get dbSaved => 'Kaydedildi.';
+
+  @override
+  String get dbDiscoverTitle => 'Veritabanı keşfi';
+
+  @override
+  String get dbDiscoverHint =>
+      'Ajan çalışan konteynerlerin imaj adına bakar. Yalnız ortam değişkeni adları bilinir; değerler hiç gösterilmez.';
+
+  @override
+  String get dbDiscoverNone => 'Çalışan veritabanı konteyneri bulunamadı.';
+
+  @override
+  String get dbDiscoverUnsupported => 'desteklenmiyor';
+
+  @override
+  String dbDiscoverConnected(int n) {
+    String _temp0 = intl.Intl.pluralLogic(
+      n,
+      locale: localeName,
+      other: '$n bağlantı var',
+      one: '1 bağlantı var',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get dbFormNew => 'Yeni bağlantı';
+
+  @override
+  String get dbFormEdit => 'Bağlantıyı düzenle';
+
+  @override
+  String dbFromContainer(String container, String image) {
+    return 'Konteyner $container ($image)';
+  }
+
+  @override
+  String get dbFieldName => 'Ad';
+
+  @override
+  String get dbFieldEngine => 'Motor';
+
+  @override
+  String get dbFieldTarget => 'Hedef';
+
+  @override
+  String get dbTargetContainer => 'Konteyner';
+
+  @override
+  String get dbTargetHost => 'Sunucu ve port';
+
+  @override
+  String get dbFieldContainer => 'Konteyner adı';
+
+  @override
+  String get dbFieldNetwork => 'Docker ağı';
+
+  @override
+  String get dbNetworkAuto => 'Otomatik';
+
+  @override
+  String get dbFieldHost => 'Sunucu';
+
+  @override
+  String get dbFieldPort => 'Port';
+
+  @override
+  String get dbFieldPath => 'Dosya yolu';
+
+  @override
+  String get dbFieldPathHint =>
+      'Ajanın izin verilen klasörlerinden birinde olmalı.';
+
+  @override
+  String get dbFieldDatabase => 'Veritabanı';
+
+  @override
+  String get dbDatabaseHint => 'boş: varsayılan';
+
+  @override
+  String get dbCredentialTitle => 'Kimlik bilgisi';
+
+  @override
+  String get dbCredPassword => 'Ayrı kullanıcı + şifre (önerilen)';
+
+  @override
+  String get dbCredPasswordHint =>
+      'En iyisi salt okunur bir rol. Şifre yalnız ajanda saklanır, telefona geri gelmez.';
+
+  @override
+  String get dbCredEnv => 'Konteyner ortamından (süper kullanıcı)';
+
+  @override
+  String get dbCredEnvHint =>
+      'Şifre saklanmaz; ajan her bağlanışta konteynerin ortam değişkenlerinden okur.';
+
+  @override
+  String get dbEnvUnavailable =>
+      'Bu konteynerin ortamında kullanılabilir bir kimlik yok (şifre dosyası ya da rastgele root şifresi olabilir).';
+
+  @override
+  String get dbSuperuserWarnTitle => 'Süper kullanıcı uyarısı';
+
+  @override
+  String get dbSuperuserWarnBody =>
+      'Konteynerin ortamındaki kullanıcı (POSTGRES_USER ya da MySQL root) büyük olasılıkla süper kullanıcıdır. Bu durumda yalnız işlem düzeyindeki korumalar geçerli olur (tek ifade, izin listesi, salt okunur işlem); veritabanı rolü sizi korumaz. Bağlandıktan sonra «Salt okunur rol oluştur» ile ayrı bir rol açıp onu kullanmanız önerilir.';
+
+  @override
+  String get dbFieldUser => 'Kullanıcı';
+
+  @override
+  String get dbFieldPassword => 'Şifre';
+
+  @override
+  String get dbPasswordKept =>
+      'Kayıtlı şifre korunur; değiştirmek için yeni şifre yazın.';
+
+  @override
+  String get dbWriteCredTitle => 'Yazma kimliği';
+
+  @override
+  String get dbWriteCredSwitch => 'Yazma için ayrı kullanıcı';
+
+  @override
+  String get dbWriteCredHint =>
+      'Kapalıysa yazma kipi okuma kimliğini kullanır.';
+
+  @override
+  String get dbTabSchema => 'Şema';
+
+  @override
+  String get dbTabQueries => 'Sorgular';
+
+  @override
+  String get dbTabEditor => 'Düzenleyici';
+
+  @override
+  String get dbSchemaEmpty => 'Kullanıcı şeması bulunamadı.';
+
+  @override
+  String get dbSchemaTruncated => 'Şema çok büyük: liste kesildi.';
+
+  @override
+  String dbTablesCount(int n) {
+    String _temp0 = intl.Intl.pluralLogic(
+      n,
+      locale: localeName,
+      other: '$n tablo',
+      one: '1 tablo',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String dbEstRows(int n) {
+    return '~$n satır';
+  }
+
+  @override
+  String get dbKindTable => 'Tablo';
+
+  @override
+  String get dbKindView => 'Görünüm';
+
+  @override
+  String get dbKindMatView => 'Gerçekleşmiş görünüm';
+
+  @override
+  String get dbKindForeign => 'Yabancı tablo';
+
+  @override
+  String get dbKindPartitioned => 'Bölümlü tablo';
+
+  @override
+  String get dbColumns => 'Sütunlar';
+
+  @override
+  String get dbIndexes => 'İndeksler';
+
+  @override
+  String get dbUnique => 'benzersiz';
+
+  @override
+  String get dbPreviewTable => 'Tablo önizlemesi';
+
+  @override
+  String dbPreviewLoad(int n) {
+    return 'İlk $n satırı göster';
+  }
+
+  @override
+  String get dbQueriesEmpty =>
+      'Kayıtlı sorgu yok. Düzenleyicide yazıp «Sorgu olarak kaydet» ile ekleyin.';
+
+  @override
+  String get dbQueryNew => 'Yeni sorgu';
+
+  @override
+  String get dbQueryEdit => 'Sorguyu düzenle';
+
+  @override
+  String get dbQueryName => 'Ad';
+
+  @override
+  String get dbQuerySql => 'SQL (yalnız okuma)';
+
+  @override
+  String get dbQueryRun => 'Yeniden çalıştır';
+
+  @override
+  String get dbQueryChart => 'Grafik';
+
+  @override
+  String dbQueryDeleteConfirm(String name) {
+    return '«$name» sorgusu silinsin mi?';
+  }
+
+  @override
+  String get dbOpenInEditor => 'Düzenleyicide aç';
+
+  @override
+  String get dbSaveAsQuery => 'Sorgu olarak kaydet';
+
+  @override
+  String get dbChartTable => 'Tablo';
+
+  @override
+  String get dbChartStat => 'Sayı';
+
+  @override
+  String get dbChartLine => 'Çizgi';
+
+  @override
+  String get dbChartBar => 'Çubuk';
+
+  @override
+  String get dbChartX => 'X ekseni sütunu';
+
+  @override
+  String get dbChartY => 'Y sütunları (sayısal)';
+
+  @override
+  String get dbChartStatColumn => 'Gösterilecek sayısal sütun';
+
+  @override
+  String get dbChartLoadColumns => 'Sütunları yükle';
+
+  @override
+  String get dbChartNoColumns =>
+      'Sütun seçmek için sorgu bir kez çalıştırılır.';
+
+  @override
+  String get dbChartNoNumeric => 'Sonuçta sayısal sütun yok.';
+
+  @override
+  String get dbChartNoRows => 'Sonuç boş: çizilecek veri yok.';
+
+  @override
+  String get dbChartMissing =>
+      'Grafikte seçili sütunlar sonuçta yok. Sorguyu düzenleyip sütunları yeniden seçin.';
+
+  @override
+  String dbChartFirstPoints(int n) {
+    return 'Grafikte ilk $n satır var; tamamı tabloda.';
+  }
+
+  @override
+  String get dbEditorHint => 'SELECT * FROM tablo LIMIT 10';
+
+  @override
+  String get dbRun => 'Çalıştır';
+
+  @override
+  String get dbLimit => 'Satır sınırı';
+
+  @override
+  String get dbTimeout => 'Zaman aşımı (sn)';
+
+  @override
+  String dbRowsSummary(int rows, int ms) {
+    String _temp0 = intl.Intl.pluralLogic(
+      rows,
+      locale: localeName,
+      other: '$rows satır',
+      one: '1 satır',
+      zero: 'Satır yok',
+    );
+    return '$_temp0 · $ms ms';
+  }
+
+  @override
+  String dbTruncatedBanner(int n) {
+    return 'Sonuç $n satırda kesildi. Sınırı artırın ya da sorguya WHERE/LIMIT ekleyin.';
+  }
+
+  @override
+  String dbCellsTruncated(int n) {
+    String _temp0 = intl.Intl.pluralLogic(
+      n,
+      locale: localeName,
+      other: '$n hücre 4 KB\'ta kesildi.',
+      one: '1 hücre 4 KB\'ta kesildi.',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get dbNoRows => 'Sorgu satır döndürmedi.';
+
+  @override
+  String dbPageOf(int page, int pages) {
+    return 'Sayfa $page/$pages';
+  }
+
+  @override
+  String get dbPrevPage => 'Önceki sayfa';
+
+  @override
+  String get dbNextPage => 'Sonraki sayfa';
+
+  @override
+  String get dbCellTitle => 'Hücre';
+
+  @override
+  String get dbCsvShare => 'CSV paylaş';
+
+  @override
+  String get dbCsvBusy => 'CSV hazırlanıyor…';
+
+  @override
+  String dbCsvDone(int rows) {
+    String _temp0 = intl.Intl.pluralLogic(
+      rows,
+      locale: localeName,
+      other: '$rows satır dışa aktarıldı.',
+      one: '1 satır dışa aktarıldı.',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get dbCsvMaybeTruncated =>
+      '100 000 satır sınırına ulaşıldı: dosya kesik olabilir.';
+
+  @override
+  String get dbWriteMode => 'Yazma kipi';
+
+  @override
+  String get dbWriteModeHint =>
+      'Kapalıyken yalnız okunur. Açmak için uygulama kilidi gerekir; ekrandan çıkınca kapanır.';
+
+  @override
+  String get dbWriteBanner =>
+      'YAZMA KİPİ AÇIK: ifadeler önizleme ve onaydan sonra veritabanını gerçekten değiştirir.';
+
+  @override
+  String get dbWriteNeedsLock =>
+      'Yazma kipi için önce uygulama kilidi (PIN ya da parmak izi) ayarlayın.';
+
+  @override
+  String get dbWriteDoneNote => 'Değişiklik uygulandı.';
+
+  @override
+  String get dbPreviewBtn => 'Önizle';
+
+  @override
+  String get dbPreviewTitle => 'Yazma önizlemesi';
+
+  @override
+  String dbPreviewAffected(int n) {
+    String _temp0 = intl.Intl.pluralLogic(
+      n,
+      locale: localeName,
+      other: '$n satır etkilenecek',
+      one: '1 satır etkilenecek',
+      zero: 'Hiç satır etkilenmeyecek',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String dbPreviewDdl(String statement) {
+    return 'Şema değişikliği ($statement); satır sayısı yok';
+  }
+
+  @override
+  String dbPreviewSample(int n) {
+    return 'Örnek satırlar (ilk $n)';
+  }
+
+  @override
+  String get dbPreviewNoSample => 'Bu ifade için örnek satır gösterilemiyor.';
+
+  @override
+  String get dbPreviewCredWrite => 'Yazma kimliğiyle çalıştırıldı.';
+
+  @override
+  String get dbPreviewCredRead =>
+      'Okuma kimliğiyle çalıştırıldı (ayrı yazma kimliği yok).';
+
+  @override
+  String get dbPreviewRolledBack =>
+      'Önizleme geri alındı; henüz hiçbir şey değişmedi.';
+
+  @override
+  String get dbCommit => 'Uygula';
+
+  @override
+  String get dbCommitting => 'Uygulanıyor…';
+
+  @override
+  String dbCommitConfirm(String statement) {
+    return '$statement ifadesi veritabanını kalıcı olarak değiştirecek. Uygulansın mı?';
+  }
+
+  @override
+  String dbCommitted(int n) {
+    String _temp0 = intl.Intl.pluralLogic(
+      n,
+      locale: localeName,
+      other: '$n satır',
+      one: '1 satır',
+    );
+    return 'Uygulandı: $_temp0 değişti.';
+  }
+
+  @override
+  String get dbCommittedDdl => 'Uygulandı.';
+
+  @override
+  String dbCountChangedBody(int expected, int actual) {
+    return 'Önizlemeden sonra veri değişti: $expected satır beklenirken ifade şimdi $actual satırı etkiliyor. Hiçbir şey uygulanmadı. Yeniden önizleyip kontrol edin.';
+  }
+
+  @override
+  String get dbRePreview => 'Yeniden önizle';
+
+  @override
+  String get dbRoleTitle => 'Salt okunur rol oluştur';
+
+  @override
+  String get dbRoleHint =>
+      'Ajan, yalnız okuma yetkisi olan bir rolü oluşturan SQL\'i hazırlar. Hiçbir şey çalıştırılmaz ya da saklanmaz.';
+
+  @override
+  String get dbRoleShow => 'SQL\'i hazırla';
+
+  @override
+  String get dbRolePasswordNote =>
+      'Şifre rastgele üretildi ve yalnız burada görünür. Rolü oluşturduktan sonra bağlantının okuma kimliği olarak girin.';
+
+  @override
+  String get dbRoleClient =>
+      'Hesap ifadeleri önizlenemez: bu SQL\'i mysql/mariadb istemcisiyle çalıştırın.';
+
+  @override
+  String get dbRoleRunWrite => 'Yazma kipinde çalıştır';
+
+  @override
+  String get errDbConnectionNotFound => 'Veritabanı bağlantısı bulunamadı.';
+
+  @override
+  String get errDbConnectionExists => 'Bu kimlikte bir bağlantı zaten var.';
+
+  @override
+  String get errDbPasswordRequired =>
+      'Hedef değişti: kayıtlı şifre yeni adrese gönderilmez, şifreyi yeniden girin.';
+
+  @override
+  String errDbContainerNotFound(String container) {
+    return 'Konteyner bulunamadı: $container.';
+  }
+
+  @override
+  String errDbContainerNotRunning(String container) {
+    return 'Konteyner çalışmıyor: $container.';
+  }
+
+  @override
+  String errDbNetworkNotFound(String network) {
+    return 'Konteyner $network ağında değil.';
+  }
+
+  @override
+  String get errDbContainerNoAddress =>
+      'Konteynerin ulaşılabilir bir adresi yok.';
+
+  @override
+  String errDbCredentialUnavailable(String reason) {
+    return 'Konteynerin ortamından kimlik okunamadı ($reason). Şifre dosyası ya da rastgele root şifresi olabilir; ayrı kullanıcı ve şifre girin.';
+  }
+
+  @override
+  String errDbUnreachable(String reason) {
+    return 'Veritabanına bağlanılamadı ($reason).';
+  }
+
+  @override
+  String get errDbAuthFailed =>
+      'Veritabanı girişi reddetti: kullanıcı ya da şifre yanlış.';
+
+  @override
+  String get errDbDatabaseNotFound => 'Veritabanı bulunamadı.';
+
+  @override
+  String get errDbEmptyStatement => 'SQL boş.';
+
+  @override
+  String get errDbMultipleStatements =>
+      'Tek seferde yalnız bir ifade çalıştırılabilir.';
+
+  @override
+  String errDbStatementNotAllowed(String keyword) {
+    return 'Bu ifade türüne izin verilmiyor ($keyword). Okuma kipinde yalnız SELECT, WITH, VALUES, EXPLAIN gibi okuma ifadeleri çalışır.';
+  }
+
+  @override
+  String get errDbReadOnly =>
+      'Veritabanı yazmayı reddetti: bağlantı salt okunur. Değiştirmek için yazma kipini kullanın.';
+
+  @override
+  String errDbPermissionDenied(String message) {
+    return 'Bu rolün yetkisi yok. $message';
+  }
+
+  @override
+  String errDbQueryFailed(String message) {
+    return 'Sorgu başarısız: $message';
+  }
+
+  @override
+  String get errDbTimeout =>
+      'Sorgu zaman aşımına uğradı. Süreyi artırın ya da sorguyu daraltın.';
+
+  @override
+  String get errDbTableNotFound => 'Tablo kataloğda bulunamadı.';
+
+  @override
+  String get errDbFileNotFound => 'SQLite dosyası bulunamadı.';
+
+  @override
+  String get errDbSqliteUnavailable =>
+      'Bu ajanın Node sürümünde SQLite yok (22.13 ya da üstü gerekir).';
+
+  @override
+  String get errDbBusy =>
+      'Bu bağlantıda zaten 2 çağrı çalışıyor; biraz bekleyin.';
+
+  @override
+  String errDbRateLimited(String perMinute) {
+    return 'Çok fazla sorgu: dakikada en çok $perMinute.';
+  }
+
+  @override
+  String errDbExportRateLimited(String perMinute) {
+    return 'Çok fazla CSV dışa aktarma: dakikada en çok $perMinute.';
+  }
+
+  @override
+  String errDbWriteRateLimited(String perTenMinutes) {
+    return 'Çok fazla yazma: 10 dakikada en çok $perTenMinutes. Önizleme belirteci harcanmadı; biraz sonra yeniden uygulayın.';
+  }
+
+  @override
+  String get errDbQueryNotFound => 'Kayıtlı sorgu bulunamadı.';
+
+  @override
+  String errDbTooManyQueries(String max) {
+    return 'En çok $max kayıtlı sorgu olabilir.';
+  }
+
+  @override
+  String get errDbWriteUnsupported => 'SQLite bağlantılarında yazma kipi yok.';
+
+  @override
+  String errDbDdlNotPreviewable(String keyword) {
+    return 'MySQL/MariaDB\'de $keyword gibi şema ve hesap ifadeleri kendiliğinden kaydedilir; önizlenemez. Bu ifadeyi mysql istemcisiyle çalıştırın.';
+  }
+
+  @override
+  String errDbNonTransactionalTables(String tables) {
+    return 'Yazma kipi kapalı: işlemsiz tablolar var ($tables); önizleme geri alınamazdı.';
+  }
+
+  @override
+  String errDbCountChanged(String expected, String actual) {
+    return 'Önizlemeden sonra veri değişti: $expected satır beklenirken $actual satır. Hiçbir şey uygulanmadı.';
+  }
+
+  @override
+  String get errDbFailed =>
+      'Veritabanı çağrısı beklenmedik biçimde başarısız oldu.';
+
+  @override
+  String get dbRestoreTitle => 'Geri yükleme testleri';
+
+  @override
+  String get dbRestoreHint =>
+      'Bir yedeği hiç geri yüklemediyseniz yalnız umut etmişsiniz demektir. Ajan, en yeni dökümü geçici bir konteynere yükler ve sağlamlık sorgularını çalıştırır; gerçek veritabanlarına dokunulmaz.';
+
+  @override
+  String get dbRestoreAdd => 'Test ekle';
+
+  @override
+  String get dbRestoreEmpty => 'Henüz geri yükleme testi yok.';
+
+  @override
+  String get dbRestoreRunning => 'Çalışıyor';
+
+  @override
+  String get dbRestoreRunningHint =>
+      'Geçici konteynerde yükleniyor; bitince sonuç burada görünür.';
+
+  @override
+  String get dbRestoreNever => 'Hiç çalışmadı';
+
+  @override
+  String get dbRestoreOk => 'Geçti';
+
+  @override
+  String get dbRestoreFailed => 'Başarısız';
+
+  @override
+  String get dbRestoreRunNow => 'Şimdi çalıştır';
+
+  @override
+  String get dbRestoreHistory => 'Sonuç geçmişi';
+
+  @override
+  String get dbRestoreNoResults => 'Henüz sonuç yok.';
+
+  @override
+  String get dbRestoreManualOnly => 'Yalnız elle çalıştırılır';
+
+  @override
+  String get dbRestoreDisabled => 'Zamanlama kapalı';
+
+  @override
+  String dbRestoreNext(String time) {
+    return 'sonraki: $time';
+  }
+
+  @override
+  String dbRestoreDeleteConfirm(String name) {
+    return '«$name» testi ve sonuçları silinsin mi?';
+  }
+
+  @override
+  String get dbRestoreTriggerManual => 'elle';
+
+  @override
+  String get dbRestoreTriggerSchedule => 'zamanlı';
+
+  @override
+  String dbRestoreChecked(int n) {
+    String _temp0 = intl.Intl.pluralLogic(
+      n,
+      locale: localeName,
+      other: '$n sorgu kontrol edildi',
+      one: '1 sorgu kontrol edildi',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String dbRestoreDuration(int s) {
+    return '$s sn';
+  }
+
+  @override
+  String get dbRfQueryFailed => 'sorgu çalışmadı';
+
+  @override
+  String get dbRfNotNumeric => 'sorgu sayı döndürmedi';
+
+  @override
+  String get dbRfExpectation => 'beklenti sağlanmadı';
+
+  @override
+  String dbRfActual(String actual, String expected) {
+    return 'bulunan $actual, beklenen $expected';
+  }
+
+  @override
+  String get dbRrNoDump => 'Dökümle eşleşen dosya bulunamadı.';
+
+  @override
+  String get dbRrDumpOutside => 'Döküm izin verilen klasörlerin dışında.';
+
+  @override
+  String get dbRrDisk =>
+      'Yeterli boş disk yok (döküm boyutunun 2 katı gerekir).';
+
+  @override
+  String get dbRrImageVersion =>
+      'İmajın ana sürümü bağlantının konteyneriyle uyuşmuyor.';
+
+  @override
+  String get dbRrDocker => 'Docker geçici konteyneri başlatamadı.';
+
+  @override
+  String get dbRrNotReady => 'Geçici veritabanı zamanında hazır olmadı.';
+
+  @override
+  String get dbRrRestoreFailed => 'Döküm yüklenirken hata oluştu.';
+
+  @override
+  String get dbRrCorrupt => 'Döküm bozuk (gz akışı hatalı).';
+
+  @override
+  String get dbRrSanity => 'Sağlamlık sorguları geçmedi.';
+
+  @override
+  String get dbRrTimeout => 'Test 30 dakikada bitmedi.';
+
+  @override
+  String get dbRrShutdown => 'Ajan kapandığı için test yarım kaldı.';
+
+  @override
+  String get dbRestoreFormNew => 'Yeni geri yükleme testi';
+
+  @override
+  String get dbRestoreFormEdit => 'Testi düzenle';
+
+  @override
+  String get dbRestoreImage => 'İmaj (açık etiketli)';
+
+  @override
+  String get dbRestoreImageHint =>
+      'Resmî postgres/mysql/mariadb imajı, örn. postgres:16. «latest» olmaz.';
+
+  @override
+  String dbRestoreImageInvalid(String engine) {
+    return '$engine: biçiminde açık etiketli bir imaj yazın (latest olmaz).';
+  }
+
+  @override
+  String get dbRestoreConnection => 'Bağlantı (isteğe bağlı)';
+
+  @override
+  String get dbRestoreConnectionHint =>
+      'Seçilirse imajın ana sürümü bağlantının konteyneriyle karşılaştırılır.';
+
+  @override
+  String get dbRestoreDump => 'Döküm';
+
+  @override
+  String get dbRestoreGlob => 'Döküm deseni';
+
+  @override
+  String get dbRestoreGlobHint =>
+      'Mutlak yol; joker yalnız son parçada. En yeni eşleşen dosya yüklenir.';
+
+  @override
+  String get dbRestoreFormat => 'Biçim';
+
+  @override
+  String get dbRestoreFormatSql => 'SQL (düz)';
+
+  @override
+  String get dbRestoreFormatGz => 'SQL, gzip';
+
+  @override
+  String get dbRestoreFormatCustom => 'pg_dump özel biçimi (yalnız PostgreSQL)';
+
+  @override
+  String get dbRestoreSanity => 'Sağlamlık sorguları';
+
+  @override
+  String get dbRestoreSanityHint =>
+      'Her sorgu tek bir okuma ifadesi olmalı ve ilk sütunda bir sayı döndürmeli; sonuç beklentiyle karşılaştırılır.';
+
+  @override
+  String get dbRestoreSanityAdd => 'Sorgu ekle';
+
+  @override
+  String get dbRestoreSanitySql => 'SQL';
+
+  @override
+  String get dbRestoreExpect => 'Koşul';
+
+  @override
+  String get dbRestoreValue => 'Değer';
+
+  @override
+  String get dbRestoreSchedule => 'Zamanlama';
+
+  @override
+  String get dbRestoreScheduleSwitch => 'Otomatik çalıştır';
+
+  @override
+  String get dbRestoreEnabled => 'Zamanlama etkin';
+
+  @override
+  String get errDbRestoreTestNotFound => 'Geri yükleme testi bulunamadı.';
+
+  @override
+  String get errDbRestoreTestExists =>
+      'Bu adda bir geri yükleme testi zaten var.';
+
+  @override
+  String get errDbRestoreBusy =>
+      'Şu anda bir geri yükleme testi çalışıyor; aynı anda yalnız biri çalışır.';
+
+  @override
+  String get errDbRestoreEngineMismatch =>
+      'Seçilen bağlantının motoru testin motoruyla uyuşmuyor.';
+
+  @override
+  String errDbSanityNotAllowed(int n, String keyword) {
+    return '$n. sağlamlık sorgusuna izin verilmiyor ($keyword).';
+  }
+
+  @override
+  String get errDbDumpOutsideRoots =>
+      'Döküm klasörü izin verilen klasörlerin dışında.';
+
+  @override
+  String notifRestoreOkTitle(String host) {
+    return '$host: geri yükleme testi geçti';
+  }
+
+  @override
+  String notifRestoreFailedTitle(String host) {
+    return '$host: geri yükleme testi başarısız';
+  }
+
+  @override
+  String notifRestoreFailedBody(String name, String reason) {
+    return '$name: $reason';
+  }
+
+  @override
+  String get hostPickHint =>
+      'Bu bağlantının hangi hosta ait olduğu belli değil. Hostu seç:';
+
+  @override
+  String get hostPickNone => 'Bu bağlantıya uyan, ajanı olan bir host yok.';
+
+  @override
+  String get dbCommitUnknownTitle => 'Sonuç bilinmiyor';
+
+  @override
+  String get dbCommitUnknownBody =>
+      'Onay gönderildi ama yanıt gelmedi: değişiklik uygulanmış olabilir. Kontrol etmeden yeniden çalıştırma. Satırların şu anki hâlini görmek için aşağıya bir okuma sorgusu yaz (ör. SELECT count(*) FROM …).';
+
+  @override
+  String get dbCheckRows => 'Satır sayısını kontrol et';
+
+  @override
+  String get dbCheckHint => 'SELECT count(*) FROM …';
+
+  @override
+  String get errDbSuperuserReadsDisabled =>
+      'Bu bağlantıda okuma sorguları kapalı: süper kullanıcıyla bağlanıyor ve salt okunur denetimler bir süper kullanıcıyı tam sınırlayamaz. Salt okunur bir rol kullan ya da riski kabul et.';
+
+  @override
+  String get errDbReadRoleSuperuser =>
+      'Okuma rolünün kendisi süper kullanıcı, bu yüzden okumalar reddedildi. Süper kullanıcı yetkisi olmayan bir rol ayarla.';
+
+  @override
+  String get dbUseReadRole => 'Salt okunur rol kullan';
+
+  @override
+  String get dbAcceptRisk => 'Riski kabul et';
+
+  @override
+  String dbAcceptRiskConfirm(String name) {
+    return '$name için süper kullanıcı girişiyle okuma sorgularına izin verilsin mi? Süper kullanıcı tüm veritabanlarını okuyabilir, dosyalara ya da sunucuya uzanan işlevleri çağırabilir; ajanın salt okunur denetimleri hepsini engelleyemez. Salt okunur bir rol daha güvenli seçimdir.';
+  }
+
+  @override
+  String get dbAcceptRiskCheck => 'Riski anlıyorum';
+
+  @override
+  String get dbAcceptRiskBtn => 'Süper kullanıcı okumalarına izin ver';
+
+  @override
+  String dbReadsViaRole(String role) {
+    return 'Okumalar $role rolüyle çalışır';
+  }
+
+  @override
+  String get dbReadsSuperuserAllowed =>
+      'Süper kullanıcı okumalarına izin verildi (risk kabul edildi)';
+
+  @override
+  String get dbRoleSetRead => 'Okuma rolü olarak ayarla';
+
+  @override
+  String get dbReadAccessTitle => 'Okuma erişimi';
+
+  @override
+  String get dbFieldReadRole => 'Okuma rolü';
+
+  @override
+  String get dbReadRoleHint =>
+      'Okumalar önce bu role geçer (SET ROLE). Boş: yok.';
+
+  @override
+  String get dbAllowSuperuserReadsHint =>
+      'Yalnız okuma rolü yoksa geçerli. Riskli.';
 }

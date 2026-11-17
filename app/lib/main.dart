@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
@@ -14,6 +15,7 @@ import 'core/push/push_service.dart';
 import 'core/secrets/secret_store.dart';
 import 'core/security/app_lock.dart';
 import 'features/claude/pc_ongoing.dart';
+import 'features/databases/db_data.dart' show dbClearCsvCopiesProvider;
 import 'features/files/share_to_pc.dart';
 import 'features/settings/push_section.dart';
 import 'state/providers.dart';
@@ -61,6 +63,9 @@ Future<void> main(List<String> args) async {
     initialProfileProvider.overrideWithValue(initial),
     pushServiceProvider.overrideWithValue(push),
   ]);
+
+  // CSV exports of the database console left in the cache (an export or share cut short by a kill).
+  unawaited(container.read(dbClearCsvCopiesProvider)());
 
   // Tapping a notification opens the related screen.
   push.onOpen = (route) => container.read(routerProvider).push(route);

@@ -12,6 +12,7 @@ import 'package:intl/intl.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:unifiedpush/unifiedpush.dart';
 
+import '../../features/databases/db_texts.dart' show restoreNotificationReason;
 import '../../features/incidents/incident_texts.dart';
 import '../../l10n/gen/app_localizations.dart';
 import '../agent/agent_client.dart';
@@ -100,6 +101,9 @@ const _endpointKey = 'app:pushEndpoint';
     // Config files and secrets (PLAN.md §13.3): file and key names only.
     'secret.rotationDue' => (l.notifRotationDueTitle(s('host')), l.notifRotationDueBody(s('file'), s('keys'))),
     'config.restartFailed' => (l.notifConfigRestartFailedTitle(s('host')), l.notifConfigRestartFailedBody(s('file'), s('services'))),
+    // Backup restore tests (D-4): the test's name and, on failure, the agent's reason (`reason` or `reason: detail`).
+    'db.restoreTest.ok' => (l.notifRestoreOkTitle(s('host')), s('name')),
+    'db.restoreTest.failed' => (l.notifRestoreFailedTitle(s('host')), l.notifRestoreFailedBody(s('name'), restoreNotificationReason(l, s('reason')))),
     'secret.changedExternally' => (l.evSecretChangedTitle, l.notifRotationDueBody(s('file'), s('keys'))),
     'config.saved' => (l.evConfigSavedTitle, '${s('file')} · ${s('keys')}'),
     'config.restored' => (l.evConfigRestoredTitle, '${s('file')} · ${s('keys')}'),
@@ -235,6 +239,7 @@ int noticeId(String key, Map<String, dynamic> p, {String? link, String? requestI
     'docker.died' || 'docker.oom' || 'docker.restarted' || 'docker.unhealthy' || 'docker.restartLoop' => 'docker|${s('host')}|${s('container')}',
     'incident.resolved' || 'incident.actionFailed' || 'incident.analyzed' => 'incident|${s('incidentId')}',
     'secret.rotationDue' || 'config.restartFailed' => 'config|${s('host')}|${s('file')}',
+    'db.restoreTest.ok' || 'db.restoreTest.failed' => 'dbrestore|${s('host')}|${s('name')}',
     'uptime.down' || 'uptime.up' => 'uptime|${s('host')}|${s('monitorId')}',
     'backup.stale' || 'backup.failed' || 'backup.ok' => 'backup|${s('host')}|${s('id')}',
     'compose.updated' || 'compose.failed' => 'compose|${s('host')}|${s('stack')}',
@@ -298,6 +303,10 @@ String? routeForPayload(String? payload) {
       if (j['fileId'] is String && host is String && host.isNotEmpty && RegExp(r'^cf-[a-f0-9]{24}$').hasMatch(j['fileId'] as String)) {
         return '/configfiles/file?host=${Uri.encodeQueryComponent(host)}&id=${j['fileId']}';
       }
+      if (route == '/db/restore') {
+        final test = j['test'];
+        return '/db/restore?host=${Uri.encodeQueryComponent('${host ?? ''}')}${test is String ? '&test=${Uri.encodeQueryComponent(test)}' : ''}';
+      }
       return route != null && route.startsWith('/incidents/') && host is String && host.isNotEmpty
           ? '$route?host=${Uri.encodeQueryComponent(host)}'
           : route;
@@ -322,6 +331,13 @@ String? configPayload(String key, Map<String, dynamic> params, Map<String, dynam
   if (key != 'secret.rotationDue' && key != 'config.restartFailed') return null;
   if (host is! String || host.isEmpty || fileId is! String) return null;
   return jsonEncode({'link': 'tiphys://configfiles', 'host': host, 'fileId': fileId});
+}
+
+/// Payload of a restore-test notification: opens the restore tests with that test highlighted. null for other keys.
+String? restorePayload(String key, Map<String, dynamic> params) {
+  final host = params['host'], name = params['name'];
+  if (!key.startsWith('db.restoreTest.') || host is! String || host.isEmpty || name is! String || name.isEmpty) return null;
+  return jsonEncode({'link': 'tiphys://db/restore', 'host': host, 'test': name});
 }
 
 /// "Allow / Deny" in the notification: sends the decision to the Claude agent without opening the app. True on
@@ -631,6 +647,7 @@ String? routeForLink(String? link) {
   if (rest == 'telegram') return '/system/telegram';
   if (rest == 'incidents') return '/incidents';
   if (rest == 'configfiles') return '/configfiles';
+  if (rest == 'db/restore') return '/db/restore';
   final incident = RegExp(r'^incidents/([A-Za-z0-9_-]{1,64})$').firstMatch(rest);
   if (incident != null) return '/incidents/${incident.group(1)}';
   final issue = RegExp(r'^telegram/issues/([A-Za-z0-9_-]{1,64})$').firstMatch(rest);
@@ -780,7 +797,7 @@ class PushService {
     final l = lookupAppLocalizations(_localeOf(profile));
     final text = noticeText(l, key, params);
     if (text == null) return;
-    final high = const {'claude.pcExpiring', 'claude.pcEnded', 'claude.waiting', 'host.offline', 'disk.full', 'service.failed', 'grafana.alert', 'agent.restarted', 'docker.died', 'docker.oom', 'docker.unhealthy', 'docker.restartLoop', 'uptime.down', 'incident.actionFailed', 'config.restartFailed', 'backup.stale', 'backup.failed', 'claude.scheduleFailed', 'telegram.approval', 'telegram.pcUnreachable'}.contains(key) ||
+    final high = const {'claude.pcExpiring', 'claude.pcEnded', 'claude.waiting', 'host.offline', 'disk.full', 'service.failed', 'grafana.alert', 'agent.restarted', 'docker.died', 'docker.oom', 'docker.unhealthy', 'docker.restartLoop', 'uptime.down', 'incident.actionFailed', 'config.restartFailed', 'db.restoreTest.failed', 'backup.stale', 'backup.failed', 'claude.scheduleFailed', 'telegram.approval', 'telegram.pcUnreachable'}.contains(key) ||
         (key == 'telegram.failed' && params['reason'] != 'agent.telegram.approvalExpired');
     // Telegram issue waiting for approval: "Send / Cancel" buttons (decision without opening the app).
     final tgDecision = key == 'telegram.approval' && data?['issueId'] != null;
@@ -802,7 +819,7 @@ class PushService {
               ? jsonEncode({'link': link, 'sessionId': data!['sessionId']})
               : tgDecision
                   ? jsonEncode({'link': link, 'issueId': data!['issueId'], 'feedId': data['feedId']})
-                  : incidentPayload(link, params) ?? configPayload(key, params, data) ?? link,
+                  : incidentPayload(link, params) ?? configPayload(key, params, data) ?? restorePayload(key, params) ?? link,
       notificationDetails: NotificationDetails(
         android: AndroidNotificationDetails(
           high ? 'tiphys-urgent' : 'tiphys',

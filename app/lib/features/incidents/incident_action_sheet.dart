@@ -22,19 +22,26 @@ import 'incidents_data.dart';
 
 /// Opens the sheet; true when the action was run (the caller refreshes the incident).
 Future<bool> showIncidentActionSheet(BuildContext context, {required Host host, required String incidentId, required ActionCandidate candidate, String? runningId}) async {
+  // Once run, closing the sheet any way (barrier, back) still reports it, so the incident is refreshed.
+  var ran = false;
   final r = await showModalBottomSheet<bool>(
     context: context,
     useRootNavigator: true,
     isScrollControlled: true,
     showDragHandle: true,
-    builder: (_) => IncidentActionSheet(host: host, incidentId: incidentId, candidate: candidate, runningId: runningId),
+    // No drag-to-dismiss: a drag would close the sheet while the action runs (PopScope only stops back and barrier).
+    enableDrag: false,
+    builder: (_) => IncidentActionSheet(host: host, incidentId: incidentId, candidate: candidate, runningId: runningId, onRan: () => ran = true),
   );
-  return r ?? false;
+  return r ?? ran;
 }
 
 class IncidentActionSheet extends ConsumerStatefulWidget {
-  const IncidentActionSheet({super.key, required this.host, required this.incidentId, required this.candidate, this.runningId});
+  const IncidentActionSheet({super.key, required this.host, required this.incidentId, required this.candidate, this.runningId, this.onRan});
   final Host host;
+
+  /// Called once the action ran (whatever its outcome).
+  final VoidCallback? onRan;
   final String incidentId;
   final ActionCandidate candidate;
 
@@ -55,6 +62,9 @@ class _IncidentActionSheetState extends ConsumerState<IncidentActionSheet> {
   Set<String>? _selected;
   bool _reloading = false;
   bool _running = false;
+
+  /// The confirmation dialog is open (a second tap must not open another).
+  bool _confirming = false;
   ActionResult? _result;
   Timer? _tick;
   late DateTime _now = ref.read(clockProvider)();
@@ -126,10 +136,16 @@ class _IncidentActionSheetState extends ConsumerState<IncidentActionSheet> {
   Future<void> _execute() async {
     final l = AppLocalizations.of(context);
     final p = _preview;
-    if (p == null || _running) return;
+    if (p == null || _running || _confirming) return;
     final label = incidentActionLabel(l, widget.candidate.kind, widget.candidate.target);
-    if (!await confirmDialog(context, message: l.incExecuteConfirm(label, widget.host.name), confirmLabel: l.incExecute, destructive: true)) return;
-    if (!mounted) return;
+    _confirming = true;
+    final bool ok;
+    try {
+      ok = await confirmDialog(context, message: l.incExecuteConfirm(label, widget.host.name), confirmLabel: l.incExecute, destructive: true);
+    } finally {
+      _confirming = false;
+    }
+    if (!ok || !mounted) return;
     // The confirmation may have taken a while: don't send a token that has surely expired.
     if (p.expired(ref.read(clockProvider)())) {
       setState(() => _now = ref.read(clockProvider)());
@@ -148,7 +164,9 @@ class _IncidentActionSheetState extends ConsumerState<IncidentActionSheet> {
       } finally {
         c.close();
       }
-      if (mounted) setState(() => _result = ActionResult(Map<String, dynamic>.from(j as Map)));
+      final res = ActionResult(Map<String, dynamic>.from(j as Map));
+      widget.onRan?.call();
+      if (mounted) setState(() => _result = res);
     } catch (e) {
       // The token is spent either way; a new preview is needed to try again.
       if (mounted) setState(() => _error = e);

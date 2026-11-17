@@ -44,7 +44,7 @@ void main() {
   testWidgets('olay listesi (açık) açık tema TR', (tester) async {
     await _harness().pump(tester, route: '/incidents');
     await _load(tester);
-    expect(find.text('Container çöktü: web'), findsOneWidget);
+    expect(find.text('Konteyner çöktü: web'), findsOneWidget);
     expect(find.text('Site kapalı: blog.example.org'), findsOneWidget);
     expect(find.text('Disk dolu: /'), findsNothing, reason: 'onaylanmış sekmede');
     expect(find.text('Açık 2'), findsOneWidget);
@@ -71,15 +71,15 @@ void main() {
     await tester.tap(find.text('Açık 2'));
     await tester.tap(find.text('atlas'));
     await settle(tester);
-    expect(find.text('Container çöktü: web'), findsNothing);
+    expect(find.text('Konteyner çöktü: web'), findsNothing);
     await tester.tap(find.text('Tüm hostlar'));
     await tester.tap(find.text('Site'));
     await settle(tester);
-    expect(find.text('Container çöktü: web'), findsNothing);
+    expect(find.text('Konteyner çöktü: web'), findsNothing);
     expect(find.text('Site kapalı: blog.example.org'), findsOneWidget);
     await tester.tap(find.text('Tüm türler'));
     await settle(tester);
-    await tester.tap(find.text('Container çöktü: web'));
+    await tester.tap(find.text('Konteyner çöktü: web'));
     await _load(tester);
     expect(find.byType(IncidentScreen), findsOneWidget);
     await _finish(tester);
@@ -101,7 +101,7 @@ void main() {
     expect(find.text('Neden tahmini'), findsWidgets);
     expect(find.text('kurallar'), findsOneWidget);
     expect(find.textContaining('137'), findsWidgets);
-    expect(find.text('web containerını yeniden başlat'), findsOneWidget);
+    expect(find.text('web konteynerini yeniden başlat'), findsOneWidget);
     expect(find.text('Yapay zekâ analizi yakında'), findsNothing, reason: 'analiz kendiliğinden çağrılmaz');
     expect(FakeAgent.calls.where((c) => c.$2.endsWith('/analyze')), isEmpty);
     await golden('png/incident_screen_tr.png');
@@ -119,7 +119,7 @@ void main() {
     await tester.enterText(find.byType(TextField), 'zzz');
     await settle(tester);
     expect(find.text('Eşleşen satır yok.'), findsOneWidget);
-    for (final (tab, text) in [('Container', '137'), ('Git', 'web: raise worker count to 8'), ('Olaylar', 'Container çöktü'), ('Benzer', 'Raised memory limit'), ('Zaman çizelgesi', 'Looking at the memory limit.')]) {
+    for (final (tab, text) in [('Konteyner', '137'), ('Git', 'web: raise worker count to 8'), ('Olaylar', 'Container çöktü'), ('Benzer', 'Raised memory limit'), ('Zaman çizelgesi', 'Looking at the memory limit.')]) {
       await _tab(tester, tab);
       expect(find.textContaining(text, findRichText: true), findsWidgets, reason: tab);
     }
@@ -239,7 +239,7 @@ void main() {
     expect(find.text('Yeniden aç'), findsOneWidget);
     expect(find.text('Çözen: cihaz phone'), findsOneWidget);
     await _tab(tester, 'Zaman çizelgesi');
-    expect(find.text('Eylem başlatıldı: Container yeniden başlatma'), findsOneWidget);
+    expect(find.text('Eylem başlatıldı: Konteyner yeniden başlatma'), findsOneWidget);
     await golden('png/incident_resolved_tr.png');
     await _finish(tester);
   });
@@ -252,7 +252,7 @@ void main() {
     // No host hint: every agent host is searched.
     await _harness().pump(tester, route: '/incidents/inc-dddddddddddd');
     await _load(tester);
-    expect(find.text('Container sağlıksız: api'), findsWidgets);
+    expect(find.text('Konteyner sağlıksız: api'), findsWidgets);
     await _finish(tester);
     debugDisableShadows = true;
   });
@@ -271,7 +271,7 @@ void main() {
     tester.view.physicalSize = const Size(375 * 2, 1700 * 2);
     await _load(tester);
     expect(tester.takeException(), isNull);
-    await tester.tap(find.text('web containerını yeniden başlat'));
+    await tester.tap(find.text('web konteynerini yeniden başlat'));
     await _load(tester);
     expect(tester.takeException(), isNull);
     await _finish(tester);
@@ -294,6 +294,57 @@ void main() {
     await Harness().pump(tester);
     await _load(tester);
     expect(find.text('Açık olaylar'), findsNothing);
+    await _finish(tester);
+    debugDisableShadows = true;
+  });
+
+  // --- §13 review fixes ----------------------------------------------------------------------------------------------
+
+  testWidgets('bildirim bağlantısı: olay birden çok hostta varsa host seçtirilir, ilk host tahmin edilmez', (tester) async {
+    FakeAgent.incidents['atlas']!.add(Map<String, dynamic>.of(FakeAgent.incidents['argo']!.firstWhere((i) => i['id'] == 'inc-aaaaaaaaaaaa')));
+    await _harness().pump(tester, route: '/incidents/inc-aaaaaaaaaaaa?host=bilinmeyen');
+    _tall(tester);
+    await _load(tester);
+    expect(find.textContaining('hangi hosta ait olduğu belli değil'), findsOneWidget);
+    expect(find.text('Neden tahmini'), findsNothing);
+    await tester.tap(find.text('atlas'));
+    await _load(tester);
+    expect(find.text('Neden tahmini'), findsWidgets);
+    expect(find.textContaining('atlas · web'), findsOneWidget, reason: 'seçilen host başlıkta');
+    await _finish(tester);
+    debugDisableShadows = true;
+  });
+
+  testWidgets('bildirim bağlantısı: olay yalnız bir hostta varsa o hostta açılır', (tester) async {
+    await _harness().pump(tester, route: '/incidents/inc-cccccccccccc?host=bilinmeyen');
+    _tall(tester);
+    await _load(tester);
+    expect(find.textContaining('hangi hosta ait olduğu belli değil'), findsNothing);
+    expect(find.textContaining('atlas · blog.example.org'), findsOneWidget);
+    await _finish(tester);
+    debugDisableShadows = true;
+  });
+
+  testWidgets('eylem sayfası: sürüklenmez, çift dokunuş tek onay; çalıştıktan sonra dışarı dokunarak kapatınca olay yenilenir', (tester) async {
+    await _harness().pump(tester, route: _open, lang: 'en');
+    _tall(tester);
+    await _load(tester);
+    await tester.tap(find.text('Recreate service web'));
+    await _load(tester);
+    expect(tester.widget<BottomSheet>(find.byType(BottomSheet)).enableDrag, isFalse);
+    await tester.tap(find.widgetWithText(FilledButton, 'Run'));
+    await tester.tap(find.widgetWithText(FilledButton, 'Run'), warnIfMissed: false);
+    await settle(tester);
+    expect(find.byType(AlertDialog), findsOneWidget);
+    await tester.tap(find.widgetWithText(TextButton, 'Run'));
+    await _load(tester);
+    expect(find.textContaining('Done.'), findsOneWidget);
+    int reads() => FakeAgent.calls.where((c) => c.$1 == 'GET' && c.$2 == '/v1/incidents/inc-aaaaaaaaaaaa').length;
+    final before = reads();
+    await tester.tapAt(const Offset(20, 20));
+    await _load(tester);
+    expect(find.byType(BottomSheet), findsNothing);
+    expect(reads(), greaterThan(before), reason: 'sonuç bildirildi, olay yeniden okundu');
     await _finish(tester);
     debugDisableShadows = true;
   });
