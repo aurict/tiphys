@@ -5367,7 +5367,7 @@ class AppLocalizationsTr extends AppLocalizations {
       'Bozuk durum dosyası kenara alındı; kişiler ve bültenler yeniden eklenmeli.';
 
   @override
-  String get incTitle => 'Olaylar';
+  String get incTitle => 'Olay odası';
 
   @override
   String get incStatusOpen => 'Açık';
@@ -5872,7 +5872,7 @@ class AppLocalizationsTr extends AppLocalizations {
   }
 
   @override
-  String get notifyIncidents => 'Olaylar';
+  String get notifyIncidents => 'Olay odası';
 
   @override
   String get notifyIncidentsHint =>
