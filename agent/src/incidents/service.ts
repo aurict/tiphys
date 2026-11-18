@@ -220,7 +220,8 @@ export class IncidentService {
     inc.hints = ruleHints(inc, inc.context);
     this.#save(inc, now);
     if (fresh) {
-      if (!inc.test) this.#autoAnalyze.add(inc.id);
+      // Security changes (PLAN.md §15) are about another host's configuration; the local log/metric bundle wouldn't help.
+      if (!inc.test && sig.kind !== "security") this.#autoAnalyze.add(inc.id);
       this.#scheduleContext(inc.id);
     }
     return inc;

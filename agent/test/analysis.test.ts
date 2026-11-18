@@ -465,6 +465,12 @@ describe("incident analysis", () => {
     await t.svc.idle();
     const test = t.svc.list().find((i) => i.test)!;
     expect((await t.svc.get(test.id)).analysis).toBeUndefined();
+    // Security changes are about another host's configuration: no automatic analysis either (PLAN.md §15).
+    await t.notifier.send({ key: "security.change", params: { host: "orion", hostId: "orion", count: 1, categories: "users", severity: "critical" } });
+    await t.svc.idle();
+    const sec = t.svc.list().find((i) => i.kind === "security.change")!;
+    expect(sec.severity).toBe("critical");
+    expect((await t.svc.get(sec.id)).analysis).toBeUndefined();
     await t.app.close();
   });
 

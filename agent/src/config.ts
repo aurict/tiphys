@@ -16,7 +16,8 @@ export const deviceSchema = z.object({
 });
 
 /** "analysis": incident analysis jobs on the PC (PLAN.md §13.1 I-3, /v1/analysis/jobs). */
-export const SERVICE_SCOPES = ["research", "analysis"] as const;
+/** "security-report": another agent (the monitoring server) pulls this host's raw audit report (PLAN.md §15). */
+export const SERVICE_SCOPES = ["research", "analysis", "security-report"] as const;
 
 export const serviceTokenSchema = z.object({
   id,
@@ -42,6 +43,29 @@ export const backupCheckSchema = z
   })
   .refine((c) => (c.kind === "file" ? !!c.path : !!c.unit), { message: "file için path, unit için unit gerekli" })
   .refine((c) => !c.path || !/[*?[]/.test(c.path.slice(0, c.path.lastIndexOf("/") + 1)), { message: "joker karakter yalnız son parçada olabilir", path: ["path"] });
+
+export const securityRole = z.enum(["server", "desktop"]);
+const allowedPorts = z.array(z.string().regex(/^(tcp|udp)\/([1-9]\d{0,3}|[1-5]\d{4}|6[0-4]\d{3}|65[0-4]\d{2}|655[0-2]\d|6553[0-5])$/)).max(100);
+/** Hostname or IP for ssh (no leading "-", no user part, no spaces). */
+const sshHost = z.string().regex(/^(?!-)[A-Za-z0-9.:_-]{1,253}$/);
+export const securitySourceSchema = z.discriminatedUnion("kind", [
+  z.strictObject({
+    kind: z.literal("ssh"),
+    host: sshHost,
+    user: z.string().regex(/^[a-z_][a-z0-9_-]{0,31}$/),
+    port: z.number().int().min(1).max(65535).default(22),
+    /** Private key of the restricted audit key (on this machine). */
+    keyPath: z.string().min(1).max(1024),
+  }),
+  z.strictObject({ kind: z.literal("agent"), url: z.url({ protocol: /^https$/ }), token: z.string().regex(/^tps_[A-Za-z0-9_-]{20,}$/) }),
+]);
+export const securityHostSchema = z.strictObject({
+  id,
+  name: z.string().min(1).max(80),
+  role: securityRole.default("server"),
+  allowedPorts: allowedPorts.default([]),
+  source: securitySourceSchema,
+});
 
 const restoreId = z.string().regex(/^[a-z0-9][a-z0-9-]{0,62}$/);
 /** Official images only, with an explicit tag (no `latest`, no digest, no registry/user prefix). */
@@ -166,6 +190,8 @@ export const agentConfigSchema = z.object({
     analysis: z.boolean().default(false),
     /** Database console (PLAN.md §13.2): connections, discovery, schema browser, read-only queries (D-1). */
     databases: z.boolean().default(false),
+    /** Security center (PLAN.md §15): audits this host and others (restricted SSH key / another agent), score, changes. */
+    security: z.boolean().default(false),
   }),
   devices: z.array(deviceSchema).default([]),
   /** Scoped service tokens (tps_…): they open only routes that declare one of their scopes. */
@@ -328,6 +354,20 @@ export const agentConfigSchema = z.object({
         .default([]),
     })
     .default({ connections: [], restoreTests: [] }),
+  /** Security center ("security" feature). The token of an agent source is never returned by the API. */
+  security: z
+    .object({
+      self: z
+        .object({ role: securityRole.default("server"), allowedPorts: allowedPorts.default([]), sudo: z.boolean().default(false) })
+        .default({ role: "server", allowedPorts: [], sudo: false }),
+      hosts: z
+        .array(securityHostSchema)
+        .max(20)
+        .refine((a) => new Set(a.map((h) => h.id)).size === a.length && !a.some((h) => h.id === "self"), { message: "host kimlikleri benzersiz olmalı (self ayrılmış)" })
+        .default([]),
+      intervalMinutes: z.number().int().min(5).max(1440).default(15),
+    })
+    .default({ self: { role: "server", allowedPorts: [], sudo: false }, hosts: [], intervalMinutes: 15 }),
 });
 
 export type AgentConfig = z.infer<typeof agentConfigSchema>;

@@ -31,6 +31,9 @@ const RULES: Record<string, Rule> = {
   "backup.ok": { role: "close", kind: "backup", targetType: "backup", target: "id", severity: "warning" },
   "uptime.down": { role: "open", kind: "uptime", targetType: "monitor", target: "monitor", severity: "critical" },
   "uptime.up": { role: "close", kind: "uptime", targetType: "monitor", target: "monitor", severity: "critical" },
+  // Security center (PLAN.md §15): unexpected changes on a host; closed when the user accepts the new baseline.
+  "security.change": { role: "open", kind: "security", targetType: "host", target: "host", severity: "warning" },
+  "security.accepted": { role: "close", kind: "security", targetType: "host", target: "host", severity: "warning" },
 };
 
 export const SIGNAL_KEYS = Object.keys(RULES);
@@ -45,7 +48,10 @@ export function signalOf(n: Notice, config: Pick<AgentConfig, "name"> & { incide
   if (!target) return null;
   // host.offline/online are about another host; everything else about this one.
   const host = String(p.host ?? config.name).slice(0, 100);
-  const severity: Severity = n.key === "grafana.alert" && /^(critical|crit|page|high)$/i.test(String(p.severity ?? "")) ? "critical" : rule.severity;
+  const severity: Severity =
+    (n.key === "grafana.alert" && /^(critical|crit|page|high)$/i.test(String(p.severity ?? ""))) || (n.key === "security.change" && p.severity === "critical")
+      ? "critical"
+      : rule.severity;
   const sig: Signal = {
     key: n.key,
     role: rule.role,

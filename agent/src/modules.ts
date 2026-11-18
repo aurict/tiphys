@@ -21,6 +21,10 @@ export async function extraModules(ctx: Ctx): Promise<Register[]> {
     const { dbRoutes } = await import("./db/routes.ts");
     out.push(dbRoutes());
   }
+  if (f.security) {
+    const { securityRoutes } = await import("./security/routes.ts");
+    out.push(securityRoutes());
+  }
   if (f.claude) {
     const { query } = await import("@anthropic-ai/claude-agent-sdk");
     const { claudeRoutes } = await import("./claude/routes.ts");
