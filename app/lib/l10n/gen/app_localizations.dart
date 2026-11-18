@@ -13399,6 +13399,1836 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Only matters without a read role. Risky.'**
   String get dbAllowSuperuserReadsHint;
+
+  /// No description provided for @secTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Security center'**
+  String get secTitle;
+
+  /// No description provided for @secRowTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Security'**
+  String get secRowTitle;
+
+  /// No description provided for @secHomeChanges.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 change awaiting review} other{{count} changes awaiting review}}'**
+  String secHomeChanges(int count);
+
+  /// No description provided for @secHomeCritical.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 critical finding} other{{count} critical findings}}'**
+  String secHomeCritical(int count);
+
+  /// No description provided for @secHomeBoth.
+  ///
+  /// In en, this message translates to:
+  /// **'{changes} changes · {critical} critical findings'**
+  String secHomeBoth(int changes, int critical);
+
+  /// No description provided for @secNoAgents.
+  ///
+  /// In en, this message translates to:
+  /// **'No agent has the security audit turned on. Turn on features.security in the monitoring server\'s agent settings; the audited machines are listed here once it is on.'**
+  String get secNoAgents;
+
+  /// No description provided for @secNoneAudited.
+  ///
+  /// In en, this message translates to:
+  /// **'This agent audits no machines.'**
+  String get secNoneAudited;
+
+  /// No description provided for @secHostFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not load security data of {host}'**
+  String secHostFailed(String host);
+
+  /// No description provided for @secInterval.
+  ///
+  /// In en, this message translates to:
+  /// **'Checked every {minutes} minutes'**
+  String secInterval(int minutes);
+
+  /// No description provided for @secScoreSemantic.
+  ///
+  /// In en, this message translates to:
+  /// **'Security score {score} out of 100'**
+  String secScoreSemantic(int score);
+
+  /// No description provided for @secScoreNone.
+  ///
+  /// In en, this message translates to:
+  /// **'No score'**
+  String get secScoreNone;
+
+  /// No description provided for @secChangesChip.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 change} other{{count} changes}}'**
+  String secChangesChip(int count);
+
+  /// No description provided for @secSeverityCritical.
+  ///
+  /// In en, this message translates to:
+  /// **'Critical'**
+  String get secSeverityCritical;
+
+  /// No description provided for @secSeverityHigh.
+  ///
+  /// In en, this message translates to:
+  /// **'High'**
+  String get secSeverityHigh;
+
+  /// No description provided for @secSeverityMedium.
+  ///
+  /// In en, this message translates to:
+  /// **'Medium'**
+  String get secSeverityMedium;
+
+  /// No description provided for @secSeverityLow.
+  ///
+  /// In en, this message translates to:
+  /// **'Low'**
+  String get secSeverityLow;
+
+  /// No description provided for @secSeverityCount.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} {severity}'**
+  String secSeverityCount(int count, String severity);
+
+  /// No description provided for @secStaleSince.
+  ///
+  /// In en, this message translates to:
+  /// **'Last known state · {when}'**
+  String secStaleSince(String when);
+
+  /// No description provided for @secNeverChecked.
+  ///
+  /// In en, this message translates to:
+  /// **'Not checked yet'**
+  String get secNeverChecked;
+
+  /// No description provided for @secChecking.
+  ///
+  /// In en, this message translates to:
+  /// **'Checking…'**
+  String get secChecking;
+
+  /// No description provided for @secRoleServer.
+  ///
+  /// In en, this message translates to:
+  /// **'Server'**
+  String get secRoleServer;
+
+  /// No description provided for @secRoleDesktop.
+  ///
+  /// In en, this message translates to:
+  /// **'Desktop'**
+  String get secRoleDesktop;
+
+  /// No description provided for @secSourceLocal.
+  ///
+  /// In en, this message translates to:
+  /// **'This machine'**
+  String get secSourceLocal;
+
+  /// No description provided for @secSourceSsh.
+  ///
+  /// In en, this message translates to:
+  /// **'Over SSH'**
+  String get secSourceSsh;
+
+  /// No description provided for @secSourceAgent.
+  ///
+  /// In en, this message translates to:
+  /// **'Via agent'**
+  String get secSourceAgent;
+
+  /// No description provided for @secMenuSettings.
+  ///
+  /// In en, this message translates to:
+  /// **'Audit settings'**
+  String get secMenuSettings;
+
+  /// No description provided for @secCheckNow.
+  ///
+  /// In en, this message translates to:
+  /// **'Check now'**
+  String get secCheckNow;
+
+  /// No description provided for @secCheckFull.
+  ///
+  /// In en, this message translates to:
+  /// **'Full check'**
+  String get secCheckFull;
+
+  /// No description provided for @secCheckFullHint.
+  ///
+  /// In en, this message translates to:
+  /// **'A full check also scans SUID and world-writable files and can take several minutes.'**
+  String get secCheckFullHint;
+
+  /// No description provided for @secCheckDone.
+  ///
+  /// In en, this message translates to:
+  /// **'Check finished'**
+  String get secCheckDone;
+
+  /// No description provided for @secLastCheck.
+  ///
+  /// In en, this message translates to:
+  /// **'Last check: {when}'**
+  String secLastCheck(String when);
+
+  /// No description provided for @secLastFull.
+  ///
+  /// In en, this message translates to:
+  /// **'Last full check: {when}'**
+  String secLastFull(String when);
+
+  /// No description provided for @secBaselineAt.
+  ///
+  /// In en, this message translates to:
+  /// **'Baseline: {when}'**
+  String secBaselineAt(String when);
+
+  /// No description provided for @secChangesTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Changes'**
+  String get secChangesTitle;
+
+  /// No description provided for @secChangesIntro.
+  ///
+  /// In en, this message translates to:
+  /// **'What differs from the last accepted state. Accept it if you expected it; otherwise look into it.'**
+  String get secChangesIntro;
+
+  /// No description provided for @secAccept.
+  ///
+  /// In en, this message translates to:
+  /// **'Accept this state'**
+  String get secAccept;
+
+  /// No description provided for @secAcceptTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Accept this state?'**
+  String get secAcceptTitle;
+
+  /// No description provided for @secAcceptBody.
+  ///
+  /// In en, this message translates to:
+  /// **'The current state becomes the new baseline and {count, plural, =1{1 change} other{{count} changes}} leave the list. Look into any change you did not expect first.'**
+  String secAcceptBody(int count);
+
+  /// No description provided for @secAccepted.
+  ///
+  /// In en, this message translates to:
+  /// **'State accepted ({count, plural, =1{1 change} other{{count} changes}})'**
+  String secAccepted(int count);
+
+  /// No description provided for @secKindAdded.
+  ///
+  /// In en, this message translates to:
+  /// **'Added'**
+  String get secKindAdded;
+
+  /// No description provided for @secKindRemoved.
+  ///
+  /// In en, this message translates to:
+  /// **'Removed'**
+  String get secKindRemoved;
+
+  /// No description provided for @secKindChanged.
+  ///
+  /// In en, this message translates to:
+  /// **'Changed'**
+  String get secKindChanged;
+
+  /// No description provided for @secFirstSeen.
+  ///
+  /// In en, this message translates to:
+  /// **'first seen {when}'**
+  String secFirstSeen(String when);
+
+  /// No description provided for @secFindingsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Findings'**
+  String get secFindingsTitle;
+
+  /// No description provided for @secNoFindings.
+  ///
+  /// In en, this message translates to:
+  /// **'No findings; nothing stands out in this check.'**
+  String get secNoFindings;
+
+  /// No description provided for @secFixLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Suggestion'**
+  String get secFixLabel;
+
+  /// No description provided for @secNoReport.
+  ///
+  /// In en, this message translates to:
+  /// **'There is no report for this machine yet. It appears here after the first check.'**
+  String get secNoReport;
+
+  /// No description provided for @secUnavailableTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Sections not available'**
+  String get secUnavailableTitle;
+
+  /// No description provided for @secNeedsRoot.
+  ///
+  /// In en, this message translates to:
+  /// **'needs root'**
+  String get secNeedsRoot;
+
+  /// No description provided for @secUnavailableNote.
+  ///
+  /// In en, this message translates to:
+  /// **'Not available in this check (needs root): {names}'**
+  String secUnavailableNote(String names);
+
+  /// No description provided for @secMore.
+  ///
+  /// In en, this message translates to:
+  /// **'… and {count} more'**
+  String secMore(int count);
+
+  /// No description provided for @secEmptyList.
+  ///
+  /// In en, this message translates to:
+  /// **'Nothing listed'**
+  String get secEmptyList;
+
+  /// No description provided for @secNotAvailable.
+  ///
+  /// In en, this message translates to:
+  /// **'This section was not available in this check (needs root).'**
+  String get secNotAvailable;
+
+  /// No description provided for @secHostNotFound.
+  ///
+  /// In en, this message translates to:
+  /// **'This machine was not found on any agent: {host}'**
+  String secHostNotFound(String host);
+
+  /// No description provided for @secTabPorts.
+  ///
+  /// In en, this message translates to:
+  /// **'Ports'**
+  String get secTabPorts;
+
+  /// No description provided for @secTabSsh.
+  ///
+  /// In en, this message translates to:
+  /// **'SSH'**
+  String get secTabSsh;
+
+  /// No description provided for @secTabUsers.
+  ///
+  /// In en, this message translates to:
+  /// **'Users'**
+  String get secTabUsers;
+
+  /// No description provided for @secTabJobs.
+  ///
+  /// In en, this message translates to:
+  /// **'Scheduled jobs'**
+  String get secTabJobs;
+
+  /// No description provided for @secTabUpdates.
+  ///
+  /// In en, this message translates to:
+  /// **'Updates'**
+  String get secTabUpdates;
+
+  /// No description provided for @secTabContainers.
+  ///
+  /// In en, this message translates to:
+  /// **'Containers'**
+  String get secTabContainers;
+
+  /// No description provided for @secTabSystem.
+  ///
+  /// In en, this message translates to:
+  /// **'System'**
+  String get secTabSystem;
+
+  /// No description provided for @secScopeExposed.
+  ///
+  /// In en, this message translates to:
+  /// **'exposed'**
+  String get secScopeExposed;
+
+  /// No description provided for @secScopeTailscale.
+  ///
+  /// In en, this message translates to:
+  /// **'Tailscale'**
+  String get secScopeTailscale;
+
+  /// No description provided for @secScopeLoopback.
+  ///
+  /// In en, this message translates to:
+  /// **'local'**
+  String get secScopeLoopback;
+
+  /// No description provided for @secScopePrivate.
+  ///
+  /// In en, this message translates to:
+  /// **'private'**
+  String get secScopePrivate;
+
+  /// No description provided for @secScopeLinklocal.
+  ///
+  /// In en, this message translates to:
+  /// **'link-local'**
+  String get secScopeLinklocal;
+
+  /// No description provided for @secPortsEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'No listening ports.'**
+  String get secPortsEmpty;
+
+  /// No description provided for @secSshEffective.
+  ///
+  /// In en, this message translates to:
+  /// **'Effective settings (sshd -T)'**
+  String get secSshEffective;
+
+  /// No description provided for @secSshConfig.
+  ///
+  /// In en, this message translates to:
+  /// **'Config files (keys not set use defaults)'**
+  String get secSshConfig;
+
+  /// No description provided for @secSshSettings.
+  ///
+  /// In en, this message translates to:
+  /// **'Settings'**
+  String get secSshSettings;
+
+  /// No description provided for @secUsersTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Accounts that can log in'**
+  String get secUsersTitle;
+
+  /// No description provided for @secPasswordsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Password status'**
+  String get secPasswordsTitle;
+
+  /// No description provided for @secPwEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'empty password'**
+  String get secPwEmpty;
+
+  /// No description provided for @secPwSet.
+  ///
+  /// In en, this message translates to:
+  /// **'has a password'**
+  String get secPwSet;
+
+  /// No description provided for @secGroupsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Groups'**
+  String get secGroupsTitle;
+
+  /// No description provided for @secKeysTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Authorized SSH keys'**
+  String get secKeysTitle;
+
+  /// No description provided for @secKeyLine.
+  ///
+  /// In en, this message translates to:
+  /// **'{type} · {bits} bit'**
+  String secKeyLine(String type, String bits);
+
+  /// No description provided for @secSudoersTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Sudoers files'**
+  String get secSudoersTitle;
+
+  /// No description provided for @secCronTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Cron files'**
+  String get secCronTitle;
+
+  /// No description provided for @secTimersTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'systemd timers'**
+  String get secTimersTitle;
+
+  /// No description provided for @secAutostartTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Autostart'**
+  String get secAutostartTitle;
+
+  /// No description provided for @secTimerScopeSystem.
+  ///
+  /// In en, this message translates to:
+  /// **'system'**
+  String get secTimerScopeSystem;
+
+  /// No description provided for @secTimerScopeUser.
+  ///
+  /// In en, this message translates to:
+  /// **'user'**
+  String get secTimerScopeUser;
+
+  /// No description provided for @secUpdPending.
+  ///
+  /// In en, this message translates to:
+  /// **'Pending updates'**
+  String get secUpdPending;
+
+  /// No description provided for @secUpdSecurity.
+  ///
+  /// In en, this message translates to:
+  /// **'Security updates'**
+  String get secUpdSecurity;
+
+  /// No description provided for @secUpdUnattended.
+  ///
+  /// In en, this message translates to:
+  /// **'Automatic security updates'**
+  String get secUpdUnattended;
+
+  /// No description provided for @secUpdListsAt.
+  ///
+  /// In en, this message translates to:
+  /// **'Package lists updated'**
+  String get secUpdListsAt;
+
+  /// No description provided for @secUpdReboot.
+  ///
+  /// In en, this message translates to:
+  /// **'Restart required'**
+  String get secUpdReboot;
+
+  /// No description provided for @secUpdRebootSince.
+  ///
+  /// In en, this message translates to:
+  /// **'since {when}'**
+  String secUpdRebootSince(String when);
+
+  /// No description provided for @secOn.
+  ///
+  /// In en, this message translates to:
+  /// **'on'**
+  String get secOn;
+
+  /// No description provided for @secOff.
+  ///
+  /// In en, this message translates to:
+  /// **'off'**
+  String get secOff;
+
+  /// No description provided for @secUnknown.
+  ///
+  /// In en, this message translates to:
+  /// **'unknown'**
+  String get secUnknown;
+
+  /// No description provided for @secNo.
+  ///
+  /// In en, this message translates to:
+  /// **'no'**
+  String get secNo;
+
+  /// No description provided for @secDockerNone.
+  ///
+  /// In en, this message translates to:
+  /// **'Docker is not on this machine or could not be read.'**
+  String get secDockerNone;
+
+  /// No description provided for @secContainersEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'No containers.'**
+  String get secContainersEmpty;
+
+  /// No description provided for @secDockerVersion.
+  ///
+  /// In en, this message translates to:
+  /// **'Docker {version}'**
+  String secDockerVersion(String version);
+
+  /// No description provided for @secFlagPrivileged.
+  ///
+  /// In en, this message translates to:
+  /// **'privileged'**
+  String get secFlagPrivileged;
+
+  /// No description provided for @secFlagSocket.
+  ///
+  /// In en, this message translates to:
+  /// **'docker.sock'**
+  String get secFlagSocket;
+
+  /// No description provided for @secFlagHostPid.
+  ///
+  /// In en, this message translates to:
+  /// **'host PID'**
+  String get secFlagHostPid;
+
+  /// No description provided for @secFlagHostNet.
+  ///
+  /// In en, this message translates to:
+  /// **'host network'**
+  String get secFlagHostNet;
+
+  /// No description provided for @secFlagCaps.
+  ///
+  /// In en, this message translates to:
+  /// **'extra caps: {caps}'**
+  String secFlagCaps(String caps);
+
+  /// No description provided for @secContainerPorts.
+  ///
+  /// In en, this message translates to:
+  /// **'published ports: {ports}'**
+  String secContainerPorts(String ports);
+
+  /// No description provided for @secImagesCount.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 image} other{{count} images}}'**
+  String secImagesCount(int count);
+
+  /// No description provided for @secSysMeta.
+  ///
+  /// In en, this message translates to:
+  /// **'Machine'**
+  String get secSysMeta;
+
+  /// No description provided for @secMetaHostname.
+  ///
+  /// In en, this message translates to:
+  /// **'Name'**
+  String get secMetaHostname;
+
+  /// No description provided for @secMetaKernel.
+  ///
+  /// In en, this message translates to:
+  /// **'Kernel'**
+  String get secMetaKernel;
+
+  /// No description provided for @secMetaArch.
+  ///
+  /// In en, this message translates to:
+  /// **'Architecture'**
+  String get secMetaArch;
+
+  /// No description provided for @secMetaOs.
+  ///
+  /// In en, this message translates to:
+  /// **'OS'**
+  String get secMetaOs;
+
+  /// No description provided for @secMetaUptime.
+  ///
+  /// In en, this message translates to:
+  /// **'Uptime'**
+  String get secMetaUptime;
+
+  /// No description provided for @secMetaTime.
+  ///
+  /// In en, this message translates to:
+  /// **'Report time'**
+  String get secMetaTime;
+
+  /// No description provided for @secMetaMode.
+  ///
+  /// In en, this message translates to:
+  /// **'Report type'**
+  String get secMetaMode;
+
+  /// No description provided for @secModeFull.
+  ///
+  /// In en, this message translates to:
+  /// **'full'**
+  String get secModeFull;
+
+  /// No description provided for @secModeQuick.
+  ///
+  /// In en, this message translates to:
+  /// **'quick'**
+  String get secModeQuick;
+
+  /// No description provided for @secRunRoot.
+  ///
+  /// In en, this message translates to:
+  /// **'ran as root'**
+  String get secRunRoot;
+
+  /// No description provided for @secRunNoRoot.
+  ///
+  /// In en, this message translates to:
+  /// **'ran without root'**
+  String get secRunNoRoot;
+
+  /// No description provided for @secUptimeDays.
+  ///
+  /// In en, this message translates to:
+  /// **'{days} d {hours} h'**
+  String secUptimeDays(int days, int hours);
+
+  /// No description provided for @secServicesTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Protection services'**
+  String get secServicesTitle;
+
+  /// No description provided for @secSysctlTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Kernel settings (sysctl)'**
+  String get secSysctlTitle;
+
+  /// No description provided for @secLoginsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Recent logins'**
+  String get secLoginsTitle;
+
+  /// No description provided for @secFilesTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Files'**
+  String get secFilesTitle;
+
+  /// No description provided for @secSuidTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'SUID files'**
+  String get secSuidTitle;
+
+  /// No description provided for @secWorldWritableTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'World-writable files'**
+  String get secWorldWritableTitle;
+
+  /// No description provided for @secAgentFilesTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Agent file permissions'**
+  String get secAgentFilesTitle;
+
+  /// No description provided for @secFullOnly.
+  ///
+  /// In en, this message translates to:
+  /// **'Only scanned in a full check.'**
+  String get secFullOnly;
+
+  /// No description provided for @secSettingsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Audit settings'**
+  String get secSettingsTitle;
+
+  /// No description provided for @secSelfTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'This machine'**
+  String get secSelfTitle;
+
+  /// No description provided for @secRoleTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Role'**
+  String get secRoleTitle;
+
+  /// No description provided for @secRoleHint.
+  ///
+  /// In en, this message translates to:
+  /// **'A server is also expected to have automatic updates and audit services; a desktop is judged less strictly.'**
+  String get secRoleHint;
+
+  /// No description provided for @secAllowedPorts.
+  ///
+  /// In en, this message translates to:
+  /// **'Expected open ports'**
+  String get secAllowedPorts;
+
+  /// No description provided for @secAllowedPortsHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Ports that are meant to be exposed (e.g. tcp/22). They raise no finding.'**
+  String get secAllowedPortsHint;
+
+  /// No description provided for @secAddPort.
+  ///
+  /// In en, this message translates to:
+  /// **'Add port'**
+  String get secAddPort;
+
+  /// No description provided for @secPortLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Port (tcp/22)'**
+  String get secPortLabel;
+
+  /// No description provided for @secPortInvalid.
+  ///
+  /// In en, this message translates to:
+  /// **'Write it as tcp/22 or udp/53 (1-65535).'**
+  String get secPortInvalid;
+
+  /// No description provided for @secPortRemove.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove port {port}'**
+  String secPortRemove(String port);
+
+  /// No description provided for @secSudoTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Check with sudo'**
+  String get secSudoTitle;
+
+  /// No description provided for @secSudoWarn.
+  ///
+  /// In en, this message translates to:
+  /// **'When on, the audit script runs as root through sudo -n, so sections such as password status, sudoers and SUID can be read. It needs the root-owned installed copy and passwordless sudo for it; otherwise the check fails.'**
+  String get secSudoWarn;
+
+  /// No description provided for @secSudoConfirm.
+  ///
+  /// In en, this message translates to:
+  /// **'Turn on checking with sudo? The audit script will run with root rights.'**
+  String get secSudoConfirm;
+
+  /// No description provided for @secHostsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Audited machines'**
+  String get secHostsTitle;
+
+  /// No description provided for @secHostsEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'No other machine added.'**
+  String get secHostsEmpty;
+
+  /// No description provided for @secAddHost.
+  ///
+  /// In en, this message translates to:
+  /// **'Add machine'**
+  String get secAddHost;
+
+  /// No description provided for @secEditHost.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit machine'**
+  String get secEditHost;
+
+  /// No description provided for @secDeleteHost.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete machine'**
+  String get secDeleteHost;
+
+  /// No description provided for @secDeleteHostConfirm.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete {name} from the audit list? Its last report and baseline are removed too.'**
+  String secDeleteHostConfirm(String name);
+
+  /// No description provided for @secFieldId.
+  ///
+  /// In en, this message translates to:
+  /// **'ID'**
+  String get secFieldId;
+
+  /// No description provided for @secFieldName.
+  ///
+  /// In en, this message translates to:
+  /// **'Name'**
+  String get secFieldName;
+
+  /// No description provided for @secFieldSource.
+  ///
+  /// In en, this message translates to:
+  /// **'Source'**
+  String get secFieldSource;
+
+  /// No description provided for @secFieldSshHost.
+  ///
+  /// In en, this message translates to:
+  /// **'SSH address'**
+  String get secFieldSshHost;
+
+  /// No description provided for @secFieldSshUser.
+  ///
+  /// In en, this message translates to:
+  /// **'User'**
+  String get secFieldSshUser;
+
+  /// No description provided for @secFieldSshPort.
+  ///
+  /// In en, this message translates to:
+  /// **'Port'**
+  String get secFieldSshPort;
+
+  /// No description provided for @secFieldKeyPath.
+  ///
+  /// In en, this message translates to:
+  /// **'Key file (on this machine)'**
+  String get secFieldKeyPath;
+
+  /// No description provided for @secFieldUrl.
+  ///
+  /// In en, this message translates to:
+  /// **'Agent URL (https)'**
+  String get secFieldUrl;
+
+  /// No description provided for @secFieldToken.
+  ///
+  /// In en, this message translates to:
+  /// **'Token'**
+  String get secFieldToken;
+
+  /// No description provided for @secTokenKeep.
+  ///
+  /// In en, this message translates to:
+  /// **'type to change'**
+  String get secTokenKeep;
+
+  /// No description provided for @secTokenHint.
+  ///
+  /// In en, this message translates to:
+  /// **'The other agent\'s security-report token (tps_…).'**
+  String get secTokenHint;
+
+  /// No description provided for @secInvalid.
+  ///
+  /// In en, this message translates to:
+  /// **'Invalid value'**
+  String get secInvalid;
+
+  /// No description provided for @secSaved.
+  ///
+  /// In en, this message translates to:
+  /// **'Saved'**
+  String get secSaved;
+
+  /// No description provided for @secDeleted.
+  ///
+  /// In en, this message translates to:
+  /// **'Deleted'**
+  String get secDeleted;
+
+  /// No description provided for @incKindSecurity.
+  ///
+  /// In en, this message translates to:
+  /// **'Security'**
+  String get incKindSecurity;
+
+  /// No description provided for @incTitleSecurity.
+  ///
+  /// In en, this message translates to:
+  /// **'Security change: {target}'**
+  String incTitleSecurity(String target);
+
+  /// No description provided for @incOpenSecurity.
+  ///
+  /// In en, this message translates to:
+  /// **'Open security screen'**
+  String get incOpenSecurity;
+
+  /// No description provided for @notifSecChangeTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Security change: {host}'**
+  String notifSecChangeTitle(String host);
+
+  /// No description provided for @notifSecChangeCriticalTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Critical security change: {host}'**
+  String notifSecChangeCriticalTitle(String host);
+
+  /// No description provided for @notifSecChangeBody.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 change} other{{count} changes}} · {categories}'**
+  String notifSecChangeBody(int count, String categories);
+
+  /// No description provided for @notifSecAcceptedTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Security state accepted: {host}'**
+  String notifSecAcceptedTitle(String host);
+
+  /// No description provided for @notifSecAcceptedBody.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 change accepted} other{{count} changes accepted}}'**
+  String notifSecAcceptedBody(int count);
+
+  /// No description provided for @notifSecUnreachableTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Security check failing: {host}'**
+  String notifSecUnreachableTitle(String host);
+
+  /// No description provided for @notifSecUnreachableBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Not checked for {hours} h · {reason}'**
+  String notifSecUnreachableBody(int hours, String reason);
+
+  /// No description provided for @notifSecReachableTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Security check works again: {host}'**
+  String notifSecReachableTitle(String host);
+
+  /// No description provided for @secErrTimeout.
+  ///
+  /// In en, this message translates to:
+  /// **'The check timed out.'**
+  String get secErrTimeout;
+
+  /// No description provided for @secErrReportTooLarge.
+  ///
+  /// In en, this message translates to:
+  /// **'The audit report was larger than expected.'**
+  String get secErrReportTooLarge;
+
+  /// No description provided for @secErrScriptMissing.
+  ///
+  /// In en, this message translates to:
+  /// **'The audit script is not installed on this machine.'**
+  String get secErrScriptMissing;
+
+  /// No description provided for @secErrScriptUnsafe.
+  ///
+  /// In en, this message translates to:
+  /// **'The installed audit script is not safe (it must be owned by root and not writable by others).'**
+  String get secErrScriptUnsafe;
+
+  /// No description provided for @secErrCollectFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'The audit script failed.'**
+  String get secErrCollectFailed;
+
+  /// No description provided for @secErrKnownHostsMissing.
+  ///
+  /// In en, this message translates to:
+  /// **'The SSH host key is not known yet; connect to that machine once first.'**
+  String get secErrKnownHostsMissing;
+
+  /// No description provided for @secErrSshFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'The SSH connection failed.'**
+  String get secErrSshFailed;
+
+  /// No description provided for @secErrUnreachable.
+  ///
+  /// In en, this message translates to:
+  /// **'The machine cannot be reached.'**
+  String get secErrUnreachable;
+
+  /// No description provided for @secErrUnauthorized.
+  ///
+  /// In en, this message translates to:
+  /// **'The machine\'s agent rejected the token.'**
+  String get secErrUnauthorized;
+
+  /// No description provided for @secErrBusy.
+  ///
+  /// In en, this message translates to:
+  /// **'The machine\'s agent is busy; try again shortly.'**
+  String get secErrBusy;
+
+  /// No description provided for @secErrAgentFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'The machine\'s agent could not give a report.'**
+  String get secErrAgentFailed;
+
+  /// No description provided for @secErrBadReport.
+  ///
+  /// In en, this message translates to:
+  /// **'The report could not be read (unexpected format).'**
+  String get secErrBadReport;
+
+  /// No description provided for @secErrHostNotFound.
+  ///
+  /// In en, this message translates to:
+  /// **'There is no such machine.'**
+  String get secErrHostNotFound;
+
+  /// No description provided for @secErrHostExists.
+  ///
+  /// In en, this message translates to:
+  /// **'A machine with this ID already exists.'**
+  String get secErrHostExists;
+
+  /// No description provided for @secErrTooManyHosts.
+  ///
+  /// In en, this message translates to:
+  /// **'At most 20 machines can be added.'**
+  String get secErrTooManyHosts;
+
+  /// No description provided for @secErrTokenRequired.
+  ///
+  /// In en, this message translates to:
+  /// **'An agent source needs a token.'**
+  String get secErrTokenRequired;
+
+  /// No description provided for @secErrSelfPermanent.
+  ///
+  /// In en, this message translates to:
+  /// **'This machine cannot be removed.'**
+  String get secErrSelfPermanent;
+
+  /// No description provided for @secErrNoReport.
+  ///
+  /// In en, this message translates to:
+  /// **'There is no report yet; run a check first.'**
+  String get secErrNoReport;
+
+  /// No description provided for @secErrRateLimited.
+  ///
+  /// In en, this message translates to:
+  /// **'Too many checks requested. Try again in a few minutes.'**
+  String get secErrRateLimited;
+
+  /// No description provided for @secErrInvalid.
+  ///
+  /// In en, this message translates to:
+  /// **'The values entered are not valid.'**
+  String get secErrInvalid;
+
+  /// No description provided for @secCatPorts.
+  ///
+  /// In en, this message translates to:
+  /// **'Open ports'**
+  String get secCatPorts;
+
+  /// No description provided for @secCatUsers.
+  ///
+  /// In en, this message translates to:
+  /// **'Users'**
+  String get secCatUsers;
+
+  /// No description provided for @secCatPasswords.
+  ///
+  /// In en, this message translates to:
+  /// **'Passwords'**
+  String get secCatPasswords;
+
+  /// No description provided for @secCatSudoers.
+  ///
+  /// In en, this message translates to:
+  /// **'Sudo rules'**
+  String get secCatSudoers;
+
+  /// No description provided for @secCatAuthKeys.
+  ///
+  /// In en, this message translates to:
+  /// **'SSH keys'**
+  String get secCatAuthKeys;
+
+  /// No description provided for @secCatCron.
+  ///
+  /// In en, this message translates to:
+  /// **'Cron jobs'**
+  String get secCatCron;
+
+  /// No description provided for @secCatTimers.
+  ///
+  /// In en, this message translates to:
+  /// **'Timers'**
+  String get secCatTimers;
+
+  /// No description provided for @secCatAutostart.
+  ///
+  /// In en, this message translates to:
+  /// **'Autostart'**
+  String get secCatAutostart;
+
+  /// No description provided for @secCatSshd.
+  ///
+  /// In en, this message translates to:
+  /// **'SSH settings'**
+  String get secCatSshd;
+
+  /// No description provided for @secCatContainers.
+  ///
+  /// In en, this message translates to:
+  /// **'Risky containers'**
+  String get secCatContainers;
+
+  /// No description provided for @secCatSuid.
+  ///
+  /// In en, this message translates to:
+  /// **'SUID files'**
+  String get secCatSuid;
+
+  /// No description provided for @secCatServices.
+  ///
+  /// In en, this message translates to:
+  /// **'Protection services'**
+  String get secCatServices;
+
+  /// No description provided for @secRulePortExposed.
+  ///
+  /// In en, this message translates to:
+  /// **'Exposed port: {port}'**
+  String secRulePortExposed(String port);
+
+  /// No description provided for @secRulePortExposedWhy.
+  ///
+  /// In en, this message translates to:
+  /// **'Listening on {addr}; anyone on the network can try to connect.'**
+  String secRulePortExposedWhy(String addr);
+
+  /// No description provided for @secRulePortExposedFix.
+  ///
+  /// In en, this message translates to:
+  /// **'Stop the service if it is not needed, or bind it to 127.0.0.1 / the Tailscale address only. If the port is expected, add it to the expected ports in the audit settings.'**
+  String get secRulePortExposedFix;
+
+  /// No description provided for @secRuleSshPasswordAuth.
+  ///
+  /// In en, this message translates to:
+  /// **'SSH allows password login'**
+  String get secRuleSshPasswordAuth;
+
+  /// No description provided for @secRuleSshPasswordAuthWhy.
+  ///
+  /// In en, this message translates to:
+  /// **'Password guessing (brute force) becomes possible.'**
+  String get secRuleSshPasswordAuthWhy;
+
+  /// No description provided for @secRuleSshPasswordAuthFix.
+  ///
+  /// In en, this message translates to:
+  /// **'Set PasswordAuthentication no in sshd_config (make sure key login works first).'**
+  String get secRuleSshPasswordAuthFix;
+
+  /// No description provided for @secRuleSshEmptyPasswords.
+  ///
+  /// In en, this message translates to:
+  /// **'SSH allows empty passwords'**
+  String get secRuleSshEmptyPasswords;
+
+  /// No description provided for @secRuleSshEmptyPasswordsWhy.
+  ///
+  /// In en, this message translates to:
+  /// **'Accounts with an empty password can log in without one.'**
+  String get secRuleSshEmptyPasswordsWhy;
+
+  /// No description provided for @secRuleSshEmptyPasswordsFix.
+  ///
+  /// In en, this message translates to:
+  /// **'Set PermitEmptyPasswords no.'**
+  String get secRuleSshEmptyPasswordsFix;
+
+  /// No description provided for @secRuleSshRootLogin.
+  ///
+  /// In en, this message translates to:
+  /// **'root SSH login: {value}'**
+  String secRuleSshRootLogin(String value);
+
+  /// No description provided for @secRuleSshRootLoginWhy.
+  ///
+  /// In en, this message translates to:
+  /// **'The root account can be targeted directly over SSH.'**
+  String get secRuleSshRootLoginWhy;
+
+  /// No description provided for @secRuleSshRootLoginFix.
+  ///
+  /// In en, this message translates to:
+  /// **'Set PermitRootLogin no; administer through a normal user and sudo.'**
+  String get secRuleSshRootLoginFix;
+
+  /// No description provided for @secRuleSshKbdInteractive.
+  ///
+  /// In en, this message translates to:
+  /// **'SSH keyboard-interactive login is on'**
+  String get secRuleSshKbdInteractive;
+
+  /// No description provided for @secRuleSshKbdInteractiveWhy.
+  ///
+  /// In en, this message translates to:
+  /// **'PAM can still ask for a password, so passwords can be tried even if password login is off.'**
+  String get secRuleSshKbdInteractiveWhy;
+
+  /// No description provided for @secRuleSshKbdInteractiveFix.
+  ///
+  /// In en, this message translates to:
+  /// **'Set KbdInteractiveAuthentication no.'**
+  String get secRuleSshKbdInteractiveFix;
+
+  /// No description provided for @secRuleSshX11Forwarding.
+  ///
+  /// In en, this message translates to:
+  /// **'SSH X11 forwarding is on'**
+  String get secRuleSshX11Forwarding;
+
+  /// No description provided for @secRuleSshX11ForwardingWhy.
+  ///
+  /// In en, this message translates to:
+  /// **'Forwarded X11 sessions can open an attack path to the client\'s display.'**
+  String get secRuleSshX11ForwardingWhy;
+
+  /// No description provided for @secRuleSshX11ForwardingFix.
+  ///
+  /// In en, this message translates to:
+  /// **'Set X11Forwarding no.'**
+  String get secRuleSshX11ForwardingFix;
+
+  /// No description provided for @secRuleSshTcpForwarding.
+  ///
+  /// In en, this message translates to:
+  /// **'SSH TCP forwarding: {value}'**
+  String secRuleSshTcpForwarding(String value);
+
+  /// No description provided for @secRuleSshTcpForwardingWhy.
+  ///
+  /// In en, this message translates to:
+  /// **'Someone who logs in can use the server as a hop into the network.'**
+  String get secRuleSshTcpForwardingWhy;
+
+  /// No description provided for @secRuleSshTcpForwardingFix.
+  ///
+  /// In en, this message translates to:
+  /// **'If not needed, set AllowTcpForwarding no (or local).'**
+  String get secRuleSshTcpForwardingFix;
+
+  /// No description provided for @secRuleSshMaxAuthTries.
+  ///
+  /// In en, this message translates to:
+  /// **'SSH allows up to {value} attempts'**
+  String secRuleSshMaxAuthTries(String value);
+
+  /// No description provided for @secRuleSshMaxAuthTriesWhy.
+  ///
+  /// In en, this message translates to:
+  /// **'Many attempts per connection make brute force easier.'**
+  String get secRuleSshMaxAuthTriesWhy;
+
+  /// No description provided for @secRuleSshMaxAuthTriesFix.
+  ///
+  /// In en, this message translates to:
+  /// **'Lower MaxAuthTries to 3-4.'**
+  String get secRuleSshMaxAuthTriesFix;
+
+  /// No description provided for @secRuleUsersUid0.
+  ///
+  /// In en, this message translates to:
+  /// **'Second account with UID 0: {user}'**
+  String secRuleUsersUid0(String user);
+
+  /// No description provided for @secRuleUsersUid0Why.
+  ///
+  /// In en, this message translates to:
+  /// **'Every UID 0 account has root\'s rights; it is often a backdoor.'**
+  String get secRuleUsersUid0Why;
+
+  /// No description provided for @secRuleUsersUid0Fix.
+  ///
+  /// In en, this message translates to:
+  /// **'If you do not recognise it, look into it at once; delete it or change its UID if it is not needed.'**
+  String get secRuleUsersUid0Fix;
+
+  /// No description provided for @secRuleUsersEmptyPassword.
+  ///
+  /// In en, this message translates to:
+  /// **'Account with an empty password: {user}'**
+  String secRuleUsersEmptyPassword(String user);
+
+  /// No description provided for @secRuleUsersEmptyPasswordWhy.
+  ///
+  /// In en, this message translates to:
+  /// **'An account with an empty password can be entered without one.'**
+  String get secRuleUsersEmptyPasswordWhy;
+
+  /// No description provided for @secRuleUsersEmptyPasswordFix.
+  ///
+  /// In en, this message translates to:
+  /// **'Give the account a password or lock it (passwd -l).'**
+  String get secRuleUsersEmptyPasswordFix;
+
+  /// No description provided for @secRuleUpdatesSecurity.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 security update pending} other{{count} security updates pending}}'**
+  String secRuleUpdatesSecurity(int count);
+
+  /// No description provided for @secRuleUpdatesSecurityWhy.
+  ///
+  /// In en, this message translates to:
+  /// **'Known vulnerabilities are not patched.'**
+  String get secRuleUpdatesSecurityWhy;
+
+  /// No description provided for @secRuleUpdatesSecurityFix.
+  ///
+  /// In en, this message translates to:
+  /// **'Install the updates (apt upgrade) and restart if needed.'**
+  String get secRuleUpdatesSecurityFix;
+
+  /// No description provided for @secRuleUpdatesPending.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 update pending} other{{count} updates pending}}'**
+  String secRuleUpdatesPending(int count);
+
+  /// No description provided for @secRuleUpdatesPendingWhy.
+  ///
+  /// In en, this message translates to:
+  /// **'Non-security updates have piled up.'**
+  String get secRuleUpdatesPendingWhy;
+
+  /// No description provided for @secRuleUpdatesPendingFix.
+  ///
+  /// In en, this message translates to:
+  /// **'Update at a convenient time.'**
+  String get secRuleUpdatesPendingFix;
+
+  /// No description provided for @secRuleUpdatesReboot.
+  ///
+  /// In en, this message translates to:
+  /// **'Restart required ({days} days)'**
+  String secRuleUpdatesReboot(int days);
+
+  /// No description provided for @secRuleUpdatesRebootWhy.
+  ///
+  /// In en, this message translates to:
+  /// **'Installed updates (e.g. the kernel) take effect only after a restart.'**
+  String get secRuleUpdatesRebootWhy;
+
+  /// No description provided for @secRuleUpdatesRebootFix.
+  ///
+  /// In en, this message translates to:
+  /// **'Restart the machine at a convenient time.'**
+  String get secRuleUpdatesRebootFix;
+
+  /// No description provided for @secRuleUpdatesUnattendedOff.
+  ///
+  /// In en, this message translates to:
+  /// **'Automatic security updates are off'**
+  String get secRuleUpdatesUnattendedOff;
+
+  /// No description provided for @secRuleUpdatesUnattendedOffWhy.
+  ///
+  /// In en, this message translates to:
+  /// **'New vulnerabilities stay open until someone updates by hand.'**
+  String get secRuleUpdatesUnattendedOffWhy;
+
+  /// No description provided for @secRuleUpdatesUnattendedOffFix.
+  ///
+  /// In en, this message translates to:
+  /// **'Install and enable unattended-upgrades.'**
+  String get secRuleUpdatesUnattendedOffFix;
+
+  /// No description provided for @secRuleUpdatesListsStale.
+  ///
+  /// In en, this message translates to:
+  /// **'Package lists not updated for {days} days'**
+  String secRuleUpdatesListsStale(int days);
+
+  /// No description provided for @secRuleUpdatesListsStaleWhy.
+  ///
+  /// In en, this message translates to:
+  /// **'With stale lists new updates stay invisible.'**
+  String get secRuleUpdatesListsStaleWhy;
+
+  /// No description provided for @secRuleUpdatesListsStaleFix.
+  ///
+  /// In en, this message translates to:
+  /// **'Run apt update and check that automatic updating works.'**
+  String get secRuleUpdatesListsStaleFix;
+
+  /// No description provided for @secRuleFirewallNone.
+  ///
+  /// In en, this message translates to:
+  /// **'No firewall is active'**
+  String get secRuleFirewallNone;
+
+  /// No description provided for @secRuleFirewallNoneWhy.
+  ///
+  /// In en, this message translates to:
+  /// **'{exposed} ports are exposed and no firewall seems to filter them.'**
+  String secRuleFirewallNoneWhy(int exposed);
+
+  /// No description provided for @secRuleFirewallNoneFix.
+  ///
+  /// In en, this message translates to:
+  /// **'Enable ufw or firewalld and allow only the ports you need.'**
+  String get secRuleFirewallNoneFix;
+
+  /// No description provided for @secRuleServiceAuditd.
+  ///
+  /// In en, this message translates to:
+  /// **'auditd is not running'**
+  String get secRuleServiceAuditd;
+
+  /// No description provided for @secRuleServiceAuditdWhy.
+  ///
+  /// In en, this message translates to:
+  /// **'Changes to critical files and logins are not recorded in the audit log.'**
+  String get secRuleServiceAuditdWhy;
+
+  /// No description provided for @secRuleServiceAuditdFix.
+  ///
+  /// In en, this message translates to:
+  /// **'systemctl enable --now auditd'**
+  String get secRuleServiceAuditdFix;
+
+  /// No description provided for @secRuleServiceApparmor.
+  ///
+  /// In en, this message translates to:
+  /// **'AppArmor is not active'**
+  String get secRuleServiceApparmor;
+
+  /// No description provided for @secRuleServiceApparmorWhy.
+  ///
+  /// In en, this message translates to:
+  /// **'Services run without that extra confinement.'**
+  String get secRuleServiceApparmorWhy;
+
+  /// No description provided for @secRuleServiceApparmorFix.
+  ///
+  /// In en, this message translates to:
+  /// **'Enable AppArmor (systemctl enable --now apparmor).'**
+  String get secRuleServiceApparmorFix;
+
+  /// No description provided for @secRuleSysctlWeak.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 kernel setting is weak} other{{count} kernel settings are weak}}'**
+  String secRuleSysctlWeak(int count);
+
+  /// No description provided for @secRuleSysctlWeakWhy.
+  ///
+  /// In en, this message translates to:
+  /// **'These settings are not at the recommended value: {keys}'**
+  String secRuleSysctlWeakWhy(String keys);
+
+  /// No description provided for @secRuleSysctlWeakFix.
+  ///
+  /// In en, this message translates to:
+  /// **'Put the recommended values under /etc/sysctl.d and run sysctl --system.'**
+  String get secRuleSysctlWeakFix;
+
+  /// No description provided for @secRuleDockerPrivileged.
+  ///
+  /// In en, this message translates to:
+  /// **'Privileged container: {container}'**
+  String secRuleDockerPrivileged(String container);
+
+  /// No description provided for @secRuleDockerPrivilegedWhy.
+  ///
+  /// In en, this message translates to:
+  /// **'A privileged container has almost full access to the host.'**
+  String get secRuleDockerPrivilegedWhy;
+
+  /// No description provided for @secRuleDockerPrivilegedFix.
+  ///
+  /// In en, this message translates to:
+  /// **'Grant only the capabilities needed (cap_add) instead of --privileged.'**
+  String get secRuleDockerPrivilegedFix;
+
+  /// No description provided for @secRuleDockerSocket.
+  ///
+  /// In en, this message translates to:
+  /// **'Container with docker.sock: {container}'**
+  String secRuleDockerSocket(String container);
+
+  /// No description provided for @secRuleDockerSocketWhy.
+  ///
+  /// In en, this message translates to:
+  /// **'A container that can reach the Docker socket can become root on the host.'**
+  String get secRuleDockerSocketWhy;
+
+  /// No description provided for @secRuleDockerSocketFix.
+  ///
+  /// In en, this message translates to:
+  /// **'Do not mount the socket, or expose only the needed APIs through a socket proxy.'**
+  String get secRuleDockerSocketFix;
+
+  /// No description provided for @secRuleDockerHostPid.
+  ///
+  /// In en, this message translates to:
+  /// **'Container using the host PID namespace: {container}'**
+  String secRuleDockerHostPid(String container);
+
+  /// No description provided for @secRuleDockerHostPidWhy.
+  ///
+  /// In en, this message translates to:
+  /// **'The container can see every process of the host.'**
+  String get secRuleDockerHostPidWhy;
+
+  /// No description provided for @secRuleDockerHostPidFix.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove pid: host.'**
+  String get secRuleDockerHostPidFix;
+
+  /// No description provided for @secRuleDockerHostNetwork.
+  ///
+  /// In en, this message translates to:
+  /// **'Container using the host network: {container}'**
+  String secRuleDockerHostNetwork(String container);
+
+  /// No description provided for @secRuleDockerHostNetworkWhy.
+  ///
+  /// In en, this message translates to:
+  /// **'Its ports open directly on the host; there is no network isolation.'**
+  String get secRuleDockerHostNetworkWhy;
+
+  /// No description provided for @secRuleDockerHostNetworkFix.
+  ///
+  /// In en, this message translates to:
+  /// **'Use a bridge network and ports: for the ports needed.'**
+  String get secRuleDockerHostNetworkFix;
+
+  /// No description provided for @secRuleFilesWorldWritable.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 world-writable file} other{{count} world-writable files}}'**
+  String secRuleFilesWorldWritable(int count);
+
+  /// No description provided for @secRuleFilesWorldWritableWhy.
+  ///
+  /// In en, this message translates to:
+  /// **'For example {example}; any user can change them.'**
+  String secRuleFilesWorldWritableWhy(String example);
+
+  /// No description provided for @secRuleFilesWorldWritableFix.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove the permission with chmod o-w and fix the owner if needed.'**
+  String get secRuleFilesWorldWritableFix;
+
+  /// No description provided for @secRuleFilesAgentPerms.
+  ///
+  /// In en, this message translates to:
+  /// **'Agent file permissions too open: {path}'**
+  String secRuleFilesAgentPerms(String path);
+
+  /// No description provided for @secRuleFilesAgentPermsWhy.
+  ///
+  /// In en, this message translates to:
+  /// **'Mode {mode}; other users may be able to read the agent\'s tokens.'**
+  String secRuleFilesAgentPermsWhy(String mode);
+
+  /// No description provided for @secRuleFilesAgentPermsFix.
+  ///
+  /// In en, this message translates to:
+  /// **'Tighten it with chmod 600.'**
+  String get secRuleFilesAgentPermsFix;
+
+  /// No description provided for @secRulePortExposedWhyProc.
+  ///
+  /// In en, this message translates to:
+  /// **'{process} listens on {addr}; anyone on the network can try to connect.'**
+  String secRulePortExposedWhyProc(String process, String addr);
+
+  /// No description provided for @secFirewallUnknownSuffix.
+  ///
+  /// In en, this message translates to:
+  /// **'(firewall unknown)'**
+  String get secFirewallUnknownSuffix;
+
+  /// No description provided for @secPortFiltered.
+  ///
+  /// In en, this message translates to:
+  /// **'listening, firewall blocks it'**
+  String get secPortFiltered;
+
+  /// No description provided for @secFwTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Firewall'**
+  String get secFwTitle;
+
+  /// No description provided for @secFwUnknown.
+  ///
+  /// In en, this message translates to:
+  /// **'Firewall unknown (needs root)'**
+  String get secFwUnknown;
+
+  /// No description provided for @secFwDenyYes.
+  ///
+  /// In en, this message translates to:
+  /// **'Incoming connections are denied by default'**
+  String get secFwDenyYes;
+
+  /// No description provided for @secFwDenyNo.
+  ///
+  /// In en, this message translates to:
+  /// **'Incoming connections are allowed by default'**
+  String get secFwDenyNo;
+
+  /// No description provided for @secFwChains.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 input chain} other{{count} input chains}}'**
+  String secFwChains(int count);
+
+  /// No description provided for @secMetaIpv6.
+  ///
+  /// In en, this message translates to:
+  /// **'Global IPv6 addresses'**
+  String get secMetaIpv6;
+
+  /// No description provided for @agentRequestInvalid.
+  ///
+  /// In en, this message translates to:
+  /// **'The request is not valid'**
+  String get agentRequestInvalid;
+
+  /// No description provided for @secSecListen.
+  ///
+  /// In en, this message translates to:
+  /// **'Listening ports'**
+  String get secSecListen;
+
+  /// No description provided for @secSecNft.
+  ///
+  /// In en, this message translates to:
+  /// **'Firewall (nftables)'**
+  String get secSecNft;
+
+  /// No description provided for @secSecSshd.
+  ///
+  /// In en, this message translates to:
+  /// **'SSH settings'**
+  String get secSecSshd;
+
+  /// No description provided for @secSecPasswords.
+  ///
+  /// In en, this message translates to:
+  /// **'Password status'**
+  String get secSecPasswords;
+
+  /// No description provided for @secSecSudoers.
+  ///
+  /// In en, this message translates to:
+  /// **'Sudoers files'**
+  String get secSecSudoers;
+
+  /// No description provided for @secSecAuthkeys.
+  ///
+  /// In en, this message translates to:
+  /// **'Authorized SSH keys'**
+  String get secSecAuthkeys;
+
+  /// No description provided for @secSecCron.
+  ///
+  /// In en, this message translates to:
+  /// **'Cron files'**
+  String get secSecCron;
+
+  /// No description provided for @secSecTimers.
+  ///
+  /// In en, this message translates to:
+  /// **'Timers'**
+  String get secSecTimers;
+
+  /// No description provided for @secSecAutostart.
+  ///
+  /// In en, this message translates to:
+  /// **'Autostart'**
+  String get secSecAutostart;
+
+  /// No description provided for @secSecLogins.
+  ///
+  /// In en, this message translates to:
+  /// **'Recent logins'**
+  String get secSecLogins;
+
+  /// No description provided for @secSecDocker.
+  ///
+  /// In en, this message translates to:
+  /// **'Docker'**
+  String get secSecDocker;
+
+  /// No description provided for @secSecSuid.
+  ///
+  /// In en, this message translates to:
+  /// **'SUID files'**
+  String get secSecSuid;
+
+  /// No description provided for @secSecWorldwritable.
+  ///
+  /// In en, this message translates to:
+  /// **'World-writable files'**
+  String get secSecWorldwritable;
+
+  /// No description provided for @secSecAgentfiles.
+  ///
+  /// In en, this message translates to:
+  /// **'Agent files'**
+  String get secSecAgentfiles;
+
+  /// No description provided for @secSecUsers.
+  ///
+  /// In en, this message translates to:
+  /// **'Users'**
+  String get secSecUsers;
+
+  /// No description provided for @secSecGroups.
+  ///
+  /// In en, this message translates to:
+  /// **'Groups'**
+  String get secSecGroups;
+
+  /// No description provided for @secSecUpdates.
+  ///
+  /// In en, this message translates to:
+  /// **'Updates'**
+  String get secSecUpdates;
+
+  /// No description provided for @secSecServices.
+  ///
+  /// In en, this message translates to:
+  /// **'Services'**
+  String get secSecServices;
+
+  /// No description provided for @secSecSysctl.
+  ///
+  /// In en, this message translates to:
+  /// **'Kernel settings'**
+  String get secSecSysctl;
+
+  /// No description provided for @secSecMeta.
+  ///
+  /// In en, this message translates to:
+  /// **'Machine info'**
+  String get secSecMeta;
 }
 
 class _AppLocalizationsDelegate

@@ -5217,5 +5217,751 @@
   "dbReadAccessTitle": "Read access",
   "dbFieldReadRole": "Read role",
   "dbReadRoleHint": "Reads switch to this role first (SET ROLE). Empty: none.",
-  "dbAllowSuperuserReadsHint": "Only matters without a read role. Risky."
+  "dbAllowSuperuserReadsHint": "Only matters without a read role. Risky.",
+  "secTitle": "Security center",
+  "secRowTitle": "Security",
+  "secHomeChanges": "{count, plural, =1{1 change awaiting review} other{{count} changes awaiting review}}",
+  "@secHomeChanges": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "secHomeCritical": "{count, plural, =1{1 critical finding} other{{count} critical findings}}",
+  "@secHomeCritical": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "secHomeBoth": "{changes} changes · {critical} critical findings",
+  "@secHomeBoth": {
+    "placeholders": {
+      "changes": {
+        "type": "int"
+      },
+      "critical": {
+        "type": "int"
+      }
+    }
+  },
+  "secNoAgents": "No agent has the security audit turned on. Turn on features.security in the monitoring server's agent settings; the audited machines are listed here once it is on.",
+  "secNoneAudited": "This agent audits no machines.",
+  "secHostFailed": "Could not load security data of {host}",
+  "@secHostFailed": {
+    "placeholders": {
+      "host": {
+        "type": "String"
+      }
+    }
+  },
+  "secInterval": "Checked every {minutes} minutes",
+  "@secInterval": {
+    "placeholders": {
+      "minutes": {
+        "type": "int"
+      }
+    }
+  },
+  "secScoreSemantic": "Security score {score} out of 100",
+  "@secScoreSemantic": {
+    "placeholders": {
+      "score": {
+        "type": "int"
+      }
+    }
+  },
+  "secScoreNone": "No score",
+  "secChangesChip": "{count, plural, =1{1 change} other{{count} changes}}",
+  "@secChangesChip": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "secSeverityCritical": "Critical",
+  "secSeverityHigh": "High",
+  "secSeverityMedium": "Medium",
+  "secSeverityLow": "Low",
+  "secSeverityCount": "{count} {severity}",
+  "@secSeverityCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      },
+      "severity": {
+        "type": "String"
+      }
+    }
+  },
+  "secStaleSince": "Last known state · {when}",
+  "@secStaleSince": {
+    "placeholders": {
+      "when": {
+        "type": "String"
+      }
+    }
+  },
+  "secNeverChecked": "Not checked yet",
+  "secChecking": "Checking…",
+  "secRoleServer": "Server",
+  "secRoleDesktop": "Desktop",
+  "secSourceLocal": "This machine",
+  "secSourceSsh": "Over SSH",
+  "secSourceAgent": "Via agent",
+  "secMenuSettings": "Audit settings",
+  "secCheckNow": "Check now",
+  "secCheckFull": "Full check",
+  "secCheckFullHint": "A full check also scans SUID and world-writable files and can take several minutes.",
+  "secCheckDone": "Check finished",
+  "secLastCheck": "Last check: {when}",
+  "@secLastCheck": {
+    "placeholders": {
+      "when": {
+        "type": "String"
+      }
+    }
+  },
+  "secLastFull": "Last full check: {when}",
+  "@secLastFull": {
+    "placeholders": {
+      "when": {
+        "type": "String"
+      }
+    }
+  },
+  "secBaselineAt": "Baseline: {when}",
+  "@secBaselineAt": {
+    "placeholders": {
+      "when": {
+        "type": "String"
+      }
+    }
+  },
+  "secChangesTitle": "Changes",
+  "secChangesIntro": "What differs from the last accepted state. Accept it if you expected it; otherwise look into it.",
+  "secAccept": "Accept this state",
+  "secAcceptTitle": "Accept this state?",
+  "secAcceptBody": "The current state becomes the new baseline and {count, plural, =1{1 change} other{{count} changes}} leave the list. Look into any change you did not expect first.",
+  "@secAcceptBody": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "secAccepted": "State accepted ({count, plural, =1{1 change} other{{count} changes}})",
+  "@secAccepted": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "secKindAdded": "Added",
+  "secKindRemoved": "Removed",
+  "secKindChanged": "Changed",
+  "secFirstSeen": "first seen {when}",
+  "@secFirstSeen": {
+    "placeholders": {
+      "when": {
+        "type": "String"
+      }
+    }
+  },
+  "secFindingsTitle": "Findings",
+  "secNoFindings": "No findings; nothing stands out in this check.",
+  "secFixLabel": "Suggestion",
+  "secNoReport": "There is no report for this machine yet. It appears here after the first check.",
+  "secUnavailableTitle": "Sections not available",
+  "secNeedsRoot": "needs root",
+  "secUnavailableNote": "Not available in this check (needs root): {names}",
+  "@secUnavailableNote": {
+    "placeholders": {
+      "names": {
+        "type": "String"
+      }
+    }
+  },
+  "secMore": "… and {count} more",
+  "@secMore": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "secEmptyList": "Nothing listed",
+  "secNotAvailable": "This section was not available in this check (needs root).",
+  "secHostNotFound": "This machine was not found on any agent: {host}",
+  "@secHostNotFound": {
+    "placeholders": {
+      "host": {
+        "type": "String"
+      }
+    }
+  },
+  "secTabPorts": "Ports",
+  "secTabSsh": "SSH",
+  "secTabUsers": "Users",
+  "secTabJobs": "Scheduled jobs",
+  "secTabUpdates": "Updates",
+  "secTabContainers": "Containers",
+  "secTabSystem": "System",
+  "secScopeExposed": "exposed",
+  "secScopeTailscale": "Tailscale",
+  "secScopeLoopback": "local",
+  "secScopePrivate": "private",
+  "secScopeLinklocal": "link-local",
+  "secPortsEmpty": "No listening ports.",
+  "secSshEffective": "Effective settings (sshd -T)",
+  "secSshConfig": "Config files (keys not set use defaults)",
+  "secSshSettings": "Settings",
+  "secUsersTitle": "Accounts that can log in",
+  "secPasswordsTitle": "Password status",
+  "secPwEmpty": "empty password",
+  "secPwSet": "has a password",
+  "secGroupsTitle": "Groups",
+  "secKeysTitle": "Authorized SSH keys",
+  "secKeyLine": "{type} · {bits} bit",
+  "@secKeyLine": {
+    "placeholders": {
+      "type": {
+        "type": "String"
+      },
+      "bits": {
+        "type": "String"
+      }
+    }
+  },
+  "secSudoersTitle": "Sudoers files",
+  "secCronTitle": "Cron files",
+  "secTimersTitle": "systemd timers",
+  "secAutostartTitle": "Autostart",
+  "secTimerScopeSystem": "system",
+  "secTimerScopeUser": "user",
+  "secUpdPending": "Pending updates",
+  "secUpdSecurity": "Security updates",
+  "secUpdUnattended": "Automatic security updates",
+  "secUpdListsAt": "Package lists updated",
+  "secUpdReboot": "Restart required",
+  "secUpdRebootSince": "since {when}",
+  "@secUpdRebootSince": {
+    "placeholders": {
+      "when": {
+        "type": "String"
+      }
+    }
+  },
+  "secOn": "on",
+  "secOff": "off",
+  "secUnknown": "unknown",
+  "secNo": "no",
+  "secDockerNone": "Docker is not on this machine or could not be read.",
+  "secContainersEmpty": "No containers.",
+  "secDockerVersion": "Docker {version}",
+  "@secDockerVersion": {
+    "placeholders": {
+      "version": {
+        "type": "String"
+      }
+    }
+  },
+  "secFlagPrivileged": "privileged",
+  "secFlagSocket": "docker.sock",
+  "secFlagHostPid": "host PID",
+  "secFlagHostNet": "host network",
+  "secFlagCaps": "extra caps: {caps}",
+  "@secFlagCaps": {
+    "placeholders": {
+      "caps": {
+        "type": "String"
+      }
+    }
+  },
+  "secContainerPorts": "published ports: {ports}",
+  "@secContainerPorts": {
+    "placeholders": {
+      "ports": {
+        "type": "String"
+      }
+    }
+  },
+  "secImagesCount": "{count, plural, =1{1 image} other{{count} images}}",
+  "@secImagesCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "secSysMeta": "Machine",
+  "secMetaHostname": "Name",
+  "secMetaKernel": "Kernel",
+  "secMetaArch": "Architecture",
+  "secMetaOs": "OS",
+  "secMetaUptime": "Uptime",
+  "secMetaTime": "Report time",
+  "secMetaMode": "Report type",
+  "secModeFull": "full",
+  "secModeQuick": "quick",
+  "secRunRoot": "ran as root",
+  "secRunNoRoot": "ran without root",
+  "secUptimeDays": "{days} d {hours} h",
+  "@secUptimeDays": {
+    "placeholders": {
+      "days": {
+        "type": "int"
+      },
+      "hours": {
+        "type": "int"
+      }
+    }
+  },
+  "secServicesTitle": "Protection services",
+  "secSysctlTitle": "Kernel settings (sysctl)",
+  "secLoginsTitle": "Recent logins",
+  "secFilesTitle": "Files",
+  "secSuidTitle": "SUID files",
+  "secWorldWritableTitle": "World-writable files",
+  "secAgentFilesTitle": "Agent file permissions",
+  "secFullOnly": "Only scanned in a full check.",
+  "secSettingsTitle": "Audit settings",
+  "secSelfTitle": "This machine",
+  "secRoleTitle": "Role",
+  "secRoleHint": "A server is also expected to have automatic updates and audit services; a desktop is judged less strictly.",
+  "secAllowedPorts": "Expected open ports",
+  "secAllowedPortsHint": "Ports that are meant to be exposed (e.g. tcp/22). They raise no finding.",
+  "secAddPort": "Add port",
+  "secPortLabel": "Port (tcp/22)",
+  "secPortInvalid": "Write it as tcp/22 or udp/53 (1-65535).",
+  "secPortRemove": "Remove port {port}",
+  "@secPortRemove": {
+    "placeholders": {
+      "port": {
+        "type": "String"
+      }
+    }
+  },
+  "secSudoTitle": "Check with sudo",
+  "secSudoWarn": "When on, the audit script runs as root through sudo -n, so sections such as password status, sudoers and SUID can be read. It needs the root-owned installed copy and passwordless sudo for it; otherwise the check fails.",
+  "secSudoConfirm": "Turn on checking with sudo? The audit script will run with root rights.",
+  "secHostsTitle": "Audited machines",
+  "secHostsEmpty": "No other machine added.",
+  "secAddHost": "Add machine",
+  "secEditHost": "Edit machine",
+  "secDeleteHost": "Delete machine",
+  "secDeleteHostConfirm": "Delete {name} from the audit list? Its last report and baseline are removed too.",
+  "@secDeleteHostConfirm": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "secFieldId": "ID",
+  "secFieldName": "Name",
+  "secFieldSource": "Source",
+  "secFieldSshHost": "SSH address",
+  "secFieldSshUser": "User",
+  "secFieldSshPort": "Port",
+  "secFieldKeyPath": "Key file (on this machine)",
+  "secFieldUrl": "Agent URL (https)",
+  "secFieldToken": "Token",
+  "secTokenKeep": "type to change",
+  "secTokenHint": "The other agent's security-report token (tps_…).",
+  "secInvalid": "Invalid value",
+  "secSaved": "Saved",
+  "secDeleted": "Deleted",
+  "incKindSecurity": "Security",
+  "incTitleSecurity": "Security change: {target}",
+  "@incTitleSecurity": {
+    "placeholders": {
+      "target": {
+        "type": "String"
+      }
+    }
+  },
+  "incOpenSecurity": "Open security screen",
+  "notifSecChangeTitle": "Security change: {host}",
+  "@notifSecChangeTitle": {
+    "placeholders": {
+      "host": {
+        "type": "String"
+      }
+    }
+  },
+  "notifSecChangeCriticalTitle": "Critical security change: {host}",
+  "@notifSecChangeCriticalTitle": {
+    "placeholders": {
+      "host": {
+        "type": "String"
+      }
+    }
+  },
+  "notifSecChangeBody": "{count, plural, =1{1 change} other{{count} changes}} · {categories}",
+  "@notifSecChangeBody": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      },
+      "categories": {
+        "type": "String"
+      }
+    }
+  },
+  "notifSecAcceptedTitle": "Security state accepted: {host}",
+  "@notifSecAcceptedTitle": {
+    "placeholders": {
+      "host": {
+        "type": "String"
+      }
+    }
+  },
+  "notifSecAcceptedBody": "{count, plural, =1{1 change accepted} other{{count} changes accepted}}",
+  "@notifSecAcceptedBody": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "notifSecUnreachableTitle": "Security check failing: {host}",
+  "@notifSecUnreachableTitle": {
+    "placeholders": {
+      "host": {
+        "type": "String"
+      }
+    }
+  },
+  "notifSecUnreachableBody": "Not checked for {hours} h · {reason}",
+  "@notifSecUnreachableBody": {
+    "placeholders": {
+      "hours": {
+        "type": "int"
+      },
+      "reason": {
+        "type": "String"
+      }
+    }
+  },
+  "notifSecReachableTitle": "Security check works again: {host}",
+  "@notifSecReachableTitle": {
+    "placeholders": {
+      "host": {
+        "type": "String"
+      }
+    }
+  },
+  "secErrTimeout": "The check timed out.",
+  "secErrReportTooLarge": "The audit report was larger than expected.",
+  "secErrScriptMissing": "The audit script is not installed on this machine.",
+  "secErrScriptUnsafe": "The installed audit script is not safe (it must be owned by root and not writable by others).",
+  "secErrCollectFailed": "The audit script failed.",
+  "secErrKnownHostsMissing": "The SSH host key is not known yet; connect to that machine once first.",
+  "secErrSshFailed": "The SSH connection failed.",
+  "secErrUnreachable": "The machine cannot be reached.",
+  "secErrUnauthorized": "The machine's agent rejected the token.",
+  "secErrBusy": "The machine's agent is busy; try again shortly.",
+  "secErrAgentFailed": "The machine's agent could not give a report.",
+  "secErrBadReport": "The report could not be read (unexpected format).",
+  "secErrHostNotFound": "There is no such machine.",
+  "secErrHostExists": "A machine with this ID already exists.",
+  "secErrTooManyHosts": "At most 20 machines can be added.",
+  "secErrTokenRequired": "An agent source needs a token.",
+  "secErrSelfPermanent": "This machine cannot be removed.",
+  "secErrNoReport": "There is no report yet; run a check first.",
+  "secErrRateLimited": "Too many checks requested. Try again in a few minutes.",
+  "secErrInvalid": "The values entered are not valid.",
+  "secCatPorts": "Open ports",
+  "secCatUsers": "Users",
+  "secCatPasswords": "Passwords",
+  "secCatSudoers": "Sudo rules",
+  "secCatAuthKeys": "SSH keys",
+  "secCatCron": "Cron jobs",
+  "secCatTimers": "Timers",
+  "secCatAutostart": "Autostart",
+  "secCatSshd": "SSH settings",
+  "secCatContainers": "Risky containers",
+  "secCatSuid": "SUID files",
+  "secCatServices": "Protection services",
+  "secRulePortExposed": "Exposed port: {port}",
+  "@secRulePortExposed": {
+    "placeholders": {
+      "port": {
+        "type": "String"
+      }
+    }
+  },
+  "secRulePortExposedWhy": "Listening on {addr}; anyone on the network can try to connect.",
+  "@secRulePortExposedWhy": {
+    "placeholders": {
+      "addr": {
+        "type": "String"
+      }
+    }
+  },
+  "secRulePortExposedFix": "Stop the service if it is not needed, or bind it to 127.0.0.1 / the Tailscale address only. If the port is expected, add it to the expected ports in the audit settings.",
+  "secRuleSshPasswordAuth": "SSH allows password login",
+  "secRuleSshPasswordAuthWhy": "Password guessing (brute force) becomes possible.",
+  "secRuleSshPasswordAuthFix": "Set PasswordAuthentication no in sshd_config (make sure key login works first).",
+  "secRuleSshEmptyPasswords": "SSH allows empty passwords",
+  "secRuleSshEmptyPasswordsWhy": "Accounts with an empty password can log in without one.",
+  "secRuleSshEmptyPasswordsFix": "Set PermitEmptyPasswords no.",
+  "secRuleSshRootLogin": "root SSH login: {value}",
+  "@secRuleSshRootLogin": {
+    "placeholders": {
+      "value": {
+        "type": "String"
+      }
+    }
+  },
+  "secRuleSshRootLoginWhy": "The root account can be targeted directly over SSH.",
+  "secRuleSshRootLoginFix": "Set PermitRootLogin no; administer through a normal user and sudo.",
+  "secRuleSshKbdInteractive": "SSH keyboard-interactive login is on",
+  "secRuleSshKbdInteractiveWhy": "PAM can still ask for a password, so passwords can be tried even if password login is off.",
+  "secRuleSshKbdInteractiveFix": "Set KbdInteractiveAuthentication no.",
+  "secRuleSshX11Forwarding": "SSH X11 forwarding is on",
+  "secRuleSshX11ForwardingWhy": "Forwarded X11 sessions can open an attack path to the client's display.",
+  "secRuleSshX11ForwardingFix": "Set X11Forwarding no.",
+  "secRuleSshTcpForwarding": "SSH TCP forwarding: {value}",
+  "@secRuleSshTcpForwarding": {
+    "placeholders": {
+      "value": {
+        "type": "String"
+      }
+    }
+  },
+  "secRuleSshTcpForwardingWhy": "Someone who logs in can use the server as a hop into the network.",
+  "secRuleSshTcpForwardingFix": "If not needed, set AllowTcpForwarding no (or local).",
+  "secRuleSshMaxAuthTries": "SSH allows up to {value} attempts",
+  "@secRuleSshMaxAuthTries": {
+    "placeholders": {
+      "value": {
+        "type": "String"
+      }
+    }
+  },
+  "secRuleSshMaxAuthTriesWhy": "Many attempts per connection make brute force easier.",
+  "secRuleSshMaxAuthTriesFix": "Lower MaxAuthTries to 3-4.",
+  "secRuleUsersUid0": "Second account with UID 0: {user}",
+  "@secRuleUsersUid0": {
+    "placeholders": {
+      "user": {
+        "type": "String"
+      }
+    }
+  },
+  "secRuleUsersUid0Why": "Every UID 0 account has root's rights; it is often a backdoor.",
+  "secRuleUsersUid0Fix": "If you do not recognise it, look into it at once; delete it or change its UID if it is not needed.",
+  "secRuleUsersEmptyPassword": "Account with an empty password: {user}",
+  "@secRuleUsersEmptyPassword": {
+    "placeholders": {
+      "user": {
+        "type": "String"
+      }
+    }
+  },
+  "secRuleUsersEmptyPasswordWhy": "An account with an empty password can be entered without one.",
+  "secRuleUsersEmptyPasswordFix": "Give the account a password or lock it (passwd -l).",
+  "secRuleUpdatesSecurity": "{count, plural, =1{1 security update pending} other{{count} security updates pending}}",
+  "@secRuleUpdatesSecurity": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "secRuleUpdatesSecurityWhy": "Known vulnerabilities are not patched.",
+  "secRuleUpdatesSecurityFix": "Install the updates (apt upgrade) and restart if needed.",
+  "secRuleUpdatesPending": "{count, plural, =1{1 update pending} other{{count} updates pending}}",
+  "@secRuleUpdatesPending": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "secRuleUpdatesPendingWhy": "Non-security updates have piled up.",
+  "secRuleUpdatesPendingFix": "Update at a convenient time.",
+  "secRuleUpdatesReboot": "Restart required ({days} days)",
+  "@secRuleUpdatesReboot": {
+    "placeholders": {
+      "days": {
+        "type": "int"
+      }
+    }
+  },
+  "secRuleUpdatesRebootWhy": "Installed updates (e.g. the kernel) take effect only after a restart.",
+  "secRuleUpdatesRebootFix": "Restart the machine at a convenient time.",
+  "secRuleUpdatesUnattendedOff": "Automatic security updates are off",
+  "secRuleUpdatesUnattendedOffWhy": "New vulnerabilities stay open until someone updates by hand.",
+  "secRuleUpdatesUnattendedOffFix": "Install and enable unattended-upgrades.",
+  "secRuleUpdatesListsStale": "Package lists not updated for {days} days",
+  "@secRuleUpdatesListsStale": {
+    "placeholders": {
+      "days": {
+        "type": "int"
+      }
+    }
+  },
+  "secRuleUpdatesListsStaleWhy": "With stale lists new updates stay invisible.",
+  "secRuleUpdatesListsStaleFix": "Run apt update and check that automatic updating works.",
+  "secRuleFirewallNone": "No firewall is active",
+  "secRuleFirewallNoneWhy": "{exposed} ports are exposed and no firewall seems to filter them.",
+  "@secRuleFirewallNoneWhy": {
+    "placeholders": {
+      "exposed": {
+        "type": "int"
+      }
+    }
+  },
+  "secRuleFirewallNoneFix": "Enable ufw or firewalld and allow only the ports you need.",
+  "secRuleServiceAuditd": "auditd is not running",
+  "secRuleServiceAuditdWhy": "Changes to critical files and logins are not recorded in the audit log.",
+  "secRuleServiceAuditdFix": "systemctl enable --now auditd",
+  "secRuleServiceApparmor": "AppArmor is not active",
+  "secRuleServiceApparmorWhy": "Services run without that extra confinement.",
+  "secRuleServiceApparmorFix": "Enable AppArmor (systemctl enable --now apparmor).",
+  "secRuleSysctlWeak": "{count, plural, =1{1 kernel setting is weak} other{{count} kernel settings are weak}}",
+  "@secRuleSysctlWeak": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "secRuleSysctlWeakWhy": "These settings are not at the recommended value: {keys}",
+  "@secRuleSysctlWeakWhy": {
+    "placeholders": {
+      "keys": {
+        "type": "String"
+      }
+    }
+  },
+  "secRuleSysctlWeakFix": "Put the recommended values under /etc/sysctl.d and run sysctl --system.",
+  "secRuleDockerPrivileged": "Privileged container: {container}",
+  "@secRuleDockerPrivileged": {
+    "placeholders": {
+      "container": {
+        "type": "String"
+      }
+    }
+  },
+  "secRuleDockerPrivilegedWhy": "A privileged container has almost full access to the host.",
+  "secRuleDockerPrivilegedFix": "Grant only the capabilities needed (cap_add) instead of --privileged.",
+  "secRuleDockerSocket": "Container with docker.sock: {container}",
+  "@secRuleDockerSocket": {
+    "placeholders": {
+      "container": {
+        "type": "String"
+      }
+    }
+  },
+  "secRuleDockerSocketWhy": "A container that can reach the Docker socket can become root on the host.",
+  "secRuleDockerSocketFix": "Do not mount the socket, or expose only the needed APIs through a socket proxy.",
+  "secRuleDockerHostPid": "Container using the host PID namespace: {container}",
+  "@secRuleDockerHostPid": {
+    "placeholders": {
+      "container": {
+        "type": "String"
+      }
+    }
+  },
+  "secRuleDockerHostPidWhy": "The container can see every process of the host.",
+  "secRuleDockerHostPidFix": "Remove pid: host.",
+  "secRuleDockerHostNetwork": "Container using the host network: {container}",
+  "@secRuleDockerHostNetwork": {
+    "placeholders": {
+      "container": {
+        "type": "String"
+      }
+    }
+  },
+  "secRuleDockerHostNetworkWhy": "Its ports open directly on the host; there is no network isolation.",
+  "secRuleDockerHostNetworkFix": "Use a bridge network and ports: for the ports needed.",
+  "secRuleFilesWorldWritable": "{count, plural, =1{1 world-writable file} other{{count} world-writable files}}",
+  "@secRuleFilesWorldWritable": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "secRuleFilesWorldWritableWhy": "For example {example}; any user can change them.",
+  "@secRuleFilesWorldWritableWhy": {
+    "placeholders": {
+      "example": {
+        "type": "String"
+      }
+    }
+  },
+  "secRuleFilesWorldWritableFix": "Remove the permission with chmod o-w and fix the owner if needed.",
+  "secRuleFilesAgentPerms": "Agent file permissions too open: {path}",
+  "@secRuleFilesAgentPerms": {
+    "placeholders": {
+      "path": {
+        "type": "String"
+      }
+    }
+  },
+  "secRuleFilesAgentPermsWhy": "Mode {mode}; other users may be able to read the agent's tokens.",
+  "@secRuleFilesAgentPermsWhy": {
+    "placeholders": {
+      "mode": {
+        "type": "String"
+      }
+    }
+  },
+  "secRuleFilesAgentPermsFix": "Tighten it with chmod 600.",
+  "secRulePortExposedWhyProc": "{process} listens on {addr}; anyone on the network can try to connect.",
+  "@secRulePortExposedWhyProc": {
+    "placeholders": {
+      "process": {
+        "type": "String"
+      },
+      "addr": {
+        "type": "String"
+      }
+    }
+  },
+  "secFirewallUnknownSuffix": "(firewall unknown)",
+  "secPortFiltered": "listening, firewall blocks it",
+  "secFwTitle": "Firewall",
+  "secFwUnknown": "Firewall unknown (needs root)",
+  "secFwDenyYes": "Incoming connections are denied by default",
+  "secFwDenyNo": "Incoming connections are allowed by default",
+  "secFwChains": "{count, plural, =1{1 input chain} other{{count} input chains}}",
+  "@secFwChains": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "secMetaIpv6": "Global IPv6 addresses",
+  "agentRequestInvalid": "The request is not valid",
+  "secSecListen": "Listening ports",
+  "secSecNft": "Firewall (nftables)",
+  "secSecSshd": "SSH settings",
+  "secSecPasswords": "Password status",
+  "secSecSudoers": "Sudoers files",
+  "secSecAuthkeys": "Authorized SSH keys",
+  "secSecCron": "Cron files",
+  "secSecTimers": "Timers",
+  "secSecAutostart": "Autostart",
+  "secSecLogins": "Recent logins",
+  "secSecDocker": "Docker",
+  "secSecSuid": "SUID files",
+  "secSecWorldwritable": "World-writable files",
+  "secSecAgentfiles": "Agent files",
+  "secSecUsers": "Users",
+  "secSecGroups": "Groups",
+  "secSecUpdates": "Updates",
+  "secSecServices": "Services",
+  "secSecSysctl": "Kernel settings",
+  "secSecMeta": "Machine info"
 }

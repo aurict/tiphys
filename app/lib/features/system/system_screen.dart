@@ -17,6 +17,7 @@ import '../files/files_screen.dart' show formatSize;
 import '../configfiles/configfiles_data.dart' show configHostsProvider;
 import '../databases/db_data.dart' show dbHostsProvider;
 import '../incidents/incidents_data.dart' show incidentHostsProvider;
+import '../security/security_data.dart' show securityHostsProvider;
 import 'agent_providers.dart';
 import 'agent_section.dart';
 import 'tools.dart';
@@ -83,6 +84,8 @@ class _SystemScreenState extends ConsumerState<SystemScreen> {
         GroupedSection(title: l.systemMonitoring, children: [
           if (ref.watch(incidentHostsProvider).value?.isNotEmpty == true)
             GroupedRow(title: l.incTitle, icon: LucideIcons.siren, iconBackground: t.danger, onTap: () => context.push('/incidents')),
+          if (ref.watch(securityHostsProvider).value?.isNotEmpty == true)
+            GroupedRow(title: l.secRowTitle, icon: LucideIcons.shieldCheck, iconBackground: const Color(0xFF2F9E6A), onTap: () => context.push('/security')),
           if (ref.watch(configHostsProvider).value?.isNotEmpty == true)
             GroupedRow(title: l.cfTitle, icon: LucideIcons.keyRound, iconBackground: const Color(0xFF8E6BD8), onTap: () => context.push('/configfiles')),
           if (ref.watch(dbHostsProvider).value?.isNotEmpty == true)

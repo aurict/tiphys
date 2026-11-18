@@ -37,11 +37,13 @@ import 'png.dart';
 import 'config_fixtures.dart';
 import 'db_fixtures.dart';
 import 'incident_fixtures.dart';
+import 'security_fixtures.dart';
 import 'ui_fixtures.dart';
 
 export 'config_fixtures.dart';
 export 'db_fixtures.dart';
 export 'incident_fixtures.dart';
+export 'security_fixtures.dart';
 export 'ui_fixtures.dart';
 
 final codec = ProfileCodec(File('assets/profile/tiphys.schema.json').readAsStringSync());
@@ -238,6 +240,11 @@ class FakeAgent extends AgentClient {
   static FakeConfigState config = FakeConfigState();
 
   static void resetConfig() => config = FakeConfigState();
+
+  /// Security center (GET/POST/PATCH/DELETE /v1/security/*).
+  static FakeSecurityState security = FakeSecurityState();
+
+  static void resetSecurity() => security = FakeSecurityState();
 
   /// Database console (GET/POST /v1/db/*).
   static FakeDbState db = FakeDbState();
@@ -795,6 +802,7 @@ class FakeAgent extends AgentClient {
         if (incident.analysisMode != null) 'incidents': {'links': [], 'analysis': {'mode': incident.analysisMode, 'url': null, 'language': 'tr', 'hasToken': false}},
       };
     }
+    if (path.startsWith('/v1/security/')) return fakeSecurityRoute(hostId, method, path, body, security);
     if (path.startsWith('/v1/db/')) return fakeDbRoute(hostId, method, path, body, db);
     if (path.startsWith('/v1/config-files') || path == '/v1/secrets/meta') return fakeConfigRoute(hostId, method, path, body, config);
     if (path.startsWith('/v1/incidents')) return fakeIncidentRoute(hostId, method, path, body, incidents, incident);

@@ -27,6 +27,7 @@ import 'host_picker.dart';
 import 'incident_texts.dart';
 import 'incidents_data.dart';
 import 'incidents_screen.dart';
+import '../security/security_data.dart' show securityRoute;
 
 /// One timeline entry → (text, plain detail). Detail is a note, a resolution note or the command's stderr.
 (String, String?) incidentTimelineText(AppLocalizations l, TimelineItem e) {
@@ -336,6 +337,12 @@ class _Header extends ConsumerWidget {
           if (s.status == 'open') FilledButton.tonalIcon(onPressed: busy ? null : onAck, icon: const Icon(LucideIcons.eye, size: 16), label: Text(l.incAck)),
           if (s.status != 'resolved') FilledButton.tonalIcon(onPressed: busy ? null : onResolve, icon: const Icon(LucideIcons.check, size: 16), label: Text(l.incResolve)),
           if (s.status == 'resolved') FilledButton.tonalIcon(onPressed: busy ? null : onReopen, icon: const Icon(LucideIcons.rotateCcw, size: 16), label: Text(l.incReopen)),
+          if (s.kind.startsWith('security'))
+            FilledButton.tonalIcon(
+              onPressed: () => context.push(securityRoute(detail.securityHostId ?? s.target, agentId: detail.host.id)),
+              icon: const Icon(LucideIcons.shieldAlert, size: 16),
+              label: Text(l.incOpenSecurity),
+            ),
           OutlinedButton.icon(onPressed: busy ? null : onNote, icon: const Icon(LucideIcons.stickyNote, size: 16), label: Text(l.incNote)),
         ]),
       ]),

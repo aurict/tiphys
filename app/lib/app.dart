@@ -36,6 +36,9 @@ import 'features/databases/db_restore_screen.dart';
 import 'features/databases/db_screen.dart';
 import 'features/incidents/incident_screen.dart';
 import 'features/incidents/incidents_screen.dart';
+import 'features/security/security_host_screen.dart';
+import 'features/security/security_screen.dart';
+import 'features/security/security_settings_screen.dart';
 import 'features/system/system_screen.dart';
 import 'features/telegram/issue_screen.dart';
 import 'features/telegram/research_screen.dart';
@@ -120,6 +123,10 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(path: '/db/conn', builder: (c, s) => DbConnectionScreen(hostId: s.uri.queryParameters['host'] ?? '', connId: s.uri.queryParameters['id'] ?? '')),
       GoRoute(path: '/incidents', builder: (c, s) => const IncidentsScreen()),
       GoRoute(path: '/incidents/:id', builder: (c, s) => IncidentScreen(incidentId: s.pathParameters['id']!, hostHint: s.uri.queryParameters['host'])),
+      GoRoute(path: '/security', builder: (c, s) => const SecurityScreen()),
+      // Before :hostId, so a host can't shadow the settings screen.
+      GoRoute(path: '/security/settings', builder: (c, s) => const SecuritySettingsScreen()),
+      GoRoute(path: '/security/:hostId', builder: (c, s) => SecurityHostScreen(hostId: s.pathParameters['hostId']!, agentHint: s.uri.queryParameters['host'])),
       GoRoute(path: '/system/backups', builder: (c, s) => const BackupsScreen()),
       GoRoute(path: '/system/compose', builder: (c, s) => const ComposeScreen()),
       GoRoute(path: '/system/logs', builder: (c, s) => LogSearchScreen(initialPattern: s.uri.queryParameters['q'])),

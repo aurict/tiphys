@@ -11,10 +11,11 @@ String incidentFamily(String kind) => switch (kind) {
       final k when k.startsWith('grafana.') => 'alert',
       final k when k.startsWith('backup.') => 'backup',
       final k when k.startsWith('host.') => 'host',
+      final k when k.startsWith('security.') || k == 'security' => 'security',
       _ => 'other',
     };
 
-const incidentFamilies = ['container', 'service', 'disk', 'site', 'alert', 'backup', 'host', 'other'];
+const incidentFamilies = ['container', 'service', 'disk', 'site', 'alert', 'backup', 'host', 'security', 'other'];
 
 String incidentFamilyName(AppLocalizations l, String family) => switch (family) {
       'container' => l.incKindContainer,
@@ -24,6 +25,7 @@ String incidentFamilyName(AppLocalizations l, String family) => switch (family) 
       'alert' => l.incKindAlert,
       'backup' => l.incKindBackup,
       'host' => l.incKindHost,
+      'security' => l.incKindSecurity,
       _ => l.incKindOther,
     };
 
@@ -39,6 +41,7 @@ String incidentTitle(AppLocalizations l, String kind, String target) => switch (
       'host.offline' => l.incTitleHost(target),
       'backup.failed' || 'backup.stale' => l.incTitleBackup(target),
       'uptime.down' => l.incTitleSite(target),
+      'security.change' || 'security' => l.incTitleSecurity(target),
       _ => l.incTitleOther(kind, target),
     };
 

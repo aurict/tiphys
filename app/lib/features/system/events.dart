@@ -70,7 +70,7 @@ String eventType(String key) => switch (key.split('.').first) {
       'backup' => 'backup',
       'grafana' => 'grafana',
       'command' => 'command',
-      'host' || 'disk' || 'service' || 'agent' || 'push' || 'control' || 'ui' => 'system',
+      'host' || 'disk' || 'service' || 'agent' || 'push' || 'control' || 'ui' || 'security' => 'system',
       _ => 'other',
     };
 
@@ -90,9 +90,9 @@ String eventTypeName(AppLocalizations l, String type) => switch (type) {
 (IconData, Color) eventVisual(TiphysTokens t, String key) {
   const bad = {
     'host.offline', 'disk.full', 'service.failed', 'grafana.alert', 'agent.restarted', 'command.failed', 'claude.error', 'docker.died', 'docker.oom', //
-    'backup.failed', 'backup.stale', 'compose.failed', 'claude.scheduleFailed', 'config.restartFailed', 'db.restoreTest.failed',
+    'backup.failed', 'backup.stale', 'security.unreachable', 'compose.failed', 'claude.scheduleFailed', 'config.restartFailed', 'db.restoreTest.failed',
   };
-  const good = {'host.online', 'disk.ok', 'service.recovered', 'grafana.resolved', 'command.done', 'backup.ok', 'compose.updated', 'db.restoreTest.ok'};
+  const good = {'host.online', 'disk.ok', 'service.recovered', 'grafana.resolved', 'command.done', 'backup.ok', 'compose.updated', 'db.restoreTest.ok', 'security.reachable', 'security.accepted'};
   final icon = key.startsWith('claude.schedule') ? LucideIcons.alarmClock : switch (key.split('.').first) {
     'claude' => LucideIcons.asterisk,
     'host' => LucideIcons.server,
@@ -108,6 +108,7 @@ String eventTypeName(AppLocalizations l, String type) => switch (type) {
     'git' => LucideIcons.gitCommitHorizontal,
     'control' => LucideIcons.mousePointer2,
     'ui' => LucideIcons.layoutList,
+    'security' => LucideIcons.shieldAlert,
     _ => LucideIcons.dot,
   };
   final color = bad.contains(key)
@@ -131,6 +132,10 @@ void openEvent(BuildContext context, HostEvent e) {
   if (route == null) return;
   // Bottom tabs (tab shell) open with go, other screens with push; same target as opening from the notification.
   if (route.startsWith('/incidents/')) {
+    context.push('$route?host=${e.host.id}');
+    return;
+  }
+  if (route.startsWith('/security/')) {
     context.push('$route?host=${e.host.id}');
     return;
   }

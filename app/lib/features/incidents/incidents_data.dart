@@ -176,6 +176,7 @@ class IncidentDetail {
         timeline = [for (final e in _maps(j['timeline'])) TimelineItem(e)],
         hints = [for (final e in _maps(j['hints'])) HintItem(e)],
         signalEntries = (j['signals'] as List?)?.length ?? 0,
+        securityHostId = _securityHostId(j['signals']),
         context = j['context'] is Map ? _map(j['context']) : null;
   final Host host;
   final IncidentSummary summary;
@@ -186,6 +187,9 @@ class IncidentDetail {
 
   /// Number of signals the agent kept on the incident (the bundle's `signal:<n>` ids count into it).
   final int signalEntries;
+
+  /// Security incidents: the audited host's id from the signals' `hostId` param (the incident's target is its name).
+  final String? securityHostId;
 
   /// The AI analysis (I-3), null when none was ever requested.
   final IncidentAnalysis? analysis;
@@ -229,6 +233,14 @@ class IncidentDetail {
 }
 
 /// A record of the agent's deploy history: a service's image was first seen, or changed.
+String? _securityHostId(Object? signals) {
+  for (final s in _maps(signals).reversed) {
+    final id = _map(s['params'])['hostId'];
+    if (id is String && id.isNotEmpty) return id;
+  }
+  return null;
+}
+
 class DeployRecord {
   DeployRecord(Map<String, dynamic> j)
       : at = _time(j['at']),

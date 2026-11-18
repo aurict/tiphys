@@ -14,6 +14,7 @@ import 'package:unifiedpush/unifiedpush.dart';
 
 import '../../features/databases/db_texts.dart' show restoreNotificationReason;
 import '../../features/incidents/incident_texts.dart';
+import '../../features/security/security_texts.dart';
 import '../../l10n/gen/app_localizations.dart';
 import '../agent/agent_client.dart';
 import '../profile/model.dart';
@@ -111,7 +112,7 @@ const _endpointKey = 'app:pushEndpoint';
     'uptime.up' => (l.notifUptimeUpTitle(s('monitor')), s('host')),
     'docker.unhealthy' => (l.notifDockerUnhealthyTitle(s('host')), s('container')),
     'docker.restartLoop' => (l.notifDockerRestartLoopTitle(s('host')), l.notifDockerRestartLoopBody(s('container'), n('count'))),
-    _ => null,
+    _ => securityNoticeText(l, key, p),
   };
 }
 
@@ -238,6 +239,7 @@ int noticeId(String key, Map<String, dynamic> p, {String? link, String? requestI
     'agent.restarted' => 'agent|${s('host')}',
     'docker.died' || 'docker.oom' || 'docker.restarted' || 'docker.unhealthy' || 'docker.restartLoop' => 'docker|${s('host')}|${s('container')}',
     'incident.resolved' || 'incident.actionFailed' || 'incident.analyzed' => 'incident|${s('incidentId')}',
+    'security.change' || 'security.accepted' || 'security.unreachable' || 'security.reachable' => 'security|${s('hostId').isEmpty ? s('host') : s('hostId')}',
     'secret.rotationDue' || 'config.restartFailed' => 'config|${s('host')}|${s('file')}',
     'db.restoreTest.ok' || 'db.restoreTest.failed' => 'dbrestore|${s('host')}|${s('name')}',
     'uptime.down' || 'uptime.up' => 'uptime|${s('host')}|${s('monitorId')}',
@@ -307,7 +309,7 @@ String? routeForPayload(String? payload) {
         final test = j['test'];
         return '/db/restore?host=${Uri.encodeQueryComponent('${host ?? ''}')}${test is String ? '&test=${Uri.encodeQueryComponent(test)}' : ''}';
       }
-      return route != null && route.startsWith('/incidents/') && host is String && host.isNotEmpty
+      return route != null && (route.startsWith('/incidents/') || route.startsWith('/security/')) && host is String && host.isNotEmpty
           ? '$route?host=${Uri.encodeQueryComponent(host)}'
           : route;
     } catch (_) {
@@ -323,6 +325,15 @@ String? incidentPayload(String? link, Map<String, dynamic> params) {
   final host = params['host'];
   if (link == null || !link.startsWith('tiphys://incidents/') || host is! String || host.isEmpty) return null;
   return jsonEncode({'link': link, 'host': host});
+}
+
+/// Payload of a security notification: the link plus the name of the agent that ran the check (`params.agent`), so the
+/// app opens the host on that agent. null for other keys, or when the agent did not say (the app then looks on every
+/// agent with the feature).
+String? securityPayload(String key, String? link, Map<String, dynamic> params) {
+  final agent = params['agent'];
+  if (!key.startsWith('security.') || link == null || agent is! String || agent.isEmpty) return null;
+  return jsonEncode({'link': link, 'host': agent});
 }
 
 /// Payload of a config notification: the link plus the file id and the agent's host name. null for other keys.
@@ -648,6 +659,9 @@ String? routeForLink(String? link) {
   if (rest == 'incidents') return '/incidents';
   if (rest == 'configfiles') return '/configfiles';
   if (rest == 'db/restore') return '/db/restore';
+  if (rest == 'security') return '/security';
+  final security = RegExp(r'^security/([a-z0-9][a-z0-9-]{0,62})$').firstMatch(rest);
+  if (security != null) return '/security/${security.group(1)}';
   final incident = RegExp(r'^incidents/([A-Za-z0-9_-]{1,64})$').firstMatch(rest);
   if (incident != null) return '/incidents/${incident.group(1)}';
   final issue = RegExp(r'^telegram/issues/([A-Za-z0-9_-]{1,64})$').firstMatch(rest);
@@ -798,6 +812,7 @@ class PushService {
     final text = noticeText(l, key, params);
     if (text == null) return;
     final high = const {'claude.pcExpiring', 'claude.pcEnded', 'claude.waiting', 'host.offline', 'disk.full', 'service.failed', 'grafana.alert', 'agent.restarted', 'docker.died', 'docker.oom', 'docker.unhealthy', 'docker.restartLoop', 'uptime.down', 'incident.actionFailed', 'config.restartFailed', 'db.restoreTest.failed', 'backup.stale', 'backup.failed', 'claude.scheduleFailed', 'telegram.approval', 'telegram.pcUnreachable'}.contains(key) ||
+        (key == 'security.change' && params['severity'] == 'critical') ||
         (key == 'telegram.failed' && params['reason'] != 'agent.telegram.approvalExpired');
     // Telegram issue waiting for approval: "Send / Cancel" buttons (decision without opening the app).
     final tgDecision = key == 'telegram.approval' && data?['issueId'] != null;
@@ -819,7 +834,7 @@ class PushService {
               ? jsonEncode({'link': link, 'sessionId': data!['sessionId']})
               : tgDecision
                   ? jsonEncode({'link': link, 'issueId': data!['issueId'], 'feedId': data['feedId']})
-                  : incidentPayload(link, params) ?? configPayload(key, params, data) ?? restorePayload(key, params) ?? link,
+                  : securityPayload(key, link, params) ?? incidentPayload(link, params) ?? configPayload(key, params, data) ?? restorePayload(key, params) ?? link,
       notificationDetails: NotificationDetails(
         android: AndroidNotificationDetails(
           high ? 'tiphys-urgent' : 'tiphys',

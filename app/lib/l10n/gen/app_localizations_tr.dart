@@ -7843,4 +7843,1094 @@ class AppLocalizationsTr extends AppLocalizations {
   @override
   String get dbAllowSuperuserReadsHint =>
       'Yalnız okuma rolü yoksa geçerli. Riskli.';
+
+  @override
+  String get secTitle => 'Güvenlik merkezi';
+
+  @override
+  String get secRowTitle => 'Güvenlik';
+
+  @override
+  String secHomeChanges(int count) {
+    return '$count değişiklik onay bekliyor';
+  }
+
+  @override
+  String secHomeCritical(int count) {
+    return '$count kritik bulgu';
+  }
+
+  @override
+  String secHomeBoth(int changes, int critical) {
+    return '$changes değişiklik · $critical kritik bulgu';
+  }
+
+  @override
+  String get secNoAgents =>
+      'Hiçbir ajanda güvenlik denetimi açık değil. İzleme sunucusunun ajan ayarlarında features.security özelliğini açın; açılınca denetlenen makineler burada listelenir.';
+
+  @override
+  String get secNoneAudited => 'Bu ajanda denetlenen makine yok.';
+
+  @override
+  String secHostFailed(String host) {
+    return '$host için güvenlik verisi alınamadı';
+  }
+
+  @override
+  String secInterval(int minutes) {
+    return 'Her $minutes dakikada bir denetlenir';
+  }
+
+  @override
+  String secScoreSemantic(int score) {
+    return 'Güvenlik puanı $score / 100';
+  }
+
+  @override
+  String get secScoreNone => 'Puan yok';
+
+  @override
+  String secChangesChip(int count) {
+    return '$count değişiklik';
+  }
+
+  @override
+  String get secSeverityCritical => 'Kritik';
+
+  @override
+  String get secSeverityHigh => 'Yüksek';
+
+  @override
+  String get secSeverityMedium => 'Orta';
+
+  @override
+  String get secSeverityLow => 'Düşük';
+
+  @override
+  String secSeverityCount(int count, String severity) {
+    return '$count $severity';
+  }
+
+  @override
+  String secStaleSince(String when) {
+    return 'Son bilinen durum · $when';
+  }
+
+  @override
+  String get secNeverChecked => 'Henüz denetlenmedi';
+
+  @override
+  String get secChecking => 'Denetleniyor…';
+
+  @override
+  String get secRoleServer => 'Sunucu';
+
+  @override
+  String get secRoleDesktop => 'Masaüstü';
+
+  @override
+  String get secSourceLocal => 'Bu makine';
+
+  @override
+  String get secSourceSsh => 'SSH ile';
+
+  @override
+  String get secSourceAgent => 'Ajan ile';
+
+  @override
+  String get secMenuSettings => 'Denetim ayarları';
+
+  @override
+  String get secCheckNow => 'Şimdi denetle';
+
+  @override
+  String get secCheckFull => 'Tam denetim';
+
+  @override
+  String get secCheckFullHint =>
+      'Tam denetim SUID ve herkese yazılabilir dosyaları da tarar; birkaç dakika sürebilir.';
+
+  @override
+  String get secCheckDone => 'Denetim tamamlandı';
+
+  @override
+  String secLastCheck(String when) {
+    return 'Son denetim: $when';
+  }
+
+  @override
+  String secLastFull(String when) {
+    return 'Son tam denetim: $when';
+  }
+
+  @override
+  String secBaselineAt(String when) {
+    return 'Referans durum: $when';
+  }
+
+  @override
+  String get secChangesTitle => 'Değişiklikler';
+
+  @override
+  String get secChangesIntro =>
+      'Son kabul edilen durumdan farklı olanlar. Beklediğiniz bir değişiklikse kabul edin; değilse inceleyin.';
+
+  @override
+  String get secAccept => 'Bu durumu kabul et';
+
+  @override
+  String get secAcceptTitle => 'Bu durum kabul edilsin mi?';
+
+  @override
+  String secAcceptBody(int count) {
+    return 'Şu anki durum yeni referans olur ve $count değişiklik listeden kalkar. Beklemediğiniz bir değişiklik varsa önce inceleyin.';
+  }
+
+  @override
+  String secAccepted(int count) {
+    return 'Durum kabul edildi ($count değişiklik)';
+  }
+
+  @override
+  String get secKindAdded => 'Eklendi';
+
+  @override
+  String get secKindRemoved => 'Kalktı';
+
+  @override
+  String get secKindChanged => 'Değişti';
+
+  @override
+  String secFirstSeen(String when) {
+    return 'ilk görülme $when';
+  }
+
+  @override
+  String get secFindingsTitle => 'Bulgular';
+
+  @override
+  String get secNoFindings => 'Bulgu yok; bu denetimde bir sorun görünmüyor.';
+
+  @override
+  String get secFixLabel => 'Öneri';
+
+  @override
+  String get secNoReport =>
+      'Bu makine için henüz rapor yok. İlk denetim bitince burada görünür.';
+
+  @override
+  String get secUnavailableTitle => 'Alınamayan bölümler';
+
+  @override
+  String get secNeedsRoot => 'root gerektirir';
+
+  @override
+  String secUnavailableNote(String names) {
+    return 'Bu denetimde alınamadı (root gerektirir): $names';
+  }
+
+  @override
+  String secMore(int count) {
+    return '… ve $count tane daha';
+  }
+
+  @override
+  String get secEmptyList => 'Kayıt yok';
+
+  @override
+  String get secNotAvailable =>
+      'Bu bölüm bu denetimde alınamadı (root gerektirir).';
+
+  @override
+  String secHostNotFound(String host) {
+    return 'Bu makine hiçbir ajanda bulunamadı: $host';
+  }
+
+  @override
+  String get secTabPorts => 'Portlar';
+
+  @override
+  String get secTabSsh => 'SSH';
+
+  @override
+  String get secTabUsers => 'Kullanıcılar';
+
+  @override
+  String get secTabJobs => 'Zamanlanmış işler';
+
+  @override
+  String get secTabUpdates => 'Güncellemeler';
+
+  @override
+  String get secTabContainers => 'Konteynerler';
+
+  @override
+  String get secTabSystem => 'Sistem';
+
+  @override
+  String get secScopeExposed => 'dışarıya açık';
+
+  @override
+  String get secScopeTailscale => 'Tailscale';
+
+  @override
+  String get secScopeLoopback => 'yerel';
+
+  @override
+  String get secScopePrivate => 'özel';
+
+  @override
+  String get secScopeLinklocal => 'bağlantı-yerel';
+
+  @override
+  String get secPortsEmpty => 'Dinleyen port yok.';
+
+  @override
+  String get secSshEffective => 'Etkin ayarlar (sshd -T)';
+
+  @override
+  String get secSshConfig =>
+      'Yapılandırma dosyaları (belirtilmeyen anahtarlar varsayılan)';
+
+  @override
+  String get secSshSettings => 'Ayarlar';
+
+  @override
+  String get secUsersTitle => 'Giriş yapabilen hesaplar';
+
+  @override
+  String get secPasswordsTitle => 'Parola durumu';
+
+  @override
+  String get secPwEmpty => 'boş parola';
+
+  @override
+  String get secPwSet => 'parola var';
+
+  @override
+  String get secGroupsTitle => 'Gruplar';
+
+  @override
+  String get secKeysTitle => 'Yetkili SSH anahtarları';
+
+  @override
+  String secKeyLine(String type, String bits) {
+    return '$type · $bits bit';
+  }
+
+  @override
+  String get secSudoersTitle => 'Sudoers dosyaları';
+
+  @override
+  String get secCronTitle => 'Cron dosyaları';
+
+  @override
+  String get secTimersTitle => 'systemd zamanlayıcıları';
+
+  @override
+  String get secAutostartTitle => 'Otomatik başlatma';
+
+  @override
+  String get secTimerScopeSystem => 'sistem';
+
+  @override
+  String get secTimerScopeUser => 'kullanıcı';
+
+  @override
+  String get secUpdPending => 'Bekleyen güncelleme';
+
+  @override
+  String get secUpdSecurity => 'Güvenlik güncellemesi';
+
+  @override
+  String get secUpdUnattended => 'Otomatik güvenlik güncellemesi';
+
+  @override
+  String get secUpdListsAt => 'Paket listesi güncellendi';
+
+  @override
+  String get secUpdReboot => 'Yeniden başlatma gerekiyor';
+
+  @override
+  String secUpdRebootSince(String when) {
+    return '$when beri';
+  }
+
+  @override
+  String get secOn => 'açık';
+
+  @override
+  String get secOff => 'kapalı';
+
+  @override
+  String get secUnknown => 'bilinmiyor';
+
+  @override
+  String get secNo => 'hayır';
+
+  @override
+  String get secDockerNone => 'Docker bu makinede yok ya da okunamadı.';
+
+  @override
+  String get secContainersEmpty => 'Çalışan konteyner yok.';
+
+  @override
+  String secDockerVersion(String version) {
+    return 'Docker $version';
+  }
+
+  @override
+  String get secFlagPrivileged => 'ayrıcalıklı';
+
+  @override
+  String get secFlagSocket => 'docker.sock';
+
+  @override
+  String get secFlagHostPid => 'host PID';
+
+  @override
+  String get secFlagHostNet => 'host ağı';
+
+  @override
+  String secFlagCaps(String caps) {
+    return 'ek yetki: $caps';
+  }
+
+  @override
+  String secContainerPorts(String ports) {
+    return 'yayınlanan portlar: $ports';
+  }
+
+  @override
+  String secImagesCount(int count) {
+    return '$count imaj';
+  }
+
+  @override
+  String get secSysMeta => 'Makine';
+
+  @override
+  String get secMetaHostname => 'Ad';
+
+  @override
+  String get secMetaKernel => 'Çekirdek';
+
+  @override
+  String get secMetaArch => 'Mimari';
+
+  @override
+  String get secMetaOs => 'Sistem';
+
+  @override
+  String get secMetaUptime => 'Açık kalma süresi';
+
+  @override
+  String get secMetaTime => 'Rapor zamanı';
+
+  @override
+  String get secMetaMode => 'Rapor türü';
+
+  @override
+  String get secModeFull => 'tam';
+
+  @override
+  String get secModeQuick => 'hızlı';
+
+  @override
+  String get secRunRoot => 'root olarak çalıştı';
+
+  @override
+  String get secRunNoRoot => 'root olmadan çalıştı';
+
+  @override
+  String secUptimeDays(int days, int hours) {
+    return '$days gün $hours sa';
+  }
+
+  @override
+  String get secServicesTitle => 'Koruma servisleri';
+
+  @override
+  String get secSysctlTitle => 'Çekirdek ayarları (sysctl)';
+
+  @override
+  String get secLoginsTitle => 'Son girişler';
+
+  @override
+  String get secFilesTitle => 'Dosyalar';
+
+  @override
+  String get secSuidTitle => 'SUID dosyaları';
+
+  @override
+  String get secWorldWritableTitle => 'Herkesin yazabildiği dosyalar';
+
+  @override
+  String get secAgentFilesTitle => 'Ajan dosyalarının izinleri';
+
+  @override
+  String get secFullOnly => 'Yalnız tam denetimde taranır.';
+
+  @override
+  String get secSettingsTitle => 'Denetim ayarları';
+
+  @override
+  String get secSelfTitle => 'Bu makine';
+
+  @override
+  String get secRoleTitle => 'Rol';
+
+  @override
+  String get secRoleHint =>
+      'Sunucu için otomatik güncelleme ve denetim servisleri de beklenir; masaüstünde daha gevşektir.';
+
+  @override
+  String get secAllowedPorts => 'Beklenen açık portlar';
+
+  @override
+  String get secAllowedPortsHint =>
+      'Dışarıya açık olması normal olan portlar (ör. tcp/22). Bunlar bulgu üretmez.';
+
+  @override
+  String get secAddPort => 'Port ekle';
+
+  @override
+  String get secPortLabel => 'Port (tcp/22)';
+
+  @override
+  String get secPortInvalid => 'tcp/22 ya da udp/53 biçiminde yazın (1-65535).';
+
+  @override
+  String secPortRemove(String port) {
+    return '$port portunu kaldır';
+  }
+
+  @override
+  String get secSudoTitle => 'sudo ile denetle';
+
+  @override
+  String get secSudoWarn =>
+      'Açıkken denetim betiği sudo -n ile root olarak çalışır; parola durumu, sudoers ve SUID gibi bölümler de okunur. Betiğin root\'a ait kurulu kopyası ve parolasız sudo izni gerekir; yoksa denetim başarısız olur.';
+
+  @override
+  String get secSudoConfirm =>
+      'sudo ile denetim açılsın mı? Denetim betiği root yetkisiyle çalışacak.';
+
+  @override
+  String get secHostsTitle => 'Denetlenen makineler';
+
+  @override
+  String get secHostsEmpty => 'Başka makine eklenmedi.';
+
+  @override
+  String get secAddHost => 'Makine ekle';
+
+  @override
+  String get secEditHost => 'Makineyi düzenle';
+
+  @override
+  String get secDeleteHost => 'Makineyi sil';
+
+  @override
+  String secDeleteHostConfirm(String name) {
+    return '$name denetim listesinden silinsin mi? Son raporu ve referansı da silinir.';
+  }
+
+  @override
+  String get secFieldId => 'Kimlik';
+
+  @override
+  String get secFieldName => 'Ad';
+
+  @override
+  String get secFieldSource => 'Kaynak';
+
+  @override
+  String get secFieldSshHost => 'SSH adresi';
+
+  @override
+  String get secFieldSshUser => 'Kullanıcı';
+
+  @override
+  String get secFieldSshPort => 'Port';
+
+  @override
+  String get secFieldKeyPath => 'Anahtar dosyası (bu makinede)';
+
+  @override
+  String get secFieldUrl => 'Ajan adresi (https)';
+
+  @override
+  String get secFieldToken => 'Belirteç';
+
+  @override
+  String get secTokenKeep => 'değiştirmek için yaz';
+
+  @override
+  String get secTokenHint => 'Başka ajanın security-report belirteci (tps_…).';
+
+  @override
+  String get secInvalid => 'Geçersiz değer';
+
+  @override
+  String get secSaved => 'Kaydedildi';
+
+  @override
+  String get secDeleted => 'Silindi';
+
+  @override
+  String get incKindSecurity => 'Güvenlik';
+
+  @override
+  String incTitleSecurity(String target) {
+    return 'Güvenlik değişikliği: $target';
+  }
+
+  @override
+  String get incOpenSecurity => 'Güvenlik ekranını aç';
+
+  @override
+  String notifSecChangeTitle(String host) {
+    return 'Güvenlik değişikliği: $host';
+  }
+
+  @override
+  String notifSecChangeCriticalTitle(String host) {
+    return 'Kritik güvenlik değişikliği: $host';
+  }
+
+  @override
+  String notifSecChangeBody(int count, String categories) {
+    return '$count değişiklik · $categories';
+  }
+
+  @override
+  String notifSecAcceptedTitle(String host) {
+    return 'Güvenlik durumu kabul edildi: $host';
+  }
+
+  @override
+  String notifSecAcceptedBody(int count) {
+    return '$count değişiklik kabul edildi';
+  }
+
+  @override
+  String notifSecUnreachableTitle(String host) {
+    return 'Güvenlik denetimi yapılamıyor: $host';
+  }
+
+  @override
+  String notifSecUnreachableBody(int hours, String reason) {
+    return '$hours saattir denetlenemiyor · $reason';
+  }
+
+  @override
+  String notifSecReachableTitle(String host) {
+    return 'Güvenlik denetimi yeniden çalışıyor: $host';
+  }
+
+  @override
+  String get secErrTimeout => 'Denetim zaman aşımına uğradı.';
+
+  @override
+  String get secErrReportTooLarge => 'Denetim raporu beklenenden büyük geldi.';
+
+  @override
+  String get secErrScriptMissing => 'Denetim betiği bu makinede kurulu değil.';
+
+  @override
+  String get secErrScriptUnsafe =>
+      'Kurulu denetim betiği güvenli değil (root\'a ait olmalı, başkası yazamamalı).';
+
+  @override
+  String get secErrCollectFailed => 'Denetim betiği hata verdi.';
+
+  @override
+  String get secErrKnownHostsMissing =>
+      'SSH sunucu parmak izi kayıtlı değil; önce o makineye bir kez güvenli bağlanın.';
+
+  @override
+  String get secErrSshFailed => 'SSH bağlantısı kurulamadı.';
+
+  @override
+  String get secErrUnreachable => 'Makineye ulaşılamıyor.';
+
+  @override
+  String get secErrUnauthorized => 'Makinenin ajanı belirteci kabul etmedi.';
+
+  @override
+  String get secErrBusy => 'Makinenin ajanı meşgul; biraz sonra deneyin.';
+
+  @override
+  String get secErrAgentFailed => 'Makinenin ajanı rapor veremedi.';
+
+  @override
+  String get secErrBadReport => 'Rapor okunamadı (beklenmeyen biçim).';
+
+  @override
+  String get secErrHostNotFound => 'Böyle bir makine yok.';
+
+  @override
+  String get secErrHostExists => 'Bu kimlikle bir makine zaten var.';
+
+  @override
+  String get secErrTooManyHosts => 'En fazla 20 makine eklenebilir.';
+
+  @override
+  String get secErrTokenRequired => 'Ajan kaynağı için belirteç gerekli.';
+
+  @override
+  String get secErrSelfPermanent => 'Bu makine listeden kaldırılamaz.';
+
+  @override
+  String get secErrNoReport => 'Henüz rapor yok; önce bir denetim çalıştırın.';
+
+  @override
+  String get secErrRateLimited =>
+      'Çok sık denetim istendi. Birkaç dakika sonra tekrar deneyin.';
+
+  @override
+  String get secErrInvalid => 'Girilen değerler geçersiz.';
+
+  @override
+  String get secCatPorts => 'Açık portlar';
+
+  @override
+  String get secCatUsers => 'Kullanıcılar';
+
+  @override
+  String get secCatPasswords => 'Parolalar';
+
+  @override
+  String get secCatSudoers => 'Sudo yetkileri';
+
+  @override
+  String get secCatAuthKeys => 'SSH anahtarları';
+
+  @override
+  String get secCatCron => 'Cron işleri';
+
+  @override
+  String get secCatTimers => 'Zamanlayıcılar';
+
+  @override
+  String get secCatAutostart => 'Otomatik başlatma';
+
+  @override
+  String get secCatSshd => 'SSH ayarı';
+
+  @override
+  String get secCatContainers => 'Riskli konteynerler';
+
+  @override
+  String get secCatSuid => 'SUID dosyaları';
+
+  @override
+  String get secCatServices => 'Koruma servisleri';
+
+  @override
+  String secRulePortExposed(String port) {
+    return 'Dışarıya açık port: $port';
+  }
+
+  @override
+  String secRulePortExposedWhy(String addr) {
+    return '$addr adresinde dinliyor; ağdaki herkes bağlanmayı deneyebilir.';
+  }
+
+  @override
+  String get secRulePortExposedFix =>
+      'Gerekli değilse servisi kapatın ya da yalnız 127.0.0.1 / Tailscale adresine bağlayın. Beklenen bir portsa denetim ayarlarında beklenen portlara ekleyin.';
+
+  @override
+  String get secRuleSshPasswordAuth => 'SSH parola ile girişe açık';
+
+  @override
+  String get secRuleSshPasswordAuthWhy =>
+      'Parola denemeleriyle kaba kuvvet saldırısı mümkün olur.';
+
+  @override
+  String get secRuleSshPasswordAuthFix =>
+      'sshd_config içinde PasswordAuthentication no yapın (önce anahtarla girebildiğinizden emin olun).';
+
+  @override
+  String get secRuleSshEmptyPasswords => 'SSH boş parolaya izin veriyor';
+
+  @override
+  String get secRuleSshEmptyPasswordsWhy =>
+      'Parolası boş hesaplar parolasız girebilir.';
+
+  @override
+  String get secRuleSshEmptyPasswordsFix => 'PermitEmptyPasswords no yapın.';
+
+  @override
+  String secRuleSshRootLogin(String value) {
+    return 'root SSH girişi: $value';
+  }
+
+  @override
+  String get secRuleSshRootLoginWhy =>
+      'root hesabı doğrudan SSH ile hedef alınabilir.';
+
+  @override
+  String get secRuleSshRootLoginFix =>
+      'PermitRootLogin no yapın; yönetim için normal kullanıcı ve sudo kullanın.';
+
+  @override
+  String get secRuleSshKbdInteractive =>
+      'SSH klavye-etkileşimli doğrulama açık';
+
+  @override
+  String get secRuleSshKbdInteractiveWhy =>
+      'PAM üzerinden parola sorulabildiği için parola girişi kapalı olsa bile parola denenebilir.';
+
+  @override
+  String get secRuleSshKbdInteractiveFix =>
+      'KbdInteractiveAuthentication no yapın.';
+
+  @override
+  String get secRuleSshX11Forwarding => 'SSH X11 yönlendirme açık';
+
+  @override
+  String get secRuleSshX11ForwardingWhy =>
+      'Yönlendirilen X11 oturumları istemci ekranına saldırı yolu açabilir.';
+
+  @override
+  String get secRuleSshX11ForwardingFix => 'X11Forwarding no yapın.';
+
+  @override
+  String secRuleSshTcpForwarding(String value) {
+    return 'SSH TCP yönlendirme: $value';
+  }
+
+  @override
+  String get secRuleSshTcpForwardingWhy =>
+      'Giriş yapan biri sunucuyu ağda atlama noktası olarak kullanabilir.';
+
+  @override
+  String get secRuleSshTcpForwardingFix =>
+      'Gerekmiyorsa AllowTcpForwarding no (ya da local) yapın.';
+
+  @override
+  String secRuleSshMaxAuthTries(String value) {
+    return 'SSH en çok $value deneme hakkı veriyor';
+  }
+
+  @override
+  String get secRuleSshMaxAuthTriesWhy =>
+      'Bağlantı başına çok deneme hakkı kaba kuvveti kolaylaştırır.';
+
+  @override
+  String get secRuleSshMaxAuthTriesFix =>
+      'MaxAuthTries değerini 3-4\'e indirin.';
+
+  @override
+  String secRuleUsersUid0(String user) {
+    return 'UID 0 olan ikinci hesap: $user';
+  }
+
+  @override
+  String get secRuleUsersUid0Why =>
+      'UID 0 olan her hesap root ile aynı yetkidedir; çoğu zaman bir arka kapıdır.';
+
+  @override
+  String get secRuleUsersUid0Fix =>
+      'Hesabı tanımıyorsanız hemen inceleyin; gereksizse silin ya da UID\'sini değiştirin.';
+
+  @override
+  String secRuleUsersEmptyPassword(String user) {
+    return 'Boş parolalı hesap: $user';
+  }
+
+  @override
+  String get secRuleUsersEmptyPasswordWhy =>
+      'Parolası boş hesaba parolasız girilebilir.';
+
+  @override
+  String get secRuleUsersEmptyPasswordFix =>
+      'Hesaba parola verin ya da kilitleyin (passwd -l).';
+
+  @override
+  String secRuleUpdatesSecurity(int count) {
+    return '$count güvenlik güncellemesi bekliyor';
+  }
+
+  @override
+  String get secRuleUpdatesSecurityWhy =>
+      'Bilinen güvenlik açıkları kapatılmamış.';
+
+  @override
+  String get secRuleUpdatesSecurityFix =>
+      'Güncellemeleri kurun (apt upgrade); gerekirse yeniden başlatın.';
+
+  @override
+  String secRuleUpdatesPending(int count) {
+    return '$count güncelleme bekliyor';
+  }
+
+  @override
+  String get secRuleUpdatesPendingWhy =>
+      'Güvenlik dışı güncellemeler birikmiş.';
+
+  @override
+  String get secRuleUpdatesPendingFix => 'Uygun bir zamanda güncelleyin.';
+
+  @override
+  String secRuleUpdatesReboot(int days) {
+    return 'Yeniden başlatma gerekiyor ($days gündür)';
+  }
+
+  @override
+  String get secRuleUpdatesRebootWhy =>
+      'Kurulan güncellemeler (ör. çekirdek) yeniden başlatılana dek etkin olmaz.';
+
+  @override
+  String get secRuleUpdatesRebootFix =>
+      'Uygun bir zamanda makineyi yeniden başlatın.';
+
+  @override
+  String get secRuleUpdatesUnattendedOff =>
+      'Otomatik güvenlik güncellemesi kapalı';
+
+  @override
+  String get secRuleUpdatesUnattendedOffWhy =>
+      'Yeni açıklar elle güncellenene dek açık kalır.';
+
+  @override
+  String get secRuleUpdatesUnattendedOffFix =>
+      'unattended-upgrades paketini kurup etkinleştirin.';
+
+  @override
+  String secRuleUpdatesListsStale(int days) {
+    return 'Paket listesi $days gündür güncellenmedi';
+  }
+
+  @override
+  String get secRuleUpdatesListsStaleWhy =>
+      'Liste eskiyse yeni güncellemeler görünmez.';
+
+  @override
+  String get secRuleUpdatesListsStaleFix =>
+      'apt update çalıştırın; otomatik güncellemenin çalıştığını kontrol edin.';
+
+  @override
+  String get secRuleFirewallNone => 'Güvenlik duvarı etkin değil';
+
+  @override
+  String secRuleFirewallNoneWhy(int exposed) {
+    return '$exposed dışarıya açık port var ve onları süzen bir güvenlik duvarı görünmüyor.';
+  }
+
+  @override
+  String get secRuleFirewallNoneFix =>
+      'ufw ya da firewalld etkinleştirin; yalnız gerekli portlara izin verin.';
+
+  @override
+  String get secRuleServiceAuditd => 'auditd çalışmıyor';
+
+  @override
+  String get secRuleServiceAuditdWhy =>
+      'Kritik dosya değişiklikleri ve girişler denetim günlüğüne yazılmıyor.';
+
+  @override
+  String get secRuleServiceAuditdFix => 'systemctl enable --now auditd';
+
+  @override
+  String get secRuleServiceApparmor => 'AppArmor etkin değil';
+
+  @override
+  String get secRuleServiceApparmorWhy =>
+      'Servisler ek bir sınırlama olmadan çalışıyor.';
+
+  @override
+  String get secRuleServiceApparmorFix =>
+      'AppArmor\'u etkinleştirin (systemctl enable --now apparmor).';
+
+  @override
+  String secRuleSysctlWeak(int count) {
+    return '$count çekirdek ayarı zayıf';
+  }
+
+  @override
+  String secRuleSysctlWeakWhy(String keys) {
+    return 'Şu ayarlar önerilen değerde değil: $keys';
+  }
+
+  @override
+  String get secRuleSysctlWeakFix =>
+      'Önerilen değerleri /etc/sysctl.d altına yazın ve sysctl --system çalıştırın.';
+
+  @override
+  String secRuleDockerPrivileged(String container) {
+    return 'Ayrıcalıklı konteyner: $container';
+  }
+
+  @override
+  String get secRuleDockerPrivilegedWhy =>
+      'Ayrıcalıklı konteyner ana makineye neredeyse tam erişir.';
+
+  @override
+  String get secRuleDockerPrivilegedFix =>
+      '--privileged yerine yalnız gereken yetenekleri (cap_add) verin.';
+
+  @override
+  String secRuleDockerSocket(String container) {
+    return 'docker.sock bağlı konteyner: $container';
+  }
+
+  @override
+  String get secRuleDockerSocketWhy =>
+      'Docker soketine erişen konteyner ana makinede root olabilir.';
+
+  @override
+  String get secRuleDockerSocketFix =>
+      'Soketi bağlamayın ya da bir socket-proxy ile yalnız gereken API\'leri açın.';
+
+  @override
+  String secRuleDockerHostPid(String container) {
+    return 'Ana makine PID alanını kullanan konteyner: $container';
+  }
+
+  @override
+  String get secRuleDockerHostPidWhy =>
+      'Konteyner ana makinenin tüm süreçlerini görebilir.';
+
+  @override
+  String get secRuleDockerHostPidFix => 'pid: host ayarını kaldırın.';
+
+  @override
+  String secRuleDockerHostNetwork(String container) {
+    return 'Ana makine ağını kullanan konteyner: $container';
+  }
+
+  @override
+  String get secRuleDockerHostNetworkWhy =>
+      'Konteynerin portları doğrudan ana makinede açılır; ağ yalıtımı yok.';
+
+  @override
+  String get secRuleDockerHostNetworkFix =>
+      'Bridge ağını ve gereken portlar için ports: kullanın.';
+
+  @override
+  String secRuleFilesWorldWritable(int count) {
+    return 'Herkesin yazabildiği $count dosya';
+  }
+
+  @override
+  String secRuleFilesWorldWritableWhy(String example) {
+    return 'Örneğin $example; herhangi bir kullanıcı bunları değiştirebilir.';
+  }
+
+  @override
+  String get secRuleFilesWorldWritableFix =>
+      'chmod o-w ile izni kaldırın; gerekiyorsa sahibini düzeltin.';
+
+  @override
+  String secRuleFilesAgentPerms(String path) {
+    return 'Ajan dosyası fazla açık izinli: $path';
+  }
+
+  @override
+  String secRuleFilesAgentPermsWhy(String mode) {
+    return 'İzin $mode; ajanın belirteçlerini başka kullanıcılar okuyabilir.';
+  }
+
+  @override
+  String get secRuleFilesAgentPermsFix => 'chmod 600 ile izni daraltın.';
+
+  @override
+  String secRulePortExposedWhyProc(String process, String addr) {
+    return '$process süreci $addr adresinde dinliyor; ağdaki herkes bağlanmayı deneyebilir.';
+  }
+
+  @override
+  String get secFirewallUnknownSuffix => '(güvenlik duvarı bilinmiyor)';
+
+  @override
+  String get secPortFiltered => 'dinliyor, güvenlik duvarı engelliyor';
+
+  @override
+  String get secFwTitle => 'Güvenlik duvarı';
+
+  @override
+  String get secFwUnknown => 'Güvenlik duvarı bilinmiyor (root gerekir)';
+
+  @override
+  String get secFwDenyYes => 'Gelen bağlantılar varsayılan olarak reddediliyor';
+
+  @override
+  String get secFwDenyNo =>
+      'Gelen bağlantılara varsayılan olarak izin veriliyor';
+
+  @override
+  String secFwChains(int count) {
+    return '$count giriş zinciri';
+  }
+
+  @override
+  String get secMetaIpv6 => 'Genel IPv6 adresi';
+
+  @override
+  String get agentRequestInvalid => 'İstek geçersiz';
+
+  @override
+  String get secSecListen => 'Dinleyen portlar';
+
+  @override
+  String get secSecNft => 'Güvenlik duvarı (nftables)';
+
+  @override
+  String get secSecSshd => 'SSH ayarı';
+
+  @override
+  String get secSecPasswords => 'Parola durumu';
+
+  @override
+  String get secSecSudoers => 'Sudoers dosyaları';
+
+  @override
+  String get secSecAuthkeys => 'Yetkili SSH anahtarları';
+
+  @override
+  String get secSecCron => 'Cron dosyaları';
+
+  @override
+  String get secSecTimers => 'Zamanlayıcılar';
+
+  @override
+  String get secSecAutostart => 'Otomatik başlatma';
+
+  @override
+  String get secSecLogins => 'Son girişler';
+
+  @override
+  String get secSecDocker => 'Docker';
+
+  @override
+  String get secSecSuid => 'SUID dosyaları';
+
+  @override
+  String get secSecWorldwritable => 'Herkesin yazabildiği dosyalar';
+
+  @override
+  String get secSecAgentfiles => 'Ajan dosyaları';
+
+  @override
+  String get secSecUsers => 'Kullanıcılar';
+
+  @override
+  String get secSecGroups => 'Gruplar';
+
+  @override
+  String get secSecUpdates => 'Güncellemeler';
+
+  @override
+  String get secSecServices => 'Servisler';
+
+  @override
+  String get secSecSysctl => 'Çekirdek ayarları';
+
+  @override
+  String get secSecMeta => 'Makine bilgisi';
 }

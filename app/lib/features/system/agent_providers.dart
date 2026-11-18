@@ -12,6 +12,7 @@ import '../../state/providers.dart';
 import '../configfiles/configfiles_texts.dart';
 import '../databases/db_texts.dart';
 import '../incidents/incident_texts.dart';
+import '../security/security_texts.dart';
 
 /// Overridden in tests.
 final agentClientFactoryProvider = Provider<Future<AgentClient> Function(Host)>((ref) {
@@ -112,6 +113,7 @@ String agentErrorText(AppLocalizations l, Object e) {
     'agent.desktop.badAddress' => l.desktopBadAddress,
     'agent.desktop.hyprctlFailed' => l.desktopHyprctlFailed,
     'agent.desktop.appNotFound' => l.desktopAppsEmpty,
+    'agent.request.invalid' => l.agentRequestInvalid,
     'agent.config.passwordRequired' => l.agentPasswordRequired,
     'agent.control.disabled' => l.desktopControlOffHint,
     'agent.claude.pcUnavailable' => l.claudePcUnavailable,
@@ -170,6 +172,7 @@ String agentErrorText(AppLocalizations l, Object e) {
     // Incident room (PLAN.md §13.1).
     final c when c.startsWith('agent.incident.') || c == 'agent.preview.invalid' => incidentErrorText(l, c, e.params),
     // Config files and secrets (PLAN.md §13.3).
+    final c when c.startsWith('agent.security.') => securityErrorText(l, c, e.params),
     final c when c.startsWith('agent.db.') => dbErrorText(l, c, e.params),
     final c when c.startsWith('agent.configfiles.') => configErrorText(l, c, e.params),
     _ => '${l.commonError} (${e.code})',

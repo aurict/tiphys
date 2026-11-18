@@ -8001,4 +8001,1173 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get dbAllowSuperuserReadsHint =>
       'Only matters without a read role. Risky.';
+
+  @override
+  String get secTitle => 'Security center';
+
+  @override
+  String get secRowTitle => 'Security';
+
+  @override
+  String secHomeChanges(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count changes awaiting review',
+      one: '1 change awaiting review',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String secHomeCritical(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count critical findings',
+      one: '1 critical finding',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String secHomeBoth(int changes, int critical) {
+    return '$changes changes · $critical critical findings';
+  }
+
+  @override
+  String get secNoAgents =>
+      'No agent has the security audit turned on. Turn on features.security in the monitoring server\'s agent settings; the audited machines are listed here once it is on.';
+
+  @override
+  String get secNoneAudited => 'This agent audits no machines.';
+
+  @override
+  String secHostFailed(String host) {
+    return 'Could not load security data of $host';
+  }
+
+  @override
+  String secInterval(int minutes) {
+    return 'Checked every $minutes minutes';
+  }
+
+  @override
+  String secScoreSemantic(int score) {
+    return 'Security score $score out of 100';
+  }
+
+  @override
+  String get secScoreNone => 'No score';
+
+  @override
+  String secChangesChip(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count changes',
+      one: '1 change',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get secSeverityCritical => 'Critical';
+
+  @override
+  String get secSeverityHigh => 'High';
+
+  @override
+  String get secSeverityMedium => 'Medium';
+
+  @override
+  String get secSeverityLow => 'Low';
+
+  @override
+  String secSeverityCount(int count, String severity) {
+    return '$count $severity';
+  }
+
+  @override
+  String secStaleSince(String when) {
+    return 'Last known state · $when';
+  }
+
+  @override
+  String get secNeverChecked => 'Not checked yet';
+
+  @override
+  String get secChecking => 'Checking…';
+
+  @override
+  String get secRoleServer => 'Server';
+
+  @override
+  String get secRoleDesktop => 'Desktop';
+
+  @override
+  String get secSourceLocal => 'This machine';
+
+  @override
+  String get secSourceSsh => 'Over SSH';
+
+  @override
+  String get secSourceAgent => 'Via agent';
+
+  @override
+  String get secMenuSettings => 'Audit settings';
+
+  @override
+  String get secCheckNow => 'Check now';
+
+  @override
+  String get secCheckFull => 'Full check';
+
+  @override
+  String get secCheckFullHint =>
+      'A full check also scans SUID and world-writable files and can take several minutes.';
+
+  @override
+  String get secCheckDone => 'Check finished';
+
+  @override
+  String secLastCheck(String when) {
+    return 'Last check: $when';
+  }
+
+  @override
+  String secLastFull(String when) {
+    return 'Last full check: $when';
+  }
+
+  @override
+  String secBaselineAt(String when) {
+    return 'Baseline: $when';
+  }
+
+  @override
+  String get secChangesTitle => 'Changes';
+
+  @override
+  String get secChangesIntro =>
+      'What differs from the last accepted state. Accept it if you expected it; otherwise look into it.';
+
+  @override
+  String get secAccept => 'Accept this state';
+
+  @override
+  String get secAcceptTitle => 'Accept this state?';
+
+  @override
+  String secAcceptBody(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count changes',
+      one: '1 change',
+    );
+    return 'The current state becomes the new baseline and $_temp0 leave the list. Look into any change you did not expect first.';
+  }
+
+  @override
+  String secAccepted(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count changes',
+      one: '1 change',
+    );
+    return 'State accepted ($_temp0)';
+  }
+
+  @override
+  String get secKindAdded => 'Added';
+
+  @override
+  String get secKindRemoved => 'Removed';
+
+  @override
+  String get secKindChanged => 'Changed';
+
+  @override
+  String secFirstSeen(String when) {
+    return 'first seen $when';
+  }
+
+  @override
+  String get secFindingsTitle => 'Findings';
+
+  @override
+  String get secNoFindings => 'No findings; nothing stands out in this check.';
+
+  @override
+  String get secFixLabel => 'Suggestion';
+
+  @override
+  String get secNoReport =>
+      'There is no report for this machine yet. It appears here after the first check.';
+
+  @override
+  String get secUnavailableTitle => 'Sections not available';
+
+  @override
+  String get secNeedsRoot => 'needs root';
+
+  @override
+  String secUnavailableNote(String names) {
+    return 'Not available in this check (needs root): $names';
+  }
+
+  @override
+  String secMore(int count) {
+    return '… and $count more';
+  }
+
+  @override
+  String get secEmptyList => 'Nothing listed';
+
+  @override
+  String get secNotAvailable =>
+      'This section was not available in this check (needs root).';
+
+  @override
+  String secHostNotFound(String host) {
+    return 'This machine was not found on any agent: $host';
+  }
+
+  @override
+  String get secTabPorts => 'Ports';
+
+  @override
+  String get secTabSsh => 'SSH';
+
+  @override
+  String get secTabUsers => 'Users';
+
+  @override
+  String get secTabJobs => 'Scheduled jobs';
+
+  @override
+  String get secTabUpdates => 'Updates';
+
+  @override
+  String get secTabContainers => 'Containers';
+
+  @override
+  String get secTabSystem => 'System';
+
+  @override
+  String get secScopeExposed => 'exposed';
+
+  @override
+  String get secScopeTailscale => 'Tailscale';
+
+  @override
+  String get secScopeLoopback => 'local';
+
+  @override
+  String get secScopePrivate => 'private';
+
+  @override
+  String get secScopeLinklocal => 'link-local';
+
+  @override
+  String get secPortsEmpty => 'No listening ports.';
+
+  @override
+  String get secSshEffective => 'Effective settings (sshd -T)';
+
+  @override
+  String get secSshConfig => 'Config files (keys not set use defaults)';
+
+  @override
+  String get secSshSettings => 'Settings';
+
+  @override
+  String get secUsersTitle => 'Accounts that can log in';
+
+  @override
+  String get secPasswordsTitle => 'Password status';
+
+  @override
+  String get secPwEmpty => 'empty password';
+
+  @override
+  String get secPwSet => 'has a password';
+
+  @override
+  String get secGroupsTitle => 'Groups';
+
+  @override
+  String get secKeysTitle => 'Authorized SSH keys';
+
+  @override
+  String secKeyLine(String type, String bits) {
+    return '$type · $bits bit';
+  }
+
+  @override
+  String get secSudoersTitle => 'Sudoers files';
+
+  @override
+  String get secCronTitle => 'Cron files';
+
+  @override
+  String get secTimersTitle => 'systemd timers';
+
+  @override
+  String get secAutostartTitle => 'Autostart';
+
+  @override
+  String get secTimerScopeSystem => 'system';
+
+  @override
+  String get secTimerScopeUser => 'user';
+
+  @override
+  String get secUpdPending => 'Pending updates';
+
+  @override
+  String get secUpdSecurity => 'Security updates';
+
+  @override
+  String get secUpdUnattended => 'Automatic security updates';
+
+  @override
+  String get secUpdListsAt => 'Package lists updated';
+
+  @override
+  String get secUpdReboot => 'Restart required';
+
+  @override
+  String secUpdRebootSince(String when) {
+    return 'since $when';
+  }
+
+  @override
+  String get secOn => 'on';
+
+  @override
+  String get secOff => 'off';
+
+  @override
+  String get secUnknown => 'unknown';
+
+  @override
+  String get secNo => 'no';
+
+  @override
+  String get secDockerNone =>
+      'Docker is not on this machine or could not be read.';
+
+  @override
+  String get secContainersEmpty => 'No containers.';
+
+  @override
+  String secDockerVersion(String version) {
+    return 'Docker $version';
+  }
+
+  @override
+  String get secFlagPrivileged => 'privileged';
+
+  @override
+  String get secFlagSocket => 'docker.sock';
+
+  @override
+  String get secFlagHostPid => 'host PID';
+
+  @override
+  String get secFlagHostNet => 'host network';
+
+  @override
+  String secFlagCaps(String caps) {
+    return 'extra caps: $caps';
+  }
+
+  @override
+  String secContainerPorts(String ports) {
+    return 'published ports: $ports';
+  }
+
+  @override
+  String secImagesCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count images',
+      one: '1 image',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get secSysMeta => 'Machine';
+
+  @override
+  String get secMetaHostname => 'Name';
+
+  @override
+  String get secMetaKernel => 'Kernel';
+
+  @override
+  String get secMetaArch => 'Architecture';
+
+  @override
+  String get secMetaOs => 'OS';
+
+  @override
+  String get secMetaUptime => 'Uptime';
+
+  @override
+  String get secMetaTime => 'Report time';
+
+  @override
+  String get secMetaMode => 'Report type';
+
+  @override
+  String get secModeFull => 'full';
+
+  @override
+  String get secModeQuick => 'quick';
+
+  @override
+  String get secRunRoot => 'ran as root';
+
+  @override
+  String get secRunNoRoot => 'ran without root';
+
+  @override
+  String secUptimeDays(int days, int hours) {
+    return '$days d $hours h';
+  }
+
+  @override
+  String get secServicesTitle => 'Protection services';
+
+  @override
+  String get secSysctlTitle => 'Kernel settings (sysctl)';
+
+  @override
+  String get secLoginsTitle => 'Recent logins';
+
+  @override
+  String get secFilesTitle => 'Files';
+
+  @override
+  String get secSuidTitle => 'SUID files';
+
+  @override
+  String get secWorldWritableTitle => 'World-writable files';
+
+  @override
+  String get secAgentFilesTitle => 'Agent file permissions';
+
+  @override
+  String get secFullOnly => 'Only scanned in a full check.';
+
+  @override
+  String get secSettingsTitle => 'Audit settings';
+
+  @override
+  String get secSelfTitle => 'This machine';
+
+  @override
+  String get secRoleTitle => 'Role';
+
+  @override
+  String get secRoleHint =>
+      'A server is also expected to have automatic updates and audit services; a desktop is judged less strictly.';
+
+  @override
+  String get secAllowedPorts => 'Expected open ports';
+
+  @override
+  String get secAllowedPortsHint =>
+      'Ports that are meant to be exposed (e.g. tcp/22). They raise no finding.';
+
+  @override
+  String get secAddPort => 'Add port';
+
+  @override
+  String get secPortLabel => 'Port (tcp/22)';
+
+  @override
+  String get secPortInvalid => 'Write it as tcp/22 or udp/53 (1-65535).';
+
+  @override
+  String secPortRemove(String port) {
+    return 'Remove port $port';
+  }
+
+  @override
+  String get secSudoTitle => 'Check with sudo';
+
+  @override
+  String get secSudoWarn =>
+      'When on, the audit script runs as root through sudo -n, so sections such as password status, sudoers and SUID can be read. It needs the root-owned installed copy and passwordless sudo for it; otherwise the check fails.';
+
+  @override
+  String get secSudoConfirm =>
+      'Turn on checking with sudo? The audit script will run with root rights.';
+
+  @override
+  String get secHostsTitle => 'Audited machines';
+
+  @override
+  String get secHostsEmpty => 'No other machine added.';
+
+  @override
+  String get secAddHost => 'Add machine';
+
+  @override
+  String get secEditHost => 'Edit machine';
+
+  @override
+  String get secDeleteHost => 'Delete machine';
+
+  @override
+  String secDeleteHostConfirm(String name) {
+    return 'Delete $name from the audit list? Its last report and baseline are removed too.';
+  }
+
+  @override
+  String get secFieldId => 'ID';
+
+  @override
+  String get secFieldName => 'Name';
+
+  @override
+  String get secFieldSource => 'Source';
+
+  @override
+  String get secFieldSshHost => 'SSH address';
+
+  @override
+  String get secFieldSshUser => 'User';
+
+  @override
+  String get secFieldSshPort => 'Port';
+
+  @override
+  String get secFieldKeyPath => 'Key file (on this machine)';
+
+  @override
+  String get secFieldUrl => 'Agent URL (https)';
+
+  @override
+  String get secFieldToken => 'Token';
+
+  @override
+  String get secTokenKeep => 'type to change';
+
+  @override
+  String get secTokenHint =>
+      'The other agent\'s security-report token (tps_…).';
+
+  @override
+  String get secInvalid => 'Invalid value';
+
+  @override
+  String get secSaved => 'Saved';
+
+  @override
+  String get secDeleted => 'Deleted';
+
+  @override
+  String get incKindSecurity => 'Security';
+
+  @override
+  String incTitleSecurity(String target) {
+    return 'Security change: $target';
+  }
+
+  @override
+  String get incOpenSecurity => 'Open security screen';
+
+  @override
+  String notifSecChangeTitle(String host) {
+    return 'Security change: $host';
+  }
+
+  @override
+  String notifSecChangeCriticalTitle(String host) {
+    return 'Critical security change: $host';
+  }
+
+  @override
+  String notifSecChangeBody(int count, String categories) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count changes',
+      one: '1 change',
+    );
+    return '$_temp0 · $categories';
+  }
+
+  @override
+  String notifSecAcceptedTitle(String host) {
+    return 'Security state accepted: $host';
+  }
+
+  @override
+  String notifSecAcceptedBody(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count changes accepted',
+      one: '1 change accepted',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String notifSecUnreachableTitle(String host) {
+    return 'Security check failing: $host';
+  }
+
+  @override
+  String notifSecUnreachableBody(int hours, String reason) {
+    return 'Not checked for $hours h · $reason';
+  }
+
+  @override
+  String notifSecReachableTitle(String host) {
+    return 'Security check works again: $host';
+  }
+
+  @override
+  String get secErrTimeout => 'The check timed out.';
+
+  @override
+  String get secErrReportTooLarge =>
+      'The audit report was larger than expected.';
+
+  @override
+  String get secErrScriptMissing =>
+      'The audit script is not installed on this machine.';
+
+  @override
+  String get secErrScriptUnsafe =>
+      'The installed audit script is not safe (it must be owned by root and not writable by others).';
+
+  @override
+  String get secErrCollectFailed => 'The audit script failed.';
+
+  @override
+  String get secErrKnownHostsMissing =>
+      'The SSH host key is not known yet; connect to that machine once first.';
+
+  @override
+  String get secErrSshFailed => 'The SSH connection failed.';
+
+  @override
+  String get secErrUnreachable => 'The machine cannot be reached.';
+
+  @override
+  String get secErrUnauthorized => 'The machine\'s agent rejected the token.';
+
+  @override
+  String get secErrBusy => 'The machine\'s agent is busy; try again shortly.';
+
+  @override
+  String get secErrAgentFailed =>
+      'The machine\'s agent could not give a report.';
+
+  @override
+  String get secErrBadReport =>
+      'The report could not be read (unexpected format).';
+
+  @override
+  String get secErrHostNotFound => 'There is no such machine.';
+
+  @override
+  String get secErrHostExists => 'A machine with this ID already exists.';
+
+  @override
+  String get secErrTooManyHosts => 'At most 20 machines can be added.';
+
+  @override
+  String get secErrTokenRequired => 'An agent source needs a token.';
+
+  @override
+  String get secErrSelfPermanent => 'This machine cannot be removed.';
+
+  @override
+  String get secErrNoReport => 'There is no report yet; run a check first.';
+
+  @override
+  String get secErrRateLimited =>
+      'Too many checks requested. Try again in a few minutes.';
+
+  @override
+  String get secErrInvalid => 'The values entered are not valid.';
+
+  @override
+  String get secCatPorts => 'Open ports';
+
+  @override
+  String get secCatUsers => 'Users';
+
+  @override
+  String get secCatPasswords => 'Passwords';
+
+  @override
+  String get secCatSudoers => 'Sudo rules';
+
+  @override
+  String get secCatAuthKeys => 'SSH keys';
+
+  @override
+  String get secCatCron => 'Cron jobs';
+
+  @override
+  String get secCatTimers => 'Timers';
+
+  @override
+  String get secCatAutostart => 'Autostart';
+
+  @override
+  String get secCatSshd => 'SSH settings';
+
+  @override
+  String get secCatContainers => 'Risky containers';
+
+  @override
+  String get secCatSuid => 'SUID files';
+
+  @override
+  String get secCatServices => 'Protection services';
+
+  @override
+  String secRulePortExposed(String port) {
+    return 'Exposed port: $port';
+  }
+
+  @override
+  String secRulePortExposedWhy(String addr) {
+    return 'Listening on $addr; anyone on the network can try to connect.';
+  }
+
+  @override
+  String get secRulePortExposedFix =>
+      'Stop the service if it is not needed, or bind it to 127.0.0.1 / the Tailscale address only. If the port is expected, add it to the expected ports in the audit settings.';
+
+  @override
+  String get secRuleSshPasswordAuth => 'SSH allows password login';
+
+  @override
+  String get secRuleSshPasswordAuthWhy =>
+      'Password guessing (brute force) becomes possible.';
+
+  @override
+  String get secRuleSshPasswordAuthFix =>
+      'Set PasswordAuthentication no in sshd_config (make sure key login works first).';
+
+  @override
+  String get secRuleSshEmptyPasswords => 'SSH allows empty passwords';
+
+  @override
+  String get secRuleSshEmptyPasswordsWhy =>
+      'Accounts with an empty password can log in without one.';
+
+  @override
+  String get secRuleSshEmptyPasswordsFix => 'Set PermitEmptyPasswords no.';
+
+  @override
+  String secRuleSshRootLogin(String value) {
+    return 'root SSH login: $value';
+  }
+
+  @override
+  String get secRuleSshRootLoginWhy =>
+      'The root account can be targeted directly over SSH.';
+
+  @override
+  String get secRuleSshRootLoginFix =>
+      'Set PermitRootLogin no; administer through a normal user and sudo.';
+
+  @override
+  String get secRuleSshKbdInteractive => 'SSH keyboard-interactive login is on';
+
+  @override
+  String get secRuleSshKbdInteractiveWhy =>
+      'PAM can still ask for a password, so passwords can be tried even if password login is off.';
+
+  @override
+  String get secRuleSshKbdInteractiveFix =>
+      'Set KbdInteractiveAuthentication no.';
+
+  @override
+  String get secRuleSshX11Forwarding => 'SSH X11 forwarding is on';
+
+  @override
+  String get secRuleSshX11ForwardingWhy =>
+      'Forwarded X11 sessions can open an attack path to the client\'s display.';
+
+  @override
+  String get secRuleSshX11ForwardingFix => 'Set X11Forwarding no.';
+
+  @override
+  String secRuleSshTcpForwarding(String value) {
+    return 'SSH TCP forwarding: $value';
+  }
+
+  @override
+  String get secRuleSshTcpForwardingWhy =>
+      'Someone who logs in can use the server as a hop into the network.';
+
+  @override
+  String get secRuleSshTcpForwardingFix =>
+      'If not needed, set AllowTcpForwarding no (or local).';
+
+  @override
+  String secRuleSshMaxAuthTries(String value) {
+    return 'SSH allows up to $value attempts';
+  }
+
+  @override
+  String get secRuleSshMaxAuthTriesWhy =>
+      'Many attempts per connection make brute force easier.';
+
+  @override
+  String get secRuleSshMaxAuthTriesFix => 'Lower MaxAuthTries to 3-4.';
+
+  @override
+  String secRuleUsersUid0(String user) {
+    return 'Second account with UID 0: $user';
+  }
+
+  @override
+  String get secRuleUsersUid0Why =>
+      'Every UID 0 account has root\'s rights; it is often a backdoor.';
+
+  @override
+  String get secRuleUsersUid0Fix =>
+      'If you do not recognise it, look into it at once; delete it or change its UID if it is not needed.';
+
+  @override
+  String secRuleUsersEmptyPassword(String user) {
+    return 'Account with an empty password: $user';
+  }
+
+  @override
+  String get secRuleUsersEmptyPasswordWhy =>
+      'An account with an empty password can be entered without one.';
+
+  @override
+  String get secRuleUsersEmptyPasswordFix =>
+      'Give the account a password or lock it (passwd -l).';
+
+  @override
+  String secRuleUpdatesSecurity(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count security updates pending',
+      one: '1 security update pending',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get secRuleUpdatesSecurityWhy =>
+      'Known vulnerabilities are not patched.';
+
+  @override
+  String get secRuleUpdatesSecurityFix =>
+      'Install the updates (apt upgrade) and restart if needed.';
+
+  @override
+  String secRuleUpdatesPending(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count updates pending',
+      one: '1 update pending',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get secRuleUpdatesPendingWhy => 'Non-security updates have piled up.';
+
+  @override
+  String get secRuleUpdatesPendingFix => 'Update at a convenient time.';
+
+  @override
+  String secRuleUpdatesReboot(int days) {
+    return 'Restart required ($days days)';
+  }
+
+  @override
+  String get secRuleUpdatesRebootWhy =>
+      'Installed updates (e.g. the kernel) take effect only after a restart.';
+
+  @override
+  String get secRuleUpdatesRebootFix =>
+      'Restart the machine at a convenient time.';
+
+  @override
+  String get secRuleUpdatesUnattendedOff =>
+      'Automatic security updates are off';
+
+  @override
+  String get secRuleUpdatesUnattendedOffWhy =>
+      'New vulnerabilities stay open until someone updates by hand.';
+
+  @override
+  String get secRuleUpdatesUnattendedOffFix =>
+      'Install and enable unattended-upgrades.';
+
+  @override
+  String secRuleUpdatesListsStale(int days) {
+    return 'Package lists not updated for $days days';
+  }
+
+  @override
+  String get secRuleUpdatesListsStaleWhy =>
+      'With stale lists new updates stay invisible.';
+
+  @override
+  String get secRuleUpdatesListsStaleFix =>
+      'Run apt update and check that automatic updating works.';
+
+  @override
+  String get secRuleFirewallNone => 'No firewall is active';
+
+  @override
+  String secRuleFirewallNoneWhy(int exposed) {
+    return '$exposed ports are exposed and no firewall seems to filter them.';
+  }
+
+  @override
+  String get secRuleFirewallNoneFix =>
+      'Enable ufw or firewalld and allow only the ports you need.';
+
+  @override
+  String get secRuleServiceAuditd => 'auditd is not running';
+
+  @override
+  String get secRuleServiceAuditdWhy =>
+      'Changes to critical files and logins are not recorded in the audit log.';
+
+  @override
+  String get secRuleServiceAuditdFix => 'systemctl enable --now auditd';
+
+  @override
+  String get secRuleServiceApparmor => 'AppArmor is not active';
+
+  @override
+  String get secRuleServiceApparmorWhy =>
+      'Services run without that extra confinement.';
+
+  @override
+  String get secRuleServiceApparmorFix =>
+      'Enable AppArmor (systemctl enable --now apparmor).';
+
+  @override
+  String secRuleSysctlWeak(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count kernel settings are weak',
+      one: '1 kernel setting is weak',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String secRuleSysctlWeakWhy(String keys) {
+    return 'These settings are not at the recommended value: $keys';
+  }
+
+  @override
+  String get secRuleSysctlWeakFix =>
+      'Put the recommended values under /etc/sysctl.d and run sysctl --system.';
+
+  @override
+  String secRuleDockerPrivileged(String container) {
+    return 'Privileged container: $container';
+  }
+
+  @override
+  String get secRuleDockerPrivilegedWhy =>
+      'A privileged container has almost full access to the host.';
+
+  @override
+  String get secRuleDockerPrivilegedFix =>
+      'Grant only the capabilities needed (cap_add) instead of --privileged.';
+
+  @override
+  String secRuleDockerSocket(String container) {
+    return 'Container with docker.sock: $container';
+  }
+
+  @override
+  String get secRuleDockerSocketWhy =>
+      'A container that can reach the Docker socket can become root on the host.';
+
+  @override
+  String get secRuleDockerSocketFix =>
+      'Do not mount the socket, or expose only the needed APIs through a socket proxy.';
+
+  @override
+  String secRuleDockerHostPid(String container) {
+    return 'Container using the host PID namespace: $container';
+  }
+
+  @override
+  String get secRuleDockerHostPidWhy =>
+      'The container can see every process of the host.';
+
+  @override
+  String get secRuleDockerHostPidFix => 'Remove pid: host.';
+
+  @override
+  String secRuleDockerHostNetwork(String container) {
+    return 'Container using the host network: $container';
+  }
+
+  @override
+  String get secRuleDockerHostNetworkWhy =>
+      'Its ports open directly on the host; there is no network isolation.';
+
+  @override
+  String get secRuleDockerHostNetworkFix =>
+      'Use a bridge network and ports: for the ports needed.';
+
+  @override
+  String secRuleFilesWorldWritable(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count world-writable files',
+      one: '1 world-writable file',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String secRuleFilesWorldWritableWhy(String example) {
+    return 'For example $example; any user can change them.';
+  }
+
+  @override
+  String get secRuleFilesWorldWritableFix =>
+      'Remove the permission with chmod o-w and fix the owner if needed.';
+
+  @override
+  String secRuleFilesAgentPerms(String path) {
+    return 'Agent file permissions too open: $path';
+  }
+
+  @override
+  String secRuleFilesAgentPermsWhy(String mode) {
+    return 'Mode $mode; other users may be able to read the agent\'s tokens.';
+  }
+
+  @override
+  String get secRuleFilesAgentPermsFix => 'Tighten it with chmod 600.';
+
+  @override
+  String secRulePortExposedWhyProc(String process, String addr) {
+    return '$process listens on $addr; anyone on the network can try to connect.';
+  }
+
+  @override
+  String get secFirewallUnknownSuffix => '(firewall unknown)';
+
+  @override
+  String get secPortFiltered => 'listening, firewall blocks it';
+
+  @override
+  String get secFwTitle => 'Firewall';
+
+  @override
+  String get secFwUnknown => 'Firewall unknown (needs root)';
+
+  @override
+  String get secFwDenyYes => 'Incoming connections are denied by default';
+
+  @override
+  String get secFwDenyNo => 'Incoming connections are allowed by default';
+
+  @override
+  String secFwChains(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count input chains',
+      one: '1 input chain',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get secMetaIpv6 => 'Global IPv6 addresses';
+
+  @override
+  String get agentRequestInvalid => 'The request is not valid';
+
+  @override
+  String get secSecListen => 'Listening ports';
+
+  @override
+  String get secSecNft => 'Firewall (nftables)';
+
+  @override
+  String get secSecSshd => 'SSH settings';
+
+  @override
+  String get secSecPasswords => 'Password status';
+
+  @override
+  String get secSecSudoers => 'Sudoers files';
+
+  @override
+  String get secSecAuthkeys => 'Authorized SSH keys';
+
+  @override
+  String get secSecCron => 'Cron files';
+
+  @override
+  String get secSecTimers => 'Timers';
+
+  @override
+  String get secSecAutostart => 'Autostart';
+
+  @override
+  String get secSecLogins => 'Recent logins';
+
+  @override
+  String get secSecDocker => 'Docker';
+
+  @override
+  String get secSecSuid => 'SUID files';
+
+  @override
+  String get secSecWorldwritable => 'World-writable files';
+
+  @override
+  String get secSecAgentfiles => 'Agent files';
+
+  @override
+  String get secSecUsers => 'Users';
+
+  @override
+  String get secSecGroups => 'Groups';
+
+  @override
+  String get secSecUpdates => 'Updates';
+
+  @override
+  String get secSecServices => 'Services';
+
+  @override
+  String get secSecSysctl => 'Kernel settings';
+
+  @override
+  String get secSecMeta => 'Machine info';
 }
