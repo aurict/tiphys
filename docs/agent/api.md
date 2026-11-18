@@ -14,7 +14,7 @@ Source of truth: `agent/src/server.ts` (registration), `agent/src/routes/*.ts`, 
   - [Always available](#always-available)
   - [system](#system) · [services](#services) · [docker](#docker) · [power](#power) · [wake](#wake) · [ports](#ports) · [transcribe](#transcribe) · [git](#git) · [homepage](#homepage)
   - [desktop](#desktop): [clipboard, screenshot, open](#clipboard-screenshot-open) · [media](#media) · [windows and apps](#windows-and-apps) · [Sunshine](#sunshine) · [Firefox bridge](#firefox-bridge) · [mobile view](#mobile-view-at-spi) · [live screen](#live-screen)
-  - [claude](#claude) · [watch](#watch) · [alerts](#alerts) · [backups](#backups) · [uptime](#uptime) · [research](#research) · [analysis](#analysis) · [telegram](#telegram) · [incidents](#incidents) · [configfiles](#configfiles) · [databases](#databases)
+  - [claude](#claude) · [watch](#watch) · [alerts](#alerts) · [backups](#backups) · [uptime](#uptime) · [research](#research) · [analysis](#analysis) · [telegram](#telegram) · [incidents](#incidents) · [configfiles](#configfiles) · [databases](#databases) · [security](#security)
 - [Protocols](#protocols)
   - [Live screen WebSocket](#live-screen-websocket)
   - [Claude session WebSocket](#claude-session-websocket)
@@ -36,7 +36,7 @@ Source of truth: `agent/src/server.ts` (registration), `agent/src/routes/*.ts`, 
 
 | Mechanism | Applies to | Details |
 | --- | --- | --- |
-| Service token | only routes that declare its scope (today: `research` → `POST /v1/research/jobs`, `GET`/`DELETE /v1/research/jobs/:id`; `analysis` → `POST /v1/analysis/jobs`, `GET`/`DELETE /v1/analysis/jobs/:id`) | `Authorization: Bearer tps_…` (header only, never `?token=`). Issued for another agent with `tiphys-agent service-token create` or `POST /v1/service-tokens`; shown once, stored as a SHA-256 hash. Any other route, including unknown paths, returns `403 agent.auth.scopeDenied`. The Tailscale identity check applies as for devices. The audit log records the caller as `service:<id>`. |
+| Service token | only routes that declare its scope (today: `research` → `POST /v1/research/jobs`, `GET`/`DELETE /v1/research/jobs/:id`; `analysis` → `POST /v1/analysis/jobs`, `GET`/`DELETE /v1/analysis/jobs/:id`; `security-report` → `GET /v1/security/raw`) | `Authorization: Bearer tps_…` (header only, never `?token=`). Issued for another agent with `tiphys-agent service-token create` or `POST /v1/service-tokens`; shown once, stored as a SHA-256 hash. Any other route, including unknown paths, returns `403 agent.auth.scopeDenied`. The Tailscale identity check applies as for devices. The audit log records the caller as `service:<id>`. |
 | Device token | every route except `GET /v1/health` | `Authorization: Bearer tph_…`. Created by `tiphys-agent pair`; only its SHA-256 hash is stored, and comparison is constant-time. For WebSockets the token may also be sent as the `?token=` query parameter. |
 | Tailscale identity | every route except `GET /v1/health` | When `requireTailscaleLogin` is set, the `Tailscale-User-Login` header (added by `tailscale serve`) must equal it. Otherwise `403 agent.auth.tailnetUserNotAllowed`. |
 | Control token | mutating desktop routes, live screen, Firefox tabs, mobile view, Sunshine actions, Claude PC sessions | `X-Tiphys-Control: tpc_…`, obtained from `POST /v1/desktop/control/session`. It must belong to the calling device and not be expired, and the `control` feature must be on. |
@@ -165,6 +165,24 @@ Every error has the same envelope. The agent sends codes, never sentences; the a
 | `agent.telegram.tooManyFeeds` / `.tooManyInvites` | 400 | At most 20 feeds / 20 pending invites |
 | `agent.telegram.research.notConfigured` | 409 | `research` (PC URL + service token) is not set in the config |
 | `agent.path.notFound` / `agent.path.notAllowed` | 404 / 403 | Path missing / outside `allowedRoots` |
+| `agent.security.hostNotFound` | 404 | Unknown host id (`params.id`) |
+| `agent.security.hostExists` | 409 | `POST /v1/security/hosts` with an id in use, or `self` (`params.id`) |
+| `agent.security.tooManyHosts` | 409 | More than 20 additional hosts |
+| `agent.security.selfPermanent` | 409 | `DELETE /v1/security/hosts/self` |
+| `agent.security.tokenRequired` | 400 | An `agent` source without a token (on create, or on `PATCH` when the URL changed) |
+| `agent.security.noReport` | 409 | Accept baseline for a host that has no report yet |
+| `agent.security.rateLimited` | 429 | More than 6 checks per 10 minutes per device (`/check`), or more than 10 raw reports per 10 minutes per caller (`/raw`) |
+| `agent.security.scriptMissing` / `agent.security.scriptUnsafe` | 409 | `security.self.sudo` is on but `/usr/local/lib/tiphys/audit.sh` is missing, or isn't a regular file owned by root and not writable by group/others (`params.path`) |
+| `agent.security.knownHostsMissing` | 409 | SSH source, but `security-known-hosts` doesn't exist next to `agent.json` |
+| `agent.security.sshFailed` | 502 | `ssh` exited with 255: connection, key or pinned-host-key failure (`params.code`, `params.stderr`, cut to 500 characters) |
+| `agent.security.collectFailed` | 502 | The audit script (or the remote command) exited non-zero (`params.code`, `params.stderr`) |
+| `agent.security.timeout` | 504 | The collector ran into its time limit (90 s ordinary / 300 s full, +20 s for SSH and agent pulls) |
+| `agent.security.reportTooLarge` | 502 | The report is over 2 MiB |
+| `agent.security.unreachable` | 502 | Agent source: connection failed |
+| `agent.security.unauthorized` | 502 | Agent source answered 401/403 (`params.status`): token revoked or missing the `security-report` scope |
+| `agent.security.busy` | 502 | Agent source answered 429 (its raw rate limit) |
+| `agent.security.agentFailed` | 502 | Agent source answered another error or an unreadable body (`params.status`) |
+| `agent.security.badReport` | 502 | The output isn't a complete audit report (wrong header, or no final `@@end`); also stored as the host's `lastError.code` |
 | `agent.exec.commandMissing` | 500 | Required binary not installed (`params.command`) |
 | `agent.exec.failed` | 502 | Command exited non-zero (`command`, `code`, `stderr`) |
 | `agent.exec.timeout` | 504 | Command timed out |
@@ -701,6 +719,47 @@ Feature `databases` (`db/*.ts`; `pg` + `pg-cursor`, `mysql2` and `node:sqlite` l
 **Limits**: rows default 500, max 5000; cell 4 KB; result 8 MB; timeout default 15 s, max 60 s (schema: 60 s; test: 15 s); ≤2 concurrent calls per connection (`agent.db.busy`); 30 queries + previews + saved query runs + write previews per minute per device (`agent.db.rateLimited`); 3 exports per minute; 10 write commits per 10 minutes. Driver error text is passed through `redact` and cut at 500 characters.
 
 **Audit**: connection changes and tests `{conn}` (PATCH also `fields`); queries `{conn, sqlSha256, rows, truncated}`; saved query changes `{query, conn, sqlSha256}`, runs `{query, conn, sqlSha256, rows, truncated}`; exports `{conn, sqlSha256, rows, truncated, bytes}` (or `failed: <code>`); write previews `{conn, sqlSha256, rows (-1 for DDL), preview: true}`; commits `{conn, sqlSha256, rows, write: true}` — never the SQL text or result values. GET routes (schema, preview, discover, saved query list, role helper) are not audited. **Write log** `db-writes.jsonl` (next to `agent.json`, 0600, kept as `.1` past 5 MB): one line per commit attempt that ran, `{at, device, conn, engine, sql (full text; a role password literal is masked), sqlSha256, count, outcome: committed|countChanged|commitFailed, expected?}`.
+
+### security
+
+Feature `security` (`security/*.ts`), device tokens only, except `GET /v1/security/raw`, which also accepts a service token with the `security-report` scope. The monitoring server collects reports of its own machine and of other hosts, evaluates findings and a score, and keeps baselines and changes. See [Security center](../features/security.md).
+
+`:id` is a host id (`[a-z0-9][a-z0-9-]{0,62}`); `self` is this machine and always exists.
+
+| Method | Path | Description |
+| --- | --- | --- |
+| GET | `/v1/security/overview` | `{intervalMinutes, hosts: [summary]}`: `self` first, then the configured hosts. |
+| GET | `/v1/security/hosts/:id` | Host `detail` (below). `404 agent.security.hostNotFound`. Before the first report: empty findings and changes, `report: null`. |
+| POST | `/v1/security/hosts/:id/check` | Strict `{full?: boolean (false)}`. Runs a check now (joins one that is already running) and returns the host `detail`. `full: true` also runs the SUID and world-writable scans. 6 per 10 minutes per device (`agent.security.rateLimited`, checked before the check starts). A failed check returns the collector's error (`agent.security.*`, or `agent.exec.commandMissing` when `ssh`/`sudo`/`sh` is missing) and records it as `lastError`. |
+| POST | `/v1/security/hosts/:id/baseline` | Strict `{confirm: true}` (anything else is `400 agent.request.invalid`; there is no dedicated `confirmRequired` code). Accepts the current state as the new baseline: clears the changes and sends `security.accepted`. Returns `{accepted: <number of changes cleared>, …detail}`. `409 agent.security.noReport` without a report. |
+| GET | `/v1/security/hosts` | `{self: {role, allowedPorts, sudo}, hosts: [host]}`: the settings (not the reports). A `host` is `{id, name, role, allowedPorts, source}`; an `agent` source is returned as `{kind, url, hasToken: true}`, never with its token. |
+| POST | `/v1/security/hosts` | Strict `{id, name (1–80), role?: server\|desktop (server), allowedPorts?: ["tcp/22", …] (≤100), source}` → `201 {host}`. `source` is `{kind: "ssh", host, user, port? (22), keyPath}` (`keyPath`: the private key on this machine, `~` is expanded) or `{kind: "agent", url (https), token (tps_…)}`. `409 agent.security.hostExists` (also for `self`), `409 agent.security.tooManyHosts`, `400 agent.security.tokenRequired`. |
+| PATCH | `/v1/security/hosts/:id` | Strict, all optional: `{name?, role?, allowedPorts?, source?}` → `{host}`. For an `agent` source the token may be omitted while the URL stays the same (kept); with a new URL it is required (`agent.security.tokenRequired`), so a stored token never goes to a new address. For `self`: strict `{role?, allowedPorts?, sudo?: boolean}` → `{self}`. The stored report is re-evaluated at once with the new role/ports. |
+| DELETE | `/v1/security/hosts/:id` | `{ok: true}`; also deletes the host's stored report and baseline. `409 agent.security.selfPermanent` for `self`. |
+| GET | `/v1/security/raw?mode=report\|report-full` | `{text}`: the raw audit output of **this** machine (the same text `audit.sh` prints, plus an `agentfiles` section with the modes of the agent's own files). It runs with this agent's `security.self.sudo` setting. For the monitoring server of another host. Device token or service token with scope `security-report`; 10 per 10 minutes per caller (device id or `service:<id>`). |
+
+Host settings live in their own routes, not in `GET`/`PATCH /v1/config` (the `security` section isn't part of the redacted config), so source tokens never travel back.
+
+**summary**: `{id, name, role: server|desktop, source: local|ssh|agent, score (0–100, null before the first report), counts: {critical, high, medium, low}, changes (number), lastOkAt, lastAttemptAt, lastFullAt, lastError: {code, at} | null, stale (no success for more than 3 intervals), running}`.
+
+**detail**: `{host: summary, policy: {role, allowedPorts}, findings: [{id, rule, severity: critical|high|medium|low, params}], changes: [{id: "category|item", category, item, kind: added|removed|changed, firstSeenAt}], baselineAt, report}`. Findings are sorted by severity, then id. `rule` is translated by the app; rule names, severities and params are listed in [Security center](../features/security.md#score-and-findings). `report` is `null` until the first successful report, otherwise `{mode: report|report-full, root, meta: {hostname, kernel, arch, os, uptimeSec, time, ipv6Global}, listen: [{proto, addr, iface, port, scope: loopback|tailscale|wildcard|private|linklocal|public, process, firewall?: open|filtered}] | null, firewall: {source: "nft", defaultDeny, inputChains} | null, sshd: {mode: effective|config, settings: {key: [values]}} | null, users: [{name, uid, gid, shell}], passwords: [{name, status: empty|set}] | null, groups: {group: [members]}, sudoers: [{path, sha256}] | null, authKeys: [{user, path, bits, fingerprint, comment, type}], cron: [{path, sha256}], timers: [{scope: system|user, name, unit}], autostart: [{path, sha256}] | null, updates: {pending, security, unattended, listsUpdatedAt, rebootRequiredSince}, services: {name: {active, enabled}}, sysctl: {key: value}, logins: [{user, tty, from, raw}], docker: {version, containers: [{name, image, imageId, privileged, networkMode, pidMode, readOnlyRootfs, user, capAdd, mounts: [{source, destination, rw}], ports: [{hostIp, hostPort, container}], project, service}], images: [{id, tags, digests, size, created}]} | null, suid: [{mode, owner, path}] | null (the last full report's list), worldWritable: [{mode, owner, path}] | null (the last full report's list, carried over like `suid`), agentFiles: [{path, mode}] | null, unavailable: [section names]}`. `null` marks "not readable" (e.g. needs root), never "empty".
+
+**Collectors.** `self` runs `sh <agent>/helpers/audit.sh <mode>` as the agent user, or, with `security.self.sudo`, `sudo -n /usr/local/lib/tiphys/audit.sh <mode>` (the installed copy; never the agent's own file). `ssh` hosts run `ssh -T -F /dev/null -i <key> -o BatchMode=yes -o IdentitiesOnly=yes -o IdentityAgent=none -o StrictHostKeyChecking=yes -o UserKnownHostsFile=<security-known-hosts> -o GlobalKnownHostsFile=/dev/null -o ClearAllForwardings=yes -l <user> -- <host> <mode>`: only the mode word is sent; the key's forced command decides what runs. `agent` hosts call `GET <url>/v1/security/raw?mode=<mode>` with the bearer token (no redirects). The output of all three goes through the same parser.
+
+**Check scheduling.** A machine is due when `security.intervalMinutes` passed since its last attempt; an ordinary report is requested, except the first one and one per 24 hours (and `full: true`), which are full. An unreadable report is not a "change": the host keeps its last report and baseline. After 6 hours without a success a host that worked before sends `security.unreachable` once; its first success afterwards sends `security.reachable`.
+
+**Notifications.** All carry `link: tiphys://security/<hostId>`. `agent` is the name of the agent that ran the check (the app uses it to pick the right agent).
+
+| Key | Params | Notes |
+| --- | --- | --- |
+| `security.change` | `host, hostId, agent, count, categories (comma-separated), severity: warning\|critical` | New changes against the baseline, each announced once. `critical` (priority high) when a `users`, `passwords`, `sudoers`, `authKeys`, `ports` or `sshd` item was added or changed, else `warning` (priority default). Opens/joins the host's *security* incident (critical when `severity` is `critical`). |
+| `security.accepted` | `host, hostId, agent, count` | priority low. Closing signal of that incident. |
+| `security.unreachable` | `host, hostId, agent, hours, code` | priority default. `code` is the host's last error code. |
+| `security.reachable` | `host`, `hostId`, `agent` | priority low. |
+
+**Audit** (`audit.jsonl` `detail`): check `{host, full}`, accept baseline `{host, accepted}`, add host `{host, source: ssh|agent}`, change `self` `{host: "self"}`, change another host `{host, source?}`, delete `{host}`. Tokens, key paths and addresses are never logged. The `GET` routes (including `/raw`) are not audited.
+
+**Limits**: 20 additional hosts; 100 expected ports per host; report ≤ 2 MiB; `intervalMinutes` 5–1440 (default 15).
 
 ## Protocols
 

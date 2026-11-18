@@ -49,7 +49,7 @@ The file is validated with a zod schema (`agent/src/config.ts`) when it loads. I
 | `requireTailscaleLogin` | string or `null` | `null` | If set, every authenticated request must carry a `Tailscale-User-Login` header equal to this value. `tailscale serve` adds that header. `null` disables the check. |
 | `features` | object | see below | Feature flags. Routes for a disabled feature are not registered at all. |
 | `devices` | array | `[]` | Paired devices: `{id, name, tokenHash, createdAt}`. Only the SHA-256 hash of each token is stored. Managed by `pair`/`revoke`. Do not edit by hand. |
-| `serviceTokens` | array | `[]` | Scoped tokens for other agents: `{id, name, scopes: ["research" | "analysis"], tokenHash, createdAt, lastUsedAt?}`. Only the hash is stored; `lastUsedAt` is updated at most hourly. Managed by `service-token` and the app. A service token can call only routes of its scopes (see [api.md](api.md#authentication)). |
+| `serviceTokens` | array | `[]` | Scoped tokens for other agents: `{id, name, scopes: ["research" | "analysis" | "security-report"], tokenHash, createdAt, lastUsedAt?}`. Only the hash is stored; `lastUsedAt` is updated at most hourly. Managed by `service-token` and the app. A service token can call only routes of its scopes (see [api.md](api.md#authentication)). |
 | `allowedRoots` | string[] | `["~"]` | Directories that path-based features may touch: git, the Claude working directory and the folder picker. Paths are resolved with `realpath` (symlinks followed) before the check. `~` is expanded. |
 | `claude` | object | see [claude](#claude) | Claude Code profiles. |
 | `homepage` | object | see [homepage](#homepage) | Homepage dashboard integration. |
@@ -68,6 +68,7 @@ The file is validated with a zod schema (`agent/src/config.ts`) when it loads. I
 | `incidents` | object | `{links: [], analysis: {mode: "off", language: "tr"}}` | Incident room options (links, AI analysis). See [incidents](#incidents). |
 | `configFiles` | object | `{extraPaths: []}` | Extra `.env` files for the config editor. See [configFiles](#configfiles). |
 | `databases` | object | `{connections: [], restoreTests: []}` | Database console connections (credentials stay here; saved queries in `db-queries.json`, write log in `db-writes.jsonl`). See [databases](#databases). |
+| `security` | object | `{self: {role: "server", allowedPorts: [], sudo: false}, hosts: [], intervalMinutes: 15}` | Security center: this machine's audit policy, other audited hosts (SSH key or another agent) and the check interval. Host tokens stay here; the app edits it through `/v1/security/hosts`. See [security](#security). |
 
 > **Security:** `requireTailscaleLogin` relies on a header. It only means something when the agent is reachable solely through `tailscale serve` (`listen.host` on loopback). If you bind to a tailnet or LAN address, any client can send that header itself. See [Security](../security.md).
 
@@ -103,6 +104,7 @@ Risk levels below are a guide to how much a holder of a device token can do with
 | `incidents` | `false` | Incident room: alert notifications (alerts, Docker events, watch, backups, Uptime Kuma) become incidents with context (logs, inspect, git, metrics, events, deploys, config changes), rule hints and confirmed actions (container restart, compose recreate, unit restart, compose rollback, disk cleanup). Turns on the `uptime.down/up`, `docker.unhealthy` and `docker.restartLoop` notifications. Local signals need `alerts` (and `docker`); with `docker` on it also tags previous images `tiphys-rollback/*:prev`. See [Incidents](../features/incidents.md). | medium (restarts/rolls back containers, prunes Docker data after confirmation) |
 | `configfiles` | `false` | Config and secrets: view and edit the stacks' `.env` / `env_file` files and `configFiles.extraPaths` with masked values, reveal (rate limited), masked diff preview → confirmed atomic save (optionally recreating the affected compose services with `up -d --no-deps`), backups and restore, secret rotation metadata, a daily rotation reminder (`secret.rotationDue`). Known secret values of all discovered files (rescanned every 10 minutes and on each save) are redacted from incident context. See [Config files and secrets](../features/config-files.md). | high (writes service secrets after confirmation) |
 | `databases` | `false` | Database console: discover database containers; PostgreSQL, MySQL/MariaDB and SQLite connections, schema browser, table preview and read-only queries (layered: statement allowlist + function denylist, read-only session + transaction, statement timeout, single statement, always rolled back; SQLite opened read-only in a child process); saved queries with chart hints, CSV export; write mode (PostgreSQL, MySQL/MariaDB: preview in a rolled-back transaction → confirmed commit if the row count is unchanged, logged in `db-writes.jsonl`). Loads `pg`/`pg-cursor`/`mysql2` only when on. See [Database console](../features/databases.md). | high (reads any data the configured roles can read; writes after preview and confirmation) |
+| `security` | `false` | Security center: audits this machine, hosts without an agent (restricted SSH key) and other agents (`security-report` service token); findings, score, baseline and changes, host firewall evaluation from `nft`, notifications `security.change/accepted/unreachable/reachable`, a *security* incident kind. Serves `GET /v1/security/raw` to a monitoring server. Read-only: nothing on an audited host is changed. See [Security center](../features/security.md). | low (read-only; with `security.self.sudo` it runs the root-owned audit script through `sudo -n`) |
 | `analysis` | `false` | Incident analysis jobs (`/v1/analysis/jobs`) for another agent holding an `analysis` service token (a server's incident room in `remote` mode): a tool-less `claude -p` (no built-in tools, no MCP, no user settings) reads the redacted bundle; output is schema-checked. Turn on only where Claude Code is installed. See [Incidents › AI analysis](../features/incidents.md#ai-analysis-i-3). | low (spends the user's Claude subscription; the model can't act) |
 | `research` | `false` | Web research jobs (`/v1/research/jobs`) run with `agy` (Gemini) and `claude` for another agent holding a `research` service token. The tools may only use the searxng/firecrawl MCP servers and write in the job's work directory; shell commands are denied. See [Research](../features/research.md). | medium (spends the user's AI subscriptions) |
 
@@ -320,6 +322,33 @@ Fields are described in [api.md](api.md#databases) (restore test). The newest du
 
 Next to `agent.json` (both mode 0600): `db-queries.json` holds the saved queries (`{version: 1, queries: [{id, connectionId, name, sql, params, chart, createdAt, updatedAt}]}`, at most 500; managed through `/v1/db/queries`), and `db-writes.jsonl` the write log (one line per commit attempt with the full SQL — a role password literal masked — row count, device, connection and time; kept as `db-writes.jsonl.1` past 5 MB).
 
+### security
+
+```json
+"security": {
+  "self": { "role": "server", "allowedPorts": ["tcp/22"], "sudo": false },
+  "hosts": [
+    { "id": "orion", "name": "orion", "role": "server", "allowedPorts": [],
+      "source": { "kind": "ssh", "host": "orion.my-tailnet.ts.net", "user": "tiphys-audit", "port": 22, "keyPath": "~/.config/tiphys/security-audit-key" } },
+    { "id": "argo", "name": "argo", "role": "desktop", "allowedPorts": [],
+      "source": { "kind": "agent", "url": "https://argo.my-tailnet.ts.net", "token": "tps_…" } }
+  ],
+  "intervalMinutes": 15
+}
+```
+
+Managed from the app through `/v1/security/hosts` (not `PATCH /v1/config`; `GET /v1/config` leaves this section out, so tokens never come back). Read on each use, so changes need no restart (the `security` feature flag itself does).
+
+| Field | Default | Meaning |
+| --- | --- | --- |
+| `self.role` | `server` | `server` or `desktop`. A server is also expected to have automatic updates, `auditd` and AppArmor, and a missing firewall is a low finding instead of a medium one. |
+| `self.allowedPorts` | `[]` | Exposed listeners that are expected, `tcp/22` or `udp/53` (≤100). They raise no `port.exposed` finding. `udp/41641`, `udp/68`, `udp/546` and `udp/5353` are always expected. |
+| `self.sudo` | `false` | Run this machine's audit as root: `sudo -n /usr/local/lib/tiphys/audit.sh <mode>`. Needs the root-owned installed copy (checked on every run: a regular file, owned by root, not writable by group or others, else `agent.security.scriptMissing` / `scriptUnsafe`) and passwordless sudo for the agent user. The agent's own `helpers/audit.sh` is never run with `sudo`, because the agent user can change that file. See the [setup guide](../setup-guide.md#security-center). |
+| `hosts` | `[]` | Up to 20 other audited hosts; `id` (`[a-z0-9-]`, unique, not `self`), `name` (1–80), `role` (`server`), `allowedPorts` (`[]`) and `source`. |
+| `hosts[].source` (`ssh`) | | `{kind: "ssh", host, user, port (22), keyPath}`: a host without an agent, reached with the restricted audit key at `keyPath` (private key on this machine). `host` is a name or an address (no leading `-`, no user part); `user` is normally `tiphys-audit`. The host key must be pinned in `security-known-hosts`. |
+| `hosts[].source` (`agent`) | | `{kind: "agent", url, token}`: another agent with `security` on. `url` must be `https`; `token` is a service token (`tps_…`) with the `security-report` scope. The token is never returned by the API (`hasToken` only). |
+| `intervalMinutes` | `15` | Minutes between checks of each machine (5–1440). A full report (with the SUID scan) runs at most once per 24 hours per machine. |
+
 ## Editing from the app
 
 The app reads the redacted config with `GET /v1/config` and changes it with `PATCH /v1/config` (agent settings screens).
@@ -332,8 +361,9 @@ The app reads the redacted config with `GET /v1/config` and changes it with `PAT
 - `telegram` becomes `{configured, username}` and `research` becomes `{url, wakeHostId, hasToken}`
 - `incidents.analysis` becomes `{mode, url, language, hasToken}`
 - `databases` is left out (connections are read through `/v1/db/connections`, without passwords)
+- `security` is left out (hosts are read through `/v1/security/hosts`; an agent source returns `hasToken` instead of its token)
 
-**Patchable fields:** `name`, `features` (partial), `allowedRoots`, `claude`, `homepage`, `pushToken` (string or `null`), `uptimeKuma`, `sunshine`, `wake`, `watch`, `alerts`, `transcribe`, `desktop`, `backups`, `research` (`{url, token?, wakeHostId?}` or `null`), `stacks` (`{roots}`), `incidents` (`{links?, analysis?: {mode, url? (null clears), token?, language?}}`; an omitted part is kept), `configFiles` (`{extraPaths}`). The bot token has its own route (`PUT /v1/telegram/bot`). Unknown keys are rejected. The phone **cannot** change `listen`, `requireTailscaleLogin`, `devices`, `serviceTokens` or push endpoints this way (service tokens have their own routes, `/v1/service-tokens`; they are not part of `GET /v1/config`).
+**Patchable fields:** `name`, `features` (partial), `allowedRoots`, `claude`, `homepage`, `pushToken` (string or `null`), `uptimeKuma`, `sunshine`, `wake`, `watch`, `alerts`, `transcribe`, `desktop`, `backups`, `research` (`{url, token?, wakeHostId?}` or `null`), `stacks` (`{roots}`), `incidents` (`{links?, analysis?: {mode, url? (null clears), token?, language?}}`; an omitted part is kept), `configFiles` (`{extraPaths}`). `databases` and `security` are not patchable here (`/v1/db/*`, `/v1/security/hosts`). The bot token has its own route (`PUT /v1/telegram/bot`). Unknown keys are rejected. The phone **cannot** change `listen`, `requireTailscaleLogin`, `devices`, `serviceTokens` or push endpoints this way (service tokens have their own routes, `/v1/service-tokens`; they are not part of `GET /v1/config`).
 
 **Password fields.** For `uptimeKuma.password`, `sunshine.password`, `alerts.grafana.token`, `research.token` and `incidents.analysis.token`, an omitted value keeps the stored secret, but only if the URL is unchanged. If the URL changes and no new secret is sent, the request fails with `agent.config.passwordRequired`, so an old secret is never sent to a new host. Sending `null` for the section removes it.
 
@@ -341,7 +371,7 @@ The app reads the redacted config with `GET /v1/config` and changes it with `PAT
 
 | Setting | Takes effect |
 | --- | --- |
-| `name`, `allowedRoots`, `claude`, `homepage`, `pushToken`, `wake`, `transcribe`, `sunshine`, `desktop.clipboardSync`, `backups.checks`, `research`, `stacks`, `incidents`, `configFiles` | Immediately (read on each use) |
+| `name`, `allowedRoots`, `claude`, `homepage`, `pushToken`, `wake`, `transcribe`, `sunshine`, `desktop.clipboardSync`, `backups.checks`, `research`, `stacks`, `incidents`, `configFiles`, `security` (through `/v1/security/hosts`) | Immediately (read on each use) |
 | `features.control = false` | Immediately. The open control session ends at once. |
 | other `features`, `alerts` | After restart (`restartRequired: true`) |
 | `uptimeKuma`, `watch` | After restart. The bridge and watcher read these only at startup, but the response does **not** set `restartRequired` for them. |
@@ -357,7 +387,7 @@ The binary is `tiphys-agent`, which is `node agent/dist/cli.js` after `npm run b
 | `tiphys-agent pair --name "Phone" [--url https://argo.my-tailnet.ts.net]` | Adds a device and prints a QR code. The QR holds `{"v":1,"type":"tiphys-pair","agent","url","token"}`. The address and token are also printed for manual entry. The token (`tph_…`) is shown only once. Scan it in the app's agent pairing screen. **Always pass `--url`**: the default is `http://<listen.host>:<listen.port>`, which is a loopback address the phone cannot reach. |
 | `tiphys-agent devices` | Lists paired devices (`id`, `name`, `createdAt`, tab-separated). |
 | `tiphys-agent revoke <device-id>` | Removes a device and its push endpoint. |
-| `tiphys-agent service-token create --name NAME --scope research\|analysis` | Creates a scoped service token (`tps_…`) and prints it **once**; only its hash is stored. Give it to the other agent (e.g. atlas's `research.token`, a server's `incidents.analysis.token`). |
+| `tiphys-agent service-token create --name NAME --scope research\|analysis\|security-report` | Creates a scoped service token (`tps_…`) and prints it **once**; only its hash is stored. Give it to the other agent (e.g. atlas's `research.token`, a server's `incidents.analysis.token`, or the token of an `agent` host in atlas's `security.hosts`). `--scope` may be repeated. |
 | `tiphys-agent service-token list` | Lists service tokens (`id`, `name`, `scopes`, `createdAt`, `lastUsedAt`, tab-separated). |
 | `tiphys-agent service-token revoke <id>` | Revokes a service token. |
 | `tiphys-agent run -- CMD [ARGS…]` | Runs a command with inherited stdio. When it exits, sends `command.done` (exit 0) or `command.failed` with the duration and exit code, then exits with the same code. Only the program name of the command is written to the event log; the notification shows up to 120 characters of the full command line. |
@@ -369,7 +399,7 @@ Pairing and revoking can also be done from the app: `DELETE /v1/devices/:id` and
 
 ## Files on disk
 
-All state files sit next to `agent.json` (by default in `~/.config/tiphys/`) and are written with mode `0600`.
+All state files sit next to `agent.json` (by default in `~/.config/tiphys/`) and are written with mode `0600`. `security-known-hosts` and the SSH audit key are the files you create yourself (use `0600` for the key; the agent flags group/other permissions of its own files under `files.agentPerms`).
 
 | File | Written by | Content |
 | --- | --- | --- |
@@ -383,6 +413,8 @@ All state files sit next to `agent.json` (by default in `~/.config/tiphys/`) and
 | `claude-schedules.json` | `claude` | Scheduled Claude tasks. |
 | `telegram-state.json` | `telegram` | Recipients (chat id, names, status, subscriptions), invites, feeds, the `getUpdates` offset and the newsletter archive (last 60 issues per feed with items, rendered parts and deliveries). No tokens. A corrupt file is moved aside to `telegram-state.json.corrupt-<time>` and the agent starts empty (event `telegram.stateCorrupt`). |
 | `incidents/` | `incidents` | Directory (`0700`): `index.json` (summaries) and `<id>.json` per incident (redacted logs, inspect summary, git log/status, metrics, deploys, timeline, notes). Atomic writes, `0600`. Resolved incidents are deleted after 90 days; at most 500 are kept (oldest resolved first). `deploys.jsonl` (`incidents` + `docker`, `0600`): compose service image changes (ids, references, container names; no env); rotated at 1 MB to `deploys.jsonl.1`. |
+| `security-state.json` | `security` | Per host: the last parsed report, findings, score, the baseline snapshot and its time, the list of changes (with the ids already notified), and the last error. No tokens. Atomic writes. A corrupt file is moved aside to `security-state.json.corrupt-<time>` and the next report starts a new baseline silently. State of a host removed from `security.hosts` is dropped. |
+| `security-known-hosts` | you (`security` + SSH hosts) | OpenSSH `known_hosts` file with the **pinned host keys** of the SSH hosts. Not written by the agent: you add the entries after checking the fingerprint (see the [setup guide](../setup-guide.md#security-center)). Without it SSH checks fail with `agent.security.knownHostsMissing`; the agent uses `StrictHostKeyChecking=yes` and never learns keys on its own. |
 | `secrets-meta.json` | `configfiles` | Per file and key: `{fingerprint (HMAC-SHA256 with secrets-hmac.key), firstSeenAt, lastChangedAt, changedBy, maxAgeDays?, mark?}`; per file `rotationNotifiedOn` (local date of the last rotation reminder). No values. Atomic writes. |
 | `secrets-hmac.key` | `configfiles` | 32 random bytes (hex) keying the fingerprints. Never leaves the agent. |
 | `research-jobs.json` | `research` | Research jobs of the last 24 h with their results (public news; no tokens, no MCP settings). |
@@ -399,6 +431,8 @@ Other locations:
 | `$XDG_RUNTIME_DIR/tiphys/llm/run-*/` (fallback `~/.cache/tiphys/llm/`) | Empty `0700` working directory of a tool-less `claude -p` run (incident analysis, I-3); removed after the run. |
 | `~/.local/state/tiphys/config-backups/<fileId>/<time>` (`$XDG_STATE_HOME` if set) | `configfiles`: the previous version of a config file before each save or restore (directories `0700`, files `0600`, last 10 per file). These are copies of the `.env` file, secrets included. |
 | `.<name>.tiphys-<random>.tmp` next to a config file | `configfiles`: temp file of an atomic save; removed on failure, renamed over the file on success. |
+| `/usr/local/lib/tiphys/audit.sh` | Root-owned installed copy of `agent/helpers/audit.sh`: used with `security.self.sudo`, and on hosts audited over SSH (installed there by `tools/install-audit.sh`). |
+| `~/.config/tiphys/security-audit-key` (+ `.pub`) | Conventional location of the restricted SSH audit key on the monitoring server (`security.hosts[].source.keyPath`). |
 | `$TMPDIR/tiphys-voice-*` | Temporary audio for `/v1/transcribe`, deleted after each request. |
 | `services.yaml` (`homepage.servicesPath`) | Rewritten in place when a service is added from the app. |
 

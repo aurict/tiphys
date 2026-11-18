@@ -377,7 +377,7 @@ stacks and log search work over SSH; the home screen shows it online when its SS
 | `pair --name "Phone" --url https://argo.my-tailnet.ts.net:7443` | Add a device, print the QR code and the one-time token. |
 | `devices` | List paired devices (`id`, `name`, `createdAt`). |
 | `revoke <device-id>` | Remove a device and its push endpoint. |
-| `service-token create --name atlas --scope research` | Create a scoped token (`tps_…`), printed once. |
+| `service-token create --name atlas --scope research` | Create a scoped token (`tps_…`), printed once. Scopes: `research`, `analysis`, `security-report`. |
 | `service-token list` / `service-token revoke <id>` | List / revoke service tokens. |
 | `run -- CMD [ARGS…]` | Run a command and send a "done/failed" push when it ends. |
 | `firefox install` | Register the Firefox native-messaging host (PC). |
@@ -662,6 +662,7 @@ heavy modules (Claude SDK, Uptime Kuma bridge, watchers) are not loaded.
 | `backups` | off | backup freshness checks every 15 min | `backups.checks` | low |
 | `research` | off | web research jobs for another agent with a service token | `agy`, `claude`, searxng and firecrawl MCP servers | medium (spends your AI subscriptions) |
 | `telegram` | off | Telegram newsletters: bot, invites, feeds, approval, delivery | bot token, `research` link to a PC | low (messages people you invited) |
+| `security` | off | security audit of this machine, SSH-only hosts and other agents: findings, score, baseline changes, firewall evaluation, notifications, incident link | `ss`, `ssh` (SSH hosts), root-owned `audit.sh` + passwordless sudo for the agent user for a root-level audit | low |
 
 Risk is a guide to what a holder of a device token can do: **low** = read-only or notification only, **medium** =
 narrow state changes, **high** = run code, change files, cut power or drive the desktop.
@@ -1056,6 +1057,136 @@ open port.
 Bot messages are not end-to-end encrypted; newsletters are built from public information only. More:
 [features/telegram.md](features/telegram.md).
 
+### Security center
+
+The security center audits machines read-only and shows score, findings and changes in the app (what it checks and
+how: [features/security.md](features/security.md)). One agent is the **monitoring server** (`atlas`): it collects
+the reports of its own machine, of SSH-only hosts and of other agents. Do these parts as needed. The checkout
+(`~/tiphys`) must be the same release as the agents: the installed audit script is copied from it.
+
+#### a. The monitoring server (`atlas`)
+
+1. Turn on `security` on `atlas` and restart the agent. Open *System › Security* in the app (Turkish UI: *Sistem ›
+   Güvenlik*): `atlas` is listed as *This machine*. The first check runs about 30 seconds after the start and the
+   first good report becomes the baseline silently. Set its role (`server` or `desktop`) and the ports that are
+   meant to be open (*Audit settings › Expected open ports*, e.g. `tcp/22`).
+2. This already works without root, but some sections are then unavailable (the host firewall, password status,
+   sudoers, SUID, other users' keys). For the **root-level audit** of `atlas` itself, install the script as a
+   root-owned file, outside anything the agent user can write. The agent user on `atlas` already has passwordless
+   sudo (as `tools/deploy-agent.sh` needs), so no extra sudoers entry is required:
+
+   ```bash
+   # on atlas, from the deployed agent (tools/deploy-agent.sh puts helpers/ in ~/tiphys-agent)
+   sudo install -d -o root -g root -m 0755 /usr/local/lib/tiphys
+   sudo install -o root -g root -m 0755 ~/tiphys-agent/helpers/audit.sh /usr/local/lib/tiphys/audit.sh
+   ```
+
+   Then turn on **Check with sudo** (*Audit settings › This machine*),
+   or `PATCH /v1/security/hosts/self {"sudo": true}`, or `"security": {"self": {"sudo": true}}` in `agent.json`.
+   The next report is a root report, so it starts a **new baseline** silently.
+
+   **Why the agent's own copy is never run with sudo:** `~/tiphys-agent/helpers/audit.sh` belongs to the agent's
+   user, who could change it; running a file the agent user can write as root would hand that user (and anything
+   that compromises the agent) root. The agent therefore runs only `/usr/local/lib/tiphys/audit.sh`, and before every
+   run checks that it is a regular file owned by root and not writable by group or others
+   (`agent.security.scriptMissing` / `scriptUnsafe` otherwise). Copy it again after every upgrade of the agent
+   (step 2's `install` line) so the installed script and the parser stay in step.
+
+#### b. A host without an agent (`orion`)
+
+The monitoring server logs in with a restricted key that can only run the audit script (design:
+[security.md](security.md#security-center-audit-key)). You need an admin login with passwordless `sudo` on `orion`
+once, for the installation; `atlas` and `orion` must both be in your tailnet.
+
+1. **Key** (on `atlas`, as the agent user; no passphrase, because the agent connects non-interactively):
+
+   ```bash
+   ssh-keygen -t ed25519 -N '' -C tiphys-audit -f ~/.config/tiphys/security-audit-key
+   chmod 600 ~/.config/tiphys/security-audit-key
+   tailscale ip -4        # atlas's Tailscale address: the only address the key will be accepted from
+   ```
+
+   Copy `security-audit-key.pub` to the machine you install from.
+2. **Install** (from the checkout on `argo`, which has the script and the installer):
+
+   ```bash
+   cd ~/tiphys
+   tools/install-audit.sh admin@orion.my-tailnet.ts.net <atlas-tailscale-ip> ~/security-audit-key.pub [admin-key]
+   ```
+
+   `admin@…` is the admin login with passwordless sudo; `[admin-key]` is its private key if it isn't the default.
+   The script installs `/usr/local/lib/tiphys/audit.sh` (hash-checked), the user `tiphys-audit` (locked password, no
+   groups, not in `docker`), a sudoers entry for that one script, a root-owned `authorized_keys` with
+   `restrict,from="<atlas IP>",command="sudo -n …"`, and, only if sshd already uses `AllowUsers`, a drop-in
+   `/etc/ssh/sshd_config.d/05-tiphys-audit.conf` that adds the user (`sshd -t` must pass before the reload). The
+   sudoers entry has no `Defaults` lines, so it also works with `sudo-rs`. Re-run it to update the script after an
+   upgrade. It prints `installed <sha256>` on success.
+3. **Pin the host key** (no trust on first use). `atlas` will connect with `StrictHostKeyChecking=yes` and a file
+   that only you fill. On `atlas`:
+
+   ```bash
+   ssh-keyscan -t ed25519 orion.my-tailnet.ts.net > /tmp/orion.key      # -p PORT for a non-standard port
+   ssh-keygen -lf /tmp/orion.key                                        # note the SHA256:… fingerprint
+   ```
+
+   On `orion`, over a channel you trust (your own admin session, the console):
+
+   ```bash
+   ssh-keygen -lf /etc/ssh/ssh_host_ed25519_key.pub
+   ```
+
+   Only if the two fingerprints are identical:
+
+   ```bash
+   cat /tmp/orion.key >> ~/.config/tiphys/security-known-hosts && chmod 600 ~/.config/tiphys/security-known-hosts
+   rm /tmp/orion.key
+   ```
+
+   The name in the file must be the one you give as the SSH address in step 4 (for a non-standard port the entry
+   reads `[host]:port`). Without the file the check fails with `agent.security.knownHostsMissing`; with a wrong or
+   changed key the SSH check fails (`agent.security.sshFailed`).
+4. **Add the host** in the app (*Security › Audit settings › Add machine*: ID `orion`, name, source *SSH*, address
+   `orion.my-tailnet.ts.net`, user `tiphys-audit`, port, key file `~/.config/tiphys/security-audit-key`), or:
+
+   ```bash
+   curl -sS -X POST https://atlas.my-tailnet.ts.net/v1/security/hosts \
+     -H "Authorization: Bearer tph_…" -H 'content-type: application/json' \
+     -d '{"id":"orion","name":"orion","role":"server","source":{"kind":"ssh","host":"orion.my-tailnet.ts.net","user":"tiphys-audit","port":22,"keyPath":"~/.config/tiphys/security-audit-key"}}'
+   ```
+
+   Press *Check now* on the machine's screen: a first report within a minute or so. Test the restriction from `atlas`
+   if you like: `ssh -i ~/.config/tiphys/security-audit-key -o IdentitiesOnly=yes -o StrictHostKeyChecking=yes -o
+   UserKnownHostsFile=~/.config/tiphys/security-known-hosts tiphys-audit@orion.my-tailnet.ts.net id` must **not**
+   print an id (the script answers `tiphys-audit: unsupported request`).
+5. **Remove** it: `tools/install-audit.sh --uninstall admin@orion.my-tailnet.ts.net [admin-key]` deletes the sudoers
+   entry, the sshd drop-in, the user, its home and `/usr/local/lib/tiphys`; then delete the host in the app and the
+   line in `security-known-hosts`.
+
+#### c. Another agent (`argo`)
+
+1. On `argo`: turn on `security` and restart the agent. It needs no root and no setup: it serves its own raw report
+   to the monitoring server (`GET /v1/security/raw`). The PC audit is rootless (no firewall ruleset, no password or
+   SUID checks).
+2. On `argo`, create a service token for `atlas`:
+
+   ```bash
+   node dist/cli.js service-token create --name atlas-security --scope security-report   # prints tps_… once
+   ```
+
+   then restart the agent (CLI changes apply after a restart). The token can call only `GET /v1/security/raw`.
+3. On `atlas`: add `argo` as a machine with source *Agent*: agent URL `https://argo.my-tailnet.ts.net` and the token,
+   in the app (*Audit settings › Add machine*) or with `POST /v1/security/hosts` and
+   `"source": {"kind": "agent", "url": "https://argo.my-tailnet.ts.net", "token": "tps_…"}`, role `desktop`.
+   Expected ports for `argo` are set on `atlas` (they apply to the monitoring server's evaluation).
+
+   When `argo` is off or asleep, its last known state stays (marked stale); the PC is never woken for this. If it
+   stays unreachable for 6 hours, a `security.unreachable` notification is sent once.
+
+**Check.** *System › Security* lists `atlas` (and `orion`, `argo`) with a score. Make a harmless change (for example
+add a throwaway user or open a test port), wait for the next check or press *Check now*: the machine shows a change,
+you get a `security.change` push and an incident of kind *security* opens; *Accept this state* clears it.
+Troubleshooting codes are in [Troubleshooting](#13-troubleshooting).
+
 ## 11. Settings reference
 
 ### Agent settings: app or agent.json
@@ -1078,6 +1209,7 @@ instead, and leaving a password field empty keeps the stored value as long as th
 | `telegram` (bot token) | app: *Telegram › Bot* | immediately |
 | devices | CLI `pair` / `revoke`; app: *Paired devices*, *Lock everything* | CLI: after restart; app: immediately |
 | `serviceTokens` | CLI `service-token`; app: *Research* screen | CLI: after restart; app: immediately |
+| `security` (role, expected ports, sudo, audited machines) | app: *Security › Audit settings* (`/v1/security/hosts`) or `agent.json` | immediately |
 | `name` | `agent.json` or `init --name` | after restart |
 | `claude.profiles`, `claude.defaultProfile` | `agent.json` | immediately |
 | `wake.targets` | `agent.json` | immediately |
@@ -1121,6 +1253,9 @@ These live in the phone's profile (export/import as `.tiphys.json`), not on any 
 | `claude` | `claude-sessions.json`, `claude-schedules.json`, `claude-shots/` | `0600` | sessions, schedules, PC-session screenshots (last 60) |
 | `desktop` | `control-indicator.json`, `a11y-state.json` | `0600` | values to restore after a crash |
 | `telegram` | `telegram-state.json` | `0600` | recipients, invites, feeds, archive (no tokens) |
+| `security` | `security-state.json` | `0600` | last report, findings, baseline and changes per audited machine (no tokens) |
+| `security` (SSH hosts) | `security-known-hosts`, `security-audit-key` | `0600` | pinned host keys (you fill it) and the restricted audit key's private half |
+| root-level audit | `/usr/local/lib/tiphys/audit.sh` | `0755`, root-owned | the audit script, on `atlas` (with `security.self.sudo`) and on SSH-audited hosts |
 | `research` | `research-jobs.json`; work dirs in `$XDG_RUNTIME_DIR/tiphys/research/` | `0600` / `0700` | last 24 h of jobs |
 | PC | `~/.config/systemd/user/tiphys-agent.service` (+ `.d/` drop-in) | | the unit |
 | server | `~/tiphys-agent/` | | deployed `dist/`, `helpers/`, `node_modules/` |
@@ -1163,6 +1298,10 @@ list on every new install:
       screenshots.
 - [ ] `~/.config/tiphys/` is `0700` and its files `0600` (`ls -la ~/.config/tiphys`).
 - [ ] Pairing used `--url` with the HTTPS tailnet name.
+- [ ] Security center: SSH host keys are pinned by hand (fingerprints compared out of band); the audit key is `0600`, used only
+      by the monitoring server, and `from=`-restricted to its Tailscale IP; `/usr/local/lib/tiphys/audit.sh` is root-owned
+      (`ls -l`) and `security.self.sudo` is on only with that copy; the `security-report` token is held only by the
+      monitoring server.
 
 Read [security.md](security.md) for the full threat model.
 
@@ -1173,6 +1312,8 @@ Read [security.md](security.md) for the full threat model.
 | Phone device token | revoke the device (app: immediately; CLI: then restart), pair again. Lost phone: revoke it at once, or *Lock everything*. |
 | Service token (research) | app: *Research* screen › revoke, then *Connect to a Telegram agent* again. CLI: `service-token revoke <id>` + restart, create a new one, update `research.token` on the Telegram agent. |
 | Telegram bot token | in @BotFather: `/revoke` (choose the bot) to get a new token, then *Telegram › Replace bot token* in the app. The old token stops working immediately. |
+| SSH audit key (security center) | on the monitoring server: `ssh-keygen` a new key, run `tools/install-audit.sh` again for each host with the new `.pub` (it replaces the root-owned `authorized_keys` line), point the host's key file at the new key, delete the old key. A host whose key may be exposed: `--uninstall`. |
+| Service token (`security-report`) | `service-token revoke <id>` on the audited agent + restart, create a new one, enter it in the host's settings on the monitoring server (*Audit settings*). |
 | ntfy publish token | create a new token on the ntfy server, put it into `push.token` on each agent (stop/edit/start), then delete the old token on the server. |
 | Grafana service account token | create a new token in Grafana, enter it in *Agent settings › Grafana alerts* (and *Settings › Integrations › Grafana*), delete the old one. |
 | Uptime Kuma / Sunshine passwords | change them in the service, then enter the new ones in *Agent settings*. |
@@ -1214,6 +1355,10 @@ Most problems are covered in [troubleshooting.md](troubleshooting.md); error cod
 | `agent.telegram.research.unauthorized` | Service token revoked, or the PC's Tailscale login check rejects a tagged server. |
 | `agent.telegram.invalidToken` | The pasted bot token is wrong or was revoked in @BotFather. |
 | `agent.telegram.noRecipients` | No active subscriber for that feed. |
+| `agent.security.knownHostsMissing` / `agent.security.sshFailed` | No `security-known-hosts` next to `agent.json`, or the host key doesn't match the pinned one (host reinstalled? compare the fingerprint again), the key isn't accepted (`from=` must be the address `atlas` connects from: its Tailscale IP), `orion` is down, or sshd's `AllowUsers` lacks `tiphys-audit`. `params.stderr` has the ssh message. |
+| `agent.security.scriptMissing` / `agent.security.scriptUnsafe` | `security.self.sudo` is on but `/usr/local/lib/tiphys/audit.sh` is missing or isn't root-owned and not group/other-writable. Install it as in [Security center](#security-center), or turn *Check with sudo* off. |
+| `agent.security.collectFailed` with `sudo: a password is required` in `stderr` | The agent user has no passwordless `sudo` on this machine (`sudo -n` is used). |
+| `agent.security.unauthorized` | The `security-report` token of an agent host was revoked, or its Tailscale login check rejects the monitoring server. |
 | `agent.uptime.notConnected` | Wrong Uptime Kuma URL/login, or the agent was not restarted after setting it. |
 | `agent.homepage.fileNotFound` | Wrong `services.yaml` path in *Agent settings › Homepage*. |
 | `agent.ports.shareFailed` | Run `sudo tailscale set --operator=$USER`. |

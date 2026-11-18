@@ -70,7 +70,7 @@ To report a vulnerability, see [SECURITY.md](../SECURITY.md).
 Each area of functionality is a flag in `agent.json`. If a flag is off, its routes are not registered and heavy
 modules such as the Claude SDK are not even loaded. On a new configuration only `system`, `services`, `docker` and
 `power` are on. Everything that runs code on your behalf or touches the desktop (`claude`, `git`, `desktop`,
-`control`, `ports`, `transcribe`, `wake`, `watch`, `uptime`, `alerts`, `backups`, `homepage`) must be enabled
+`control`, `ports`, `transcribe`, `wake`, `watch`, `uptime`, `alerts`, `backups`, `homepage`, `security`) must be enabled
 explicitly. Enable only what a machine needs. A server usually needs no `claude`, `desktop` or `control`.
 
 ## Path restrictions
@@ -198,6 +198,55 @@ in `claude-shots/` (last 60) and in Claude Code's own transcript.
   enable Sunshine at boot. Start it from Tiphys when needed and stop it afterwards. Unpair clients in Sunshine's
   web UI.
 
+## Security center audit key
+
+The [Security center](features/security.md) audits a host that has no agent through an SSH key that can do exactly
+one thing. The design goal: the monitoring server must not become a way to run code on the audited host.
+
+- **Forced command.** The key's line in `authorized_keys` is
+  `restrict,from="<monitoring server's Tailscale IP>",command="sudo -n /usr/local/lib/tiphys/audit.sh \"$SSH_ORIGINAL_COMMAND\"" ssh-ed25519 …`.
+  Whatever the client asks for, sshd runs that command; the client's text arrives only as **one quoted argument**
+  (`$SSH_ORIGINAL_COMMAND`), never interpreted by a shell as a command line. The script accepts `report` and
+  `report-full` and exits with status 2 on anything else, without running anything.
+- **`restrict` and `from=`.** `restrict` turns off port, agent and X11 forwarding, tunnels and the terminal; `from=`
+  makes the key useless from any other address, so a copy stolen from the monitoring server is not usable from
+  elsewhere. The monitoring side also connects with `IdentitiesOnly`, no agent, `ClearAllForwardings` and a
+  pinned host key (below).
+- **Root-owned, not editable by the audit user.** The `tiphys-audit` account's home directory, its `.ssh` directory
+  and `authorized_keys` belong to root, so the account cannot add keys or loosen the restrictions. The script
+  (`/usr/local/lib/tiphys/audit.sh`, `root:root 0755`, installed with a SHA-256 check) cannot be changed by it either.
+  The account has a locked password (`*`), no extra groups and is **not** in the `docker` group, which is
+  root-equivalent.
+- **Single-command sudo.** `/etc/sudoers.d/tiphys-audit` allows only `tiphys-audit ALL=(root) NOPASSWD:
+  /usr/local/lib/tiphys/audit.sh`, validated with `visudo` before it is installed. It has no `Defaults` lines, so it
+  also works with `sudo-rs`. Root is needed for `sshd -T`, `nft`, `/etc/shadow` status, sudoers hashes, other users'
+  `authorized_keys`, the SUID scan and `ss -p`.
+- **`AllowUsers`.** If (and only if) the host's sshd already restricts logins with `AllowUsers`, the installer adds
+  `tiphys-audit` with a drop-in (`/etc/ssh/sshd_config.d/05-tiphys-audit.conf`); it checks `sshd -t` before reloading.
+- **No trust on first use.** The monitoring server connects with `StrictHostKeyChecking=yes` and only the file
+  `security-known-hosts`; you pin the host key yourself after comparing its fingerprint over another channel.
+- **Why Lynis is not streamed.** Piping a scanner over SSH and running it as root would turn the restricted key into a
+  channel for running arbitrary code as root on the audited host, which defeats the restriction, and it would leave
+  files behind. The audit script contains a fixed subset of checks instead, and the scoring happens on the monitoring
+  server.
+- **`security.self.sudo`.** On the monitoring server's own machine the same script runs through `sudo -n`, but only
+  the root-owned copy at `/usr/local/lib/tiphys/audit.sh`, which the agent checks on every run (root-owned, not
+  group/other writable). The agent's own copy in `helpers/` is never run as root: the agent user can change it.
+
+**What the monitoring server can do on the audited host:** run the audit script as root with `report` or
+`report-full`, and nothing else; it receives the script's text output. **What it cannot do:** run another command,
+get a shell or a terminal, forward ports, change a file, add a key or read a file other than through the script's fixed
+checks. The report does contain names and paths (users, container and image names, mount paths, published ports,
+login sources) and fingerprints and hashes, but no secrets: no environment, key material, password hashes or file
+contents (see [what it never prints](features/security.md#what-it-never-prints)). Anyone who can change the root-owned
+script on the host can of course run code as root there; that is root's own power. If the monitoring server is
+compromised, an attacker can read these reports and can try the key only from the allowed address; remove the host
+with `tools/install-audit.sh --uninstall` to cut it off.
+
+Between agents, `GET /v1/security/raw` hands the same report text to a holder of a `security-report` service token (or
+any device token). That service token can call no other route. If the audited agent has `security.self.sudo` on, the
+text is a root-level report, so treat the token like a read-only credential for that report.
+
 ## Notifications and clipboard
 
 - Payloads are encrypted end-to-end with the phone's WebPush keys (RFC 8291, aes128gcm). The ntfy server sees
@@ -223,5 +272,7 @@ in `claude-shots/` (last 60) and in Claude Code's own transcript.
 - Keep `control`, `claude` and `ports` off where not needed. Narrow `allowedRoots`.
 - Set an app lock. Revoke a phone right away if it is lost.
 - Keep Sunshine stopped when not in use.
+- Pin SSH host keys for the security audit yourself, install the audit script root-owned, and keep the audit key
+  `0600` on the monitoring server only.
 - Use a dedicated Firefox profile (or ESR installation) for the bridge if you are uncomfortable disabling signature
   checks in your main profile.
