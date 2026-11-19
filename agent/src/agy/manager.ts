@@ -177,8 +177,11 @@ export class AgyManager {
   #spawn: Spawn | undefined;
   #reaper: NodeJS.Timeout;
 
-  constructor(notifier: Notifier, spawnFn?: Spawn) {
+  #agent: () => string;
+
+  constructor(notifier: Notifier, spawnFn?: Spawn, agentName: () => string = () => "") {
     this.#notifier = notifier;
+    this.#agent = agentName;
     this.#spawn = spawnFn;
     this.#reaper = setInterval(() => this.#reap(), 60_000);
     this.#reaper.unref();
@@ -381,7 +384,7 @@ export class AgyManager {
       key: "agy.waiting",
       // The tool kind only (execute, edit…): a tool title can be the whole command line, which may hold a password
       // and would land in the event log and unencrypted push endpoints. The app shows the command inside the session.
-      params: { title: s.title, tool: clip(tc.kind, 40) || "tool" },
+      params: { title: s.title, tool: clip(tc.kind, 40) || "tool", agent: this.#agent() },
       link: `tiphys://agy/${s.id}`,
       priority: "high",
       data: { sessionId: s.id, requestId },
@@ -400,12 +403,12 @@ export class AgyManager {
       s.pending.clear();
       s.emit({ kind: "turnEnd", stopReason: clip(r.stopReason, 40) });
       s.setStatus("idle");
-      void this.#notifier.send({ key: "agy.done", params: { title: s.title }, link: `tiphys://agy/${s.id}`, priority: "low" });
+      void this.#notifier.send({ key: "agy.done", params: { title: s.title, agent: this.#agent() }, link: `tiphys://agy/${s.id}`, priority: "low" });
     } catch (e) {
       if ((s.status as AgyStatus) === "ended") return; // closed meanwhile
       s.emit({ kind: "error", text: e instanceof AppError ? e.code : "agent.agy.promptFailed" });
       s.setStatus("idle");
-      void this.#notifier.send({ key: "agy.error", params: { title: s.title }, link: `tiphys://agy/${s.id}` });
+      void this.#notifier.send({ key: "agy.error", params: { title: s.title, agent: this.#agent() }, link: `tiphys://agy/${s.id}` });
     }
   }
 

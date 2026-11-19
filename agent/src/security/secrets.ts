@@ -408,7 +408,11 @@ export class SecretScanner {
     let n = 0;
     for (const f of Object.values(this.state.findings)) {
       if (f.source !== g.source || f.where !== g.where || f.rule !== g.rule) continue;
-      if (g.pathPrefix !== undefined && !(f.file ?? "").startsWith(g.pathPrefix)) continue;
+      // pathPrefix = one folder ("a/"): files directly in it, not in its subfolders.
+      if (g.pathPrefix !== undefined) {
+        const file = f.file ?? "";
+        if (!file.startsWith(g.pathPrefix) || file.slice(g.pathPrefix.length).includes("/")) continue;
+      }
       if (g.stream !== undefined && f.stream !== g.stream) continue;
       if (f.dismissed !== dismissed) n++;
       f.dismissed = dismissed;

@@ -23,7 +23,7 @@ function parse<T>(schema: z.ZodType<T>, v: unknown): T {
 
 export function agyRoutes(opts: { spawn?: Spawn; manager?: AgyManager } = {}) {
   return async (app: FastifyInstance, ctx: Ctx) => {
-    const mgr = opts.manager ?? new AgyManager(ctx.notifier, opts.spawn);
+    const mgr = opts.manager ?? new AgyManager(ctx.notifier, opts.spawn, () => ctx.store.get().name);
     app.addHook("onClose", async () => mgr.shutdown());
     const startLimit = new RateLimit(6, 60_000);
     const listLimit = new RateLimit(10, 60_000);
