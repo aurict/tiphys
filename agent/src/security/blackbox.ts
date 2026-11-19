@@ -209,7 +209,16 @@ export class BlackBox {
       await fh.read(buf, 0, len, s.size - len);
       const lines = buf.toString("utf8").split("\n").filter(Boolean);
       if (len < s.size) lines.shift(); // first line may be cut
-      return lines.slice(-limit).reverse().map((l) => JSON.parse(l) as BoxRecord);
+      return lines
+        .slice(-limit)
+        .reverse()
+        .flatMap((l) => {
+          try {
+            return [JSON.parse(l) as BoxRecord];
+          } catch {
+            return []; // a torn line holds no record
+          }
+        });
     } finally {
       await fh.close();
     }

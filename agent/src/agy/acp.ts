@@ -25,7 +25,15 @@ export class AcpClient extends EventEmitter {
   #buf = "";
   #closed = false;
 
-  constructor(cwd: string, args: string[] = [], spawnFn: Spawn = (c, a, o) => spawn(c, a, { cwd: o.cwd, stdio: ["pipe", "pipe", "pipe"], env: process.env })) {
+  /** A line longer than MAX_LINE is being skipped up to its newline; "oversize" is emitted once per such line. */
+  #discarding = false;
+
+  constructor(
+    cwd: string,
+    args: string[] = [],
+    // Own process group (detached): close/shutdown kill agy together with the shells it started.
+    spawnFn: Spawn = (c, a, o) => spawn(c, a, { cwd: o.cwd, stdio: ["pipe", "pipe", "pipe"], env: process.env, detached: true }),
+  ) {
     super();
     this.child = spawnFn("agy", ["acp", ...args], { cwd });
     this.child.stdout.setEncoding("utf8");
@@ -33,7 +41,8 @@ export class AcpClient extends EventEmitter {
     this.child.stderr.on("data", () => {});
     this.child.stdin.on("error", () => {});
     this.child.on("error", (e: NodeJS.ErrnoException) => this.#fail(e.code === "ENOENT" ? new AppError("agent.agy.missing", 501) : e));
-    this.child.on("exit", (code) => {
+    // "close" also fires when the binary couldn't be started (then there is no "exit").
+    this.child.on("close", (code) => {
       this.#fail(new AppError("agent.agy.exited", 502, { code: code ?? -1 }));
       this.emit("exit", code);
     });
@@ -53,10 +62,19 @@ export class AcpClient extends EventEmitter {
   }
 
   #onData(d: string) {
+    if (this.#closed) return;
+    if (this.#discarding) {
+      const k = d.indexOf("\n");
+      if (k < 0) return;
+      this.#discarding = false;
+      d = d.slice(k + 1);
+    }
     this.#buf += d;
     if (this.#buf.length > MAX_LINE && !this.#buf.includes("\n")) {
-      // A runaway line: drop it rather than grow without bound.
+      // A runaway line: dropped up to its newline. The session hears about it (a lost request would hang the turn).
       this.#buf = "";
+      this.#discarding = true;
+      this.emit("oversize");
       return;
     }
     let k: number;
@@ -87,6 +105,17 @@ export class AcpClient extends EventEmitter {
     this.child.stdin.write(JSON.stringify(obj) + "\n");
   }
 
+  /** Writes unless closed: answers and notifications to a process that is gone are simply dropped (never throw from a
+   * stream listener — that would take the whole agent down). */
+  #post(obj: unknown) {
+    if (this.#closed) return;
+    try {
+      this.child.stdin.write(JSON.stringify(obj) + "\n");
+    } catch {
+      // stdin already closed
+    }
+  }
+
   request<T = Record<string, unknown>>(method: string, params: Record<string, unknown>, timeoutMs = 60_000): Promise<T> {
     return new Promise((resolve, reject) => {
       if (this.#closed) return reject(new AppError("agent.agy.exited", 502));
@@ -102,31 +131,37 @@ export class AcpClient extends EventEmitter {
   }
 
   notify(method: string, params: Record<string, unknown>) {
-    this.#write({ jsonrpc: "2.0", method, params });
+    this.#post({ jsonrpc: "2.0", method, params });
   }
 
   respond(id: number | string, result: unknown) {
-    this.#write({ jsonrpc: "2.0", id, result });
+    this.#post({ jsonrpc: "2.0", id, result });
   }
 
   respondError(id: number | string, code: number, message: string) {
-    this.#write({ jsonrpc: "2.0", id, error: { code, message } });
+    this.#post({ jsonrpc: "2.0", id, error: { code, message } });
   }
 
-  kill() {
-    this.#closed = true;
+  #signal(sig: NodeJS.Signals) {
+    const pid = this.child.pid;
     try {
-      this.child.kill("SIGTERM");
+      // The whole process group (agy and the commands it started); falls back to the process itself.
+      if (pid) process.kill(-pid, sig);
+      else this.child.kill(sig);
     } catch {
-      // already gone
-    }
-    const t = setTimeout(() => {
       try {
-        this.child.kill("SIGKILL");
+        this.child.kill(sig);
       } catch {
         // already gone
       }
-    }, 5000);
+    }
+  }
+
+  kill(hard = false) {
+    this.#fail(new AppError("agent.agy.exited", 502));
+    this.#signal(hard ? "SIGKILL" : "SIGTERM");
+    if (hard) return;
+    const t = setTimeout(() => this.#signal("SIGKILL"), 5000);
     t.unref();
   }
 }

@@ -6,12 +6,14 @@ import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import type { Spawn } from "../src/agy/acp.ts";
-import { shq } from "../src/agy/manager.ts";
+import { AgyManager, shq } from "../src/agy/manager.ts";
 import { agyRoutes } from "../src/agy/routes.ts";
 import { testApp } from "./helpers.ts";
 
 const FAKE = fileURLToPath(new URL("./fake_agy_acp.mjs", import.meta.url));
-const fakeSpawn: Spawn = (_cmd, args, o) => spawn(process.execPath, [FAKE, ...args.slice(1)], { cwd: o.cwd, stdio: ["pipe", "pipe", "pipe"] });
+const fakeSpawn: Spawn = (_cmd, args, o) => spawn(process.execPath, [FAKE, ...args.slice(1)], { cwd: o.cwd, stdio: ["pipe", "pipe", "pipe"], detached: true });
+const fakeWith = (mode: string): Spawn => (_cmd, args, o) =>
+  spawn(process.execPath, [FAKE, ...args.slice(1)], { cwd: o.cwd, stdio: ["pipe", "pipe", "pipe"], detached: true, env: { ...process.env, FAKE_AGY_MODE: mode } });
 
 async function setup() {
   const root = await mkdtemp(join(tmpdir(), "tiphys-agy-"));
@@ -52,7 +54,7 @@ describe("agy", () => {
     const s = res.json();
     expect(s).toMatchObject({ conversationId: "s-new-0001", modeId: "default", model: "gemini-4-neon" });
     expect(s.modes.map((m: { id: string }) => m.id)).toEqual(["default", "auto", "plan"]);
-    expect(s.resumeCommand).toBe(`cd ${shq(root)} && agy --conversation s-new-0001`);
+    expect(s.resumeCommand).toBe(`cd ${shq(root)} && agy --conversation 's-new-0001'`);
     const b = await wait(s.id, (x) => x.events.some((e) => e.kind === "turnEnd"));
     const agent = b.events.filter((e) => e.kind === "agent");
     expect(agent).toHaveLength(1);
@@ -116,6 +118,39 @@ describe("agy", () => {
     expect((await r("POST", "/v1/agy/sessions", { cwd: "/etc" })).statusCode).toBe(403);
     expect((await r("POST", "/v1/agy/sessions", { cwd: root, resume: "../../etc" })).statusCode).toBe(400);
   });
+
+  it("review fixes: late request after close doesn't crash; double resume; oversize line cancels; bad ids; no command in the push", async () => {
+    const sent: Array<{ key: string; params: Record<string, unknown> }> = [];
+    const notifier = { send: async (n: { key: string; params: Record<string, unknown> }) => (sent.push(n), 1) } as never;
+    const late = new AgyManager(notifier, fakeWith("late"));
+    const a = await late.start({ cwd: tmpdir() });
+    await late.close(a.id);
+    await new Promise((x) => setTimeout(x, 200)); // the fake writes its request after SIGTERM: must be ignored
+    late.shutdown();
+
+    const m = new AgyManager(notifier, fakeSpawn);
+    const both = await Promise.allSettled([m.start({ cwd: tmpdir(), resume: "s-old-0002" }), m.start({ cwd: tmpdir(), resume: "s-old-0002" })]);
+    expect(both.map((x) => x.status).sort()).toEqual(["fulfilled", "rejected"]);
+    const live = m.list().find((x) => x.status === "idle")!;
+    expect(live.resumeCommand).toBe(`cd ${shq(tmpdir())} && agy --conversation 's-old-0002'`);
+
+    void m.send(live.id, "please run");
+    for (let i = 0; i < 50 && !sent.some((n) => n.key === "agy.waiting"); i++) await new Promise((x) => setTimeout(x, 50));
+    expect(sent.find((n) => n.key === "agy.waiting")!.params.tool).toBe("execute");
+    expect(JSON.stringify(sent)).not.toContain("echo hi");
+    m.cancel(live.id);
+
+    const big = await m.start({ cwd: tmpdir() });
+    await m.send(big.id, "huge please");
+    expect(big.events.some((e) => e.kind === "error" && e.text === "agent.agy.oversize")).toBe(true);
+    expect(big.events.find((e) => e.kind === "turnEnd")!.stopReason).toBe("cancelled");
+    m.shutdown();
+
+    const evil = new AgyManager(notifier, fakeWith("evilid"));
+    await expect(evil.start({ cwd: tmpdir() })).rejects.toMatchObject({ code: "agent.agy.startFailed" });
+    expect(evil.list()[0]!.status).toBe("error");
+    evil.shutdown();
+  }, 30_000);
 
   it("feature off: no routes; missing agy binary → 501", async () => {
     const t = await testApp();

@@ -8,6 +8,9 @@ import { AppError } from "../errors.ts";
 import { allowedPath } from "../paths.ts";
 import type { Ctx } from "../server.ts";
 import type { Spawn } from "./acp.ts";
+import { realpath } from "node:fs/promises";
+import { resolve, sep } from "node:path";
+import { expandHome } from "../config.ts";
 import { AgyManager } from "./manager.ts";
 
 const sid = z.object({ id: z.string().regex(/^agy-[a-f0-9]{12}$/) });
@@ -25,11 +28,24 @@ export function agyRoutes(opts: { spawn?: Spawn; manager?: AgyManager } = {}) {
     const startLimit = new RateLimit(6, 60_000);
     const listLimit = new RateLimit(10, 60_000);
 
+    /** Is a conversation's folder inside allowedRoots (string check on the resolved path; the folder may be gone)? */
+    const insideRoots = async (p: string) => {
+      const roots = await Promise.all(ctx.store.get().allowedRoots.map((r) => realpath(expandHome(r)).catch(() => null)));
+      const full = await realpath(p).catch(() => resolve(p));
+      return roots.some((r) => r !== null && (full === r || full.startsWith(r.endsWith(sep) ? r : r + sep)));
+    };
+    const allowedConversations = async (cwd: string) => {
+      const all = await mgr.conversations(cwd);
+      const out = [];
+      for (const c of all) if (c.cwd && (await insideRoots(c.cwd))) out.push(c);
+      return out;
+    };
+
     app.get("/v1/agy/conversations", async (req) => {
       const q = parse(z.object({ cwd: z.string().min(1).max(1024).default("~") }), req.query);
       if (!listLimit.take(req.device?.id ?? "-")) throw new AppError("agent.agy.rateLimited", 429);
       const cwd = await allowedPath(ctx.store.get(), q.cwd);
-      return { conversations: await mgr.conversations(cwd) };
+      return { conversations: await allowedConversations(cwd) };
     });
 
     app.get("/v1/agy/sessions", async () => ({ sessions: mgr.list() }));
@@ -48,6 +64,8 @@ export function agyRoutes(opts: { spawn?: Spawn; manager?: AgyManager } = {}) {
       if (!startLimit.take(req.device?.id ?? "-")) throw new AppError("agent.agy.rateLimited", 429);
       const cwd = await allowedPath(ctx.store.get(), b.cwd);
       req.auditDetail = { cwd, ...(b.resume ? { resume: b.resume } : {}) };
+      // A resumed conversation must itself belong to an allowed folder (agy may keep working where it started).
+      if (b.resume && !(await allowedConversations(cwd)).some((c) => c.sessionId === b.resume)) throw new AppError("agent.agy.conversationNotFound", 404);
       const s = await mgr.start({ ...b, cwd });
       req.auditDetail = { session: s.id, cwd, ...(b.resume ? { resume: b.resume } : {}) };
       return s.summary();
@@ -63,7 +81,7 @@ export function agyRoutes(opts: { spawn?: Spawn; manager?: AgyManager } = {}) {
 
     app.post("/v1/agy/sessions/:id/messages", async (req) => {
       const { id } = parse(sid, req.params);
-      const b = parse(z.strictObject({ text: z.string().min(1).max(100_000) }), req.body);
+      const b = parse(z.strictObject({ text: z.string().max(100_000).refine((t) => t.trim().length > 0) }), req.body);
       const s = mgr.get(id);
       if (s.status === "running" || s.status === "waiting" || s.status === "starting") throw new AppError("agent.agy.busy", 409);
       req.auditDetail = { session: id };

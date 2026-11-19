@@ -34,6 +34,11 @@ export interface AgyEvent {
 }
 
 const MAX_EVENTS = 3000;
+/** Total text kept per session (older events are dropped first beyond it). */
+const MAX_TOTAL_TEXT = 8 * 1024 * 1024;
+export const CONV_ID = /^[A-Za-z0-9-]{8,80}$/;
+/** Running/waiting sessions nobody touched for this long are closed too (a hung turn, a phone that went away). */
+export const STUCK_KILL_MS = 6 * 3600_000;
 const MAX_TEXT = 100_000;
 export const MAX_LIVE = 6;
 export const IDLE_KILL_MS = 2 * 3600_000;
@@ -73,9 +78,18 @@ export class AgySession {
   emit(e: Omit<AgyEvent, "seq" | "at" | "eid">) {
     const ev: AgyEvent = { ...e, eid: ++this.#eid, seq: ++this.#seq, at: new Date().toISOString(), ...(this.replaying ? { replay: true } : {}) };
     this.events.push(ev);
-    if (this.events.length > MAX_EVENTS) this.events.splice(0, this.events.length - MAX_EVENTS);
+    this.#trim();
     this.lastActivity = Date.now();
     this.#wake();
+  }
+
+  #trim() {
+    if (this.events.length > MAX_EVENTS) this.events.splice(0, this.events.length - MAX_EVENTS);
+    let total = this.events.reduce((n, e) => n + (e.text?.length ?? 0) + (e.command?.length ?? 0), 0);
+    while (total > MAX_TOTAL_TEXT && this.events.length > 1) {
+      const e = this.events.shift()!;
+      total -= (e.text?.length ?? 0) + (e.command?.length ?? 0);
+    }
   }
 
   /** Streaming chunks are merged into the previous event of the same kind (fewer events for the phone). */
@@ -83,6 +97,7 @@ export class AgySession {
     const last = this.events[this.events.length - 1];
     if (last && last.kind === kind && (last.text?.length ?? 0) < MAX_TEXT && !!last.replay === this.replaying) {
       last.text = (last.text ?? "") + text;
+      this.#trim();
       // A merged chunk is a new version of that event: give it a new seq so pollers see it.
       last.seq = ++this.#seq;
       last.at = new Date().toISOString();
@@ -108,18 +123,23 @@ export class AgySession {
     let out = pick();
     if (out.length || waitMs <= 0 || this.status === "ended") return out;
     await new Promise<void>((resolve) => {
-      const t = setTimeout(resolve, waitMs);
-      this.#waiters.push(() => {
+      const wake = () => {
         clearTimeout(t);
         resolve();
-      });
+      };
+      // On timeout the waiter is removed again (idle sessions polled for hours mustn't collect them).
+      const t = setTimeout(() => {
+        this.#waiters = this.#waiters.filter((w) => w !== wake);
+        resolve();
+      }, waitMs);
+      this.#waiters.push(wake);
     });
     out = pick();
     return out;
   }
 
   resumeCommand() {
-    return this.conversationId ? `cd ${shq(this.cwd)} && agy --conversation ${this.conversationId}` : null;
+    return CONV_ID.test(this.conversationId) ? `cd ${shq(this.cwd)} && agy --conversation ${shq(this.conversationId)}` : null;
   }
 
   summary() {
@@ -166,8 +186,13 @@ export class AgyManager {
 
   #reap() {
     for (const s of this.sessions.values()) {
-      if (s.status === "idle" && Date.now() - s.lastActivity > IDLE_KILL_MS) void this.close(s.id).catch(() => {});
-      if (s.status === "ended" && Date.now() - s.lastActivity > IDLE_KILL_MS) this.sessions.delete(s.id);
+      const quiet = Date.now() - s.lastActivity;
+      if (s.status === "idle" && quiet > IDLE_KILL_MS) void this.close(s.id).catch(() => {});
+      else if ((s.status === "running" || s.status === "waiting" || s.status === "starting") && quiet > STUCK_KILL_MS) void this.close(s.id).catch(() => {});
+      else if ((s.status === "ended" || s.status === "error") && quiet > IDLE_KILL_MS) {
+        s.client?.kill(true);
+        this.sessions.delete(s.id);
+      }
     }
   }
 
@@ -190,9 +215,10 @@ export class AgyManager {
       let cursor: string | undefined;
       for (let page = 0; page < 5; page++) {
         const r = await c.request<{ sessions?: Array<Record<string, unknown>>; nextCursor?: string }>("session/list", cursor ? { cursor } : {}, 30_000);
+        // (No cwd filter on purpose: the phone lists conversations from every allowed folder; the route drops the rest.)
         for (const x of r.sessions ?? []) {
           const sessionId = clip(x.sessionId, 80);
-          if (!/^[A-Za-z0-9-]{8,80}$/.test(sessionId)) continue;
+          if (!CONV_ID.test(sessionId)) continue;
           out.push({ sessionId, cwd: clip(x.cwd, 1024), title: clip(x.title, 200), updatedAt: typeof x.updatedAt === "string" ? x.updatedAt : null });
         }
         cursor = r.nextCursor;
@@ -210,11 +236,18 @@ export class AgyManager {
     if (live.length >= MAX_LIVE) throw new AppError("agent.agy.tooManySessions", 409, { max: MAX_LIVE });
     if (req.resume && live.some((s) => s.conversationId === req.resume)) throw new AppError("agent.agy.alreadyOpen", 409);
     const s = new AgySession(req.cwd);
+    // Set before any await: a second resume of the same conversation started meanwhile sees it as open.
+    if (req.resume) s.conversationId = req.resume;
     const c = new AcpClient(req.cwd, [], this.#spawn);
     s.client = c;
     this.sessions.set(s.id, s);
     c.on("notification", (method: string, params: Record<string, unknown>) => this.#onNotification(s, method, params));
     c.on("request", (r: AcpRequest) => this.#onRequest(s, r));
+    c.on("oversize", () => {
+      // Something from agy was too large to read (and is lost): cancel the turn rather than hang on it.
+      s.emit({ kind: "error", text: "agent.agy.oversize" });
+      if (s.conversationId) c.notify("session/cancel", { sessionId: s.conversationId });
+    });
     c.on("exit", () => {
       s.pending.clear();
       if (s.status !== "ended") {
@@ -235,15 +268,20 @@ export class AgyManager {
         s.conversationId = req.resume;
       } else {
         r = await c.request("session/new", { cwd: req.cwd, mcpServers: [] }, 60_000);
-        s.conversationId = clip(r.sessionId, 80);
+        const sid = String(r.sessionId ?? "");
+        if (!CONV_ID.test(sid)) throw new AppError("agent.agy.startFailed", 502);
+        s.conversationId = sid;
       }
       this.#readSessionInfo(s, r);
+      s.setStatus("idle");
       if (req.modeId && req.modeId !== s.modeId) await this.setMode(s.id, req.modeId);
       if (req.model && req.model !== s.model) await this.setModel(s.id, req.model);
-      s.setStatus("idle");
     } catch (e) {
-      s.setStatus("error");
-      s.emit({ kind: "error", text: e instanceof AppError ? e.code : "agent.agy.startFailed" });
+      // Closed while starting: stays "ended".
+      if ((s.status as AgyStatus) !== "ended") {
+        s.setStatus("error");
+        s.emit({ kind: "error", text: e instanceof AppError ? e.code : "agent.agy.startFailed" });
+      }
       c.kill();
       throw e instanceof AppError ? e : new AppError("agent.agy.startFailed", 502);
     }
@@ -330,14 +368,20 @@ export class AgyManager {
     }
     const tc = (r.params.toolCall ?? {}) as Record<string, unknown>;
     const raw = (tc.rawInput ?? tc.args ?? {}) as Record<string, unknown>;
-    const options = (Array.isArray(r.params.options) ? (r.params.options as Array<Record<string, unknown>>) : []).slice(0, 10).map((o) => ({ optionId: clip(o.optionId, 80), name: clip(o.name, 80), kind: clip(o.kind, 40) }));
+    // Option ids are passed back verbatim: an over-long one is left out rather than clipped into an invalid choice.
+    const options = (Array.isArray(r.params.options) ? (r.params.options as Array<Record<string, unknown>>) : [])
+      .filter((o) => typeof o.optionId === "string" && o.optionId.length > 0 && o.optionId.length <= 200)
+      .slice(0, 10)
+      .map((o) => ({ optionId: String(o.optionId), name: clip(o.name, 80), kind: clip(o.kind, 40) }));
     const requestId = randomBytes(6).toString("hex");
     s.pending.set(requestId, { rpcId: r.id, options });
     s.emit({ kind: "permission", requestId, options, title: clip(tc.title, 300), toolKind: clip(tc.kind, 40), toolCallId: clip(tc.toolCallId, 120), ...(raw.CommandLine ? { command: clip(raw.CommandLine, 2000) } : {}) });
     s.setStatus("waiting");
     void this.#notifier.send({
       key: "agy.waiting",
-      params: { title: s.title, tool: clip(tc.title, 120) },
+      // The tool kind only (execute, edit…): a tool title can be the whole command line, which may hold a password
+      // and would land in the event log and unencrypted push endpoints. The app shows the command inside the session.
+      params: { title: s.title, tool: clip(tc.kind, 40) || "tool" },
       link: `tiphys://agy/${s.id}`,
       priority: "high",
       data: { sessionId: s.id, requestId },
@@ -389,6 +433,7 @@ export class AgyManager {
 
   async setMode(id: string, modeId: string) {
     const s = this.get(id);
+    if (!s.client || s.client.closed) throw new AppError("agent.agy.sessionEnded", 409);
     if (!s.modes.some((m) => m.id === modeId)) throw new AppError("agent.agy.unknownMode", 400, { modeId });
     await s.client!.request("session/set_mode", { sessionId: s.conversationId, modeId }, 30_000);
     s.modeId = modeId;
@@ -397,7 +442,8 @@ export class AgyManager {
 
   async setModel(id: string, model: string) {
     const s = this.get(id);
-    if (s.models.length && !s.models.some((m) => m.value === model)) throw new AppError("agent.agy.unknownModel", 400, { model });
+    if (s.status === "starting" || !s.client) throw new AppError("agent.agy.busy", 409);
+    if (!s.models.some((m) => m.value === model)) throw new AppError("agent.agy.unknownModel", 400, { model });
     const r = await s.client!.request<{ configOptions?: unknown }>("session/set_config_option", { sessionId: s.conversationId, configId: "model", value: model }, 30_000);
     this.#readConfig(s, r.configOptions);
     s.model ??= model;
@@ -415,6 +461,7 @@ export class AgyManager {
 
   shutdown() {
     clearInterval(this.#reaper);
-    for (const s of this.sessions.values()) s.client?.kill();
+    // The agent is exiting right after this: no 5 s grace (the timer wouldn't fire).
+    for (const s of this.sessions.values()) s.client?.kill(true);
   }
 }

@@ -525,9 +525,9 @@ export function securityRoutes(opts: SecurityRouteOpts = {}) {
     app.get("/v1/security/recovery", async () => ({ configured: !!ctx.store.get().security.recovery, createdAt: ctx.store.get().security.recovery?.createdAt ?? null }));
 
     // Unauthenticated by design (the phone is lost): only the 125-bit recovery code opens it. The limits only bound
-    // the scrypt cost and must not let one tailnet peer lock the owner out: per address 5 per 10 min, 30 an hour in
+    // the scrypt cost and must not let one tailnet peer lock the owner out: per address 5 per 10 min, 60 an hour in
     // total, one check at a time; a malformed code costs nothing.
-    const lockdownLimit = opts.lockdownLimit ?? new RateLimit(30, 3600_000);
+    const lockdownLimit = opts.lockdownLimit ?? new RateLimit(60, 3600_000);
     const lockdownPerIp = new RateLimit(5, 10 * 60_000);
     let lockdownBusy = false;
     app.post("/v1/security/lockdown", { config: { public: true }, bodyLimit: 4096 }, async (req) => {

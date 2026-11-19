@@ -5,6 +5,9 @@ const update = (sessionId, u) => out({ method: "session/update", params: { sessi
 const modes = { currentModeId: "default", availableModes: [{ id: "default", name: "Default" }, { id: "auto", name: "Auto" }, { id: "plan", name: "Plan" }] };
 const config = (v) => [{ id: "model", currentValue: v, options: [{ value: "gemini-4-neon", name: "Neon" }, { value: "gemini-3.8-flash", name: "Flash" }] }];
 let pendingPrompt = null;
+const MODE = process.env.FAKE_AGY_MODE ?? "";
+// "late": on SIGTERM, write an fs request after the client stopped listening (must not crash the agent).
+if (MODE === "late") process.on("SIGTERM", () => { out({ id: 77, method: "fs/read_text_file", params: { path: "/etc/passwd" } }); setTimeout(() => process.exit(0), 50); });
 let permId = 1000;
 const rl = createInterface({ input: process.stdin });
 rl.on("line", (line) => {
@@ -25,6 +28,7 @@ rl.on("line", (line) => {
     case "initialize":
       return out({ id: m.id, result: { protocolVersion: 1, agentCapabilities: { loadSession: true } } });
     case "session/new":
+      if (MODE === "evilid") return out({ id: m.id, result: { sessionId: "x;touch /tmp/pwned;#", modes, configOptions: config("gemini-4-neon") } });
       update("s-new-0001", { sessionUpdate: "available_commands_update", availableCommands: [{ name: "goal", description: "Run until done" }] });
       return out({ id: m.id, result: { sessionId: "s-new-0001", modes, configOptions: config("gemini-4-neon") } });
     case "session/load":
@@ -39,6 +43,11 @@ rl.on("line", (line) => {
       const sid = p.sessionId;
       update(sid, { sessionUpdate: "session_info_update", title: "Fake title" });
       update(sid, { sessionUpdate: "agent_thought_chunk", content: { type: "text", text: "thinking" } });
+      if (text.includes("huge")) {
+        // A permission request bigger than the client's line cap.
+        pendingPrompt = { id: m.id, sid, permId: ++permId };
+        return out({ id: permId, method: "session/request_permission", params: { sessionId: sid, toolCall: { title: "x".repeat(5 * 1024 * 1024) }, options: [] } });
+      }
       if (text.includes("run")) {
         update(sid, { sessionUpdate: "tool_call", toolCallId: "t1", title: "echo hi", kind: "execute", status: "pending", rawInput: { CommandLine: "echo hi" } });
         pendingPrompt = { id: m.id, sid, permId: ++permId };
