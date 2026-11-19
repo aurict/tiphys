@@ -349,6 +349,7 @@ export class IncidentService {
         deploys: this.#o.deploys,
         index: this.db.index.values(),
         now: this.#now(),
+        self: this.#o.store.get().name,
       }),
       timeout,
     ]).finally(() => clearTimeout(timer));

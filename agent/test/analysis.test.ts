@@ -470,7 +470,12 @@ describe("incident analysis", () => {
     await t.svc.idle();
     const sec = t.svc.list().find((i) => i.kind === "security.change")!;
     expect(sec.severity).toBe("critical");
-    expect((await t.svc.get(sec.id)).analysis).toBeUndefined();
+    const full = await t.svc.get(sec.id);
+    expect(full.analysis).toBeUndefined();
+    // About another host: none of this machine's metrics, config changes or host-less events.
+    expect(full.context?.metrics).toBeUndefined();
+    expect(full.context?.configChanges).toBeUndefined();
+    expect((full.context?.events ?? []).every((e) => e.params.host === "orion")).toBe(true);
     await t.app.close();
   });
 

@@ -147,6 +147,9 @@ export interface ContextDeps {
   deploys?: DeployTracker;
   index: Iterable<IncidentSummary>;
   now: number;
+  /** This agent's name. An incident about another host (host.offline, a security change of an audited host) gets no
+   * local metrics, config changes or host-less events: they describe this machine, not that one. */
+  self?: string;
 }
 
 const codeOf = (e: unknown) => (e && typeof e === "object" && "code" in e && typeof e.code === "string" ? e.code : "agent.internal");
@@ -190,13 +193,14 @@ export async function collectContext(i: Incident, d: ContextDeps): Promise<Incid
   }
   const stack = d.stackOf(i);
   if (stack?.gitRepo) jobs.push(part("git", gitInfo(stack.gitRepo, d.run).then((x) => void (ctx.git = x))));
+  const local = d.self === undefined || i.host === d.self;
   if (d.events) {
     jobs.push(
       part(
         "events",
         d.events.list({ since: new Date(d.now - EVENTS_WINDOW_MS).toISOString(), limit: 200 }).then((evs) => {
           ctx.events = evs
-            .filter((e) => e.params.host === undefined || e.params.host === i.host)
+            .filter((e) => (local && e.params.host === undefined) || e.params.host === i.host)
             .slice(0, 100)
             .map((e) => ({ at: e.at, key: e.key, params: Object.fromEntries(Object.entries(e.params).map(([k, v]) => [k, typeof v === "string" ? redact(v) : v])) }));
         }),
@@ -218,7 +222,7 @@ export async function collectContext(i: Incident, d: ContextDeps): Promise<Incid
       ),
     );
   }
-  if (d.events) {
+  if (d.events && local) {
     jobs.push(
       part(
         "configChanges",
@@ -233,7 +237,7 @@ export async function collectContext(i: Incident, d: ContextDeps): Promise<Incid
     );
   }
   await Promise.all(jobs);
-  if (d.metrics) {
+  if (d.metrics && local) {
     const at = Date.parse(i.openedAt);
     ctx.metrics = d.metrics.window(at - METRICS_WINDOW_MS, at + METRICS_WINDOW_MS, container);
   }
