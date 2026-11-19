@@ -17,7 +17,7 @@ set -u
 umask 077
 PATH=/usr/sbin:/usr/bin:/sbin:/bin
 export PATH LC_ALL=C.UTF-8
-VERSION=2
+VERSION=3
 
 refuse() { echo "tiphys-audit: unsupported request" >&2; exit 2; }
 [ "$#" -le 1 ] || refuse
@@ -51,7 +51,8 @@ if [ "$MODE" = traps ]; then
   [ "$ROOT" = 1 ] && has ausearch || { echo "tiphys-audit: unavailable" >&2; exit 3; }
   printf '@@tiphys-audit %s traps\n' "$VERSION"
   # Exit 1 = no matches; that is a normal, empty answer.
-  t 20 ausearch -k tiphys_trap --start today --format csv 2>/dev/null | cap 262144
+  # "recent" = the last 10 minutes (polled every 30 s); newest kept if there are many.
+  t 20 ausearch -k tiphys_trap --start recent --format csv 2>/dev/null | tail -n 500 | cap 262144
   printf '\n@@end\n'
   exit 0
 fi
@@ -190,7 +191,8 @@ if has last; then t 10 last -n 20 -F -w 2>/dev/null | grep -Ev '^(reboot|wtmp|$)
 elif has wtmpdb; then t 10 wtmpdb last -n 20 -F -w 2>/dev/null | grep -Ev '^(reboot|wtmp|$)' | cap 16384
 elif has journalctl; then
   # No wtmp reader (e.g. Ubuntu 26.04): accepted SSH logins from the journal, as "user ssh:method from time".
-  t 20 journalctl -q --no-pager -o short-iso --since -7d -g 'Accepted (publickey|password|keyboard-interactive)' 2>/dev/null |
+  # Only sshd's own messages (any user can write "Accepted …" to the journal with logger).
+  t 20 journalctl -q --no-pager -o short-iso --since -7d _COMM=sshd + _COMM=sshd-session -g 'Accepted (publickey|password|keyboard-interactive)' 2>/dev/null |
     sed -nE 's/^([^ ]+) [^ ]+ [^:]+: Accepted ([a-z/-]+) for ([^ ]+) from ([^ ]+) port .*/\3 ssh:\2 \4 \1/p' | tail -n 20 | cap 16384
 else unavailable last; fi
 
@@ -213,13 +215,13 @@ fi
 if [ "$MODE" = report-full ]; then
   section suid
   if [ "$ROOT" = 1 ]; then
-    t 120 find / -xdev \( -perm -4000 -o -perm -2000 \) -type f -printf '%m %u %p\n' 2>/dev/null | sort | cap 65536
+    t 120 find / -xdev \( -perm -4000 -o -perm -2000 \) -type f -printf '%m %u %p\0' 2>/dev/null | sort -z | tr '\n\0' '?\n' | cap 65536
   else unavailable; fi
 
   section worldwritable
   # Files anyone may change under system directories; container image layers are not the host's files.
   t 120 find /etc /usr /opt /var/lib -xdev \( -path /var/lib/docker -o -path /var/lib/containerd -o -path /var/lib/containers \) -prune \
-    -o -type f -perm -0002 -printf '%m %u %p\n' 2>/dev/null | sort | head -n 200 | cap 32768
+    -o -type f -perm -0002 -printf '%m %u %p\0' 2>/dev/null | sort -z | tr '\n\0' '?\n' | head -n 200 | cap 32768
 fi
 
 printf '\n@@end\n'

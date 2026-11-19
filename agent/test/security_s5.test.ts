@@ -63,9 +63,10 @@ describe("exposure", () => {
     const r1 = await s.run();
     expect(r1.findings.map((f) => f.rule).sort()).toEqual(["exposure.headers", "exposure.noHsts", "exposure.noHttps", "exposure.tlsExpiry"]);
     expect(r1.findings.find((f) => f.rule === "exposure.tlsExpiry")!.severity).toBe("high");
-    expect(t.sent).toEqual([]);
+    // An expiring certificate is announced (weekly runs would otherwise never warn in time); nothing else here is.
+    expect(t.sent).toEqual([expect.objectContaining({ key: "security.exposure", params: expect.objectContaining({ count: 1 }) })]);
     await s.run();
-    expect(t.sent).toEqual([]);
+    expect(t.sent).toHaveLength(1);
     expect(s.due()).toBe(false);
   });
 

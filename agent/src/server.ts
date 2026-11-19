@@ -117,15 +117,20 @@ export async function buildApp(ctx: Ctx, opts: { logger?: boolean; logStream?: {
   // Authentication: every request except /v1/health requires a device token, or a service token on a route of its scope.
   app.addHook("onRequest", async (req) => {
     if (req.url === "/v1/health" || req.url.startsWith("/v1/health?")) return;
-    // Routes that authenticate themselves (the recovery-code lockdown: the phone is gone, so is its token).
-    if (req.routeOptions.config?.public === true) return;
+    // Routes that authenticate themselves (the recovery-code lockdown: the phone is gone, so is its token). The
+    // Tailscale identity check still applies.
+    if (req.routeOptions.config?.public === true) {
+      const want = ctx.store.get().requireTailscaleLogin;
+      if (want !== null && req.headers["tailscale-user-login"] !== want) throw new AppError("agent.auth.tailnetUserNotAllowed", 403);
+      return;
+    }
     let caller: ReturnType<typeof authenticate>;
     try {
       caller = authenticate(ctx.store.get(), req, req.routeOptions.config?.scope);
     } catch (e) {
       // A rejected token may be a planted decoy (security center traps): the hook raises the alarm; the caller sees
       // the same 401 as for any unknown token.
-      if (e instanceof AppError && e.code === "agent.auth.invalidToken" && ctx.onRejectedToken) {
+      if (e instanceof AppError && (e.code === "agent.auth.invalidToken" || e.code === "agent.auth.missingToken") && ctx.onRejectedToken) {
         const m = /^Bearer (\S+)$/.exec(String(req.headers.authorization ?? ""));
         const q = (req.query as Record<string, unknown> | undefined)?.["token"];
         const token = m?.[1] ?? (typeof q === "string" ? q : undefined);

@@ -66,7 +66,8 @@ export const tcpProbe: PortProbe = (host, port, timeoutMs) =>
 
 export const certProbe: CertProbe = (host) =>
   new Promise((resolve) => {
-    const s = tlsConnect({ host, port: 443, servername: host, timeout: 10_000 }, () => {
+    // Not verifying: an expired or wrong certificate must still be read and reported, not count as "unreachable".
+    const s = tlsConnect({ host, port: 443, servername: host, timeout: 10_000, rejectUnauthorized: false }, () => {
       const c = s.getPeerCertificate();
       s.end();
       resolve(c?.valid_to ? { validTo: new Date(c.valid_to).toISOString() } : null);
@@ -74,6 +75,26 @@ export const certProbe: CertProbe = (host) =>
     s.once("error", () => resolve(null));
     s.once("timeout", () => (s.destroy(), resolve(null)));
   });
+
+/** First `max` bytes of a body, then the rest is cancelled (a real /backup.zip must not be downloaded). */
+async function readHead(r: Response, max: number): Promise<string> {
+  if (!r.body) return "";
+  const reader = r.body.getReader();
+  const chunks: Uint8Array[] = [];
+  let size = 0;
+  try {
+    while (size < max) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      chunks.push(value);
+      size += value.byteLength;
+    }
+  } catch {
+    // partial body is fine
+  }
+  await reader.cancel().catch(() => {});
+  return Buffer.concat(chunks).toString("latin1").slice(0, max);
+}
 
 async function pool<T>(items: T[], n: number, fn: (x: T) => Promise<void>) {
   let i = 0;
@@ -142,6 +163,7 @@ export class ExposureScanner {
       if (days < 14) add({ rule: "exposure.tlsExpiry", severity: days < 3 ? "critical" : "high", params: { days } });
     }
     const plain = await get(`http://${value}/`).catch(() => null);
+    await plain?.body?.cancel().catch(() => {});
     await wait();
     if (plain && plain.status >= 200 && plain.status < 300) add({ rule: "exposure.noHttps", severity: "medium", params: { status: plain.status } });
     const root = await get(`https://${value}/`).catch(() => null);
@@ -171,7 +193,7 @@ export class ExposureScanner {
         continue;
       }
       const type = r.headers.get("content-type") ?? "";
-      const body = (await r.text().catch(() => "")).slice(0, 64 * 1024);
+      const body = await readHead(r, 64 * 1024);
       if (looksLike(body, type)) add({ rule: "exposure.leakPath", severity: "critical", params: { path } });
     }
   }
@@ -213,7 +235,9 @@ export class ExposureScanner {
         // First run: only critical findings are announced; later runs: anything new that is serious.
         const before = new Set(prev?.findings.map((f) => f.id) ?? []);
         const fresh = run.findings.filter(
-          (f) => !before.has(f.id) && (prev ? f.rule === "exposure.openPort" || f.rule === "exposure.leakPath" || f.severity === "critical" : f.severity === "critical"),
+          (f) =>
+            !before.has(f.id) &&
+            (prev ? f.rule === "exposure.openPort" || f.rule === "exposure.leakPath" || f.rule === "exposure.tlsExpiry" || f.severity === "critical" : f.severity === "critical" || f.rule === "exposure.tlsExpiry"),
         );
         if (fresh.length) {
           await this.#ctx.notifier.send({

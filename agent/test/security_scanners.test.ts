@@ -148,10 +148,13 @@ describe("VulnScanner", () => {
     expect(saves).toHaveLength(3);
   });
 
-  it("private registry without credentials → needsCredentials (no save attempt for a remote-only failure)", async () => {
-    const r = report([{ id: ID("5"), digests: ["registry.example.com/x@sha256:" + "c".repeat(64)] }], [["x", ID("5")]]);
-    const { v } = await setup([{ hostId: "orion", host: "orion", kind: "agent", arch: "x86_64", report: r }], () => ({ code: 1, stdout: "", stderr: "UNAUTHORIZED" }));
-    expect(await v.scanOne(ID("5"))).toMatchObject({ status: "needsCredentials", error: "registry.example.com" });
+  it("private image without credentials → needsCredentials; unknown registries are never contacted", async () => {
+    const r = report([{ id: ID("5"), digests: ["quay.io/x/y@sha256:" + "c".repeat(64)] }, { id: ID("6"), digests: ["169.254.169.254/x@sha256:" + "d".repeat(64)] }], [["x", ID("5")], ["y", ID("6")]]);
+    const { v, calls } = await setup([{ hostId: "orion", host: "orion", kind: "agent", arch: "x86_64", report: r }], () => ({ code: 1, stdout: "", stderr: "UNAUTHORIZED" }));
+    expect(await v.scanOne(ID("5"))).toMatchObject({ status: "needsCredentials", error: "quay.io" });
+    const n = calls.length;
+    expect(await v.scanOne(ID("6"))).toMatchObject({ status: "notAvailable" });
+    expect(calls.length).toBe(n);
   });
 });
 

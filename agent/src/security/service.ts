@@ -115,7 +115,7 @@ export class SecurityService {
     const known = new Set(this.hosts().map((h) => h.id));
     const hosts = Object.fromEntries([...this.states].filter(([id]) => known.has(id)));
     const data = JSON.stringify({ version: 1, hosts });
-    this.#save = this.#save.then(async () => {
+    this.#save = this.#save.catch(() => {}).then(async () => {
       const tmp = `${this.file}.${process.pid}.tmp`;
       await writeFile(tmp, data, { mode: 0o600 });
       await chmod(tmp, 0o600);
@@ -124,26 +124,36 @@ export class SecurityService {
     await this.#save.catch(() => {});
   }
 
+  #first: NodeJS.Timeout | null = null;
+  #due = false;
+
   start() {
     const tick = () => void this.checkDue().catch(() => {});
     // First round shortly after start, not during it.
-    const first = setTimeout(tick, 30_000);
-    first.unref();
+    this.#first = setTimeout(tick, 30_000);
+    this.#first.unref();
     this.#timer = setInterval(tick, 60_000);
     this.#timer.unref();
   }
 
   stop() {
+    if (this.#first) clearTimeout(this.#first);
     if (this.#timer) clearInterval(this.#timer);
   }
 
   /** Hosts whose interval has elapsed; one at a time so the server isn't loaded by parallel scans. */
   async checkDue() {
-    const interval = this.#ctx.store.get().security.intervalMinutes * 60_000;
-    for (const h of this.hosts()) {
-      const s = this.states.get(h.id);
-      const last = s?.lastAttemptAt ? Date.parse(s.lastAttemptAt) : 0;
-      if (this.#now() - last >= interval) await this.check(h.id).catch(() => {});
+    if (this.#due) return;
+    this.#due = true;
+    try {
+      const interval = this.#ctx.store.get().security.intervalMinutes * 60_000;
+      for (const h of this.hosts()) {
+        const s = this.states.get(h.id);
+        const last = s?.lastAttemptAt ? Date.parse(s.lastAttemptAt) : 0;
+        if (this.#now() - last >= interval) await this.check(h.id).catch(() => {});
+      }
+    } finally {
+      this.#due = false;
     }
   }
 
@@ -223,8 +233,25 @@ export class SecurityService {
     s.findings = evaluate(report, this.policy(id));
     s.score = score(s.findings);
     const snap = snapshotOf(report, s.suid);
-    // First report, or the privilege level changed (e.g. sudo turned on): start a new baseline silently.
-    if (!s.baseline || (s.baselineRoot !== null && s.baselineRoot !== report.root)) {
+    // First report, or the privilege level changed (e.g. sudo turned on) while nothing is waiting for acceptance: start
+    // a new baseline silently. With changes pending, a privilege flip must not wash them away: it is listed as a
+    // change of its own and the baseline stays until the user accepts.
+    const flipped = s.baseline !== null && s.baselineRoot !== null && s.baselineRoot !== report.root;
+    if (flipped && s.changes.length) {
+      if (!s.changes.some((c) => c.id === "services|audit.root")) {
+        s.changes.push({ id: "services|audit.root", category: "services", item: "audit.root", kind: "changed", firstSeenAt: nowIso });
+        s.notified.push("services|audit.root");
+        await this.#ctx.notifier.send({
+          key: "security.change",
+          params: { host: h.name, hostId: id, agent: this.#ctx.store.get().name, count: 1, categories: "services", severity: "critical" },
+          link: `tiphys://security/${id}`,
+          priority: "high",
+        });
+      }
+      await this.#persist();
+      return s;
+    }
+    if (!s.baseline || flipped) {
       s.baseline = snap;
       s.baselineAt = nowIso;
       s.baselineRoot = report.root;

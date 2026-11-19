@@ -82,6 +82,8 @@ export class TrapService {
   /** Armed access time per file trap id. */
   #armed = new Map<string, number>();
   readonly status = new Map<string, { status: FileTrapStatus; lastTriggeredAt: string | null }>();
+  /** Per SSH host: did the last `traps` poll work (a host without auditd answers "unavailable"). */
+  readonly auditStatus = new Map<string, { status: "ok" | "unavailable" | "error"; at: string }>();
   /** Already reported audit events / Loki lines (bounded). */
   #seen = new Set<string>();
   #lokiFrom: number | null = null;
@@ -143,6 +145,7 @@ export class TrapService {
   /** Creates a decoy file (never overwrites) inside allowedRoots, arms it and records it. */
   async createFile(path: string, kind: "env" | "sshkey"): Promise<{ id: string; path: string; status: FileTrapStatus }> {
     const cfg = this.#ctx.store.get();
+    if (cfg.security.traps.files.length >= 20 || cfg.security.traps.tokens.length >= 20) throw new AppError("agent.security.tooManyTraps", 409);
     const full = resolve(expandHome(path));
     const dir = await allowedPath(cfg, dirname(full));
     const target = resolve(dir, basename(full));
@@ -211,17 +214,21 @@ export class TrapService {
 
   async checkFiles() {
     for (const f of this.#ctx.store.get().security.traps.files) {
+      const prev = this.status.get(f.id);
       const armed = this.#armed.get(f.id);
-      if (armed === undefined) {
-        await this.#arm(f.id, f.path);
-        continue;
-      }
       const s = await stat(f.path).catch(() => null);
       if (!s) {
-        if (this.status.get(f.id)?.status !== "missing") {
-          this.status.set(f.id, { status: "missing", lastTriggeredAt: this.status.get(f.id)?.lastTriggeredAt ?? null });
+        // Missing (also when the agent starts and finds it gone): one alarm until it comes back.
+        if (prev?.status !== "missing") {
+          this.status.set(f.id, { status: "missing", lastTriggeredAt: prev?.lastTriggeredAt ?? null });
+          this.#armed.delete(f.id);
           await this.#alarm({ trap: "fileMissing", path: f.path });
         }
+        continue;
+      }
+      if (armed === undefined) {
+        // First look after start, or the file is back: arm it without an alarm.
+        await this.#arm(f.id, f.path);
         continue;
       }
       if (s.atimeMs > armed + 500) {
@@ -235,8 +242,11 @@ export class TrapService {
 
   // ---- audited hosts (auditd) ----
 
-  /** `announce: false` (first poll after start) only learns today's existing events, so they aren't re-announced. */
-  async checkAudit(announce = true) {
+  /**
+   * The audited host returns its last 10 minutes of tiphys_trap events; each is announced once (one alarm per host and
+   * poll, with a count, so a flood of reads doesn't become a flood of notifications).
+   */
+  async checkAudit() {
     const cfg = this.#ctx.store.get();
     const known = knownHostsPath(this.#ctx.store.path);
     for (const h of cfg.security.hosts) {
@@ -244,11 +254,16 @@ export class TrapService {
       const args = sshArgs(h.source, known, "report");
       args.splice(args.length - 1, 1, "traps");
       const r = await (this.#o.spawner ?? spawnCapped)("ssh", args, { timeoutMs: 60_000, maxBytes: 1 << 20 }).catch(() => null);
-      if (!r || r.code !== 0) continue;
-      for (const e of parseAusearchCsv(r.stdout)) {
-        if (!this.#remember(`audit|${h.id}|${e.key}`) || !announce) continue;
-        await this.#alarm({ trap: "audit", host: h.name, who: e.who, how: e.how, object: e.object, at: e.at });
+      const at = new Date(this.#now()).toISOString();
+      if (!r || r.code !== 0) {
+        this.auditStatus.set(h.id, { status: r?.code === 3 ? "unavailable" : "error", at });
+        continue;
       }
+      this.auditStatus.set(h.id, { status: "ok", at });
+      const fresh = parseAusearchCsv(r.stdout).filter((e) => this.#remember(`audit|${h.id}|${e.key}`));
+      if (!fresh.length) continue;
+      const e = fresh[fresh.length - 1]!;
+      await this.#alarm({ trap: "audit", host: h.name, who: e.who, how: e.how, object: e.object, at: e.at, count: fresh.length });
     }
   }
 
@@ -258,7 +273,8 @@ export class TrapService {
     const users = this.#ctx.store.get().security.traps.dbUsers;
     if (!users.length) return;
     const end = this.#now() * 1_000_000;
-    const start = this.#lokiFrom ?? end - 10 * 60 * 1e9;
+    // Two minutes of overlap: lines reach Loki late; #seen keeps them from being announced twice.
+    const start = (this.#lokiFrom ?? end - 10 * 60 * 1e9) - 2 * 60 * 1e9;
     const alt = users.join("|");
     const query = `{host=~".+"} |~ "(?i)(password authentication failed|authentication failed|role .* does not exist|access denied).*(${alt})"`;
     const base = await lokiUrl();
@@ -284,7 +300,7 @@ export class TrapService {
       tokens: c.tokens.map(({ tokenHash: _, ...t }) => t),
       files: c.files.map((f) => ({ ...f, ...(this.status.get(f.id) ?? { status: "missing" as const, lastTriggeredAt: null }) })),
       dbUsers: c.dbUsers,
-      auditHosts: this.#ctx.store.get().security.hosts.filter((h) => h.traps).map((h) => h.id),
+      auditHosts: this.#ctx.store.get().security.hosts.filter((h) => h.traps).map((h) => ({ id: h.id, ...(this.auditStatus.get(h.id) ?? { status: "pending", at: null }) })),
     };
   }
 }

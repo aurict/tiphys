@@ -49,11 +49,28 @@ if [ "$MODE" = "--untrap" ]; then
   echo "untrapped"
   exit 0
 fi
-[ -e "$DECOY" ] && { echo "decoy exists, not overwritten" >&2; exit 1; }
-install -d -m 0755 "$(dirname "$DECOY")"
+[ -e "$DECOY" ] || [ -L "$DECOY" ] && { echo "decoy exists (or is a symlink), not overwritten" >&2; exit 1; }
+# Every existing component of the path must belong to root or to the admin running this (already root-equivalent
+# through sudo) and not be writable by group/others: otherwise another user who owns a directory on the way could
+# swap in a symlink and make this root script write elsewhere.
+p=$(dirname "$DECOY")
+while :; do
+  if [ -e "$p" ]; then
+    [ -L "$p" ] && { echo "path component is a symlink: $p" >&2; exit 1; }
+    owner=$(stat -c %u "$p")
+    [ "$owner" = 0 ] || [ "$owner" = "${SUDO_UID:-0}" ] || { echo "path component owned by another user: $p" >&2; exit 1; }
+    case "$(stat -c %A "$p")" in ?????w????|????????w?) echo "path component writable by group/others: $p" >&2; exit 1 ;; esac
+  fi
+  [ "$p" = / ] && break
+  p=$(dirname "$p")
+done
+# Create missing directories only (an existing directory keeps its mode).
+[ -d "$(dirname "$DECOY")" ] || install -d -m 0755 "$(dirname "$DECOY")"
 umask 022
+set -C   # O_EXCL: never through a symlink or onto an existing file
 printf '%s' "$CONTENT_B64" | base64 -d > "$DECOY"
-chown root:root "$DECOY"; chmod 0644 "$DECOY"
+set +C
+chown -h root:root "$DECOY"; chmod 0644 "$DECOY"
 touch "$RULES"; chmod 0640 "$RULES"
 grep -qxF -- "-w $DECOY -p r -k tiphys_trap" "$RULES" || echo "-w $DECOY -p r -k tiphys_trap" >> "$RULES"
 # Immediate effect without reloading every rule; the rules.d file makes it permanent.

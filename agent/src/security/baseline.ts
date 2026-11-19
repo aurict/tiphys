@@ -92,6 +92,8 @@ export function snapshotOf(r: SecurityReport, carriedSuid: SecurityReport["suid"
 export function diff(baseline: Snapshot, current: Snapshot, previous: Change[] = [], now = new Date()): Change[] {
   const prev = new Map(previous.map((c) => [c.id, c]));
   const out: Change[] = [];
+  // A category this report couldn't read (docker restarting, a failed command) keeps the changes listed before.
+  for (const c of previous) if (!current[c.category] && baseline[c.category]) out.push(c);
   for (const category of Object.keys(current) as Category[]) {
     const b = baseline[category];
     const c = current[category];

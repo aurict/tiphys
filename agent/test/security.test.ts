@@ -292,6 +292,16 @@ describe("collectors", () => {
   });
 });
 
+describe("config store", () => {
+  it("parallel updates all land and none fails (shared temp file name used to race)", async () => {
+    const t = await testApp();
+    await Promise.all(Array.from({ length: 20 }, (_, i) => t.store.update((c) => ((c.allowedRoots = [...c.allowedRoots, `/r${i}`]), c))));
+    expect(t.store.get().allowedRoots).toHaveLength(21);
+    const disk = JSON.parse(await readFile(t.store.path, "utf8"));
+    expect(disk.allowedRoots).toHaveLength(21);
+  });
+});
+
 describe("incident signal", () => {
   it("security.change opens, critical by param; accepted closes", () => {
     const cfg = { name: "atlas", incidents: { links: [] } };

@@ -118,6 +118,40 @@ describe("nft evaluation", () => {
     expect(probe(r, "udp", 80, "ip")).toBe("filtered");
   });
 
+  it("review fixes: return leaves the chain (ufw pattern), fib is unknown, vmap branches, tcp-only != rule, saddr !=", () => {
+    const ufw = parseRuleset(
+      rs([
+        { family: "ip", table: "filter", name: "INPUT", hook: "input", policy: "drop", rules: [[{ jump: { target: "ufw-before-input" } }], [dport("tcp", 22), { accept: null }]] },
+        { family: "ip", table: "filter", name: "ufw-before-input", rules: [[{ jump: { target: "ufw-not-local" } }]] },
+        // `addrtype --dst-type LOCAL -j RETURN` then `-j DROP`: local traffic returns before the drop.
+        { family: "ip", table: "filter", name: "ufw-not-local", rules: [[{ xt: { type: "match", name: "addrtype" } }, { return: null }], [{ drop: null }]] },
+      ]),
+    )!;
+    expect(probe(ufw, "tcp", 22, "ip")).toBe("open");
+    expect(probe(ufw, "tcp", 23, "ip")).toBe("filtered");
+    const fib = parseRuleset(rs([{ name: "input", hook: "input", rules: [[m({ fib: { flags: ["saddr", "iif"], result: "oif" } }, "missing"), { drop: null }]] }]))!;
+    expect(probe(fib, "tcp", 80, "ip")).toBe("open");
+    const vmap = parseRuleset(
+      rs([
+        { name: "input", hook: "input", policy: "drop", rules: [[{ vmap: { key: { meta: { key: "iifname" } }, data: { set: [["eth0", { jump: { target: "inbound" } }], ["lo", { accept: null }]] } } }]] },
+        { name: "inbound", rules: [[dport("tcp", 443), { accept: null }]] },
+      ]),
+    )!;
+    expect(probe(vmap, "tcp", 443, "ip")).toBe("open");
+    const neq = parseRuleset(rs([{ name: "input", hook: "input", rules: [[dport("tcp", { set: [22] }), { drop: null }], [m({ payload: { protocol: "tcp", field: "dport" } }, 22, "!="), { drop: null }]] }]))!;
+    expect(probe(neq, "udp", 53, "ip")).toBe("open");
+    const src = parseRuleset(rs([{ name: "input", hook: "input", policy: "drop", rules: [[m({ payload: { protocol: "ip", field: "saddr" } }, { prefix: { addr: "10.0.0.0", len: 8 } }, "!="), { accept: null }]] }]))!;
+    expect(probe(src, "tcp", 80, "ip")).toBe("open");
+  });
+
+  it("a crafted ruleset (many jumps, deep) can't freeze the agent: budget → treated as open", () => {
+    const chains = Array.from({ length: 9 }, (_, i) => ({ name: `a${i}`, ...(i === 0 ? { hook: "input", policy: "drop" } : {}), rules: i < 8 ? Array.from({ length: 30 }, () => [{ jump: { target: `a${i + 1}` } }]) : [] }));
+    const r = parseRuleset(rs(chains))!;
+    const t0 = Date.now();
+    expect(probe(r, "tcp", 22, "ip")).toBe("open");
+    expect(Date.now() - t0).toBeLessThan(1000);
+  });
+
   it("garbage is not a ruleset", () => {
     expect(parseRuleset("not json")).toBeNull();
     expect(parseRuleset('{"x":1}')).toBeNull();

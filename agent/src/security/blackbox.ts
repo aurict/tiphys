@@ -10,6 +10,9 @@
 import { createHash } from "node:crypto";
 import { createReadStream } from "node:fs";
 import { appendFile, chmod, mkdir, open, readFile, rename, stat, writeFile } from "node:fs/promises";
+
+/** Chain file size limit: past it nothing more is appended (blackbox.full); records must never fill the disk. */
+export const MAX_CHAIN_BYTES = 1024 ** 3;
 import { dirname, join } from "node:path";
 import { createInterface } from "node:readline";
 import { AppError } from "../errors.ts";
@@ -50,7 +53,11 @@ export class BlackBox {
   readonly dir: string;
   readonly file: string;
   readonly anchorsFile: string;
+  /** Last head written next to the chain: after a restart a chain shorter than it was is "truncated". */
+  readonly headFile: string;
   #seq = 0;
+  #damaged: string | null = null;
+  #full = false;
   #head = GENESIS;
   #chain: Promise<void> = Promise.resolve();
   #loaded = false;
@@ -60,6 +67,7 @@ export class BlackBox {
     this.dir = join(dirname(configPath), "blackbox");
     this.file = join(this.dir, "chain.jsonl");
     this.anchorsFile = join(this.dir, "anchors.jsonl");
+    this.headFile = join(this.dir, "head.json");
     this.#now = now;
   }
 
@@ -67,39 +75,70 @@ export class BlackBox {
     return { count: this.#seq, hash: this.#head };
   }
 
-  /** Reads the last record (tail of the file) to continue the chain. */
+  get damaged() {
+    return this.#damaged;
+  }
+
+  /**
+   * Reads the last complete record (tail of the file) to continue the chain. A torn last line (crash mid-write) is
+   * closed with a newline so later records start clean; verification will flag it. Never throws on content.
+   */
   async load() {
     await mkdir(this.dir, { recursive: true, mode: 0o700 });
     await chmod(this.dir, 0o700).catch(() => {});
     const s = await stat(this.file).catch(() => null);
     if (s && s.size > 0) {
       const fh = await open(this.file, "r");
+      let endsClean = true;
       try {
         const len = Math.min(s.size, 256 * 1024);
         const buf = Buffer.alloc(len);
         await fh.read(buf, 0, len, s.size - len);
-        const lines = buf.toString("utf8").split("\n").filter(Boolean);
-        const last = JSON.parse(lines[lines.length - 1]!) as BoxRecord;
-        this.#seq = last.seq;
-        this.#head = last.hash;
+        const text = buf.toString("utf8");
+        endsClean = text.endsWith("\n");
+        const lines = text.split("\n").filter(Boolean);
+        for (let i = lines.length - 1; i >= 0; i--) {
+          try {
+            const r = JSON.parse(lines[i]!) as BoxRecord;
+            if (typeof r.seq === "number" && typeof r.hash === "string") {
+              this.#seq = r.seq;
+              this.#head = r.hash;
+              break;
+            }
+          } catch {
+            this.#damaged = "torn";
+          }
+        }
       } finally {
         await fh.close();
       }
+      if (!endsClean) {
+        this.#damaged = "torn";
+        await appendFile(this.file, "\n", { mode: 0o600, flag: "a" }).catch(() => {});
+      }
+      this.#full = s.size >= MAX_CHAIN_BYTES;
     }
+    const saved = await readFile(this.headFile, "utf8").then((t) => JSON.parse(t) as { count: number; hash: string }, () => null);
+    if (saved && saved.count > this.#seq) this.#damaged = "truncated";
     this.#loaded = true;
   }
 
   append(source: string, kind: BoxRecord["kind"], data: Record<string, unknown>, at?: string): Promise<BoxRecord> {
     const p = this.#chain.then(async () => {
       if (!this.#loaded) await this.load();
+      if (this.#full) throw new AppError("agent.blackbox.full", 507);
       let bounded = boundData(data) as Record<string, unknown>;
       if (JSON.stringify(bounded).length > MAX_DATA_CHARS) bounded = { truncated: true };
       const rec = { seq: this.#seq + 1, at: at ?? new Date(this.#now()).toISOString(), source: source.slice(0, 100), kind, data: bounded };
       const full: BoxRecord = { ...rec, prev: this.#head, hash: recordHash(this.#head, rec) };
       // "a" = O_APPEND; works with chattr +a.
-      await appendFile(this.file, JSON.stringify(full) + "\n", { mode: 0o600, flag: "a" });
+      const line = JSON.stringify(full) + "\n";
+      await appendFile(this.file, line, { mode: 0o600, flag: "a" });
       this.#seq = full.seq;
       this.#head = full.hash;
+      await writeFile(this.headFile, JSON.stringify({ count: full.seq, hash: full.hash }), { mode: 0o600 }).catch(() => {});
+      const st = await stat(this.file).catch(() => null);
+      if (st && st.size >= MAX_CHAIN_BYTES) this.#full = true;
       return full;
     });
     this.#chain = p.then(
@@ -109,34 +148,54 @@ export class BlackBox {
     return p;
   }
 
-  /** Walks the whole chain. brokenAt = first seq whose prev/hash/seq doesn't fit. */
-  async verify(): Promise<{ ok: boolean; count: number; head: string; brokenAt: number | null; reason: string | null }> {
+  /**
+   * Walks the whole chain up to the head at the start of the call (records appended meanwhile don't count).
+   * brokenAt = first seq whose prev/hash/seq doesn't fit. Anchors on file must match the record of their count; an
+   * anchor past the end of the chain means the chain was cut.
+   */
+  async verify(): Promise<{ ok: boolean; count: number; head: string; brokenAt: number | null; reason: string | null; anchorMismatch: string[]; torn: number }> {
     await this.#chain;
+    const target = { seq: this.#seq, head: this.#head };
+    const anchors = await this.anchors(Infinity);
+    const want = new Map(anchors.map((a) => [a.count, a]));
+    const mismatch = new Set<string>();
+    let torn = 0;
+    const done = (ok: boolean, count: number, head: string, brokenAt: number | null, reason: string | null) => {
+      for (const a of anchors) if (a.count > count) mismatch.add(a.date);
+      return { ok: ok && mismatch.size === 0, count, head, brokenAt, reason: reason ?? (mismatch.size ? "anchor" : null), anchorMismatch: [...mismatch], torn };
+    };
+    if (this.#damaged === "truncated") return done(false, target.seq, target.head, target.seq + 1, "truncated");
     const s = await stat(this.file).catch(() => null);
-    if (!s) return { ok: true, count: 0, head: GENESIS, brokenAt: null, reason: null };
+    if (!s) return done(target.seq === 0, 0, GENESIS, target.seq === 0 ? null : 1, target.seq === 0 ? null : "truncated");
     let prev = GENESIS;
     let seq = 0;
     const rl = createInterface({ input: createReadStream(this.file, "utf8"), crlfDelay: Infinity });
     for await (const line of rl) {
+      if (seq >= target.seq) break;
       if (!line) continue;
       let r: BoxRecord;
       try {
         r = JSON.parse(line) as BoxRecord;
       } catch {
-        rl.close();
-        return { ok: false, count: seq, head: prev, brokenAt: seq + 1, reason: "unreadable" };
+        // A torn line (crash mid-write) holds no record; the chain still has to link across it, so skipping it can't
+        // hide a change. Counted and shown.
+        torn++;
+        continue;
       }
       const bad = r.seq !== seq + 1 ? "sequence" : r.prev !== prev ? "link" : recordHash(prev, r) !== r.hash ? "hash" : null;
       if (bad) {
         rl.close();
-        return { ok: false, count: seq, head: prev, brokenAt: seq + 1, reason: bad };
+        return done(false, seq, prev, seq + 1, bad);
       }
       prev = r.hash;
       seq = r.seq;
+      const a = want.get(seq);
+      if (a && a.hash !== prev) mismatch.add(a.date);
     }
-    // The in-memory head must match the file's end (a truncated file would be valid but shorter).
-    if (seq !== this.#seq || prev !== this.#head) return { ok: false, count: seq, head: prev, brokenAt: seq + 1, reason: "truncated" };
-    return { ok: true, count: seq, head: prev, brokenAt: null, reason: null };
+    rl.close();
+    // The in-memory head must match what the file holds (a truncated file would be valid but shorter).
+    if (seq !== target.seq || prev !== target.head) return done(false, seq, prev, seq + 1, "truncated");
+    return done(true, seq, prev, null, null);
   }
 
   async recent(limit: number): Promise<BoxRecord[]> {
@@ -160,21 +219,28 @@ export class BlackBox {
     await appendFile(this.anchorsFile, JSON.stringify({ ...a, at: new Date(this.#now()).toISOString() }) + "\n", { mode: 0o600, flag: "a" });
   }
 
-  async anchors(): Promise<Array<{ date: string; count: number; hash: string; telegram: boolean; at: string }>> {
+  async anchors(limit = 60): Promise<Array<{ date: string; count: number; hash: string; telegram: boolean; at: string }>> {
     const t = await readFile(this.anchorsFile, "utf8").catch(() => "");
     return t
       .split("\n")
       .filter(Boolean)
-      .map((l) => JSON.parse(l))
+      .flatMap((l) => {
+        try {
+          return [JSON.parse(l)];
+        } catch {
+          return [];
+        }
+      })
       .reverse()
-      .slice(0, 60);
+      .slice(0, limit);
   }
 }
 
 /** Push side: a persistent queue sent to another agent's /v1/blackbox/append. */
 export class BlackBoxPusher {
   readonly file: string;
-  #queue: Array<{ at: string; kind: BoxRecord["kind"]; data: Record<string, unknown> }> = [];
+  #queue: Array<{ n: number; at: string; kind: BoxRecord["kind"]; data: Record<string, unknown> }> = [];
+  #next = 1;
   #dropped = 0;
   #ctx: Ctx;
   #fetch: Fetch;
@@ -204,7 +270,9 @@ export class BlackBoxPusher {
         } catch {
           return [];
         }
-      });
+      })
+      .map((x, i) => ({ ...x, n: i + 1 }));
+    this.#next = this.#queue.length + 1;
   }
 
   #persist() {
@@ -220,7 +288,7 @@ export class BlackBoxPusher {
   }
 
   push(kind: BoxRecord["kind"], data: Record<string, unknown>) {
-    this.#queue.push({ at: new Date().toISOString(), kind, data: boundData(data) as Record<string, unknown> });
+    this.#queue.push({ n: this.#next++, at: new Date().toISOString(), kind, data: boundData(data) as Record<string, unknown> });
     if (this.#queue.length > QUEUE_MAX) {
       this.#dropped += this.#queue.length - QUEUE_MAX;
       this.#queue.splice(0, this.#queue.length - QUEUE_MAX);
@@ -236,7 +304,8 @@ export class BlackBoxPusher {
     try {
       while (this.#queue.length) {
         const batch = this.#queue.slice(0, 200);
-        const body = { entries: batch, ...(this.#dropped ? { dropped: this.#dropped } : {}) };
+        const lastN = batch[batch.length - 1]!.n;
+        const body = { entries: batch.map(({ n: _, ...e }) => e), ...(this.#dropped ? { dropped: this.#dropped } : {}) };
         const res = await this.#fetch(new URL("/v1/blackbox/append", b.url).toString(), {
           method: "POST",
           headers: { authorization: `Bearer ${b.token}`, "content-type": "application/json" },
@@ -248,7 +317,8 @@ export class BlackBoxPusher {
           this.lastError = res ? `http ${res.status}` : "unreachable";
           break;
         }
-        this.#queue.splice(0, batch.length);
+        // Remove exactly what was sent (the queue may have been trimmed at the front meanwhile).
+        this.#queue = this.#queue.filter((x) => x.n > lastN);
         this.#dropped = 0;
         sent += batch.length;
         this.lastError = null;

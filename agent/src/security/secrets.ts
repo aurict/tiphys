@@ -7,7 +7,7 @@
 //   local:  (any agent, e.g. the PC) git-tracked files under security.scanners.localRoots, matched with the agent's own
 //           redaction patterns for well-known key formats; nothing leaves the machine but the location.
 import { createHash } from "node:crypto";
-import { chmod, mkdtemp, readFile, rename, rm, stat, writeFile } from "node:fs/promises";
+import { chmod, lstat, mkdtemp, readFile, rename, rm, stat, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { dirname, join, relative } from "node:path";
 import { allowedPath } from "../paths.ts";
@@ -15,7 +15,7 @@ import { AppError } from "../errors.ts";
 import { expandHome } from "../config.ts";
 import { redact } from "../redact.ts";
 import type { Ctx } from "../server.ts";
-import { spawnCapped, type Spawner } from "./collect.ts";
+import { readCapped, spawnCapped, type Spawner } from "./collect.ts";
 import type { Fetch } from "./collect.ts";
 
 export const GITLEAKS_IMAGE = "zricethezav/gitleaks@sha256:c00b6bd0aeb3071cbcb79009cb16a60dd9e0a7c60e2be9ab65d25e6bc8abbb7f"; // v8.30.1
@@ -131,7 +131,7 @@ export class SecretScanner {
 
   async #persist() {
     const data = JSON.stringify(this.state);
-    this.#save = this.#save.then(async () => {
+    this.#save = this.#save.catch(() => {}).then(async () => {
       const tmp = `${this.file}.${process.pid}.tmp`;
       await writeFile(tmp, data, { mode: 0o600 });
       await chmod(tmp, 0o600);
@@ -146,8 +146,12 @@ export class SecretScanner {
     const nowIso = new Date(this.#now()).toISOString();
     for (const h of hits) {
       // Loki lines move every day; their identity is host + stream + rule + time.
-      const id = sha([h.source, h.where, h.file ?? "", h.line ?? "", h.commit ?? "", h.stream ?? "", h.at ?? "", h.rule].join("|"));
-      if (this.state.findings[id]) continue;
+      const id = sha([h.source, h.where, h.file ?? "", h.source === "local" ? "" : (h.line ?? ""), h.commit ?? "", h.stream ?? "", h.at ?? "", h.rule].join("|"));
+      const known = this.state.findings[id];
+      if (known) {
+        if (h.source === "local") known.line = h.line; // lines added above a finding move it
+        continue;
+      }
       const f = { ...h, id, firstSeenAt: nowIso, dismissed: false };
       this.state.findings[id] = f;
       fresh.push(f);
@@ -197,7 +201,7 @@ export class SecretScanner {
     });
     if (res.status === 401 || res.status === 403) throw new AppError("agent.security.githubUnauthorized", 502, { status: res.status });
     if (!res.ok) throw new AppError("agent.security.githubFailed", 502, { status: res.status });
-    return res.json();
+    return JSON.parse(await readCapped(res, 8 * 1024 * 1024, "agent.security.githubFailed"));
   }
 
   async #repos(): Promise<{ full: string; branch: string; private: boolean }[]> {
@@ -279,7 +283,7 @@ export class SecretScanner {
     const f = this.#o.fetch ?? fetch;
     const res = await f(`${base}${path}?${new URLSearchParams(q)}`, { signal: AbortSignal.timeout(60_000) });
     if (!res.ok) throw new AppError("agent.security.lokiFailed", 502, { status: res.status });
-    return (await res.json()) as Record<string, unknown>;
+    return JSON.parse(await readCapped(res, 64 * 1024 * 1024, "agent.security.lokiFailed")) as Record<string, unknown>;
   }
 
   async #loki(): Promise<SecretFinding[]> {
@@ -372,7 +376,8 @@ export class SecretScanner {
         const where = relative(expandHome("~"), repo) || repo;
         for (const f of files.stdout.split("\0").filter(Boolean).slice(0, 20_000)) {
           const p = join(repo, f);
-          const st = await stat(p).catch(() => null);
+          // lstat: a tracked symlink may point outside the repository; it is not followed.
+          const st = await lstat(p).catch(() => null);
           if (!st?.isFile() || st.size > 512 * 1024) continue;
           const buf = await readFile(p).catch(() => null);
           if (!buf || buf.includes(0)) continue;
@@ -380,10 +385,16 @@ export class SecretScanner {
           if (/(^|\/)\.env(\.[^/]*)?$/.test(f) && !/\.(example|sample|template|dist)$/.test(f)) {
             hits.push({ source: "local", rule: "env-file-tracked", where, file: f, line: null, commit: null, stream: null, at: null });
           }
+          const nth = new Map<string, number>();
           buf.toString("utf8")
             .split("\n")
             .forEach((line, i) => {
-              for (const rule of localRules(line)) hits.push({ source: "local", rule, where, file: f, line: i + 1, commit: null, stream: null, at: null });
+              for (const rule of localRules(line)) {
+                const n = (nth.get(rule) ?? 0) + 1;
+                nth.set(rule, n);
+                // `commit` carries the occurrence number for local findings: the identity survives lines added above.
+                hits.push({ source: "local", rule, where, file: f, line: i + 1, commit: `#${n}`, stream: null, at: null });
+              }
             });
           fresh.push(...this.#record(hits));
         }

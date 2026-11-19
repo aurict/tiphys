@@ -145,13 +145,9 @@ export function securityRoutes(opts: SecurityRouteOpts = {}) {
       const t = setInterval(scanTick, 10 * 60_000);
       t.unref();
       const quiet = (p: Promise<unknown>) => void p.catch(() => {});
-      let primed = false;
       const trapTick = () => {
         quiet(traps.checkFiles());
-        if (!primed) {
-          primed = true;
-          quiet(traps.checkAudit(false));
-        } else quiet(traps.checkAudit());
+        quiet(traps.checkAudit());
       };
       const t2 = setInterval(trapTick, 30_000);
       t2.unref();
@@ -210,7 +206,7 @@ export function securityRoutes(opts: SecurityRouteOpts = {}) {
       if (!scanLimit.take(req.device?.id ?? "-")) throw new AppError("agent.security.rateLimited", 429);
       if (b.imageId) {
         await vulns.refresh();
-        return { image: await vulns.scanOne(b.imageId) };
+        return { image: await vulns.scanManual(b.imageId) };
       }
       if (vulns.running) throw new AppError("agent.security.scanBusy", 409);
       background(vulns.tick(true));
@@ -391,12 +387,23 @@ export function securityRoutes(opts: SecurityRouteOpts = {}) {
     const pusher = bbMode === "push" ? new BlackBoxPusher(ctx, opts.fetch) : null;
     if (box) await box.load();
     if (pusher) await pusher.load();
+    let fullNotified = false;
     const record = (kind: "audit" | "event" | "lockdown", data: Record<string, unknown>) => {
-      if (box) void box.append(self(), kind, data).catch((e) => app.log.warn({ err: e }, "kara kutuya yazılamadı"));
+      if (box)
+        void box.append(self(), kind, data).catch((e) => {
+          if (e instanceof AppError && e.code === "agent.blackbox.full" && !fullNotified) {
+            fullNotified = true;
+            void ctx.notifier.send({ key: "blackbox.broken", params: { host: self(), agent: self(), at: box.head.count, reason: "full" }, link: "tiphys://security/blackbox", priority: "high" });
+          } else app.log.warn({ err: e }, "kara kutuya yazılamadı");
+        });
       else if (pusher) pusher.push(kind, data);
     };
     if (box || pusher) {
-      ctx.onAudit = (e) => record("audit", { ...e });
+      // Requests that never authenticated are noise anyone can make (and would let them fill the chain): not recorded.
+      ctx.onAudit = (e) => {
+        if (e.device === null && (e.status === 401 || e.status === 403 || e.status === 429)) return;
+        record("audit", { ...e });
+      };
       const unobserveBox = ctx.notifier.observe((n) => {
         if (!n.sensitive) record("event", { key: n.key, params: n.params ?? {} });
       });
@@ -453,11 +460,7 @@ export function securityRoutes(opts: SecurityRouteOpts = {}) {
     app.get("/v1/blackbox/verify", async () => {
       if (!box) throw new AppError("agent.blackbox.notLocal", 409);
       const v = await verifyBox();
-      // Anchors on file (and in the owner's Telegram) must still be in the chain.
-      const anchors = await box.anchors();
-      const recent = new Map((await box.recent(100_000)).map((r) => [r.seq, r.hash]));
-      const anchorMismatch = anchors.filter((a) => recent.has(a.count) && recent.get(a.count) !== a.hash).map((a) => a.date);
-      return { ...v, anchors, anchorMismatch };
+      return { ...v, anchors: await box.anchors() };
     });
     app.get("/v1/blackbox/recent", async (req) => {
       if (!box) throw new AppError("agent.blackbox.notLocal", 409);
@@ -470,7 +473,7 @@ export function securityRoutes(opts: SecurityRouteOpts = {}) {
       await anchorBox();
       return { anchors: await box.anchors() };
     });
-    const appendLimit = new RateLimit(60, 60_000);
+    const appendLimit = new RateLimit(10, 60_000);
     app.post("/v1/blackbox/append", { config: { scope: "blackbox" }, bodyLimit: 1024 * 1024 }, async (req) => {
       if (!box) throw new AppError("agent.blackbox.notLocal", 409);
       if (!req.service) throw new AppError("agent.auth.scopeDenied", 403);
@@ -502,20 +505,33 @@ export function securityRoutes(opts: SecurityRouteOpts = {}) {
     });
     app.get("/v1/security/recovery", async () => ({ configured: !!ctx.store.get().security.recovery, createdAt: ctx.store.get().security.recovery?.createdAt ?? null }));
 
-    const lockdownLimit = opts.lockdownLimit ?? new RateLimit(5, 3600_000);
+    // Unauthenticated by design (the phone is lost): only the 125-bit recovery code opens it. The limits only bound
+    // the scrypt cost and must not let one tailnet peer lock the owner out: per address 5 per 10 min, 30 an hour in
+    // total, one check at a time; a malformed code costs nothing.
+    const lockdownLimit = opts.lockdownLimit ?? new RateLimit(30, 3600_000);
+    const lockdownPerIp = new RateLimit(5, 10 * 60_000);
+    let lockdownBusy = false;
     app.post("/v1/security/lockdown", { config: { public: true }, bodyLimit: 4096 }, async (req) => {
-      // Unauthenticated by design (the phone is lost): only the recovery code opens it; 5 tries an hour in total.
-      if (!lockdownLimit.take("all")) throw new AppError("agent.security.rateLimited", 429);
       const body = (req.body ?? {}) as { code?: unknown };
       const code = assertCodeShape(body.code);
-      const stored = ctx.store.get().security.recovery;
-      if (!stored || !(await codeMatches(code, stored))) {
+      if (lockdownBusy) throw new AppError("agent.security.rateLimited", 429);
+      if (!lockdownPerIp.take(req.ip) || !lockdownLimit.take("all")) throw new AppError("agent.security.rateLimited", 429);
+      lockdownBusy = true;
+      let ok: boolean;
+      try {
+        const stored = ctx.store.get().security.recovery;
+        ok = !!stored && (await codeMatches(code, stored));
+      } finally {
+        lockdownBusy = false;
+      }
+      if (!ok) {
         record("lockdown", { action: "badRecoveryCode", ip: req.ip });
         throw new AppError("agent.security.badRecoveryCode", 401);
       }
-      await ctx.notifier.send({ key: "security.lockdown", params: { host: self(), agent: self(), by: "recovery" }, link: "tiphys://security", priority: "high" });
       const targets = await fanOut(ctx, opts.fetch);
       await revokeAll(ctx);
+      // After revoking: the lost phone's push endpoint is gone; the owner's Telegram (critical relay) still gets it.
+      await ctx.notifier.send({ key: "security.lockdown", params: { host: self(), agent: self(), by: "recovery" }, link: "tiphys://security", priority: "high" });
       record("lockdown", { action: "lockdown", by: "recovery", ip: req.ip, targets: targets.map((t) => `${t.name}:${t.ok ? "ok" : (t.status ?? "unreachable")}`) });
       req.auditDetail = { lockdown: true, targets: targets.length, failed: targets.filter((t) => !t.ok).length };
       return { ok: true, targets };
@@ -523,9 +539,9 @@ export function securityRoutes(opts: SecurityRouteOpts = {}) {
     app.post("/v1/security/lockdown/remote", { config: { scope: "lockdown" } }, async (req) => {
       parse(z.strictObject({ confirm: z.literal(true) }), req.body);
       const by = req.service ? `service:${req.service.name}` : `device:${req.device?.id}`;
-      await ctx.notifier.send({ key: "security.lockdown", params: { host: self(), agent: self(), by: "remote" }, link: "tiphys://security", priority: "high" });
       record("lockdown", { action: "lockdown", by });
       await revokeAll(ctx);
+      await ctx.notifier.send({ key: "security.lockdown", params: { host: self(), agent: self(), by: "remote" }, link: "tiphys://security", priority: "high" });
       req.auditDetail = { lockdown: true };
       return { ok: true };
     });

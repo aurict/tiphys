@@ -61,7 +61,25 @@ export const spawnCapped: Spawner = (cmd, args, o) =>
 export async function agentFilesSection(configPath: string): Promise<string> {
   const dir = dirname(configPath);
   const lines: string[] = [];
-  for (const p of [dir, configPath, join(dir, "events.jsonl"), join(dir, "audit.jsonl"), join(dir, "security-state.json")]) {
+  const files = [
+    dir,
+    configPath,
+    "events.jsonl",
+    "audit.jsonl",
+    "security-state.json",
+    "security-vulns.json",
+    "security-secrets.json",
+    "security-exposure.json",
+    "security-attacks.json",
+    "security-known-hosts",
+    "security-audit-key",
+    "blackbox",
+    "blackbox/chain.jsonl",
+    "blackbox/anchors.jsonl",
+    "blackbox/head.json",
+    "blackbox-queue.jsonl",
+  ].map((f) => (f.startsWith("/") ? f : join(dir, f)));
+  for (const p of files) {
     const s = await stat(p).catch(() => null);
     if (s) lines.push(`${(s.mode & 0o777).toString(8).padStart(3, "0")} ${p}`);
   }
@@ -156,6 +174,30 @@ export async function collectSsh(o: {
 
 export type Fetch = typeof fetch;
 
+/** Reads a response body up to `max` bytes; more → `tooLarge` error (no unbounded res.text() on remote input). */
+export async function readCapped(res: Response, max: number, tooLarge = "agent.security.reportTooLarge"): Promise<string> {
+  const len = Number(res.headers.get("content-length") ?? "0");
+  if (len > max) {
+    await res.body?.cancel().catch(() => {});
+    throw new AppError(tooLarge, 502);
+  }
+  if (!res.body) return "";
+  const reader = res.body.getReader();
+  const chunks: Uint8Array[] = [];
+  let size = 0;
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    size += value.byteLength;
+    if (size > max) {
+      await reader.cancel().catch(() => {});
+      throw new AppError(tooLarge, 502);
+    }
+    chunks.push(value);
+  }
+  return Buffer.concat(chunks).toString("utf8");
+}
+
 export async function collectAgent(o: { mode: AuditMode; source: { url: string; token: string }; fetch?: Fetch }): Promise<string> {
   const f = o.fetch ?? fetch;
   const url = new URL(`/v1/security/raw?mode=${o.mode}`, o.source.url).toString();
@@ -169,10 +211,8 @@ export async function collectAgent(o: { mode: AuditMode; source: { url: string; 
   if (res.status === 401 || res.status === 403) throw new AppError("agent.security.unauthorized", 502, { status: res.status });
   if (res.status === 429) throw new AppError("agent.security.busy", 502);
   if (!res.ok) throw new AppError("agent.security.agentFailed", 502, { status: res.status });
-  const len = Number(res.headers.get("content-length") ?? "0");
-  if (len > MAX_REPORT_BYTES) throw new AppError("agent.security.reportTooLarge", 502);
-  const body = await res.text();
-  if (body.length > MAX_REPORT_BYTES) throw new AppError("agent.security.reportTooLarge", 502);
+  // JSON-escaped report text is larger than the text itself: allow some room.
+  const body = await readCapped(res, MAX_REPORT_BYTES * 2);
   let text: unknown;
   try {
     text = (JSON.parse(body) as { text?: unknown }).text;

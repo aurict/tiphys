@@ -100,9 +100,17 @@ export function registryOf(ref: string): string {
   return ref.includes("/") && (first.includes(".") || first.includes(":") || first === "localhost") ? first : "docker.io";
 }
 
-/** Digest references Trivy can fetch from a registry. */
-export function remoteRefs(img: Image): string[] {
-  return img.digests.filter((d) => DIGEST_REF.test(d));
+/** Public registries Trivy may contact; others only when credentials are configured for them (an audited host's report
+ * must not make the monitoring server fetch from arbitrary addresses, e.g. a cloud metadata IP). */
+export const PUBLIC_REGISTRIES = new Set(["docker.io", "ghcr.io", "gcr.io", "quay.io", "registry.k8s.io", "public.ecr.aws", "mcr.microsoft.com", "registry.gitlab.com", "lscr.io", "codeberg.org"]);
+
+/** Digest references Trivy can fetch from a registry (allowed registries only). */
+export function remoteRefs(img: Image, extraRegistries: string[] = []): string[] {
+  return img.digests.filter((d) => {
+    if (!DIGEST_REF.test(d)) return false;
+    const reg = registryOf(d);
+    return PUBLIC_REGISTRIES.has(reg) || extraRegistries.includes(reg);
+  });
 }
 
 export function trivyArgs(o: { target: { ref: string } | { input: string }; platform: string; credentials: boolean; javaDb?: boolean }): string[] {
@@ -191,8 +199,9 @@ export function parseTrivy(json: string): Pick<ImageScan, "os" | "counts" | "vul
 
 /** Registry errors from Trivy's stderr: credentials needed vs image not in that registry. */
 export function classifyTrivyError(stderr: string): "needsCredentials" | "notFound" | "failed" {
-  if (/unauthori[sz]ed|denied|authentication required|401|403/i.test(stderr)) return "needsCredentials";
-  if (/manifest unknown|not found|MANIFEST_UNKNOWN|NAME_UNKNOWN|404/i.test(stderr)) return "notFound";
+  // \b keeps "401" inside a sha256 digest from counting.
+  if (/unauthori[sz]ed|denied|authentication required|\b(401|403)\b/i.test(stderr)) return "needsCredentials";
+  if (/manifest unknown|not found|MANIFEST_UNKNOWN|NAME_UNKNOWN|\b404\b/i.test(stderr)) return "notFound";
   return "failed";
 }
 
@@ -216,6 +225,8 @@ export const saveToFile: Saver = (cmd, args, file, o) =>
       if (bytes > o.maxBytes) kill(new AppError("agent.security.imageTooLarge", 502));
     });
     child.stdout.pipe(out);
+    // A full disk must fail this save, not crash the agent (an unhandled stream error would).
+    out.on("error", () => kill(new AppError("agent.security.saveFailed", 502)));
     child.stderr.on("data", (d: Buffer) => {
       if (err.length < 2000) err += d.toString("utf8");
     });
@@ -225,6 +236,7 @@ export const saveToFile: Saver = (cmd, args, file, o) =>
     });
     child.on("close", (code) => {
       clearTimeout(timer);
+      if (out.destroyed) return void (failure ? reject(failure) : reject(new AppError("agent.security.saveFailed", 502)));
       out.end(() => (failure ? reject(failure) : resolve({ code: code ?? -1, stderr: err, bytes })));
     });
   });
@@ -276,7 +288,7 @@ export class VulnScanner {
 
   async #persist() {
     const data = JSON.stringify(this.state);
-    this.#save = this.#save.then(async () => {
+    this.#save = this.#save.catch(() => {}).then(async () => {
       const tmp = `${this.file}.${process.pid}.tmp`;
       await writeFile(tmp, data, { mode: 0o600 });
       await chmod(tmp, 0o600);
@@ -355,6 +367,18 @@ export class VulnScanner {
     return sp("docker", args, { timeoutMs: SCAN_TIMEOUT_MS, maxBytes: 64 * 1024 * 1024, ...(env ? { env } : {}) });
   }
 
+  /** Manual single-image scan: refused while the batch runs (one Trivy at a time). */
+  async scanManual(imageId: string): Promise<ImageScan> {
+    if (this.#busy) throw new AppError("agent.security.scanBusy", 409);
+    const p = this.scanOne(imageId);
+    this.#busy = p;
+    try {
+      return await p;
+    } finally {
+      this.#busy = null;
+    }
+  }
+
   /** Scans one image now (manual or scheduled). */
   async scanOne(imageId: string, opts: { allowSave?: boolean } = {}): Promise<ImageScan> {
     if (!IMAGE_ID.test(imageId)) throw new AppError("agent.security.imageNotFound", 404);
@@ -372,7 +396,7 @@ export class VulnScanner {
     };
 
     // 1. Registry by digest.
-    for (const ref of remoteRefs(item.image)) {
+    for (const ref of remoteRefs(item.image, this.#ctx.store.get().security.scanners.registryAuth.map((r) => r.registry))) {
       const creds = this.#credentialsFor(ref);
       const r = await this.#trivy(trivyArgs({ target: { ref }, platform, credentials: !!creds, javaDb: this.#ctx.store.get().security.scanners.javaDb }), creds);
       if (r.code === 0) {
@@ -390,7 +414,8 @@ export class VulnScanner {
       if (local) outcome = await this.#scanSaved(imageId, "local", null);
       else if (ssh && !(opts.allowSave ?? this.#isNight())) outcome = { ok: false, status: "pending", error: "nightOnly", source: "ssh" };
       else if (ssh) {
-        const day = new Date(this.#now()).toLocaleDateString("sv");
+        // One key per night, even when the window crosses midnight (22–06): the date 12 hours earlier.
+        const day = new Date(this.#now() - 12 * 3600_000).toLocaleDateString("sv");
         if ((this.state.saves[day] ?? 0) >= 2) outcome = { ok: false, status: "pending", error: "saveLimit", source: "ssh" };
         else {
           this.state.saves = { [day]: (this.state.saves[day] ?? 0) + 1 };

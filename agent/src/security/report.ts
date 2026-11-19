@@ -97,6 +97,8 @@ export function splitSections(text: string): { version: number; mode: string; se
     const line = raw.replace(/\r$/, "");
     const s = /^@@section ([a-z]+)$/.exec(line);
     if (s) {
+      // A repeated header means something injected one (e.g. a crafted file name): the whole report is refused.
+      if (sections.has(s[1]!)) throw new ReportParseError(`duplicate section ${s[1]}`);
       cur = [];
       sections.set(s[1]!, cur);
       continue;
@@ -119,7 +121,8 @@ function int(v: string | undefined): number | null {
 }
 
 export function classifyAddress(addr: string, iface: string | null): Scope {
-  const a = addr.replace(/^\[|\]$/g, "").toLowerCase();
+  // IPv4-mapped IPv6 (::ffff:127.0.0.1) is judged as the IPv4 address.
+  const a = addr.replace(/^\[|\]$/g, "").toLowerCase().replace(/^::ffff:(\d+\.\d+\.\d+\.\d+)$/, "$1");
   if (a === "*" || a === "0.0.0.0" || a === "::") return "wildcard";
   if (iface === "tailscale0") return "tailscale";
   if (a === "::1" || /^127\./.test(a)) return "loopback";
@@ -195,22 +198,27 @@ export function parseSshd(lines: string[]): SecurityReport["sshd"] {
   }
   const main = files.find((f) => f.path === "/etc/ssh/sshd_config");
   const dropins = files.filter((f) => f !== main);
+  // A Match block lasts until the end of the file it is in (sshd ends it at the end of an included file), so the lines
+  // after a Match are skipped only within that file.
+  const unconditional = (lines: string[]) => {
+    const i = lines.findIndex((l) => /^\s*match\s/i.test(l));
+    return i < 0 ? lines : lines.slice(0, i);
+  };
   const order: string[] = [];
   let includedDropins = false;
   if (main) {
-    for (const l of main.lines) {
+    for (const l of unconditional(main.lines)) {
       if (/^\s*include\s/i.test(l)) {
-        if (!includedDropins) for (const d of dropins) order.push(...d.lines);
+        if (!includedDropins) for (const d of dropins) order.push(...unconditional(d.lines));
         includedDropins = true;
       } else order.push(l);
     }
   }
-  if (!includedDropins) order.push(...dropins.flatMap((d) => d.lines));
+  if (!includedDropins) order.push(...dropins.flatMap((d) => unconditional(d.lines)));
   for (const l of order) {
     const m = /^\s*([A-Za-z]+)\s*(?:=\s*|\s+)(.*?)\s*$/.exec(l);
     if (!m) continue;
     const key = m[1]!.toLowerCase();
-    if (key === "match") break;
     if (multi.has(key)) (settings[key] ??= []).push(m[2]!);
     else if (!(key in settings)) settings[key] = [m[2]!.toLowerCase()];
   }

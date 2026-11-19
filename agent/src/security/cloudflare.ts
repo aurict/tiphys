@@ -186,45 +186,54 @@ export class CloudflareWatch {
           }
           if (cfg.block && cfg.blockToken && !merged.blockedUntil && !neverBlock(o.ip, cfg.allowIps)) {
             const until2 = new Date(this.#now() + cfg.blockHours * 3600_000).toISOString();
-            await this.#api(`/zones/${z.id}/firewall/access_rules/rules`, cfg.blockToken, {
+            // One failed block (e.g. a rule that already exists) must not stop the run (and the expiry clean-up).
+            const ok = await this.#api(`/zones/${z.id}/firewall/access_rules/rules`, cfg.blockToken, {
               method: "POST",
               body: JSON.stringify({ mode: "block", configuration: { target: o.ip.includes(":") ? "ip6" : "ip", value: o.ip }, notes: `tiphys:${until2}` }),
-            });
-            merged.blockedUntil = until2;
-            blocked++;
+            }).then(
+              () => true,
+              (e) => (e instanceof AppError && e.code === "agent.security.cloudflareUnauthorized" ? Promise.reject(e) : false),
+            );
+            merged.blockedUntil = ok ? until2 : merged.blockedUntil;
+            if (ok) blocked++;
           }
         }
-        if (cfg.blockToken) await this.#expire(z.id, cfg.blockToken);
+        if (cfg.blockToken) await this.#expire(z.id, z.name, cfg.blockToken);
       }
       for (const n of Object.keys(this.state.notified)) if (this.state.notified[n] !== at.slice(0, 10)) delete this.state.notified[n];
       this.state.lastRun = { at, zones: zones.length, error: null };
     } catch (e) {
       this.state.lastRun = { at, zones: 0, error: e instanceof AppError ? e.code : "agent.security.cloudflareFailed" };
-      fresh = [];
+      // Offenders already found (and marked as notified today) are still announced.
+      if (fresh.length) await this.#notify(fresh, blocked).catch(() => {});
       throw e;
     } finally {
       this.#busy = false;
       await this.#persist().catch(() => {});
     }
-    if (fresh.length) {
-      await this.#ctx.notifier.send({
-        key: "security.attack",
-        params: { host: this.#ctx.store.get().name, agent: this.#ctx.store.get().name, count: fresh.length, zones: [...new Set(fresh.map((o) => o.zone))].slice(0, 3).join(", "), blocked },
-        link: "tiphys://security/attacks",
-        priority: "default",
-      });
-    }
+    if (fresh.length) await this.#notify(fresh, blocked);
     return { offenders: fresh.length, blocked };
   }
 
+  async #notify(fresh: Offender[], blocked: number) {
+    await this.#ctx.notifier.send({
+      key: "security.attack",
+      params: { host: this.#ctx.store.get().name, agent: this.#ctx.store.get().name, count: fresh.length, zones: [...new Set(fresh.map((o) => o.zone))].slice(0, 3).join(", "), blocked },
+      link: "tiphys://security/attacks",
+      priority: "default",
+    });
+  }
+
   /** Removes this agent's block rules whose expiry passed (only rules with a "tiphys:<time>" note). */
-  async #expire(zoneId: string, token: string) {
+  async #expire(zoneId: string, zoneName: string, token: string) {
     const r = await this.#api(`/zones/${zoneId}/firewall/access_rules/rules?per_page=100&notes=tiphys%3A&match=all`, token);
     for (const rule of (Array.isArray(r.result) ? r.result : []) as Array<{ id: string; notes?: string; configuration?: { value?: string } }>) {
       const m = /^tiphys:(\S+)$/.exec(rule.notes ?? "");
       if (!m || !/^[a-f0-9]{32}$/.test(rule.id) || Date.parse(m[1]!) > this.#now()) continue;
       await this.#api(`/zones/${zoneId}/firewall/access_rules/rules/${rule.id}`, token, { method: "DELETE" });
-      for (const o of Object.values(this.state.offenders)) if (o.ip === rule.configuration?.value) o.blockedUntil = null;
+      // Only this zone's record: the same IP may still be blocked in another zone.
+      const o = this.state.offenders[`${zoneName}|${rule.configuration?.value}`];
+      if (o) o.blockedUntil = null;
     }
   }
 

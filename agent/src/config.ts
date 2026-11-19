@@ -537,11 +537,23 @@ export class ConfigStore {
     return next;
   }
 
-  async save(): Promise<void> {
-    await mkdir(dirname(this.path), { recursive: true, mode: 0o700 });
-    const tmp = `${this.path}.${process.pid}.tmp`;
-    await writeFile(tmp, JSON.stringify(this.#config, null, 2) + "\n", { mode: 0o600 });
-    await chmod(tmp, 0o600);
-    await rename(tmp, this.path);
+  #saving: Promise<void> = Promise.resolve();
+  #seq = 0;
+
+  /**
+   * Writes the current settings. Saves are serialized and each uses its own temp file: two updates at once (e.g. a
+   * service token's lastUsedAt and a revoke-all) used to share one temp name and fail with ENOENT on rename.
+   */
+  save(): Promise<void> {
+    const run = async () => {
+      await mkdir(dirname(this.path), { recursive: true, mode: 0o700 });
+      const tmp = `${this.path}.${process.pid}.${++this.#seq}.tmp`;
+      await writeFile(tmp, JSON.stringify(this.#config, null, 2) + "\n", { mode: 0o600 });
+      await chmod(tmp, 0o600);
+      await rename(tmp, this.path);
+    };
+    const p = this.#saving.catch(() => {}).then(run);
+    this.#saving = p.catch(() => {});
+    return p;
   }
 }

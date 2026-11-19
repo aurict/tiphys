@@ -103,6 +103,12 @@ describe("traps", () => {
     await t.svc.checkFiles();
     await t.svc.checkFiles();
     expect(traps(t.sent).filter((n) => n.params.trap === "fileMissing")).toHaveLength(1);
+    // Back again: armed silently, no "read" alarm.
+    const n = traps(t.sent).length;
+    await writeFile(path, "x");
+    await t.svc.checkFiles();
+    await t.svc.checkFiles();
+    expect(traps(t.sent)).toHaveLength(n);
   });
 
   it("noatime mount: reported, never armed", async () => {
@@ -112,7 +118,7 @@ describe("traps", () => {
     expect(await readFile(join(t.root, "id_backup"), "utf8")).toMatch(/BEGIN PRIVATE KEY/);
   });
 
-  it("auditd events from SSH hosts: first poll only learns, then each event once", async () => {
+  it("auditd events from SSH hosts: each event once, one alarm per poll with a count; no auditd → unavailable", async () => {
     let lines = [csvLine(1)];
     const calls: string[][] = [];
     const spawner: Spawner = async (_cmd, args) => {
@@ -125,13 +131,15 @@ describe("traps", () => {
       return c;
     });
     await writeFile(knownHostsPath(t.store.path), "orion x\n");
-    await t.svc.checkAudit(false);
-    expect(traps(t.sent)).toEqual([]);
+    await t.svc.checkAudit();
     expect(calls[0]!.at(-1)).toBe("traps");
-    lines = [csvLine(1), csvLine(2)];
+    expect(traps(t.sent)).toEqual([expect.objectContaining({ params: expect.objectContaining({ trap: "audit", host: "orion", who: "mallory/mallory", how: "/usr/bin/cat", count: 1 }) })]);
+    lines = [csvLine(1), csvLine(2), csvLine(3)];
     await t.svc.checkAudit();
     await t.svc.checkAudit();
-    expect(traps(t.sent)).toEqual([expect.objectContaining({ params: expect.objectContaining({ trap: "audit", host: "orion", who: "mallory/mallory", how: "/usr/bin/cat" }) })]);
+    expect(traps(t.sent)).toHaveLength(2);
+    expect(traps(t.sent)[1]!.params.count).toBe(2);
+    expect(t.svc.list().auditHosts).toEqual([expect.objectContaining({ id: "orion", status: "ok" })]);
   });
 
   it("decoy database user in the logs", async () => {

@@ -95,11 +95,13 @@ function matchCond(m: { op?: string; left?: Record<string, Record<string, string
       return apply(values(m.right).map(String).includes(proto));
     }
     if ((protocol === "ip" || protocol === "ip6") && (field === "saddr" || field === "daddr")) {
-      // Source-restricted rules don't apply to "anyone"; a daddr test is about which local address — assume match.
-      return field === "saddr" ? false : true;
+      // "saddr X" (a source restriction) doesn't match "anyone"; "saddr != X" does. A daddr test is about which local
+      // address — assume it matches.
+      return field === "saddr" ? apply(false) : true;
     }
     if (field === "dport" && (protocol === "tcp" || protocol === "udp" || protocol === "th")) {
-      if (protocol !== "th" && protocol !== proto) return apply(false);
+      // A tcp-only test never matches a udp probe (and vice versa), whatever the operator.
+      if (protocol !== "th" && protocol !== proto) return false;
       return apply(portIn(m.right, port) as Cond);
     }
     if (field === "sport") return false;
@@ -112,11 +114,21 @@ function matchCond(m: { op?: string; left?: Record<string, Record<string, string
     }
     return "unknown";
   }
-  if (left.fib) return true;
   return "unknown";
 }
 
-type RuleResult = { verdict: "accept" | "drop" } | { jump: string; goto: boolean } | { verdict: "continue" };
+type RuleResult =
+  | { verdict: "accept" | "drop" | "continue" | "return" }
+  | { jump: string; goto: boolean }
+  | { vmap: Array<{ jump: string; goto: boolean } | { verdict: "accept" | "drop" }> };
+
+/** Evaluation budget per probe: a crafted ruleset (many jumps per chain, deep) must not freeze the agent. */
+class Budget {
+  left = 10_000;
+  spent() {
+    return --this.left < 0;
+  }
+}
 
 function evalRule(expr: unknown[], proto: "tcp" | "udp", port: number, family: Family): RuleResult {
   const hasDport = expr.some((e) => {
@@ -143,30 +155,55 @@ function evalRule(expr: unknown[], proto: "tcp" | "udp", port: number, family: F
     else if ("drop" in e || "reject" in e) verdict = { verdict: "drop" };
     else if ("jump" in e) verdict = { jump: String((e.jump as { target: string }).target), goto: false };
     else if ("goto" in e) verdict = { jump: String((e.goto as { target: string }).target), goto: true };
-    else if ("return" in e) verdict = { verdict: "continue" };
+    else if ("return" in e) verdict = { verdict: "return" };
     else if ("counter" in e || "log" in e || "limit" in e || "comment" in e) continue;
-    else if ("vmap" in e || "queue" in e) verdict = { verdict: "continue" };
+    else if ("vmap" in e) {
+      // e.g. iifname vmap { eth0 : jump inbound }: any branch may apply to the probe.
+      const data = ((e.vmap as { data?: { set?: unknown[] } }).data?.set ?? []) as unknown[];
+      const branches: Array<{ jump: string; goto: boolean } | { verdict: "accept" | "drop" }> = [];
+      for (const pair of data) {
+        const v = Array.isArray(pair) ? (pair[1] as Record<string, unknown>) : null;
+        if (!v) continue;
+        if ("jump" in v) branches.push({ jump: String((v.jump as { target: string }).target), goto: false });
+        else if ("goto" in v) branches.push({ jump: String((v.goto as { target: string }).target), goto: true });
+        else if ("accept" in v) branches.push({ verdict: "accept" });
+        else if ("drop" in v || "reject" in v) branches.push({ verdict: "drop" });
+      }
+      verdict = { vmap: branches };
+    } else if ("queue" in e) verdict = { verdict: "continue" };
   }
   if (!verdict) return { verdict: "continue" };
   if (cond === "unknown") {
     // Unknown condition: assume it matches if that opens the port, not if it would close it.
-    if ("verdict" in verdict && verdict.verdict === "drop") return { verdict: "continue" };
-    if ("jump" in verdict) return verdict;
+    if ("verdict" in verdict && (verdict.verdict === "drop" || verdict.verdict === "return")) return { verdict: "continue" };
   }
   return verdict;
 }
 
-function evalChain(rs: Ruleset, chain: Chain, proto: "tcp" | "udp", port: number, family: Family, depth: number): Verdict {
-  if (depth > 8) return "accept";
+/** "continue" = fell off the end or returned (the caller goes on with its next rule). */
+function evalChain(rs: Ruleset, chain: Chain, proto: "tcp" | "udp", port: number, family: Family, depth: number, budget: Budget): Verdict {
+  if (depth > 8 || budget.spent()) return "accept";
+  const sub = (target: string, goto: boolean): Verdict | "next" => {
+    const c = rs.chains.get(key(chain.family, chain.table, target));
+    const v = c ? evalChain(rs, c, proto, port, family, depth + 1, budget) : "accept";
+    if (v !== "continue") return v;
+    return goto ? "continue" : "next";
+  };
   for (const expr of chain.rules) {
+    if (budget.spent()) return "accept";
     const r = evalRule(expr, proto, port, family);
     if ("jump" in r) {
-      const sub = rs.chains.get(key(chain.family, chain.table, r.jump));
-      const v = sub ? evalChain(rs, sub, proto, port, family, depth + 1) : "accept";
-      if (v !== "continue") return v;
-      if (r.goto) return "continue";
+      const v = sub(r.jump, r.goto);
+      if (v === "next") continue;
+      return v;
+    }
+    if ("vmap" in r) {
+      // Open if any branch accepts (we don't know which key the probe hits); never "filtered" from a map.
+      const results = r.vmap.map((b) => ("jump" in b ? sub(b.jump, b.goto) : b.verdict));
+      if (results.includes("accept")) return "accept";
       continue;
     }
+    if (r.verdict === "return") return "continue";
     if (r.verdict !== "continue") return r.verdict;
   }
   return "continue";
@@ -176,7 +213,7 @@ function evalChain(rs: Ruleset, chain: Chain, proto: "tcp" | "udp", port: number
 export function probe(rs: Ruleset, proto: "tcp" | "udp", port: number, family: Family): "open" | "filtered" {
   for (const c of rs.base) {
     if (c.family !== family && c.family !== "inet") continue;
-    let v = evalChain(rs, c, proto, port, family, 0);
+    let v = evalChain(rs, c, proto, port, family, 0, new Budget());
     if (v === "continue") v = c.policy === "drop" ? "drop" : "accept";
     if (v === "drop") return "filtered";
   }
