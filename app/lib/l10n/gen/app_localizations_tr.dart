@@ -10581,4 +10581,21 @@ class AppLocalizationsTr extends AppLocalizations {
   @override
   String get agyErrRateLimited =>
       'Çok sık istendi; biraz bekleyip tekrar dene.';
+
+  @override
+  String get secLockdownHttpsOnly =>
+      'Kurtarma kodu yalnız https adresine gönderilir.';
+
+  @override
+  String get secLockdownCodeShow => 'Kodu göster';
+
+  @override
+  String get secLockdownCodeHide => 'Kodu gizle';
+
+  @override
+  String get secChangesMoved =>
+      'Değişiklik listesi güncellendi, yeniden gözden geçirin.';
+
+  @override
+  String get agyNoValidHost => 'Bu oturumun hangi ajanda olduğu bulunamadı.';
 }

@@ -57,7 +57,7 @@ class _TrapsBlockState extends ConsumerState<_TrapsBlock> {
     setState(() => _busy = true);
     await secAct(context, body, ok: ok);
     if (mounted) setState(() => _busy = false);
-    ref.invalidate(securityGetProvider(_key));
+    if (mounted) ref.invalidate(securityGetProvider(_key));
   }
 
   Future<void> _test() async {
@@ -76,7 +76,7 @@ class _TrapsBlockState extends ConsumerState<_TrapsBlock> {
       token = j is Map ? '${j['token']}' : null;
     });
     if (mounted) setState(() => _busy = false);
-    ref.invalidate(securityGetProvider(_key));
+    if (mounted) ref.invalidate(securityGetProvider(_key));
     if (ok && token != null && mounted) {
       await showSecretOnce(context, title: l.secTrapTokenShownTitle(name), value: token!, hint: l.secTrapTokenPlantHint, warning: l.secTrapTokenOpensNothing);
     }
@@ -116,7 +116,7 @@ class _TrapsBlockState extends ConsumerState<_TrapsBlock> {
   Future<void> _setHostTraps(SecurityHostConfig h, bool on) async {
     final l = AppLocalizations.of(context);
     await _run(() => securityCall(ref, _id, 'PATCH', '/v1/security/hosts/${Uri.encodeComponent(h.id)}', body: {'traps': on}), ok: l.secSaved);
-    ref.invalidate(securitySettingsProvider(_id));
+    if (mounted) ref.invalidate(securitySettingsProvider(_id));
   }
 
   Future<void> _setRecipient(String? id) async {

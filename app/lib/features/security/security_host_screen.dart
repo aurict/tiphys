@@ -41,8 +41,8 @@ class _SecurityHostScreenState extends ConsumerState<SecurityHostScreen> {
   SecurityRef get _key => (widget.hostId, widget.agentHint);
 
   void _refreshAll() {
-    ref.invalidate(securityDetailProvider(_key));
-    ref.invalidate(securityFeedProvider);
+    if (mounted) ref.invalidate(securityDetailProvider(_key));
+    if (mounted) ref.invalidate(securityFeedProvider);
   }
 
   Future<void> _check(SecurityDetail d, {required bool full}) async {
@@ -73,11 +73,12 @@ class _SecurityHostScreenState extends ConsumerState<SecurityHostScreen> {
     if (ok != true || !mounted) return;
     setState(() => _busy = true);
     try {
-      final j = await securityCall(ref, d.agent.id, 'POST', '${securityHostPath(d.summary.id)}/baseline', body: {'confirm': true});
+      // expected: the agent refuses (409 changesMoved) if the list changed after the user looked at it.
+      final j = await securityCall(ref, d.agent.id, 'POST', '${securityHostPath(d.summary.id)}/baseline', body: {'confirm': true, 'expected': d.changes.length});
       final n = (j is Map ? (j['accepted'] as num?)?.toInt() : null) ?? d.changes.length;
       if (mounted) toast(context, l.secAccepted(n));
     } catch (e) {
-      if (mounted) toast(context, agentErrorText(l, e));
+      if (mounted) toast(context, e is AgentError && e.code == 'agent.security.changesMoved' ? l.secChangesMoved : agentErrorText(l, e));
     } finally {
       if (mounted) {
         setState(() => _busy = false);

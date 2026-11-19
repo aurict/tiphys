@@ -14,34 +14,55 @@ import '../../theme/tokens.dart';
 import '../../widgets/forms.dart';
 import '../../widgets/surfaces.dart';
 import '../configfiles/config_file_screen.dart' show revealLockAvailableProvider;
-import '../vault/vault_state.dart' show vaultAuthProvider;
+import '../vault/vault_state.dart' show secureWindowProvider, vaultAuthProvider;
 import 'security_data.dart' show securityCall;
 import 'security_more_data.dart';
 import 'security_section_widgets.dart';
 import 'security_widgets.dart';
 import '../system/agent_providers.dart';
 
-class SecurityRecoveryScreen extends ConsumerWidget {
+class SecurityRecoveryScreen extends ConsumerStatefulWidget {
   const SecurityRecoveryScreen({super.key, this.agentHint});
   final String? agentHint;
+  @override
+  ConsumerState<SecurityRecoveryScreen> createState() => _RecoveryScreenState();
+}
+
+class _RecoveryScreenState extends ConsumerState<SecurityRecoveryScreen> {
+  /// Requests in flight on this screen: while a recovery code is being created, leaving would lose it (it is shown once).
+  final _inFlight = ValueNotifier<int>(0);
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  void dispose() {
+    _inFlight.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final l = AppLocalizations.of(context);
-    return SettingsPage(
-      title: l.secRecTitle,
-      onRefresh: () async {
-        ref.invalidate(securityAgentsProvider(agentHint));
-        ref.invalidate(securityGetProvider);
-      },
-      children: [SecurityAgentBlocks(hint: agentHint, builder: (c, a) => _RecoveryBlock(agent: a))],
+    return ValueListenableBuilder<int>(
+      valueListenable: _inFlight,
+      builder: (context, n, _) => PopScope(
+        canPop: n == 0,
+        child: SettingsPage(
+          title: l.secRecTitle,
+          backEnabled: n == 0,
+          onRefresh: () async {
+            ref.invalidate(securityAgentsProvider(widget.agentHint));
+            ref.invalidate(securityGetProvider);
+          },
+          children: [SecurityAgentBlocks(hint: widget.agentHint, builder: (c, a) => _RecoveryBlock(agent: a, inFlight: _inFlight))],
+        ),
+      ),
     );
   }
 }
 
 class _RecoveryBlock extends ConsumerStatefulWidget {
-  const _RecoveryBlock({required this.agent});
+  const _RecoveryBlock({required this.agent, required this.inFlight});
   final Host agent;
+  final ValueNotifier<int> inFlight;
   @override
   ConsumerState<_RecoveryBlock> createState() => _RecoveryBlockState();
 }
@@ -52,6 +73,16 @@ class _RecoveryBlockState extends ConsumerState<_RecoveryBlock> {
   late final _targetsKey = (widget.agent.id, secLockdownTargetsPath);
 
   String get _id => widget.agent.id;
+
+  /// Marks the screen busy (back is blocked) for the duration of [body].
+  Future<T> _guarded<T>(Future<T> Function() body) async {
+    widget.inFlight.value++;
+    try {
+      return await body();
+    } finally {
+      widget.inFlight.value--;
+    }
+  }
 
   /// The app lock (PIN / fingerprint), asked every time; without a lock set up no code is created.
   Future<bool> _authenticate() async {
@@ -71,13 +102,14 @@ class _RecoveryBlockState extends ConsumerState<_RecoveryBlock> {
     if (!mounted || !await _authenticate() || !mounted) return;
     setState(() => _busy = true);
     String? code;
-    final ok = await secAct(context, () async {
-      final j = await securityCall(ref, _id, 'POST', secRecoveryPath, body: {'confirm': true});
-      code = j is Map ? '${j['code']}' : null;
-    });
-    if (mounted) setState(() => _busy = false);
-    ref.invalidate(securityGetProvider(_statusKey));
-    if (ok && code != null && mounted) {
+    final ok = await _guarded(() => secAct(context, () async {
+          final j = await securityCall(ref, _id, 'POST', secRecoveryPath, body: {'confirm': true});
+          code = j is Map ? '${j['code']}' : null;
+        }));
+    if (!mounted) return;
+    setState(() => _busy = false);
+    if (mounted) ref.invalidate(securityGetProvider(_statusKey));
+    if (ok && code != null) {
       await showSecretOnce(context, title: l.secRecCodeTitle, value: code!, hint: l.secRecCodeHint, warning: l.secRecCodeWarn, copyable: false);
     }
   }
@@ -88,8 +120,9 @@ class _RecoveryBlockState extends ConsumerState<_RecoveryBlock> {
     if (body == null || !mounted) return;
     setState(() => _busy = true);
     await secAct(context, () => securityCall(ref, _id, 'POST', secLockdownTargetsPath, body: body), ok: l.secSaved);
-    if (mounted) setState(() => _busy = false);
-    ref.invalidate(securityGetProvider(_targetsKey));
+    if (!mounted) return;
+    setState(() => _busy = false);
+    if (mounted) ref.invalidate(securityGetProvider(_targetsKey));
   }
 
   Future<void> _deleteTarget(LockdownTarget tg) async {
@@ -98,8 +131,9 @@ class _RecoveryBlockState extends ConsumerState<_RecoveryBlock> {
     if (!mounted) return;
     setState(() => _busy = true);
     await secAct(context, () => securityCall(ref, _id, 'DELETE', '$secLockdownTargetsPath/${tg.id}'), ok: l.secDeleted);
-    if (mounted) setState(() => _busy = false);
-    ref.invalidate(securityGetProvider(_targetsKey));
+    if (!mounted) return;
+    setState(() => _busy = false);
+    if (mounted) ref.invalidate(securityGetProvider(_targetsKey));
   }
 
   @override
@@ -232,19 +266,37 @@ class _LockdownScreenState extends ConsumerState<SecurityLockdownScreen> {
   final _code = TextEditingController();
   bool _prefilled = false;
   bool _busy = false;
+  bool _hideCode = false;
   List<LockdownResult>? _results;
   Object? _error;
+  late final Future<void> Function(bool) _secure;
+
+  @override
+  void initState() {
+    super.initState();
+    // The recovery code is typed here: no screenshots or recents preview.
+    _secure = ref.read(secureWindowProvider);
+    _secure(true);
+  }
 
   @override
   void dispose() {
+    _secure(false);
     _url.dispose();
     _code.dispose();
     super.dispose();
   }
 
+  /// The code only goes to an https address; http is refused with its own message.
+  String? _urlError(AppLocalizations l, String v) {
+    final u = Uri.tryParse(v.trim());
+    if (u == null || u.host.isEmpty) return l.secInvalid;
+    return u.scheme == 'https' ? null : (u.scheme == 'http' ? l.secLockdownHttpsOnly : l.secInvalid);
+  }
+
   Future<void> _lock() async {
     final l = AppLocalizations.of(context);
-    if (_busy || !_form.currentState!.validate()) return;
+    if (_busy || !_form.currentState!.validate() || _urlError(l, _url.text) != null) return;
     if (!await confirmDialog(context, message: l.secLockdownConfirm, confirmLabel: l.secLockdownDo, destructive: true) || !mounted) return;
     setState(() {
       _busy = true;
@@ -256,7 +308,11 @@ class _LockdownScreenState extends ConsumerState<SecurityLockdownScreen> {
     } catch (e) {
       if (mounted) setState(() => _error = e);
     } finally {
-      if (mounted) setState(() => _busy = false);
+      // The code is not kept after the call, whatever the result.
+      if (mounted) {
+        _code.clear();
+        setState(() => _busy = false);
+      }
     }
   }
 
@@ -287,7 +343,7 @@ class _LockdownScreenState extends ConsumerState<SecurityLockdownScreen> {
                   keyboardType: TextInputType.url,
                   helper: l.secLockdownUrlHint,
                   enabled: !_busy,
-                  validator: (v) => (v.trim().startsWith('https://') || v.trim().startsWith('http://')) && Uri.tryParse(v.trim())?.host.isNotEmpty == true ? null : l.secInvalid,
+                  validator: (v) => _urlError(l, v),
                 ),
                 const SizedBox(height: 12),
                 TextFormField(
@@ -295,10 +351,22 @@ class _LockdownScreenState extends ConsumerState<SecurityLockdownScreen> {
                   enabled: !_busy,
                   autocorrect: false,
                   enableSuggestions: false,
+                  enableIMEPersonalizedLearning: false,
+                  obscureText: _hideCode,
                   textCapitalization: TextCapitalization.characters,
                   inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'[A-Za-z0-9-]')), LengthLimitingTextInputFormatter(29)],
                   style: const TextStyle(fontFamily: monoFamily, fontSize: 15),
-                  decoration: InputDecoration(labelText: l.secLockdownCode, hintText: 'ABCDE-FGHJK-LMNPQ-RSTUV-WXYZ2', helperText: l.secLockdownCodeHint, helperMaxLines: 3),
+                  decoration: InputDecoration(
+                    labelText: l.secLockdownCode,
+                    hintText: 'ABCDE-FGHJK-LMNPQ-RSTUV-WXYZ2',
+                    helperText: l.secLockdownCodeHint,
+                    helperMaxLines: 3,
+                    suffixIcon: IconButton(
+                      tooltip: _hideCode ? l.secLockdownCodeShow : l.secLockdownCodeHide,
+                      icon: Icon(_hideCode ? LucideIcons.eye : LucideIcons.eyeOff, size: 18),
+                      onPressed: () => setState(() => _hideCode = !_hideCode),
+                    ),
+                  ),
                   validator: (v) => recoveryCodeComplete(v ?? '') ? null : l.secLockdownCodeInvalid,
                   autovalidateMode: AutovalidateMode.onUserInteraction,
                   onFieldSubmitted: (_) => _lock(),

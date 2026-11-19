@@ -56,6 +56,21 @@ class _Fake extends AgentClient {
 }
 
 void main() {
+  test('olay birleştirme: eski sürüm yenisini ezmez; liste 3000 ile sınırlı', () {
+    final events = <AgyEvent>[];
+    var after = upsertAgyEvents(events, [
+      {'eid': 1, 'seq': 5, 'kind': 'agent', 'text': 'hello world'},
+    ]);
+    after = upsertAgyEvents(events, [
+      {'eid': 1, 'seq': 3, 'kind': 'agent', 'text': 'hel'},
+    ], after: after);
+    expect(events.single.json['text'], 'hello world');
+    expect(after, 5);
+    upsertAgyEvents(events, [for (var i = 2; i < 3200; i++) {'eid': i, 'seq': 10 + i, 'kind': 'agent', 'text': 'x'}]);
+    expect(events, hasLength(maxAgyEvents));
+    expect(events.last.eid, 3199);
+  });
+
   group('olaylar', () {
     test('eid ile güncellenir (çoğalmaz), yeni seq alınır; sıra eid sırasıdır; dönen değer en yüksek seq', () {
       final events = <AgyEvent>[];
@@ -113,7 +128,7 @@ void main() {
       expect(agyResolvedPermissions(events), {'a': 'allow', 'b': 'cancelled'});
     });
 
-    test('Allow/Deny seçeneği: türüne göre (once önce), yoksa agy’nin allow/deny kimlikleri', () {
+    test('Allow/Deny seçeneği: yalnız bir kerelik (allow_once/reject_once ya da agy’nin allow/deny kimlikleri)', () {
       final opts = [
         {'optionId': 'always', 'name': 'Always', 'kind': 'allow_always'},
         {'optionId': 'allow', 'name': 'Allow', 'kind': 'allow_once'},
@@ -121,7 +136,7 @@ void main() {
       ];
       expect(agyOptionFor(opts, true), 'allow');
       expect(agyOptionFor(opts, false), 'deny');
-      expect(agyOptionFor([opts[0]], true), 'always', reason: 'yalnız “her zaman” varsa o');
+      expect(agyOptionFor([opts[0]], true), isNull, reason: 'bildirim düğmesi kalıcı izin vermez');
       expect(agyOptionFor([opts[0]], false), isNull);
       expect(
         agyOptionFor([
@@ -435,7 +450,9 @@ void main() {
         "cd '/home/user/Desktop/website' && claude --resume 7e08e218-0000-4000-8000-000000000001",
       );
       expect(agyResumeCommand('/home/user/Desktop/tiphys', 's-new-0001'), agyResume('/home/user/Desktop/tiphys', 's-new-0001'));
-      expect(agyResumeCommand("/home/u/it's", 'abc12345'), "cd '/home/u/it'\\''s' && agy --conversation abc12345");
+      expect(agyResumeCommand("/home/u/it's", 'abc12345'), "cd '/home/u/it'\\''s' && agy --conversation 'abc12345'");
+      expect(agyResumeCommand('/tmp', "x;touch /tmp/p;#"), isNull);
+      expect(claudeResumeCommand('/tmp', r'x$(id)'), isNull);
     });
   });
 }

@@ -130,7 +130,9 @@ void main() {
   group('bildirimden izin kararı', () {
     final codec = ProfileCodec(File('assets/profile/tiphys.schema.json').readAsStringSync());
     final profile = codec.decode(File('assets/profile/example.json').readAsStringSync()).toProfile();
-    final payload = jsonEncode({'link': 'tiphys://claude/s1', 'sessionId': 's1', 'requestId': 'r1'});
+    const sid = '11111111-2222-4333-8444-555555555555';
+    const rid = 'aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee';
+    final payload = jsonEncode({'link': 'tiphys://claude/$sid', 'sessionId': sid, 'requestId': rid});
 
     test('Claude ajanına doğru oturum ve isteğe karar gider', () async {
       final calls = <(String, String, Object?)>[];
@@ -140,8 +142,23 @@ void main() {
           clientFor: (url, token) => _Rec(url, token, calls));
       expect(ok, isTrue);
       expect(calls.single.$1, 'https://argo.example.ts.net:7443 tph_x');
-      expect(calls.single.$2, '/v1/claude/sessions/s1/permissions/r1');
+      expect(calls.single.$2, '/v1/claude/sessions/$sid/permissions/$rid');
       expect(calls.single.$3, {'allow': true});
+    });
+
+    test('kimlikler biçime uymazsa hiçbir istek gitmez (yol kaçışı yok)', () async {
+      for (final bad in [
+        {'link': 'tiphys://claude/x', 'sessionId': '../../security/x', 'requestId': rid},
+        {'link': 'tiphys://claude/x', 'sessionId': sid, 'requestId': 'r1?x=1'},
+        {'link': 'tiphys://agy/x', 'sessionId': 'agy-../../../x', 'requestId': 'aaaaaaaaaaaa'},
+        {'link': 'tiphys://agy/x', 'sessionId': 'agy-aaaaaaaaaaaa', 'requestId': '..'},
+      ]) {
+        final calls = <(String, String, Object?)>[];
+        final ok = await decideFromNotification(jsonEncode(bad), true,
+            profile: profile, secrets: MemorySecretStore({'agent-argo': 'tph_x'}), clientFor: (url, token) => _Rec(url, token, calls));
+        expect(ok, isFalse, reason: '$bad');
+        expect(calls, isEmpty, reason: '$bad');
+      }
     });
 
     test('token yoksa ya da ajan ulaşılamazsa false (kullanıcıya bildirilir)', () async {
@@ -153,7 +170,7 @@ void main() {
     });
 
     test('düğmeli bildirim yükünden de ekran açılır', () {
-      expect(routeForPayload(payload), '/claude/session/s1');
+      expect(routeForPayload(payload), '/claude/session/$sid');
       expect(routeForPayload('tiphys://system'), '/system');
     });
   });

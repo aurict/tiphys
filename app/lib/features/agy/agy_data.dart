@@ -32,11 +32,13 @@ final agyHostsProvider = FutureProvider.autoDispose<List<Host>>((ref) async {
   return [...hosts.where((h) => h.id == claude?.id), ...hosts.where((h) => h.id != claude?.id)];
 });
 
-/// The host agy sessions are used on: the one a link names (`hint`: id or name), else the first that has the feature.
-/// null when no agent reports `agy`: no entry point is shown then.
+/// The host agy sessions are used on: the one a link names (`hint`: id or name); without a hint the first that has the
+/// feature. A hint that names no host is never guessed (only when there is exactly one agy host): null → the screen says
+/// it couldn't tell which agent. null also when no agent reports `agy`.
 final agyHostProvider = FutureProvider.autoDispose.family<Host?, String?>((ref, hint) async {
   final hosts = await ref.watch(agyHostsProvider.future);
-  return exactHostFor(hosts, hint) ?? hosts.firstOrNull;
+  if (hint == null || hint.isEmpty) return hosts.firstOrNull;
+  return exactHostFor(hosts, hint) ?? (hosts.length == 1 ? hosts.single : null);
 });
 
 final agySessionsProvider = FutureProvider.autoDispose.family<List<AgyJson>, String>(retry: _noRetry, (ref, hostId) async {
@@ -77,7 +79,8 @@ int upsertAgyEvents(List<AgyEvent> events, Iterable<dynamic> incoming, {int afte
     if (e.seq > max) max = e.seq;
     final at = index[e.eid];
     if (at != null) {
-      events[at] = e;
+      // Two polls can overlap (long poll + one after send): an older answer must not overwrite a newer version.
+      if (e.seq >= events[at].seq) events[at] = e;
     } else {
       index[e.eid] = events.length;
       events.add(e);
@@ -85,8 +88,12 @@ int upsertAgyEvents(List<AgyEvent> events, Iterable<dynamic> incoming, {int afte
     }
   }
   if (added) events.sort((a, b) => a.eid.compareTo(b.eid));
+  // The agent keeps at most 3000 events per session; the app doesn't keep more either.
+  if (events.length > maxAgyEvents) events.removeRange(0, events.length - maxAgyEvents);
   return max;
 }
+
+const maxAgyEvents = 3000;
 
 /// Latest state of each tool call: the `tool` event's fields overlaid with its `toolUpdate`s (same toolCallId).
 Map<String, AgyJson> agyToolStates(Iterable<AgyEvent> events) {
@@ -114,17 +121,17 @@ Map<String, String> agyResolvedPermissions(Iterable<AgyEvent> events) => {
     if (e.kind == 'permissionResolved') e.get<String>('requestId') ?? '': e.get<String>('optionId') ?? '',
 };
 
-/// The option to press for "Allow" / "Deny": by kind (allow_once, allow_always, reject_once, …), else agy's own ids.
+/// The option to press for a notification's "Allow" / "Deny": only one-time choices (kind allow_once / reject_once, or
+/// agy's own ids "allow" / "deny"). Never allow_always / reject_always: a lock-screen tap must not grant a lasting
+/// permission for a command the user didn't see. null → the user has to decide in the app.
 String? agyOptionFor(List<dynamic> options, bool allow) {
   final list = [for (final o in options) Map<String, dynamic>.from(o as Map)];
-  final prefix = allow ? 'allow' : 'reject';
-  // "once" before "always": a notification button never grants a lasting permission.
-  for (final suffix in const ['_once', '']) {
-    final hit = list.where((o) => '${o['kind']}'.startsWith('$prefix$suffix')).firstOrNull;
-    if (hit != null) return '${hit['optionId']}';
-  }
+  final kind = allow ? 'allow_once' : 'reject_once';
+  final hit = list.where((o) => o['kind'] == kind).firstOrNull;
+  if (hit != null) return '${hit['optionId']}';
   final id = allow ? 'allow' : 'deny';
-  return list.any((o) => o['optionId'] == id) ? id : null;
+  final plain = list.where((o) => o['optionId'] == id && !'${o['kind']}'.endsWith('_always')).firstOrNull;
+  return plain == null ? null : id;
 }
 
 bool agyActive(String status) => status == 'running' || status == 'waiting' || status == 'starting';
@@ -148,6 +155,15 @@ class AgyController extends ChangeNotifier {
 
   /// The session no longer exists on the agent.
   bool gone = false;
+
+  /// The chat route is the one on top (another screen pushed over it pauses the long poll, like the app going to the
+  /// background does).
+  bool _foreground = true;
+  void setForeground(bool v) {
+    if (v == _foreground) return;
+    _foreground = v;
+    if (v && poll && !_disposed && !gone && !ended && appVisible.value) unawaited(_loop());
+  }
   int after = 0;
   bool _disposed = false;
   bool _looping = false;
@@ -197,7 +213,7 @@ class AgyController extends ChangeNotifier {
     if (_looping) return;
     _looping = true;
     try {
-      while (!_disposed && !gone && appVisible.value) {
+      while (!_disposed && !gone && appVisible.value && _foreground) {
         if (!await pollOnce()) {
           if (gone || _disposed) break;
           await Future<void>.delayed(Duration(seconds: [1, 2, 5, 10, 20][(_attempt++).clamp(0, 4)]));
@@ -212,7 +228,7 @@ class AgyController extends ChangeNotifier {
 
   /// Back in the foreground: poll again (it stops while the app is in the background).
   void _onVisibility() {
-    if (appVisible.value && poll && !_disposed && !gone && !ended) unawaited(_loop());
+    if (appVisible.value && _foreground && poll && !_disposed && !gone && !ended) unawaited(_loop());
   }
 
   /// Sends a message. The agent answers 409 `agent.agy.busy` while running/waiting (thrown to the caller).
@@ -220,7 +236,7 @@ class AgyController extends ChangeNotifier {
     await client.post('/v1/agy/sessions/$sessionId/messages', {'text': text});
     summary?['status'] = 'running';
     notifyListeners();
-    if (poll && !_looping) unawaited(_loop());
+    if (poll && !_looping && _foreground) unawaited(_loop());
   }
 
   Future<void> cancel() => client.post('/v1/agy/sessions/$sessionId/cancel');

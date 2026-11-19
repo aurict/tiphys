@@ -77,8 +77,8 @@ class _ScannersBlockState extends ConsumerState<_ScannersBlock> {
     setState(() => _busy = true);
     final ok = await secAct(context, () => securityCall(ref, widget.agent.id, 'PATCH', secScannersPath, body: body), ok: toastOk ? l.secSaved : null);
     if (mounted) setState(() => _busy = false);
-    ref.invalidate(securityGetProvider(_key));
-    ref.invalidate(securityGetProvider((widget.agent.id, secVulnsPath)));
+    if (mounted) ref.invalidate(securityGetProvider(_key));
+    if (mounted) ref.invalidate(securityGetProvider((widget.agent.id, secVulnsPath)));
     return ok;
   }
 

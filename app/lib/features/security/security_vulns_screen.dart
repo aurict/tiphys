@@ -69,7 +69,7 @@ class _VulnsBlockState extends ConsumerState<_VulnsBlock> {
     setState(() => _busy = true);
     await secAct(context, () => securityCall(ref, widget.agent.id, 'POST', '$secVulnsPath/scan', body: <String, dynamic>{}), ok: l.secScanStarted);
     if (mounted) setState(() => _busy = false);
-    ref.invalidate(securityGetProvider(_key));
+    if (mounted) ref.invalidate(securityGetProvider(_key));
   }
 
   @override
@@ -174,8 +174,8 @@ class _VulnDetailState extends ConsumerState<SecurityVulnDetailScreen> {
     setState(() => _busy = true);
     await secAct(context, () => securityCall(ref, agent.id, 'POST', '$secVulnsPath/scan', body: {'imageId': img.imageId}, timeout: vulnScanTimeout), ok: l.secScanDone);
     if (mounted) setState(() => _busy = false);
-    ref.invalidate(vulnImageProvider(_key));
-    ref.invalidate(securityGetProvider((agent.id, secVulnsPath)));
+    if (mounted) ref.invalidate(vulnImageProvider(_key));
+    if (mounted) ref.invalidate(securityGetProvider((agent.id, secVulnsPath)));
   }
 
   @override

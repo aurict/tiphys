@@ -212,6 +212,7 @@ dynamic fakeSecurityRoute(String agentId, String method, String path, Object? bo
     case '/baseline':
       if ((body as Map)['confirm'] != true) throw const AgentError('agent.request.invalid', {}, 400);
       final n = host.changes.length;
+      if (body['expected'] != null && body['expected'] != n) throw AgentError('agent.security.changesMoved', {'expected': body['expected'], 'current': n}, 409);
       host.changes = [];
       return {'accepted': n, ...host.detail()};
   }

@@ -285,7 +285,7 @@ void main() {
     final sent = FakeAgent.calls.where((c) => c.$2 == '/v1/security/hosts/orion/baseline').toList();
     expect(sent, hasLength(1));
     expect(sent.single.$1, 'POST');
-    expect(sent.single.$3, {'confirm': true});
+    expect(sent.single.$3, {'confirm': true, 'expected': 2}, reason: 'the number of changes the user saw');
     expect(find.textContaining('Durum kabul edildi (2 değişiklik)'), findsOneWidget);
     expect(find.textContaining('Değişiklikler ·'), findsNothing);
     await _finish(tester);

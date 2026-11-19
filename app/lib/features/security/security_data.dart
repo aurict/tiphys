@@ -515,8 +515,16 @@ Duration securityCheckTimeout({required bool full}) => Duration(seconds: full ? 
 String securityHostPath(String hostId) => '/v1/security/hosts/${Uri.encodeComponent(hostId)}';
 
 /// "/security/orion?host=atlas" — [agentId] is the agent that audits the host (omitted: every agent is asked).
-String securityRoute(String hostId, {String? agentId}) =>
-    '/security/${Uri.encodeComponent(hostId)}${agentId == null || agentId.isEmpty ? '' : '?host=${Uri.encodeQueryComponent(agentId)}'}';
+/// /security/<section> routes (the agent refuses these as host ids; a host *name* can still be one of them).
+const securitySectionNames = {'settings', 'vulns', 'secrets', 'scanners', 'traps', 'exposure', 'attacks', 'cloudflare', 'blackbox', 'recovery', 'lockdown'};
+
+/// The host screen; a name that collides with a section (an incident that only knows the host's name) opens the overview
+/// instead of that section.
+String securityRoute(String hostId, {String? agentId}) {
+  final q = agentId == null || agentId.isEmpty ? '' : '?host=${Uri.encodeQueryComponent(agentId)}';
+  if (securitySectionNames.contains(hostId)) return '/security$q';
+  return '/security/${Uri.encodeComponent(hostId)}$q';
+}
 
 // ---------------------------------------------------------------------------------------------------------------------
 // Settings (GET/POST/PATCH/DELETE /v1/security/hosts)

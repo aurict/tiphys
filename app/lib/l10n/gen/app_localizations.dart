@@ -17965,6 +17965,36 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Too many requests; wait a moment and try again.'**
   String get agyErrRateLimited;
+
+  /// No description provided for @secLockdownHttpsOnly.
+  ///
+  /// In en, this message translates to:
+  /// **'The recovery code is only sent to an https address.'**
+  String get secLockdownHttpsOnly;
+
+  /// No description provided for @secLockdownCodeShow.
+  ///
+  /// In en, this message translates to:
+  /// **'Show code'**
+  String get secLockdownCodeShow;
+
+  /// No description provided for @secLockdownCodeHide.
+  ///
+  /// In en, this message translates to:
+  /// **'Hide code'**
+  String get secLockdownCodeHide;
+
+  /// No description provided for @secChangesMoved.
+  ///
+  /// In en, this message translates to:
+  /// **'The list of changes was updated; please review it again.'**
+  String get secChangesMoved;
+
+  /// No description provided for @agyNoValidHost.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t tell which agent this session is on.'**
+  String get agyNoValidHost;
 }
 
 class _AppLocalizationsDelegate

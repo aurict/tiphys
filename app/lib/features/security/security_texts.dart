@@ -192,6 +192,7 @@ String securitySourceName(AppLocalizations l, String source) => switch (source) 
 
 /// agent.security.* → text (an unknown code shows the generic error with the code).
 String securityErrorText(AppLocalizations l, String code, [Map<String, dynamic> params = const {}]) => switch (code) {
+      'agent.security.lockdownHttps' => l.secLockdownHttpsOnly,
       'agent.security.timeout' => l.secErrTimeout,
       'agent.security.reportTooLarge' => l.secErrReportTooLarge,
       'agent.security.scriptMissing' => l.secErrScriptMissing,

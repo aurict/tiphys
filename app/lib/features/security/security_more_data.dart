@@ -649,6 +649,8 @@ typedef LockdownCall = Future<List<LockdownResult>> Function(String url, String 
 
 final lockdownCallProvider = Provider<LockdownCall>((ref) => (url, code) async {
       final base = url.trim();
+      // The recovery code is a secret: never over plain http.
+      if (Uri.tryParse(base)?.scheme != 'https') throw const AgentError('agent.security.lockdownHttps');
       final c = AgentClient(baseUrl: base, token: '', timeout: const Duration(seconds: 60));
       try {
         final j = await c.request('POST', '/v1/security/lockdown', body: {'code': code}, timeout: const Duration(seconds: 90));

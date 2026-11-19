@@ -273,7 +273,11 @@ class _SecretOnceSheetState extends ConsumerState<_SecretOnceSheet> with Widgets
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    if (state == AppLifecycleState.paused && mounted) Navigator.of(context).maybePop();
+    // Removes this sheet's own route: maybePop() would respect PopScope(canPop: false) and stay open, and pop() would
+    // close whatever is on top by then (e.g. the app lock screen pushed when the app went to the background).
+    if (state != AppLifecycleState.paused || !mounted) return;
+    final route = ModalRoute.of(context);
+    if (route != null && route.isActive) Navigator.of(context).removeRoute(route);
   }
 
   @override

@@ -7050,5 +7050,10 @@
   "agyErrUnknownModel": "agy does not know this model.",
   "agyErrStartFailed": "Could not start the agy session.",
   "agyErrPromptFailed": "The message could not be delivered to agy.",
-  "agyErrRateLimited": "Too many requests; wait a moment and try again."
+  "agyErrRateLimited": "Too many requests; wait a moment and try again.",
+  "secLockdownHttpsOnly": "The recovery code is only sent to an https address.",
+  "secLockdownCodeShow": "Show code",
+  "secLockdownCodeHide": "Hide code",
+  "secChangesMoved": "The list of changes was updated; please review it again.",
+  "agyNoValidHost": "Couldn't tell which agent this session is on."
 }

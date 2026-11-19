@@ -72,7 +72,7 @@ class _AttacksBlockState extends ConsumerState<_AttacksBlock> {
       setState(() => _busy = false);
       if (ok) toast(context, l.secAttacksChecked(offenders, blocked));
     }
-    ref.invalidate(securityGetProvider(_key));
+    if (mounted) ref.invalidate(securityGetProvider(_key));
   }
 
   @override
@@ -218,8 +218,8 @@ class _CloudflareBlockState extends ConsumerState<_CloudflareBlock> {
     setState(() => _busy = true);
     final ok = await secAct(context, () => securityCall(ref, widget.agent.id, 'PUT', secCloudflarePath, body: body), ok: l.secSaved);
     if (mounted) setState(() => _busy = false);
-    ref.invalidate(securityGetProvider(_key));
-    ref.invalidate(securityGetProvider((widget.agent.id, secAttacksPath)));
+    if (mounted) ref.invalidate(securityGetProvider(_key));
+    if (mounted) ref.invalidate(securityGetProvider((widget.agent.id, secAttacksPath)));
     return ok;
   }
 
@@ -249,8 +249,9 @@ class _CloudflareBlockState extends ConsumerState<_CloudflareBlock> {
       if (!c.hasBlockToken && _block.text.trim().isEmpty) return toast(context, l.secErrTokenRequired);
       if (!await confirmDialog(context, message: l.secCfBlockConfirm(c.blockHours), confirmLabel: l.secCfBlockOn, destructive: true)) return;
     }
-    await _put({'block': on, if (on && _block.text.trim().isNotEmpty) 'blockToken': _block.text.trim()});
-    if (on) _block.clear();
+    // A failed save keeps the typed token.
+    final ok = await _put({'block': on, if (on && _block.text.trim().isNotEmpty) 'blockToken': _block.text.trim()});
+    if (ok && on && mounted) _block.clear();
   }
 
   Future<void> _saveHours() async {

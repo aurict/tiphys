@@ -15,11 +15,16 @@ import '../system/agent_providers.dart';
 /// Single-quoted for a POSIX shell, exactly like the agent (`shq` in agent/src/agy/manager.ts).
 String shellQuote(String s) => "'${s.replaceAll("'", "'\\''")}'";
 
-/// `cd '<cwd>' && claude --resume <id>`: what the agent puts in a Claude summary's `resumeCommand`.
-String claudeResumeCommand(String cwd, String sdkSessionId) => 'cd ${shellQuote(cwd)} && claude --resume $sdkSessionId';
+/// Conversation/session ids the agent accepts (the same check it applies before offering a command).
+final _resumeId = RegExp(r'^[A-Za-z0-9-]{8,80}$');
 
-/// `cd '<cwd>' && agy --conversation <id>`.
-String agyResumeCommand(String cwd, String conversationId) => 'cd ${shellQuote(cwd)} && agy --conversation $conversationId';
+/// `cd '<cwd>' && claude --resume <id>`: what the agent puts in a Claude summary's `resumeCommand`; null for an id the
+/// agent wouldn't use either.
+String? claudeResumeCommand(String cwd, String sdkSessionId) => _resumeId.hasMatch(sdkSessionId) ? 'cd ${shellQuote(cwd)} && claude --resume $sdkSessionId' : null;
+
+/// `cd '<cwd>' && agy --conversation '<id>'` (the id quoted, like the agent).
+String? agyResumeCommand(String cwd, String conversationId) =>
+    _resumeId.hasMatch(conversationId) ? 'cd ${shellQuote(cwd)} && agy --conversation ${shellQuote(conversationId)}' : null;
 
 /// Shows the command in a sheet. If [active] (the session is running or waiting) it first asks to stop it and runs [stop];
 /// when stopping fails the error is shown and no command is offered. [command] null: "not available yet".

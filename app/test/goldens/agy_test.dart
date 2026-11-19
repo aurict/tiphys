@@ -383,20 +383,22 @@ void main() {
   });
 
   group('PC’de devam et', () {
-    testWidgets('agy, boştayken: doğrudan komut sayfası (golden), Kopyala panoya yazar', (tester) async {
+    testWidgets('agy, boştayken: açık agy süreci de önce kapatılır (konuşma ikiye ayrılmasın), sonra komut (golden), Kopyala', (tester) async {
       _st.reset();
       final clip = _clipboard(tester);
       await _h().pump(tester, route: _chat);
       await _load(tester);
       await _menu(tester, 'PC’de devam et');
-      expect(find.byType(AlertDialog), findsNothing);
-      expect(find.text("cd '$agyCwd' && agy --conversation $agyConversationId"), findsOneWidget);
+      expect(find.textContaining('iki program aynı konuşmaya yazarsa'), findsOneWidget);
+      await _tapText(tester, 'Durdur ve komutu göster');
+      expect(_st.log, ['POST cancel', 'DELETE']);
+      _st.log.clear();
+      expect(find.text("cd '$agyCwd' && agy --conversation '$agyConversationId'"), findsOneWidget);
       expect(find.text('PC’de bir terminalde yapıştırın.'), findsOneWidget);
       await golden('png/agy_continue_pc_light_tr.png');
       await _tapText(tester, 'Kopyala');
-      expect(clip, ["cd '$agyCwd' && agy --conversation $agyConversationId"]);
+      expect(clip, ["cd '$agyCwd' && agy --conversation '$agyConversationId'"]);
       expect(find.text('Kopyalandı'), findsOneWidget);
-      expect(_st.log, isEmpty, reason: 'durdurmaya gerek yok');
       await _finish(tester);
     });
 
@@ -409,7 +411,7 @@ void main() {
       expect(_st.log, isEmpty);
       await _tapText(tester, 'Durdur ve komutu göster');
       expect(_st.log, ['POST cancel', 'DELETE']);
-      expect(find.text("cd '$agyCwd' && agy --conversation $agyConversationId"), findsOneWidget);
+      expect(find.text("cd '$agyCwd' && agy --conversation '$agyConversationId'"), findsOneWidget);
       await _finish(tester);
     });
 
@@ -486,6 +488,7 @@ void main() {
       expect(find.text('Mode: Default'), findsOneWidget);
       await _tap(tester, find.byTooltip('More'));
       await _tapText(tester, 'Continue on the PC');
+      await _tapText(tester, 'Stop and show the command');
       expect(find.text('Paste it in a terminal on the PC.'), findsOneWidget);
       expect(find.text('Copy'), findsOneWidget);
       await _finish(tester);

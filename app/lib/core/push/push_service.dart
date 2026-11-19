@@ -247,7 +247,9 @@ int noticeId(String key, Map<String, dynamic> p, {String? link, String? requestI
     'agent.restarted' => 'agent|${s('host')}',
     'docker.died' || 'docker.oom' || 'docker.restarted' || 'docker.unhealthy' || 'docker.restartLoop' => 'docker|${s('host')}|${s('container')}',
     'incident.resolved' || 'incident.actionFailed' || 'incident.analyzed' => 'incident|${s('incidentId')}',
-    'security.change' || 'security.accepted' || 'security.unreachable' || 'security.reachable' => 'security|${s('hostId').isEmpty ? s('host') : s('hostId')}',
+    'security.change' || 'security.accepted' || 'security.unreachable' || 'security.reachable' =>
+      // The agent's name too: the same host id on two agents mustn't replace each other's notice.
+      'security|${s('agent')}|${s('hostId').isEmpty ? s('host') : s('hostId')}',
     'secret.rotationDue' || 'config.restartFailed' => 'config|${s('host')}|${s('file')}',
     'db.restoreTest.ok' || 'db.restoreTest.failed' => 'dbrestore|${s('host')}|${s('name')}',
     'uptime.down' || 'uptime.up' => 'uptime|${s('host')}|${s('monitorId')}',
@@ -378,15 +380,19 @@ Future<bool> decideFromNotification(
   }
   final host = profile.host(profile.claude.agentHostId) ?? profile.hosts.where((h) => h.agent != null).firstOrNull;
   final agent = host?.agent;
-  if ('${j['link']}'.startsWith('tiphys://agy/') && j['sessionId'] != null && j['requestId'] != null) {
-    return _decideAgyAnywhere('${j['sessionId']}', '${j['requestId']}', allow, hint: j['host'] is String ? j['host'] as String : null, profile: profile, secrets: secrets, clientFor: clientFor);
+  final sessionId = '${j['sessionId'] ?? ''}';
+  final requestId = '${j['requestId'] ?? ''}';
+  if ('${j['link']}'.startsWith('tiphys://agy/')) {
+    // Ids go into a request path: only the exact formats the agent issues (no "..", no "?").
+    if (!_agySessionId.hasMatch(sessionId) || !_agyRequestId.hasMatch(requestId)) return false;
+    return _decideAgyAnywhere(sessionId, requestId, allow, hint: j['host'] is String ? j['host'] as String : null, profile: profile, secrets: secrets, clientFor: clientFor);
   }
-  if (agent == null || j['sessionId'] == null || j['requestId'] == null) return false;
+  if (agent == null || !_uuid.hasMatch(sessionId) || !_uuid.hasMatch(requestId)) return false;
   final token = await secrets.read(secretIdOf(agent.tokenRef));
   if (token == null) return false;
   final c = (clientFor ?? (u, t) => AgentClient(baseUrl: u, token: t))(agent.url, token);
   try {
-    await c.post('/v1/claude/sessions/${j['sessionId']}/permissions/${j['requestId']}', {'allow': allow});
+    await c.post('/v1/claude/sessions/$sessionId/permissions/$requestId', {'allow': allow});
     return true;
   } catch (_) {
     return false;
@@ -394,6 +400,10 @@ Future<bool> decideFromNotification(
     c.close();
   }
 }
+
+final _agySessionId = RegExp(r'^agy-[a-f0-9]{12}$');
+final _agyRequestId = RegExp(r'^[a-f0-9]{12}$');
+final _uuid = RegExp(r'^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$');
 
 /// The agent's name from an agy push (`params.agent`), used as a host hint; null for other keys or when absent.
 String? agyAgentHint(String key, Map<String, dynamic> params) {
@@ -441,18 +451,22 @@ Future<bool> _decideAgyAnywhere(
 }
 
 /// agy answers with one of the options it offered: the push only has the request id, so the session's pending request is
-/// read first (allow_once / reject_once by kind); if it can't be found, agy's own ids "allow" / "deny" are used.
+/// read first and a one-time option is chosen (allow_once / reject_once, or agy's ids "allow" / "deny"). If the request
+/// isn't pending any more, or only lasting options are offered, nothing is sent: the user decides in the app.
 Future<bool> _decideAgy(AgentClient c, String sessionId, String requestId, bool allow) async {
-  String? optionId;
+  final Map j;
   try {
-    final j = await c.get('/v1/agy/sessions/$sessionId');
-    final pending = ((j['session'] as Map?)?['pendingPermissions'] as List? ?? const []).cast<Map>();
-    final mine = pending.where((p) => p['requestId'] == requestId).firstOrNull;
-    if (mine != null) optionId = agyOptionFor(mine['options'] as List? ?? const [], allow);
+    j = await c.get('/v1/agy/sessions/$sessionId');
   } on AgentError catch (e) {
     if (e.code == 'agent.agy.sessionNotFound') return false;
+    rethrow;
   }
-  await c.post('/v1/agy/sessions/$sessionId/permissions/$requestId', {'optionId': optionId ?? (allow ? 'allow' : 'deny')});
+  final pending = ((j['session'] as Map?)?['pendingPermissions'] as List? ?? const []).cast<Map>();
+  final mine = pending.where((p) => p['requestId'] == requestId).firstOrNull;
+  if (mine == null) return false;
+  final optionId = agyOptionFor(mine['options'] as List? ?? const [], allow);
+  if (optionId == null) return false;
+  await c.post('/v1/agy/sessions/$sessionId/permissions/$requestId', {'optionId': optionId});
   return true;
 }
 

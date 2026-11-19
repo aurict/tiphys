@@ -114,15 +114,16 @@ class _BlackboxBlockState extends ConsumerState<_BlackboxBlock> {
     }
     final body = <String, dynamic>{'mode': _mode, if (_mode == 'push') 'url': url, if (_mode == 'push' && token.isNotEmpty) 'token': token};
     setState(() => _busy = true);
-    await secAct(context, () async {
+    final ok = await secAct(context, () async {
       final j = await securityCall(ref, _id, 'PUT', '/v1/blackbox/settings', body: body);
       if (j is Map && mounted) setState(() => _restartRequired = j['restartRequired'] == true);
     }, ok: l.secSaved);
     if (mounted) {
       setState(() => _busy = false);
-      _token.clear();
+      // A failed save keeps what was typed.
+      if (ok) _token.clear();
     }
-    ref.invalidate(securityGetProvider(_key));
+    if (mounted) ref.invalidate(securityGetProvider(_key));
   }
 
   @override

@@ -10818,4 +10818,21 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get agyErrRateLimited =>
       'Too many requests; wait a moment and try again.';
+
+  @override
+  String get secLockdownHttpsOnly =>
+      'The recovery code is only sent to an https address.';
+
+  @override
+  String get secLockdownCodeShow => 'Show code';
+
+  @override
+  String get secLockdownCodeHide => 'Hide code';
+
+  @override
+  String get secChangesMoved =>
+      'The list of changes was updated; please review it again.';
+
+  @override
+  String get agyNoValidHost => 'Couldn\'t tell which agent this session is on.';
 }

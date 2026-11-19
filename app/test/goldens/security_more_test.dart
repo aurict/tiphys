@@ -417,6 +417,28 @@ void main() {
       await _finish(tester);
     });
 
+    testWidgets('tek seferlik sayfa uygulama arka plana geçince kapanır', (tester) async {
+      final env = _Env();
+      await env.h.pump(tester, route: '/security/traps?host=atlas');
+      _tall(tester, 3300);
+      await _load(tester);
+      await _tapText(tester, 'Sahte belirteç ekle');
+      await _dialogField(tester, 0, 'yedek-notu');
+      await _dialogButton(tester, 'Oluştur');
+      expect(find.text('tps_decoyTokenExampleValue0123456789'), findsOneWidget);
+      tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.inactive);
+      tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.hidden);
+      tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.paused);
+      // No frames are drawn while paused: come back, then the sheet must be gone.
+      tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.hidden);
+      tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.inactive);
+      tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
+      await tester.pumpAndSettle();
+      expect(find.text('tps_decoyTokenExampleValue0123456789'), findsNothing);
+      expect(env.secure.last, false);
+      await _finish(tester);
+    });
+
     testWidgets('sahte belirteç ekleme hatası: çok fazla tuzak; sahte belirteç silme', (tester) async {
       final env = _Env();
       await env.h.pump(tester, route: '/security/traps?host=atlas');
@@ -755,6 +777,21 @@ void main() {
   });
 
   group('kurtarma koduyla kilitle', () {
+    testWidgets('yalnız https; ekran FLAG_SECURE', (tester) async {
+      final env = _Env();
+      await env.h.pump(tester, route: '/security/lockdown?host=atlas');
+      _tall(tester, 1500);
+      await _load(tester);
+      expect(env.secure, [true], reason: 'kod yazılan ekran');
+      await tester.enterText(find.widgetWithText(TextFormField, 'https://atlas.example.ts.net:7443'), 'http://atlas.example.ts.net:7443');
+      await tester.enterText(find.widgetWithText(TextFormField, 'Kurtarma kodu'), 'ABCDE-FGHJK-LMNPQ-RSTUV-WXYZ2');
+      await _tap(tester, find.widgetWithText(FilledButton, 'Her şeyi kilitle'));
+      expect(find.text('Kurtarma kodu yalnız https adresine gönderilir.'), findsOneWidget);
+      expect(find.byType(AlertDialog), findsNothing);
+      expect(env.lockdownCalls, isEmpty);
+      await _finish(tester);
+    });
+
     testWidgets('adres ajan profilinden gelir; güçlü uyarı; onay olmadan gönderilmez; belirteçsiz çağrı; sonuçlar', (tester) async {
       final env = _Env();
       await env.h.pump(tester, route: '/security/lockdown?host=atlas');
@@ -797,7 +834,9 @@ void main() {
       await _dialogButton(tester, 'Her şeyi kilitle');
       expect(find.text('Kurtarma kodu yanlış.'), findsOneWidget);
       expect(find.text('Her şey kilitlendi'), findsNothing);
+      expect(tester.widgetList<EditableText>(find.byType(EditableText)).any((e) => e.controller.text.contains('ABCDE')), isFalse, reason: 'kod çağrıdan sonra tutulmaz');
       env.lockdownError = const AgentError('agent.security.rateLimited', {}, 429);
+      await tester.enterText(find.widgetWithText(TextFormField, 'Kurtarma kodu'), 'ABCDE-FGHJK-LMNPQ-RSTUV-WXYZ2');
       await _tap(tester, find.widgetWithText(FilledButton, 'Her şeyi kilitle'));
       await _dialogButton(tester, 'Her şeyi kilitle');
       expect(find.textContaining('Çok sık'), findsOneWidget);

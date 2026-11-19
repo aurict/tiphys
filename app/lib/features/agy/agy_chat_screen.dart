@@ -121,7 +121,8 @@ class _AgyChatScreenState extends ConsumerState<AgyChatScreen> {
     return continueOnPc(
       context,
       command: command,
-      active: c.status == 'running' || c.status == 'waiting',
+      // Any live agy process holds the conversation (also when idle): closing it first avoids a fork.
+      active: c.status != 'ended' && c.status != 'error',
       // Cancel the turn (answers open permission prompts as cancelled), then close agy's process.
       stop: () async {
         await c.cancel();
@@ -190,6 +191,8 @@ class _AgyChatScreenState extends ConsumerState<AgyChatScreen> {
     final l = AppLocalizations.of(context);
     final t = context.tokens;
     final c = _c;
+    // ModalRoute.of makes this rebuild when another route covers this one (isCurrent changes).
+    c?.setForeground(ModalRoute.of(context)?.isCurrent ?? true);
     final sm = c?.summary;
     final title = sm == null ? 'agy' : ((sm['title'] as String?)?.isEmpty ?? true ? l.claudeUntitled : sm['title'] as String);
     final status = c?.status ?? 'starting';
@@ -263,7 +266,7 @@ class _AgyChatScreenState extends ConsumerState<AgyChatScreen> {
                   ? Center(
                       child: Padding(
                         padding: const EdgeInsets.all(24),
-                        child: Text(_error is AgentErrorNoHost ? l.agyNoHost : agentErrorText(l, _error!)),
+                        child: Text(_error is AgentErrorNoHost ? ((widget.hostHint ?? '').isNotEmpty ? l.agyNoValidHost : l.agyNoHost) : agentErrorText(l, _error!)),
                       ),
                     )
                   : c == null || (sm == null && c.error == null)

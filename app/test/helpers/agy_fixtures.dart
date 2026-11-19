@@ -9,7 +9,7 @@ const agyCwd = '/home/user/Desktop/tiphys';
 const agySessionId = 'agy-aaaaaaaaaaaa';
 const agyConversationId = 's-new-0001';
 
-String agyResume(String cwd, String id) => "cd '${cwd.replaceAll("'", "'\\''")}' && agy --conversation $id";
+String agyResume(String cwd, String id) => "cd '${cwd.replaceAll("'", "'\\''")}' && agy --conversation '$id'";
 
 class FakeAgyState {
   FakeAgyState() {

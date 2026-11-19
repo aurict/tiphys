@@ -2987,5 +2987,10 @@
   "agyErrUnknownModel": "agy bu modeli tanımıyor.",
   "agyErrStartFailed": "agy oturumu başlatılamadı.",
   "agyErrPromptFailed": "Mesaj agy’ye iletilemedi.",
-  "agyErrRateLimited": "Çok sık istendi; biraz bekleyip tekrar dene."
+  "agyErrRateLimited": "Çok sık istendi; biraz bekleyip tekrar dene.",
+  "secLockdownHttpsOnly": "Kurtarma kodu yalnız https adresine gönderilir.",
+  "secLockdownCodeShow": "Kodu göster",
+  "secLockdownCodeHide": "Kodu gizle",
+  "secChangesMoved": "Değişiklik listesi güncellendi, yeniden gözden geçirin.",
+  "agyNoValidHost": "Bu oturumun hangi ajanda olduğu bulunamadı."
 }

@@ -5,6 +5,7 @@ import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:tiphys/core/agent/agent_client.dart';
 import 'package:tiphys/core/push/push_service.dart';
+import 'package:tiphys/features/security/security_data.dart' show securityRoute;
 import 'package:tiphys/features/security/security_more_data.dart';
 import 'package:tiphys/features/security/security_more_texts.dart';
 import 'package:tiphys/features/security/security_texts.dart';
@@ -23,6 +24,13 @@ final _langs = <String, AppLocalizations>{
 class _RealHttp extends HttpOverrides {}
 
 void main() {
+  test('host ekranı yolu: bölüm adıyla çakışan ad genel bakışa gider', () {
+    expect(securityRoute('orion', agentId: 'atlas'), '/security/orion?host=atlas');
+    expect(securityRoute('self'), '/security/self');
+    expect(securityRoute('vulns', agentId: 'atlas'), '/security?host=atlas');
+    expect(securityRoute('traps'), '/security');
+  });
+
   group('modeller', () {
     final st = FakeSecurityMoreState();
 

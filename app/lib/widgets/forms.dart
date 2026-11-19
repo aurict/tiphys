@@ -9,12 +9,15 @@ import 'surfaces.dart';
 
 /// Settings subpages: header with back button + scrollable content + optional save button.
 class SettingsPage extends StatelessWidget {
-  const SettingsPage({super.key, required this.title, required this.children, this.onSave, this.saving = false, this.actions, this.onRefresh});
+  const SettingsPage({super.key, required this.title, required this.children, this.onSave, this.saving = false, this.actions, this.onRefresh, this.backEnabled = true});
   final String title;
   final List<Widget> children;
   final Future<void> Function()? onSave;
   final bool saving;
   final List<Widget>? actions;
+
+  /// false: the back arrow does nothing (an operation whose result would be lost is in flight).
+  final bool backEnabled;
 
   /// Pull to refresh (optional).
   final Future<void> Function()? onRefresh;
@@ -33,7 +36,7 @@ class SettingsPage extends StatelessWidget {
             leading: IconButton(
               tooltip: MaterialLocalizations.of(context).backButtonTooltip,
               icon: const Icon(LucideIcons.chevronLeft),
-              onPressed: () => context.canPop() ? context.pop() : context.go('/settings'),
+              onPressed: backEnabled ? () => context.canPop() ? context.pop() : context.go('/settings') : null,
             ),
             actions: [
               ...?actions,

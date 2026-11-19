@@ -56,7 +56,7 @@ class _ExposureBlockState extends ConsumerState<_ExposureBlock> {
     setState(() => _busy = true);
     await secAct(context, () => securityCall(ref, widget.agent.id, 'POST', '$secExposurePath/run', body: <String, dynamic>{}), ok: l.secScanStarted);
     if (mounted) setState(() => _busy = false);
-    ref.invalidate(securityGetProvider(_key));
+    if (mounted) ref.invalidate(securityGetProvider(_key));
   }
 
   Future<void> _put(Map<String, dynamic> body) async {
@@ -64,7 +64,7 @@ class _ExposureBlockState extends ConsumerState<_ExposureBlock> {
     setState(() => _busy = true);
     await secAct(context, () => securityCall(ref, widget.agent.id, 'PUT', secExposurePath, body: body), ok: l.secSaved);
     if (mounted) setState(() => _busy = false);
-    ref.invalidate(securityGetProvider(_key));
+    if (mounted) ref.invalidate(securityGetProvider(_key));
   }
 
   Future<void> _edit(ExposureData d) async {

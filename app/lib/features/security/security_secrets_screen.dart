@@ -63,7 +63,7 @@ class _SecretsBlockState extends ConsumerState<_SecretsBlock> {
     setState(() => _busy = true);
     await secAct(context, () => securityCall(ref, widget.agent.id, 'POST', '$secSecretsPath/scan', body: <String, dynamic>{}), ok: l.secScanStarted);
     if (mounted) setState(() => _busy = false);
-    ref.invalidate(securityGetProvider(_key));
+    if (mounted) ref.invalidate(securityGetProvider(_key));
   }
 
   Future<void> _dismiss(SecretFindingItem f, bool dismissed) async {
@@ -86,7 +86,7 @@ class _SecretsBlockState extends ConsumerState<_SecretsBlock> {
       changed = (r['changed'] as num?)?.toInt();
     });
     if (!ok || !mounted) return;
-    ref.invalidate(securityGetProvider(_key));
+    if (mounted) ref.invalidate(securityGetProvider(_key));
     if (changed != null) {
       ScaffoldMessenger.of(context)
         ..hideCurrentSnackBar()
