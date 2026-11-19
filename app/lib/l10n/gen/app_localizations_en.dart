@@ -10835,4 +10835,60 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get agyNoValidHost => 'Couldn\'t tell which agent this session is on.';
+
+  @override
+  String get homeCardsSecurity => 'Security';
+
+  @override
+  String get secStyleTitle => 'Security card style';
+
+  @override
+  String get secStyleShield => 'Shield';
+
+  @override
+  String get secStyleShieldDesc =>
+      'Large card with a shield and the lowest score';
+
+  @override
+  String get secStyleRings => 'Rings';
+
+  @override
+  String get secStyleRingsDesc => 'One score ring per machine, with chips';
+
+  @override
+  String get secStyleBars => 'Bars';
+
+  @override
+  String get secStyleBarsDesc => 'Compact list with a score bar per machine';
+
+  @override
+  String get secBandGood => 'Good';
+
+  @override
+  String get secBandFair => 'Fair';
+
+  @override
+  String get secBandWeak => 'Weak';
+
+  @override
+  String get secCardAllClear => 'All clear';
+
+  @override
+  String get secCardNotSetUp => 'Security center is not set up';
+
+  @override
+  String get secCardNotSetUpHint =>
+      'Turn on features.security in an agent\'s settings and the audited machines show up here.';
+
+  @override
+  String get secCardError => 'Security data could not be loaded';
+
+  @override
+  String get secCardLastKnown => 'Last known state';
+
+  @override
+  String get secCardLastKnownShort => 'last known';
+
+  @override
+  String get secCardNoHosts => 'No machines are audited yet.';
 }

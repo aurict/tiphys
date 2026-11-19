@@ -16,6 +16,7 @@ import '../../widgets/painters.dart';
 import '../../widgets/surfaces.dart';
 import '../incidents/incidents_data.dart' show incidentHostsProvider;
 import '../incidents/incidents_screen.dart' show HomeIncidentsCard;
+import '../security/security_home_card.dart' show SecurityHomeCard;
 import '../security/security_screen.dart' show HomeSecurityCard;
 import '../system/events.dart';
 import '../system/media.dart';
@@ -69,7 +70,8 @@ class HomeScreen extends ConsumerWidget {
           action: RoundIconButton(icon: LucideIcons.settings, tooltip: l.settingsTitle, onPressed: () => context.push('/settings')),
         ),
         if (ref.watch(incidentHostsProvider).value?.isNotEmpty == true) const Padding(padding: EdgeInsets.only(top: 12), child: HomeIncidentsCard()),
-        const HomeSecurityCard(),
+        // The small attention row would duplicate the Security card.
+        if (!profile.app.cards.contains('security')) const HomeSecurityCard(),
         for (final s in [...top, ...sections])
           if (s is! SizedBox) Padding(padding: const EdgeInsets.only(top: 12), child: s),
       ],
@@ -87,6 +89,7 @@ class HomeScreen extends ConsumerWidget {
           'quickAccess' => shortcuts.isEmpty ? const SizedBox.shrink() : _QuickAccess(ids: shortcuts, data: data),
           'events' => const HomeEventsCard(),
           'nowPlaying' => const NowPlayingCard(),
+          'security' => const SecurityHomeCard(),
           _ => const SizedBox.shrink(),
         },
     ];

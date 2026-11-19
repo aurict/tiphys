@@ -176,6 +176,17 @@ describe("profil şeması", () => {
     expect(profileSchema.safeParse({ format: "tiphys-profile", schemaVersion: 1, fazla: 1 }).success).toBe(false);
   });
 
+  it("güvenlik kartı: securityStyle isteğe bağlı (varsayılan shield), geçersiz değer reddedilir", () => {
+    const base = { format: "tiphys-profile", schemaVersion: 1 };
+    const old = profileSchema.parse({ ...base, app: { home: { cards: ["infra"], layout: "cards" } } });
+    expect(old.app?.home.securityStyle).toBe("shield");
+    expect(profileSchema.parse({ ...base, app: {} }).app?.home.securityStyle).toBe("shield");
+    const ok = profileSchema.parse({ ...base, app: { home: { cards: ["infra", "security"], securityStyle: "bars" } } });
+    expect(ok.app?.home.cards).toContain("security");
+    expect(ok.app?.home.securityStyle).toBe("bars");
+    expect(profileSchema.safeParse({ ...base, app: { home: { securityStyle: "pie" } } }).success).toBe(false);
+  });
+
   it("gizli bilgi düz metin olarak giremez (ref biçimi zorunlu)", () => {
     const res = profileSchema.safeParse({
       format: "tiphys-profile",

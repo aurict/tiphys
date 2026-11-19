@@ -87,6 +87,7 @@
               "system"
             ],
             "layout": "cards",
+            "securityStyle": "shield",
             "shortcuts": [
               "terminal",
               "files",
@@ -116,7 +117,8 @@
                   "dozzle",
                   "quickAccess",
                   "events",
-                  "nowPlaying"
+                  "nowPlaying",
+                  "security"
                 ]
               }
             },
@@ -149,6 +151,15 @@
                 "cards",
                 "grid",
                 "focus"
+              ]
+            },
+            "securityStyle": {
+              "default": "shield",
+              "type": "string",
+              "enum": [
+                "shield",
+                "rings",
+                "bars"
               ]
             },
             "shortcuts": {

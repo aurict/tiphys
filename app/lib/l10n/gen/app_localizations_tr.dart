@@ -10598,4 +10598,59 @@ class AppLocalizationsTr extends AppLocalizations {
 
   @override
   String get agyNoValidHost => 'Bu oturumun hangi ajanda olduğu bulunamadı.';
+
+  @override
+  String get homeCardsSecurity => 'Güvenlik';
+
+  @override
+  String get secStyleTitle => 'Güvenlik kartı stili';
+
+  @override
+  String get secStyleShield => 'Kalkan';
+
+  @override
+  String get secStyleShieldDesc => 'Kalkan ve en düşük puanla büyük kart';
+
+  @override
+  String get secStyleRings => 'Halkalar';
+
+  @override
+  String get secStyleRingsDesc => 'Her makine için puan halkası ve çipler';
+
+  @override
+  String get secStyleBars => 'Çubuklar';
+
+  @override
+  String get secStyleBarsDesc => 'Makine başına puan çubuğu olan kompakt liste';
+
+  @override
+  String get secBandGood => 'İyi';
+
+  @override
+  String get secBandFair => 'Orta';
+
+  @override
+  String get secBandWeak => 'Zayıf';
+
+  @override
+  String get secCardAllClear => 'Her şey yolunda';
+
+  @override
+  String get secCardNotSetUp => 'Güvenlik merkezi kurulu değil';
+
+  @override
+  String get secCardNotSetUpHint =>
+      'Bir ajanın ayarlarında features.security\'yi açın; denetlenen makineler burada görünür.';
+
+  @override
+  String get secCardError => 'Güvenlik verisi alınamadı';
+
+  @override
+  String get secCardLastKnown => 'Son bilinen durum';
+
+  @override
+  String get secCardLastKnownShort => 'son bilinen';
+
+  @override
+  String get secCardNoHosts => 'Henüz denetlenen makine yok.';
 }

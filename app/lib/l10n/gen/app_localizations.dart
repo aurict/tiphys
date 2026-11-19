@@ -17995,6 +17995,114 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Couldn\'t tell which agent this session is on.'**
   String get agyNoValidHost;
+
+  /// No description provided for @homeCardsSecurity.
+  ///
+  /// In en, this message translates to:
+  /// **'Security'**
+  String get homeCardsSecurity;
+
+  /// No description provided for @secStyleTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Security card style'**
+  String get secStyleTitle;
+
+  /// No description provided for @secStyleShield.
+  ///
+  /// In en, this message translates to:
+  /// **'Shield'**
+  String get secStyleShield;
+
+  /// No description provided for @secStyleShieldDesc.
+  ///
+  /// In en, this message translates to:
+  /// **'Large card with a shield and the lowest score'**
+  String get secStyleShieldDesc;
+
+  /// No description provided for @secStyleRings.
+  ///
+  /// In en, this message translates to:
+  /// **'Rings'**
+  String get secStyleRings;
+
+  /// No description provided for @secStyleRingsDesc.
+  ///
+  /// In en, this message translates to:
+  /// **'One score ring per machine, with chips'**
+  String get secStyleRingsDesc;
+
+  /// No description provided for @secStyleBars.
+  ///
+  /// In en, this message translates to:
+  /// **'Bars'**
+  String get secStyleBars;
+
+  /// No description provided for @secStyleBarsDesc.
+  ///
+  /// In en, this message translates to:
+  /// **'Compact list with a score bar per machine'**
+  String get secStyleBarsDesc;
+
+  /// No description provided for @secBandGood.
+  ///
+  /// In en, this message translates to:
+  /// **'Good'**
+  String get secBandGood;
+
+  /// No description provided for @secBandFair.
+  ///
+  /// In en, this message translates to:
+  /// **'Fair'**
+  String get secBandFair;
+
+  /// No description provided for @secBandWeak.
+  ///
+  /// In en, this message translates to:
+  /// **'Weak'**
+  String get secBandWeak;
+
+  /// No description provided for @secCardAllClear.
+  ///
+  /// In en, this message translates to:
+  /// **'All clear'**
+  String get secCardAllClear;
+
+  /// No description provided for @secCardNotSetUp.
+  ///
+  /// In en, this message translates to:
+  /// **'Security center is not set up'**
+  String get secCardNotSetUp;
+
+  /// No description provided for @secCardNotSetUpHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Turn on features.security in an agent\'s settings and the audited machines show up here.'**
+  String get secCardNotSetUpHint;
+
+  /// No description provided for @secCardError.
+  ///
+  /// In en, this message translates to:
+  /// **'Security data could not be loaded'**
+  String get secCardError;
+
+  /// No description provided for @secCardLastKnown.
+  ///
+  /// In en, this message translates to:
+  /// **'Last known state'**
+  String get secCardLastKnown;
+
+  /// No description provided for @secCardLastKnownShort.
+  ///
+  /// In en, this message translates to:
+  /// **'last known'**
+  String get secCardLastKnownShort;
+
+  /// No description provided for @secCardNoHosts.
+  ///
+  /// In en, this message translates to:
+  /// **'No machines are audited yet.'**
+  String get secCardNoHosts;
 }
 
 class _AppLocalizationsDelegate

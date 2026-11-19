@@ -215,6 +215,7 @@ class HomeCardsScreen extends ConsumerWidget {
         'dozzle' => l.homeCardsDozzle,
         'events' => l.homeCardsEvents,
         'nowPlaying' => l.homeCardsNowPlaying,
+        'security' => l.homeCardsSecurity,
         _ => l.homeCardsQuickAccess,
       };
 
@@ -252,6 +253,29 @@ class HomeCardsScreen extends ConsumerWidget {
         title: (id) => _cardName(l, id),
         onChanged: (cards) => update((a) => a.copyWith(cards: cards)),
       ),
+      if (app.cards.contains('security')) ...[
+        SectionLabel(l.secStyleTitle),
+        TCard(
+          padding: EdgeInsets.zero,
+          radius: TiphysTokens.radiusList,
+          child: Column(children: [
+            for (final (i, (v, title, desc)) in [
+              (SecurityStyle.shield, l.secStyleShield, l.secStyleShieldDesc),
+              (SecurityStyle.rings, l.secStyleRings, l.secStyleRingsDesc),
+              (SecurityStyle.bars, l.secStyleBars, l.secStyleBarsDesc),
+            ].indexed) ...[
+              if (i > 0) Padding(padding: const EdgeInsets.only(left: 76), child: Divider(color: context.tokens.separator)),
+              _StyleOption(
+                style: v,
+                title: title,
+                description: desc,
+                selected: app.securityStyle == v,
+                onTap: () => update((a) => a.copyWith(securityStyle: v)),
+              ),
+            ],
+          ]),
+        ),
+      ],
       Padding(
         padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
         child: Text(l.homeCardsLayoutNote, style: Theme.of(context).textTheme.bodySmall),
@@ -417,4 +441,109 @@ class _LayoutSketch extends StatelessWidget {
       child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: children),
     );
   }
+}
+
+/// Security card style option: static mini-preview + name + one-line description (same look as [_LayoutOption]).
+class _StyleOption extends StatelessWidget {
+  const _StyleOption({required this.style, required this.title, required this.description, required this.selected, required this.onTap});
+  final SecurityStyle style;
+  final String title;
+  final String description;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final t = context.tokens;
+    final tt = Theme.of(context).textTheme;
+    return Semantics(
+      button: true,
+      selected: selected,
+      inMutuallyExclusiveGroup: true,
+      label: '$title, $description',
+      child: ExcludeSemantics(
+        child: InkWell(
+          onTap: onTap,
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(minHeight: 64),
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(14, 10, 16, 10),
+              child: Row(children: [
+                Container(
+                  width: 48,
+                  height: 60,
+                  decoration: BoxDecoration(
+                    color: t.chipBackground,
+                    borderRadius: BorderRadius.circular(9),
+                    border: Border.all(color: selected ? t.accent : t.separator, width: selected ? 1.5 : 1),
+                  ),
+                  child: CustomPaint(painter: _StyleSketchPainter(style, selected ? t.accent : t.textSecondary)),
+                ),
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                    Text(title, style: tt.titleMedium, maxLines: 2, overflow: TextOverflow.ellipsis),
+                    Text(description, style: tt.bodySmall, maxLines: 2, overflow: TextOverflow.ellipsis),
+                  ]),
+                ),
+                const SizedBox(width: 8),
+                Icon(selected ? Icons.check_circle_rounded : Icons.radio_button_unchecked_rounded,
+                    size: 22, color: selected ? t.accent : t.textSecondary),
+              ]),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Mini-preview (48×60) of a Security card style: a shield, three score rings or three bullet bars.
+class _StyleSketchPainter extends CustomPainter {
+  _StyleSketchPainter(this.style, this.ink);
+  final SecurityStyle style;
+  final Color ink;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final fill = Paint()..color = ink.withValues(alpha: 0.35);
+    final strong = Paint()..color = ink.withValues(alpha: 0.7);
+    switch (style) {
+      case SecurityStyle.shield:
+        final c = size.width / 2;
+        final left = Path()
+          ..moveTo(c, 11)
+          ..lineTo(c - 14, 16)
+          ..lineTo(c - 14, 31)
+          ..quadraticBezierTo(c - 13, 43, c, 50)
+          ..close();
+        final right = Path()
+          ..moveTo(c, 11)
+          ..lineTo(c + 14, 16)
+          ..lineTo(c + 14, 31)
+          ..quadraticBezierTo(c + 13, 43, c, 50)
+          ..close();
+        canvas.drawPath(left, strong);
+        canvas.drawPath(right, fill);
+      case SecurityStyle.rings:
+        final ring = Paint()
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 3
+          ..strokeCap = StrokeCap.round;
+        for (var i = 0; i < 3; i++) {
+          final r = Rect.fromCenter(center: Offset(size.width / 2, 14.0 + 16 * i), width: 12, height: 12);
+          canvas.drawArc(r, 0, 6.2832, false, ring..color = ink.withValues(alpha: 0.2));
+          canvas.drawArc(r, -1.5708, 6.2832 * (0.9 - 0.2 * i), false, ring..color = ink.withValues(alpha: 0.75));
+        }
+      case SecurityStyle.bars:
+        for (var i = 0; i < 3; i++) {
+          final y = 13.0 + 15 * i;
+          canvas.drawRRect(RRect.fromRectAndRadius(Rect.fromLTWH(7, y, 34, 5), const Radius.circular(2.5)), fill);
+          canvas.drawRRect(RRect.fromRectAndRadius(Rect.fromLTWH(7 + 34 * (0.85 - 0.25 * i) - 1.5, y - 2, 3, 9), const Radius.circular(1.5)), strong);
+        }
+    }
+  }
+
+  @override
+  bool shouldRepaint(_StyleSketchPainter o) => o.style != style || o.ink != ink;
 }

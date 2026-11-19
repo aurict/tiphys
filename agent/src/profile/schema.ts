@@ -11,7 +11,7 @@ const color = z.string().regex(/^#[0-9A-Fa-f]{6}$/);
 const url = z.string().regex(/^https?:\/\/\S+$/);
 const path = z.string().min(1).max(1024);
 
-export const homeCard = z.enum(["infra", "claude", "system", "grafana", "dozzle", "quickAccess", "events", "nowPlaying"]);
+export const homeCard = z.enum(["infra", "claude", "system", "grafana", "dozzle", "quickAccess", "events", "nowPlaying", "security"]);
 export const tab = z.enum(["home", "claude", "terminal", "files", "system"]);
 // Home screen shortcuts; the default set is the rows of the old "Hızlı erişim" card.
 export const shortcut = z.enum([
@@ -35,12 +35,14 @@ const app = z.strictObject({
       cards: z.array(homeCard).default(["infra", "claude", "system", "grafana", "dozzle", "quickAccess"]),
       tabs: z.array(tab).min(1).max(5).default(["home", "claude", "terminal", "files", "system"]),
       layout: z.enum(["cards", "grid", "focus"]).default("cards"),
+      securityStyle: z.enum(["shield", "rings", "bars"]).default("shield"),
       shortcuts: z.array(shortcut).default(defaultShortcuts),
     })
     .default({
       cards: ["infra", "claude", "system", "grafana", "dozzle", "quickAccess"],
       tabs: ["home", "claude", "terminal", "files", "system"],
       layout: "cards",
+      securityStyle: "shield",
       shortcuts: defaultShortcuts,
     }),
 });

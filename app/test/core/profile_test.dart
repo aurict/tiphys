@@ -23,6 +23,25 @@ void main() {
   ProfileRepository repo(SecretStore s) =>
       ProfileRepository(file: File('${Directory.systemTemp.createTempSync('tiphys').path}/profile.json'), codec: codec, secrets: s);
 
+  group('güvenlik kartı ayarı', () {
+    test('eski profil (securityStyle yok) okunur: varsayılan kalkan, kart varsayılanlarda değil', () {
+      final p = codec.decode(exampleText).toProfile();
+      expect(p.app.securityStyle, SecurityStyle.shield);
+      expect(p.app.cards, isNot(contains('security')));
+      expect(defaultHomeCards, isNot(contains('security')));
+      expect(allHomeCards, contains('security'));
+    });
+
+    test('kart ve stil yazılıp geri okunur', () {
+      final p = codec.decode(exampleText).toProfile();
+      final next = p.copyWith(app: p.app.copyWith(cards: [...p.app.cards, 'security'], securityStyle: SecurityStyle.bars));
+      final back = codec.decode(codec.encode(next)).toProfile();
+      expect(back.app.securityStyle, SecurityStyle.bars);
+      expect(back.app.cards, contains('security'));
+      expect(AppSettings.fromJson(next.app.toJson()).securityStyle, SecurityStyle.bars);
+    });
+  });
+
   group('çözümleme', () {
     test('örnek profil okunur ve modele dönüşür', () {
       final p = codec.decode(exampleText).toProfile();

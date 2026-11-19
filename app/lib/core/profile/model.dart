@@ -32,11 +32,14 @@ enum LanguagePref { system, tr, en }
 /// Default home screen cards; "Recent events" (events) and "Now playing" (nowPlaying) are optional,
 /// enabled from Settings › Home screen.
 const defaultHomeCards = ['infra', 'claude', 'system', 'grafana', 'dozzle', 'quickAccess'];
-const allHomeCards = [...defaultHomeCards, 'events', 'nowPlaying'];
+const allHomeCards = [...defaultHomeCards, 'events', 'nowPlaying', 'security'];
 const allTabs = ['home', 'claude', 'terminal', 'files', 'system'];
 
 /// Home screen layout: cards (default bento), shortcut grid, focus (large status card + shortcut list).
 enum HomeLayout { cards, grid, focus }
+
+/// Look of the optional Security home card (Settings › Home screen).
+enum SecurityStyle { shield, rings, bars }
 
 /// Home screen shortcuts (Settings › Home screen › Shortcuts). The default set matches the rows of the old
 /// "Quick access" card: in existing profiles the Cards layout looks exactly the same.
@@ -87,6 +90,7 @@ class AppSettings {
     this.cards = defaultHomeCards,
     this.tabs = allTabs,
     this.layout = HomeLayout.cards,
+    this.securityStyle = SecurityStyle.shield,
     this.shortcuts = defaultShortcuts,
   });
   final ThemePref theme;
@@ -95,6 +99,7 @@ class AppSettings {
   final List<String> cards;
   final List<String> tabs;
   final HomeLayout layout;
+  final SecurityStyle securityStyle;
 
   /// Enabled shortcuts, in display order.
   final List<String> shortcuts;
@@ -108,6 +113,7 @@ class AppSettings {
       cards: _strings(home, 'cards', defaultHomeCards),
       tabs: _strings(home, 'tabs', allTabs),
       layout: HomeLayout.values.byName(_get(home, 'layout', 'cards')),
+      securityStyle: SecurityStyle.values.byName(_get(home, 'securityStyle', 'shield')),
       shortcuts: _strings(home, 'shortcuts', defaultShortcuts),
     );
   }
@@ -115,7 +121,7 @@ class AppSettings {
         'theme': theme.name,
         'language': language.name,
         'lock': lock.toJson(),
-        'home': {'cards': cards, 'tabs': tabs, 'layout': layout.name, 'shortcuts': shortcuts},
+        'home': {'cards': cards, 'tabs': tabs, 'layout': layout.name, 'securityStyle': securityStyle.name, 'shortcuts': shortcuts},
       };
   AppSettings copyWith({
     ThemePref? theme,
@@ -124,6 +130,7 @@ class AppSettings {
     List<String>? cards,
     List<String>? tabs,
     HomeLayout? layout,
+    SecurityStyle? securityStyle,
     List<String>? shortcuts,
   }) =>
       AppSettings(
@@ -133,6 +140,7 @@ class AppSettings {
         cards: cards ?? this.cards,
         tabs: tabs ?? this.tabs,
         layout: layout ?? this.layout,
+        securityStyle: securityStyle ?? this.securityStyle,
         shortcuts: shortcuts ?? this.shortcuts,
       );
 }
