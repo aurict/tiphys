@@ -381,8 +381,9 @@ describe("service + routes", () => {
 
     const st = await stat(join(t.dir, "security-state.json"));
     expect(st.mode & 0o777).toBe(0o600);
-    const audit = await readFile(join(t.dir, "audit.jsonl"), "utf8");
-    expect(audit).toContain('"accepted":2');
+    // Read through the route: it waits for the audit line, which is written after the response.
+    const audit = (await t.app.inject({ method: "GET", url: "/v1/audit", headers: t.auth })).json().entries;
+    expect(JSON.stringify(audit)).toContain('"accepted":2');
   });
 
   it("a report with a different privilege level starts a new baseline silently", async () => {
