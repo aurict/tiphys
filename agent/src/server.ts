@@ -40,6 +40,10 @@ import { VERSION } from "./version.ts";
 export interface Ctx {
   store: ConfigStore;
   notifier: Notifier;
+  /** Called (synchronously, must not throw) with a token the agent rejected as unknown; set by the security center. */
+  onRejectedToken?: (token: string, info: { ip: string; path: string }) => void;
+  /** Called with every audit entry after it is built (the security center's black box). */
+  onAudit?: (entry: import("./audit.ts").AuditEntry) => void;
   /** Optional extra modules (Claude, Uptime Kuma) register without depending on server.ts. */
   extraRoutes?: Array<(app: FastifyInstance, ctx: Ctx) => void | Promise<void>>;
   /** Run records (unexpected restarts); without it the status endpoint only gives live info. */
@@ -74,6 +78,8 @@ declare module "fastify" {
   interface FastifyContextConfig {
     /** Service tokens holding this scope may call the route (devices may call every route). */
     scope?: string;
+    /** No token needed: the route checks its own credential (only the recovery-code lockdown). */
+    public?: boolean;
   }
 }
 
@@ -111,7 +117,22 @@ export async function buildApp(ctx: Ctx, opts: { logger?: boolean; logStream?: {
   // Authentication: every request except /v1/health requires a device token, or a service token on a route of its scope.
   app.addHook("onRequest", async (req) => {
     if (req.url === "/v1/health" || req.url.startsWith("/v1/health?")) return;
-    const caller = authenticate(ctx.store.get(), req, req.routeOptions.config?.scope);
+    // Routes that authenticate themselves (the recovery-code lockdown: the phone is gone, so is its token).
+    if (req.routeOptions.config?.public === true) return;
+    let caller: ReturnType<typeof authenticate>;
+    try {
+      caller = authenticate(ctx.store.get(), req, req.routeOptions.config?.scope);
+    } catch (e) {
+      // A rejected token may be a planted decoy (security center traps): the hook raises the alarm; the caller sees
+      // the same 401 as for any unknown token.
+      if (e instanceof AppError && e.code === "agent.auth.invalidToken" && ctx.onRejectedToken) {
+        const m = /^Bearer (\S+)$/.exec(String(req.headers.authorization ?? ""));
+        const q = (req.query as Record<string, unknown> | undefined)?.["token"];
+        const token = m?.[1] ?? (typeof q === "string" ? q : undefined);
+        if (token) ctx.onRejectedToken(token, { ip: req.ip, path: req.url.split("?")[0]!.slice(0, 200) });
+      }
+      throw e;
+    }
     req.device = caller.device;
     req.service = caller.service;
     if (caller.service) {

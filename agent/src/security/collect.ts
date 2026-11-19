@@ -23,12 +23,12 @@ export interface SpawnResult {
   stderr: string;
   code: number;
 }
-export type Spawner = (cmd: string, args: string[], o: { timeoutMs: number; maxBytes: number }) => Promise<SpawnResult>;
+export type Spawner = (cmd: string, args: string[], o: { timeoutMs: number; maxBytes: number; env?: Record<string, string> }) => Promise<SpawnResult>;
 
 /** Spawns without a shell; kills the child on timeout or when stdout exceeds maxBytes. */
 export const spawnCapped: Spawner = (cmd, args, o) =>
   new Promise((resolve, reject) => {
-    const child = spawn(cmd, args, { stdio: ["ignore", "pipe", "pipe"], env: { ...process.env, LC_ALL: "C.UTF-8" } });
+    const child = spawn(cmd, args, { stdio: ["ignore", "pipe", "pipe"], env: { ...process.env, LC_ALL: "C.UTF-8", ...o.env } });
     const out: Buffer[] = [];
     let size = 0;
     let err = "";

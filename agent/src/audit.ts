@@ -49,6 +49,11 @@ export function auditRoutes(app: FastifyInstance, ctx: Ctx) {
     };
     const detail = auditDetailOf(req.auditDetail);
     if (detail) entry.detail = detail;
+    try {
+      ctx.onAudit?.(entry);
+    } catch (e) {
+      req.log.warn({ err: e }, "kara kutu kaydı alınamadı");
+    }
     // Writes are serialized; a logging error doesn't break the request.
     chain = chain
       .then(async () => {

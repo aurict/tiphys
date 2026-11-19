@@ -17,7 +17,8 @@ export const deviceSchema = z.object({
 
 /** "analysis": incident analysis jobs on the PC (PLAN.md §13.1 I-3, /v1/analysis/jobs). */
 /** "security-report": another agent (the monitoring server) pulls this host's raw audit report (PLAN.md §15). */
-export const SERVICE_SCOPES = ["research", "analysis", "security-report"] as const;
+/** "blackbox": an agent appends its records to this agent's black box; "lockdown": this agent revokes all access on request. */
+export const SERVICE_SCOPES = ["research", "analysis", "security-report", "blackbox", "lockdown"] as const;
 
 export const serviceTokenSchema = z.object({
   id,
@@ -65,6 +66,22 @@ export const securityHostSchema = z.strictObject({
   role: securityRole.default("server"),
   allowedPorts: allowedPorts.default([]),
   source: securitySourceSchema,
+  /** SSH hosts: poll `traps` (auditd key tiphys_trap) every minute. Needs the rule on the host (install-audit.sh --trap). */
+  traps: z.boolean().default(false),
+});
+
+/** Decoys (S-3). Tokens are stored hashed; files are created by the agent and watched by access time. */
+export const securityTrapsSchema = z.object({
+  tokens: z
+    .array(z.strictObject({ id, name: z.string().min(1).max(80), tokenHash: z.string().regex(/^[a-f0-9]{64}$/), createdAt: z.string() }))
+    .max(20)
+    .default([]),
+  files: z
+    .array(z.strictObject({ id, path: z.string().min(1).max(1024), kind: z.enum(["env", "sshkey"]), createdAt: z.string() }))
+    .max(20)
+    .default([]),
+  /** Database user names that exist only in decoy files: a login attempt with one in the logs (Loki) is an alarm. */
+  dbUsers: z.array(z.string().regex(/^[a-z_][a-z0-9_]{2,62}$/)).max(10).default([]),
 });
 
 const restoreId = z.string().regex(/^[a-z0-9][a-z0-9-]{0,62}$/);
@@ -366,8 +383,104 @@ export const agentConfigSchema = z.object({
         .refine((a) => new Set(a.map((h) => h.id)).size === a.length && !a.some((h) => h.id === "self"), { message: "host kimlikleri benzersiz olmalı (self ayrılmış)" })
         .default([]),
       intervalMinutes: z.number().int().min(5).max(1440).default(15),
+      traps: securityTrapsSchema.default({ tokens: [], files: [], dbUsers: [] }),
+      /**
+       * Black box (S-4): "local" keeps the hash chain here (the monitoring server), "push" sends this agent's records to
+       * another agent's chain (url + a "blackbox" service token, never returned), "off".
+       */
+      blackbox: z
+        .object({
+          mode: z.enum(["off", "local", "push"]).default("off"),
+          url: z.url({ protocol: /^https$/ }).nullable().default(null),
+          token: z.string().regex(/^tps_[A-Za-z0-9_-]{20,}$/).nullable().default(null),
+        })
+        .default({ mode: "off", url: null, token: null }),
+      /** Lost phone (S-4): scrypt hash of the recovery code; agents that a lockdown fans out to ("lockdown" tokens). */
+      recovery: z
+        .object({ salt: z.string().regex(/^[a-f0-9]{32}$/), hash: z.string().regex(/^[a-f0-9]{64}$/), createdAt: z.string() })
+        .nullable()
+        .default(null),
+      lockdownTargets: z
+        .array(z.strictObject({ id, name: z.string().min(1).max(80), url: z.url({ protocol: /^https$/ }), token: z.string().regex(/^tps_[A-Za-z0-9_-]{20,}$/) }))
+        .max(20)
+        .default([]),
+      /** Outside view (S-5): weekly from this machine; off by default. */
+      exposure: z
+        .object({
+          enabled: z.boolean().default(false),
+          targets: z
+            .array(
+              z.strictObject({
+                id,
+                kind: z.enum(["ip", "domain"]),
+                value: z.string().regex(/^(?=.{1,253}$)(?!-)[A-Za-z0-9-]{1,63}(\.(?!-)[A-Za-z0-9-]{1,63})*$|^\d{1,3}(\.\d{1,3}){3}$/),
+                /** ip: ports that are meant to be reachable from the internet. */
+                expectedPorts: z.array(z.number().int().min(1).max(65535)).max(50).default([]),
+              }),
+            )
+            .max(30)
+            .default([]),
+          extraPorts: z.array(z.number().int().min(1).max(65535)).max(100).default([]),
+          intervalDays: z.number().int().min(1).max(30).default(7),
+        })
+        .default({ enabled: false, targets: [], extraPorts: [], intervalDays: 7 }),
+      /** Attack detection from Cloudflare analytics (S-5); tokens are never returned by the API. */
+      cloudflare: z
+        .object({
+          /** Zone › Analytics: Read + Zone › Zone: Read. */
+          readToken: z.string().min(1).max(200).nullable().default(null),
+          /** Zone › Firewall Services: Edit (only for blocking). */
+          blockToken: z.string().min(1).max(200).nullable().default(null),
+          block: z.boolean().default(false),
+          blockHours: z.number().int().min(1).max(720).default(24),
+          /** Zone names to watch (empty = every zone the token can read). */
+          zones: z.array(z.string().min(1).max(253)).max(50).default([]),
+          allowIps: z.array(z.string().regex(/^[0-9a-fA-F:.]{3,45}$/)).max(50).default([]),
+        })
+        .default({ readToken: null, blockToken: null, block: false, blockHours: 24, zones: [], allowIps: [] }),
+      /** Critical security notices also go to this Telegram recipient (id from the telegram feature), title only. */
+      alerts: z.object({ telegramRecipient: z.string().min(1).max(64).nullable().default(null) }).default({ telegramRecipient: null }),
+      /** Heavy scanners on the monitoring server (S-2); off by default. Tokens are never returned by the API. */
+      scanners: z
+        .object({
+          trivy: z.boolean().default(false),
+          gitleaks: z.boolean().default(false),
+          /** Download Trivy's Java DB (≈1 GB) and scan JARs; off = JAR/WAR/EAR files are skipped. */
+          javaDb: z.boolean().default(false),
+          /** Read-only registry credentials for private images (e.g. ghcr.io + a read:packages token). */
+          registryAuth: z
+            .array(z.strictObject({ registry: z.string().regex(/^[a-z0-9.-]+(:\d+)?$/), username: z.string().min(1).max(100), token: z.string().min(1).max(500) }))
+            .max(10)
+            .default([]),
+          /** GitHub owners whose repositories gitleaks scans; token (contents:read) for private ones. */
+          github: z
+            .object({ owners: z.array(z.string().regex(/^[A-Za-z0-9-]{1,39}$/)).max(20).default([]), token: z.string().min(1).max(500).nullable().default(null) })
+            .default({ owners: [], token: null }),
+          /** Loki for the log secret scan: a container on this machine (its IP is looked up) or a URL. */
+          loki: z
+            .union([z.strictObject({ container: z.string().regex(/^[A-Za-z0-9][A-Za-z0-9_.-]{0,127}$/), port: z.number().int().min(1).max(65535).default(3100) }), z.strictObject({ url: z.url() })])
+            .nullable()
+            .default(null),
+          /** Git repositories (a repo, or a folder of repos) inside allowedRoots scanned on this machine (e.g. the PC). */
+          localRoots: z.array(z.string().min(1).max(1024)).max(20).default([]),
+          /** Local hours [from, to) for heavy work. */
+          nightHours: z.tuple([z.number().int().min(0).max(23), z.number().int().min(0).max(24)]).default([2, 6]),
+        })
+        .default({ trivy: false, gitleaks: false, javaDb: false, registryAuth: [], github: { owners: [], token: null }, loki: null, localRoots: [], nightHours: [2, 6] }),
     })
-    .default({ self: { role: "server", allowedPorts: [], sudo: false }, hosts: [], intervalMinutes: 15 }),
+    .default({
+      self: { role: "server", allowedPorts: [], sudo: false },
+      hosts: [],
+      intervalMinutes: 15,
+      traps: { tokens: [], files: [], dbUsers: [] },
+      blackbox: { mode: "off", url: null, token: null },
+      recovery: null,
+      lockdownTargets: [],
+      exposure: { enabled: false, targets: [], extraPorts: [], intervalDays: 7 },
+      cloudflare: { readToken: null, blockToken: null, block: false, blockHours: 24, zones: [], allowIps: [] },
+      alerts: { telegramRecipient: null },
+      scanners: { trivy: false, gitleaks: false, javaDb: false, registryAuth: [], github: { owners: [], token: null }, loki: null, localRoots: [], nightHours: [2, 6] },
+    }),
 });
 
 export type AgentConfig = z.infer<typeof agentConfigSchema>;

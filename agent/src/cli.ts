@@ -9,6 +9,8 @@
 //   firefox install            registers the Firefox bridge native messaging host (11.2)
 //   vscode-a11y install|remove adds/removes --force-renderer-accessibility in the VS Code launcher (11.4)
 //   service-token create --name N --scope research | list | revoke <id>   scoped tokens for other agents
+//   lockdown --url https://atlas:7443   lost phone: asks for the recovery code (stdin), locks that agent and the agents
+//                              it fans out to (security center, PLAN.md §15 S-4)
 import { spawn } from "node:child_process";
 import { hostname } from "node:os";
 import { parseArgs } from "node:util";
@@ -143,6 +145,31 @@ async function main() {
       const { serviceTokenCli } = await import("./service_tokens.ts");
       const store = await ConfigStore.load(configPath);
       for (const line of await serviceTokenCli(store, positionals, { name: values.name, scopes: values.scope ?? [] })) console.log(line);
+      return;
+    }
+
+    case "lockdown": {
+      const url = values.url;
+      if (!url || !/^https:\/\//.test(url)) throw new Error("kullanım: tiphys-agent lockdown --url https://SUNUCU:7443  (kurtarma kodu standart girdiden okunur)");
+      // The code is read from stdin, not argv (it would land in the shell history and the process list).
+      if (process.stdin.isTTY) process.stderr.write("Kurtarma kodu: ");
+      const chunks: Buffer[] = [];
+      for await (const c of process.stdin) {
+        chunks.push(c as Buffer);
+        if (Buffer.concat(chunks).includes(10)) break;
+      }
+      const code = Buffer.concat(chunks).toString("utf8").split("\n")[0]!.trim();
+      const res = await fetch(new URL("/v1/security/lockdown", url), {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ code }),
+        signal: AbortSignal.timeout(60_000),
+      });
+      const body = (await res.json().catch(() => ({}))) as { targets?: Array<{ name: string; ok: boolean; status: number | null }>; error?: { code: string } };
+      if (!res.ok) throw new Error(`kilitleme başarısız: ${body.error?.code ?? res.status}`);
+      console.log("Kilitlendi: tüm cihazlar, hizmet belirteçleri ve bildirim uçları silindi.");
+      for (const t of body.targets ?? []) console.log(`  ${t.name}: ${t.ok ? "kilitlendi" : `BAŞARISIZ (${t.status ?? "ulaşılamadı"}) — bu ajanda 'Her şeyi kilitle'yi elle yapın`}`);
+      console.log("Yeniden eşleştirmek için her makinede: tiphys-agent pair");
       return;
     }
 

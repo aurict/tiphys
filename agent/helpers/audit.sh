@@ -9,19 +9,31 @@
 #
 # It never writes anything, never prints secrets (no environment, no key material: only fingerprints, hashes, counts
 # and names) and accepts exactly one argument from a fixed list. Anything else exits 2 without running a command.
+#   report | report-full          the audit (full: + SUID and world-writable scans)
+#   traps                         today's auditd events with key tiphys_trap (decoy file reads), CSV
+#   image-save sha256:<64 hex>    `docker save` of one image that a running container uses (≤ 3 GB), tar on stdout,
+#                                 for the vulnerability scanner on the monitoring server
 set -u
 umask 077
 PATH=/usr/sbin:/usr/bin:/sbin:/bin
 export PATH LC_ALL=C.UTF-8
-VERSION=1
+VERSION=2
 
+refuse() { echo "tiphys-audit: unsupported request" >&2; exit 2; }
+[ "$#" -le 1 ] || refuse
 MODE=${1:-report}
+IMAGE=
 case "$MODE" in
   ""|report) MODE=report ;;
-  report-full) ;;
-  *) echo "tiphys-audit: unsupported request" >&2; exit 2 ;;
+  report-full|traps) ;;
+  "image-save sha256:"*)
+    IMAGE=${MODE#image-save }
+    # Exactly "sha256:" + 64 lowercase hex characters, nothing else.
+    [ "${#IMAGE}" -eq 71 ] || refuse
+    case "${IMAGE#sha256:}" in *[!0-9a-f]*) refuse ;; esac
+    MODE=image-save ;;
+  *) refuse ;;
 esac
-[ "$#" -le 1 ] || { echo "tiphys-audit: unsupported request" >&2; exit 2; }
 
 ROOT=0
 [ "$(id -u)" = 0 ] && ROOT=1
@@ -34,6 +46,24 @@ t() { timeout -k 2 "$@"; }
 cap() { head -c "${1:-65536}"; }
 section() { printf '\n@@section %s\n' "$1"; }
 unavailable() { echo "@@unavailable ${1:-root}"; }
+
+if [ "$MODE" = traps ]; then
+  [ "$ROOT" = 1 ] && has ausearch || { echo "tiphys-audit: unavailable" >&2; exit 3; }
+  printf '@@tiphys-audit %s traps\n' "$VERSION"
+  # Exit 1 = no matches; that is a normal, empty answer.
+  t 20 ausearch -k tiphys_trap --start today --format csv 2>/dev/null | cap 262144
+  printf '\n@@end\n'
+  exit 0
+fi
+
+if [ "$MODE" = image-save ]; then
+  has docker || { echo "tiphys-audit: unavailable" >&2; exit 3; }
+  # Only images of running containers, and not huge ones.
+  t 20 docker ps -q --no-trunc 2>/dev/null | xargs -r docker inspect --format '{{.Image}}' 2>/dev/null | grep -qx "$IMAGE" || refuse
+  size=$(t 20 docker image inspect --format '{{.Size}}' "$IMAGE" 2>/dev/null) || refuse
+  [ "$size" -le 3221225472 ] 2>/dev/null || { echo "tiphys-audit: image too large" >&2; exit 4; }
+  exec timeout -k 5 1800 docker save "$IMAGE"
+fi
 
 printf '@@tiphys-audit %s %s\n' "$VERSION" "$MODE"
 
@@ -174,7 +204,7 @@ if has docker && t 10 docker info >/dev/null 2>&1; then
     t 30 docker inspect --format 'c|{{.Name}}|{{.Config.Image}}|{{.Image}}|{{.HostConfig.Privileged}}|{{.HostConfig.NetworkMode}}|{{.HostConfig.PidMode}}|{{.HostConfig.ReadonlyRootfs}}|{{.Config.User}}|{{range .HostConfig.CapAdd}}{{.}},{{end}}|{{range .Mounts}}{{.Source}}:{{.Destination}}:{{.RW}};{{end}}|{{range $p, $b := .NetworkSettings.Ports}}{{range $b}}{{.HostIp}}:{{.HostPort}}->{{$p}};{{end}}{{end}}|{{index .Config.Labels "com.docker.compose.project"}}|{{index .Config.Labels "com.docker.compose.service"}}' $ids 2>/dev/null | cap 131072
     imgs=$(t 30 docker inspect --format '{{.Image}}' $ids 2>/dev/null | sort -u)
     # shellcheck disable=SC2086
-    [ -n "$imgs" ] && t 30 docker image inspect --format 'i|{{.Id}}|{{join .RepoTags ","}}|{{join .RepoDigests ","}}|{{.Size}}|{{.Created}}' $imgs 2>/dev/null | cap 131072
+    [ -n "$imgs" ] && t 30 docker image inspect --format 'i|{{.Id}}|{{range .RepoTags}}{{.}},{{end}}|{{range .RepoDigests}}{{.}},{{end}}|{{.Size}}|{{.Created}}' $imgs 2>/dev/null | cap 131072
   fi
 else
   unavailable docker

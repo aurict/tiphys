@@ -12,6 +12,9 @@
 #   monitor-ip        address the monitoring server connects from (its Tailscale IP)
 #   audit-pubkey-file public half of the key the monitoring agent uses (ed25519)
 # Remove: tools/install-audit.sh --uninstall <admin-ssh-target> [admin-ssh-key]
+# Decoy file + auditd read watch (key tiphys_trap; the monitoring agent polls it with `traps`):
+#   tools/install-audit.sh --trap <admin-ssh-target> <decoy-path> <content-file> [admin-ssh-key]
+#   tools/install-audit.sh --untrap <admin-ssh-target> <decoy-path> [admin-ssh-key]   (removes the rule and the file)
 # Optional env SSH_CONFIG=<file>: passed to ssh -F (tests).
 set -euo pipefail
 cd "$(dirname "$0")/.."
@@ -25,6 +28,38 @@ sshd -t && { systemctl reload ssh 2>/dev/null || systemctl reload sshd; }
 id tiphys-audit >/dev/null 2>&1 && userdel -r tiphys-audit 2>/dev/null || true
 rm -rf /var/lib/tiphys-audit /usr/local/lib/tiphys
 echo "removed"
+REMOTE
+  exit 0
+fi
+
+if [ "${1:-}" = "--trap" ] || [ "${1:-}" = "--untrap" ]; then
+  MODE=$1 TARGET=$2 DECOY=$3
+  if [ "$MODE" = "--trap" ]; then CONTENT_B64=$(base64 -w0 "$4"); KEY=${5:-}; else CONTENT_B64=-; KEY=${4:-}; fi
+  [[ $DECOY =~ ^/[A-Za-z0-9._/-]{1,200}$ && $DECOY != *..* ]] || { echo "decoy-path: absolute path of [A-Za-z0-9._/-] expected" >&2; exit 1; }
+  ssh ${SSH_CONFIG:+-F "$SSH_CONFIG"} -o BatchMode=yes ${KEY:+-i "$KEY"} "$TARGET" sudo -n bash -s -- "$MODE" "$DECOY" "$CONTENT_B64" <<'REMOTE'
+set -euo pipefail
+MODE=$1 DECOY=$2 CONTENT_B64=$3
+RULES=/etc/audit/rules.d/tiphys-trap.rules
+command -v auditctl >/dev/null || { echo "auditd is not installed" >&2; exit 1; }
+if [ "$MODE" = "--untrap" ]; then
+  auditctl -W "$DECOY" -p r -k tiphys_trap 2>/dev/null || true
+  [ -f "$RULES" ] && grep -vxF -- "-w $DECOY -p r -k tiphys_trap" "$RULES" > "$RULES.new" || true
+  if [ -s "$RULES.new" ]; then mv -f "$RULES.new" "$RULES"; else rm -f "$RULES" "$RULES.new"; fi
+  rm -f -- "$DECOY"
+  echo "untrapped"
+  exit 0
+fi
+[ -e "$DECOY" ] && { echo "decoy exists, not overwritten" >&2; exit 1; }
+install -d -m 0755 "$(dirname "$DECOY")"
+umask 022
+printf '%s' "$CONTENT_B64" | base64 -d > "$DECOY"
+chown root:root "$DECOY"; chmod 0644 "$DECOY"
+touch "$RULES"; chmod 0640 "$RULES"
+grep -qxF -- "-w $DECOY -p r -k tiphys_trap" "$RULES" || echo "-w $DECOY -p r -k tiphys_trap" >> "$RULES"
+# Immediate effect without reloading every rule; the rules.d file makes it permanent.
+auditctl -l | grep -qF -- "-w $DECOY -p r -k tiphys_trap" || auditctl -w "$DECOY" -p r -k tiphys_trap
+auditctl -l | grep -F tiphys_trap
+echo "trapped"
 REMOTE
   exit 0
 fi

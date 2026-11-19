@@ -72,6 +72,11 @@ describe("audit.sh", () => {
       expect(r.passwords).toBeNull();
       expect(r.unavailable).toContain("passwords");
     }
+    // Every running container's image is listed (docker 29 broke `join` on these fields once).
+    if (r.docker && r.docker.containers.length) {
+      expect(r.docker.images.length).toBeGreaterThan(0);
+      for (const c of r.docker.containers) expect(r.docker.images.map((i) => i.id)).toContain(c.imageId);
+    }
     // Never key material or hashes from /etc/shadow.
     expect(stdout).not.toMatch(/PRIVATE KEY|\$6\$|\$y\$/);
   }, 130_000);
@@ -108,6 +113,9 @@ describe("parser", () => {
     expect(r.docker!.containers[0]).toMatchObject({ name: "web", project: "app", service: "web", ports: [{ hostIp: "100.100.1.2", hostPort: 8080, container: "80/tcp" }] });
     expect(r.docker!.containers[0]!.mounts).toEqual([{ source: "/srv/web", destination: "/data", rw: true }]);
     expect(r.docker!.images[0]!.digests[0]).toMatch(/@sha256:/);
+    // audit.sh v2 prints lists with a trailing comma ({{range}}); an image without tags has an empty field.
+    const r2 = parseReport(auditText({ docker: "@@version 1\ni|sha256:" + "3".repeat(64) + "|a:1,b:2,||5|2026-01-01" }));
+    expect(r2.docker!.images[0]).toMatchObject({ tags: ["a:1", "b:2"], digests: [] });
     expect(r.suid).toBeNull();
   });
 
@@ -295,7 +303,7 @@ describe("incident signal", () => {
 });
 
 describe("service + routes", () => {
-  const sshHost = { id: "atlas", name: "atlas", role: "server" as const, allowedPorts: ["tcp/22"], source: { kind: "ssh" as const, host: "atlas", user: "tiphys-audit", port: 22, keyPath: "~/.ssh/audit" } };
+  const sshHost = { id: "atlas", name: "atlas", role: "server" as const, allowedPorts: ["tcp/22"], source: { kind: "ssh" as const, host: "atlas", user: "tiphys-audit", port: 22, keyPath: "~/.ssh/audit" }, traps: false };
 
   async function setup(texts: { self?: () => string; atlas?: () => string | Error } = {}) {
     let now = Date.parse("2026-11-18T10:00:00Z");

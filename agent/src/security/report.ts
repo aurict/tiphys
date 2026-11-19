@@ -279,7 +279,7 @@ function parseDocker(lines: string[] | undefined): SecurityReport["docker"] {
         service: noValue(f.slice(13).join("|")),
       });
     } else if (f[0] === "i" && f.length >= 6) {
-      images.push({ id: f[1]!, tags: f[2] ? f[2].split(",") : [], digests: f[3] ? f[3].split(",") : [], size: Number(f[4]) || 0, created: f[5]! });
+      images.push({ id: f[1]!, tags: f[2]!.split(",").filter(Boolean), digests: f[3]!.split(",").filter(Boolean), size: Number(f[4]) || 0, created: f[5]! });
     }
   }
   return { version, containers, images };
