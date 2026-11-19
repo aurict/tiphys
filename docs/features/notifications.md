@@ -73,6 +73,9 @@ the screen opened when you tap the notification.
 | --- | --- | --- | --- |
 | `claude.done` | A Claude session finishes a turn (summary, files changed, cost, duration) | Claude session | normal |
 | `claude.waiting` | Claude asks for permission to use a tool | Claude session | high |
+| `agy.done` | An agy session finished a turn | agy session | low |
+| `agy.waiting` | agy asks for permission (data: `sessionId`, `requestId`, for notification buttons) | agy session | high |
+| `agy.error` | An agy turn failed | agy session | normal |
 | `claude.error` | A Claude turn fails or the Claude process dies | Claude session | normal |
 | `claude.pcEnded` | Desktop control ended for a Claude PC session (shown only if Claude was working and you did not stop it) | Claude session | high if working |
 | `claude.pcExpiring` | A Claude PC session's control expires within 2 minutes | Claude session | high |
@@ -127,6 +130,7 @@ with the stored device token):
 
 - **Allow / Deny** on `claude.waiting`: answers the Claude permission request. If the agent cannot be reached you
   get *Could not send your decision* and should open the app. See [Claude](claude.md).
+- **Allow / Deny** for `agy.waiting` are meant to work the same way: the agent sends the session and request ids with the notice, and an answer goes to `POST /v1/agy/sessions/:id/permissions/:requestId`. See [agy](agy.md).
 - **Extend** on `claude.pcExpiring`: extends the desktop control session by 15 minutes.
 - **Stop** on the ongoing *Claude is using the PC* notification: interrupts Claude and ends the control session.
 - **Copy** on `clipboard.pc`: puts the PC's text on the phone clipboard.

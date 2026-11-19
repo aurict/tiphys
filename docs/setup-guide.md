@@ -166,7 +166,7 @@ daemon uses a different socket path, set `Environment=YDOTOOL_SOCKET=…` in the
 |---|---|---|
 | Claude Code login | `claude` feature | `npm ci` in `agent/` installs the Claude Code binary used by the agent (an optional dependency of the Agent SDK). You still log in once with the `claude` CLI on that machine as the same user. |
 | `claude` CLI on the agent's `PATH` | `research` feature (editor step) | The research editor runs the `claude` executable it finds on `PATH`. |
-| `agy` (Antigravity CLI, Gemini) on the agent's `PATH` | `research` feature (draft step) | Log in once interactively. |
+| `agy` (Antigravity CLI, Gemini) on the agent's `PATH` | `agy` feature (sessions), `research` feature (draft step) | Log in once interactively. |
 | `npx` | `research` feature | Starts the pinned searxng/firecrawl MCP servers for the editor. Comes with Node.js. |
 | a searxng instance and a Firecrawl instance or API key | `research` feature | Reached through the `searxng` and `firecrawl` MCP servers. |
 | a transcription command | `transcribe` feature | Your own script, see [Transcription](#transcription). |
@@ -650,6 +650,7 @@ heavy modules (Claude SDK, Uptime Kuma bridge, watchers) are not loaded.
 | `power` | on | reboot, power-off, suspend (with confirmation) | polkit allowing `systemctl reboot` etc. for the user | high |
 | `homepage` | off | reads Homepage `services.yaml`, health-checks services, adds services | `homepage.servicesPath` readable/writable | low |
 | `claude` | off | Claude Code sessions, history, slash commands, schedules, folder picker | full `npm ci`, Claude Code login, `allowedRoots` | high |
+| `agy` | off | Antigravity CLI (`agy`) sessions from the phone over its Agent Client Protocol; resume earlier conversations | `agy` installed and logged in on the PC, `allowedRoots` | high |
 | `uptime` | off | Uptime Kuma bridge (monitors, heartbeats, maintenance) | `uptimeKuma` login | low |
 | `wake` | off | sends Wake-on-LAN packets to `wake.targets` | agent on the target's LAN | low |
 | `watch` | off | polls other agents' `/v1/health`, notifies offline/online | `watch.hosts` | low |
@@ -715,6 +716,30 @@ App side (*Settings › Claude*):
 
 **Use the PC** sessions additionally need `desktop` and `control`, Hyprland and an app lock. Voice input needs
 `transcribe`. Scheduled tasks use the agent's local time zone (`TZ`). Details: [features/claude.md](features/claude.md).
+
+### agy (Antigravity CLI)
+
+Agent side (`argo`):
+
+1. Install `agy` on the PC so that it is on the `PATH` of the agent's service (check `systemctl --user show
+   tiphys-agent -p Environment`, or the unit's `PATH`; a login shell's `PATH` is not enough), and **log in once** as
+   the agent's user: run `agy` in a terminal and sign in. Check with `agy --version`.
+2. Turn on `agy` (it is a high-risk flag, like `claude`: a session runs code on the PC; leave it off on servers) and
+   restart. Nothing runs until a session is started; each session is one `agy acp` process, at most 6 at a time.
+3. **Allowed folders** (`allowedRoots`) apply as for Claude: a session's folder, and the folder you list earlier
+   conversations for, must be inside them. Narrow them if you want agy confined to, for example, `~/code` as the place
+   it starts in (agy itself can still reach anything the agent's user can).
+4. Start a session in the app, or with `POST /v1/agy/sessions {"cwd": "~/code/my-project"}`. Pick the mode: `default`
+   asks for edits and commands, `accept-edits`, `auto` and `plan` ask less or plan first (see
+   [agy](features/agy.md#modes)). `--dangerously-skip-permissions` is never used. Permission questions come to the
+   phone and as notifications.
+5. To carry on in a terminal on the PC, **close the session on the phone first**, then run the session's
+   `resumeCommand`, `cd <folder> && agy --conversation <id>`. A conversation open in a terminal and on the phone at
+   the same time forks.
+
+Troubleshooting: `agent.agy.missing` (501): `agy` is not on the agent's `PATH`. A session that ends at once: run
+`agy acp` by hand as the agent's user to see why (for example, not logged in). Details:
+[features/agy.md](features/agy.md).
 
 ### Desktop and remote control
 
@@ -1061,7 +1086,9 @@ Bot messages are not end-to-end encrypted; newsletters are built from public inf
 
 The security center audits machines read-only and shows score, findings and changes in the app (what it checks and
 how: [features/security.md](features/security.md)). One agent is the **monitoring server** (`atlas`): it collects
-the reports of its own machine, of SSH-only hosts and of other agents. Do these parts as needed. The checkout
+the reports of its own machine, of SSH-only hosts and of other agents. Do these parts as needed: a to c are the audit
+itself; d to h (scanners, traps, black box, lost phone, outside view and Cloudflare) are optional additions, each off
+until you set it up. The checkout
 (`~/tiphys`) must be the same release as the agents: the installed audit script is copied from it.
 
 #### a. The monitoring server (`atlas`)
@@ -1083,7 +1110,8 @@ the reports of its own machine, of SSH-only hosts and of other agents. Do these 
 
    Then turn on **Check with sudo** (*Audit settings › This machine*),
    or `PATCH /v1/security/hosts/self {"sudo": true}`, or `"security": {"self": {"sudo": true}}` in `agent.json`.
-   The next report is a root report, so it starts a **new baseline** silently.
+   The next report is a root report, so it starts a **new baseline** silently (when changes are still waiting for
+   acceptance, the switch is listed as one more change, `audit.root`, and the old baseline stays until you accept).
 
    **Why the agent's own copy is never run with sudo:** `~/tiphys-agent/helpers/audit.sh` belongs to the agent's
    user, who could change it; running a file the agent user can write as root would hand that user (and anything
@@ -1120,7 +1148,10 @@ once, for the installation; `atlas` and `orion` must both be in your tailnet.
    `restrict,from="<atlas IP>",command="sudo -n …"`, and, only if sshd already uses `AllowUsers`, a drop-in
    `/etc/ssh/sshd_config.d/05-tiphys-audit.conf` that adds the user (`sshd -t` must pass before the reload). The
    sudoers entry has no `Defaults` lines, so it also works with `sudo-rs`. Re-run it to update the script after an
-   upgrade. It prints `installed <sha256>` on success.
+   upgrade; an installed script from before the scanners and traps (`VERSION=1`) has no `traps` and `image-save`
+   requests, so install again before using parts d and e on that host. The current script is `VERSION=3` (file names
+   in the SUID list can no longer inject report lines, logins are taken only from `sshd`, traps cover the last 10
+   minutes): install again on every audited host after an upgrade. It prints `installed <sha256>` on success.
 3. **Pin the host key** (no trust on first use). `atlas` will connect with `StrictHostKeyChecking=yes` and a file
    that only you fill. On `atlas`:
 
@@ -1186,6 +1217,221 @@ once, for the installation; `atlas` and `orion` must both be in your tailnet.
 add a throwaway user or open a test port), wait for the next check or press *Check now*: the machine shows a change,
 you get a `security.change` push and an incident of kind *security* opens; *Accept this state* clears it.
 Troubleshooting codes are in [Troubleshooting](#13-troubleshooting).
+
+#### d. Vulnerability and secret scanners (`atlas`)
+
+The scanners run Docker containers on `atlas` (the agent user must be allowed to run `docker`, which `atlas` already
+needs for the `docker` feature) and are off by default. **Pull nothing by hand**: Docker fetches the pinned Trivy and
+gitleaks images the first time they are needed (about 60 MB and 25 MB), and Trivy downloads its vulnerability
+database (about 140 MB) into the volume `tiphys-trivy-cache`. The calls below use a device token (`tph_…`) of `atlas`;
+the app screens for these features are still being added, the API works regardless.
+
+1. **Enable** the scanners you want. Heavy work happens only in the night window (default 02:00 to 06:00 local):
+
+   ```bash
+   curl -sS -X PATCH https://atlas.my-tailnet.ts.net/v1/security/scanners \
+     -H "Authorization: Bearer tph_…" -H 'content-type: application/json' \
+     -d '{"trivy": true, "gitleaks": true}'
+   ```
+
+   Change the window with `{"nightHours": [1, 5]}`. Images of `atlas` itself are scanned from the first night on; an
+   image on `orion` that no registry has needs the **current audit script** there (`VERSION=2` or higher; `3` is current): run
+   `tools/install-audit.sh` again for `orion` (step b.2) so `image-save` exists. It is the only thing the scanner
+   asks `orion` to do beyond the report, and it puts load on that host's Docker daemon, so it happens only at night,
+   2 images a night at most, 3 GB each.
+2. **Private images.** For a private registry add a **read-only** credential, for example `ghcr.io` with a token that
+   has only `read:packages`:
+
+   ```bash
+   curl -sS -X PATCH https://atlas.my-tailnet.ts.net/v1/security/scanners \
+     -H "Authorization: Bearer tph_…" -H 'content-type: application/json' \
+     -d '{"registryAuth": [{"registry": "ghcr.io", "username": "example-user", "token": "ghp_…"}]}'
+   ```
+
+   `registryAuth` replaces the whole list; to keep an entry's token, send its `registry` and `username` without a
+   `token`. An image that needs a login shows `needsCredentials` with the registry name. Trivy contacts only well-known
+   public registries (`docker.io`, `ghcr.io`, `gcr.io`, `quay.io`, `registry.k8s.io`, `public.ecr.aws`,
+   `mcr.microsoft.com`, `registry.gitlab.com`, `lscr.io`, `codeberg.org`) and registries you add here; an image from
+   any other registry is only scanned if it can be saved locally or over SSH.
+3. **Java images.** Trivy skips `*.jar`, `*.war` and `*.ear` files unless you send `{"javaDb": true}`; that
+   downloads a database of about 1 GB on the first scan. Without it, a "clean" Java application image says nothing
+   about its Java libraries.
+4. **GitHub secret scan.** Add the owners to scan (`{"github": {"owners": ["example-org"]}}`). Without a token only
+   public repositories are scanned. For private ones create a **fine-grained personal access token** limited to those
+   repositories with only `Contents: read` (and the implicit `Metadata: read`), and send it with
+   `{"github": {"owners": ["example-org"], "token": "github_pat_…"}}` (to remove it later send `"token": null`).
+5. **Logs in Loki.** If the host logs go to a Loki container on `atlas` with a `host` label, send
+   `{"loki": {"container": "loki", "port": 3100}}` (the container name from `docker ps`; the agent looks up its address
+   each time) or `{"loki": {"url": "http://127.0.0.1:3100"}}`. The same setting is used by the decoy database users
+   (part e).
+6. **Run once** instead of waiting for the night, and read the result:
+
+   ```bash
+   curl -sS -X POST https://atlas.my-tailnet.ts.net/v1/security/vulns/scan   -H "Authorization: Bearer tph_…"
+   curl -sS -X POST https://atlas.my-tailnet.ts.net/v1/security/secrets/scan -H "Authorization: Bearer tph_…"
+   curl -sS https://atlas.my-tailnet.ts.net/v1/security/vulns   -H "Authorization: Bearer tph_…"
+   curl -sS https://atlas.my-tailnet.ts.net/v1/security/secrets -H "Authorization: Bearer tph_…"
+   ```
+
+   Both start in the background (`202`). Images need minutes each; `status` goes from `pending` to `ok`, `failed`,
+   `needsCredentials` or `notAvailable`. In the secret result, `lastRun` names the error of any source that failed.
+7. **The PC scans its own code** without any server: on `argo`, with `security` on, send
+   `{"localRoots": ["~/code"]}` to `argo`'s `/v1/security/scanners` (the folder must be inside `allowedRoots`). It looks
+   for git-tracked `.env` files and well-known key formats; nothing leaves `argo` but the location, and `argo` sends
+   its own `security.secretFound` push.
+
+#### e. Traps and Telegram alerts (`atlas`, `orion`)
+
+1. **Telegram alerts** (optional but recommended, they work when the phone doesn't). Turn on the `telegram` feature
+   with a bot and make yourself a recipient ([Telegram newsletters](#telegram-newsletters-server)). Take your
+   recipient's `id` from `GET /v1/telegram/recipients`, then:
+
+   ```bash
+   curl -sS -X PUT https://atlas.my-tailnet.ts.net/v1/security/alerts \
+     -H "Authorization: Bearer tph_…" -H 'content-type: application/json' \
+     -d '{"telegramRecipient": "<recipient id>"}'
+   curl -sS -X POST https://atlas.my-tailnet.ts.net/v1/security/traps/test -H "Authorization: Bearer tph_…"
+   ```
+
+   The second call is the test alarm: a push **and** a Telegram message `🚨 Tiphys güvenlik · atlas · deneme uyarısı`
+   must arrive.
+2. **Decoy token.** `POST /v1/security/traps/tokens` with `{"name": "backup notes"}` returns a `tps_…` token once.
+   Put it where an intruder would look, for example in a note or a `.env.bak` on a server. Anyone who presents it
+   gets an ordinary `401` and you get an alarm. Test: `curl -H "Authorization: Bearer <the decoy>"
+   https://atlas.my-tailnet.ts.net/v1/security/overview` (a `401`, and the alarm within seconds).
+3. **Decoy database user** (needs the Loki setting of part d.5, and database logs in Loki): choose a name that exists
+   nowhere, for example `{"users": ["svc_pgbackup"]}`, with `PUT /v1/security/traps/db-users`. Do this **before** the
+   next step so the decoy `.env` contains that user.
+4. **Decoy file on `atlas`**: `POST /v1/security/traps/files` with `{"path": "~/backup/.env.bak", "kind": "env"}`
+   (inside `allowedRoots`; `kind: "sshkey"` for a decoy private key). Check `GET /v1/security/traps`: the file's
+   `status` must be `armed`. `noatime` means the file system never updates access times and the trap can't work:
+   pick another location. Read the file yourself once (`cat`) and the alarm comes within 30 seconds. Don't put it
+   in a folder your backup tool reads.
+5. **Decoy file on `orion`** (an SSH-only host, with `auditd` installed there). Write something that looks like a
+   secret but isn't, then, from the checkout:
+
+   ```bash
+   printf 'DATABASE_URL=postgres://svc_pgbackup:not-a-real-password@db:5432/app\n' > /tmp/decoy.txt
+   tools/install-audit.sh --trap admin@orion.my-tailnet.ts.net /srv/backup/.env.bak /tmp/decoy.txt [admin-key]
+   curl -sS -X PATCH https://atlas.my-tailnet.ts.net/v1/security/hosts/orion \
+     -H "Authorization: Bearer tph_…" -H 'content-type: application/json' -d '{"traps": true}'
+   ```
+
+   (The audit script on `orion` must be `VERSION=2` or higher, `3` is current: part b.2, "install again".) The
+   installer refuses to continue when the path already exists or is a symlink, or when a directory on the way is a
+   symlink, belongs to a user other than root or you (the admin running it), or is writable by group or others; missing
+   directories are created and an existing one keeps its mode. Read the file on `orion` once and an alarm with the
+   reader's user and program arrives within about a minute (one alarm per poll, with a count, however many reads). A
+   missing `auditd` or `ausearch` no longer fails silently: `GET /v1/security/traps` shows the host under `auditHosts`
+   with status `unavailable`. Still test it. Remove it with `tools/install-audit.sh --untrap
+   admin@orion.my-tailnet.ts.net /srv/backup/.env.bak [admin-key]` (rule and file).
+
+#### f. Black box (`atlas` and `argo`)
+
+1. **On `atlas`**: `PUT /v1/blackbox/settings` with `{"mode": "local"}` and **restart the agent** (the answer says
+   `restartRequired: true`). `GET /v1/blackbox/status` then shows the `head` (record count and hash), and
+   `GET /v1/blackbox/verify` must say `ok: true`. The chain is `~/.config/tiphys/blackbox/chain.jsonl`.
+2. **Optional hardening (root, once).** Make the file append-only so not even the agent's user can rewrite it:
+
+   ```bash
+   sudo chattr +a ~/.config/tiphys/blackbox/chain.jsonl
+   ```
+
+   This is **not on by default** and Tiphys doesn't do it for you; undo it with `chattr -a`. A file with the flag
+   can't be deleted or replaced without root (the chain isn't rotated, so it only grows).
+3. **Nightly anchor.** With the alerts of part e.1 set up, the head of the chain goes to your Telegram every night
+   at 03:xx and into `blackbox/anchors.jsonl`. Try it at once with `POST /v1/blackbox/anchor`. Verification checks every
+   anchor against the whole chain, and an anchor past the chain's end counts as a cut. The chain stops growing at
+   1 GiB (you get `blackbox.broken` with reason `full`); `blackbox/head.json` next to it lets the agent notice after a
+   restart that the chain was cut while it was stopped, so keep the three files together.
+4. **The PC (`argo`) pushes its records to `atlas`.** On `atlas` create a token only for that:
+
+   ```bash
+   node dist/cli.js service-token create --name argo-blackbox --scope blackbox     # on atlas; prints tps_… once
+   ```
+
+   restart `atlas`'s agent (CLI changes apply after a restart), then on `argo`:
+
+   ```bash
+   curl -sS -X PUT https://argo.my-tailnet.ts.net/v1/blackbox/settings \
+     -H "Authorization: Bearer tph_…" -H 'content-type: application/json' \
+     -d '{"mode": "push", "url": "https://atlas.my-tailnet.ts.net", "token": "tps_…"}'
+   ```
+
+   and restart `argo`'s agent. `GET /v1/blackbox/status` on `argo` shows `pending` (queued records, normally 0) and
+   `lastError` (`null` when it works). Records from `argo` appear on `atlas` with `source: "service:argo-blackbox"`
+   (`GET /v1/blackbox/recent`).
+
+#### g. Lost phone: recovery code and lockdown
+
+1. **Create the code** on `atlas`: in the app, or `POST /v1/security/recovery` with `{"confirm": true}`. The answer
+   shows `XXXXX-XXXXX-XXXXX-XXXXX-XXXXX` **once**. Store it somewhere that does not depend on the phone (a password
+   manager, a printout in a safe place). It replaces any earlier code.
+2. **Let `atlas` lock the other agents too.** On `argo` create a token that can only lock `argo`, and give it to
+   `atlas`:
+
+   ```bash
+   node dist/cli.js service-token create --name atlas-lockdown --scope lockdown      # on argo; prints tps_… once
+   # restart argo's agent, then:
+   curl -sS -X POST https://atlas.my-tailnet.ts.net/v1/security/lockdown/targets \
+     -H "Authorization: Bearer tph_…" -H 'content-type: application/json' \
+     -d '{"id": "argo", "name": "argo", "url": "https://argo.my-tailnet.ts.net", "token": "tps_…"}'
+   ```
+
+   An SSH-only host like `orion` has no agent to lock; its audit key is revoked with `tools/install-audit.sh
+   --uninstall`.
+3. **If the phone is lost**, from any machine in the tailnet that has the agent built:
+
+   ```bash
+   node dist/cli.js lockdown --url https://atlas.my-tailnet.ts.net      # asks for the code (standard input)
+   ```
+
+   It prints which agents were locked. Afterwards pair again on each machine (`tiphys-agent pair --name "New phone"
+   --url …`, [section 7](#7-pair-the-phone)) and create the service tokens again (`security-report`, `blackbox`,
+   `lockdown`, `research`, …): they were revoked too. Make a new recovery code. **Test the whole thing once** on a
+   throwaway setup before you rely on it: a lockdown can't be undone except by pairing again. The request must still
+   pass the Tailscale-login check (`requireTailscaleLogin`), so run it from a machine whose Tailscale login is the
+   allowed one. Wrong or malformed codes are limited (5 well-formed attempts per address per 10 minutes, 30 an hour in
+   total); the notice about the lockdown is sent after the revoke, so it arrives in Telegram, not on the lost phone.
+
+#### h. Outside view and Cloudflare attack detection (`atlas`)
+
+1. **Outside view.** List what to look at and turn it on:
+
+   ```bash
+   curl -sS -X PUT https://atlas.my-tailnet.ts.net/v1/security/exposure \
+     -H "Authorization: Bearer tph_…" -H 'content-type: application/json' \
+     -d '{"enabled": true, "targets": [
+           {"id": "orion-ip", "kind": "ip", "value": "198.51.100.20", "expectedPorts": [443]},
+           {"id": "site", "kind": "domain", "value": "example.org"}]}'
+   curl -sS -X POST https://atlas.my-tailnet.ts.net/v1/security/exposure/run -H "Authorization: Bearer tph_…"
+   curl -sS https://atlas.my-tailnet.ts.net/v1/security/exposure -H "Authorization: Bearer tph_…"
+   ```
+
+   Use the **public address of the other machine**, not the one the server runs on: a machine that connects to its
+   own public address may not pass its cloud firewall, so the result would look better than it is. Only list targets
+   that are yours. `expectedPorts` are the ports that are meant to be open. The run is gentle (a connect to each of
+   about 64 ports, 8 at a time, and one request a second to a domain). If a site redirects (`www` to the bare domain),
+   list the bare domain too. The first run only announces critical findings and expiring certificates.
+2. **Cloudflare attack detection** (optional). In the Cloudflare dashboard create an **API token** with **Zone › Analytics
+   › Read** and **Zone › Zone › Read** for your zones. Then:
+
+   ```bash
+   curl -sS -X PUT https://atlas.my-tailnet.ts.net/v1/security/cloudflare \
+     -H "Authorization: Bearer tph_…" -H 'content-type: application/json' \
+     -d '{"readToken": "…", "zones": ["example.org"], "allowIps": ["203.0.113.10"]}'
+   curl -sS -X POST https://atlas.my-tailnet.ts.net/v1/security/attacks/run -H "Authorization: Bearer tph_…"
+   ```
+
+   Put your own and your servers' public addresses in `allowIps`. **This part hasn't been checked against the live
+   Cloudflare API yet**: run it by hand once and read `GET /v1/security/attacks` (`lastRun.error` is
+   `agent.security.cloudflareUnauthorized` for a token problem, `cloudflareFailed` for an API or query problem).
+   To block offenders create a **second** token with only **Zone › Firewall Services › Edit** and send
+   `{"blockToken": "…", "block": true, "blockHours": 24}`; blocks are IP Access Rules with a `tiphys:<expiry>` note that
+   the agent deletes again when they expire. Look at the offenders for a few days before you turn blocking on.
+
+**Check (parts d to h).** Send the test alarm (`POST /v1/security/traps/test`), read a decoy file, present the decoy token: each gives
+a high-priority notification (and, with part e.1, a Telegram message).
 
 ## 11. Settings reference
 
@@ -1287,7 +1533,7 @@ list on every new install:
       a LAN or public address: the Tailscale login check relies on the header that `tailscale serve` sets.
 - [ ] `--tailscale-login you@example.com` is set on each agent (mind tagged servers, see [Research](#research-pc)),
       and Tailscale ACLs limit who can reach port 7443.
-- [ ] Only the features this machine needs are on. Servers: no `claude`, `desktop`, `control`. Consider turning
+- [ ] Only the features this machine needs are on. Servers: no `claude`, `agy`, `desktop`, `control`. Consider turning
       `power` off where a remote power-off would hurt.
 - [ ] `allowedRoots` is narrowed if you don't want Claude and git to reach your whole home directory.
 - [ ] `control` is on only on the PC you sit at; the phone has an app lock (required for control sessions).
@@ -1302,6 +1548,18 @@ list on every new install:
       by the monitoring server, and `from=`-restricted to its Tailscale IP; `/usr/local/lib/tiphys/audit.sh` is root-owned
       (`ls -l`) and `security.self.sudo` is on only with that copy; the `security-report` token is held only by the
       monitoring server.
+- [ ] Security center, scanners and traps: the GitHub token is fine-grained with `Contents: read` only, for the
+      repositories you scan; registry credentials are read-only (`read:packages`); the Cloudflare **read** token has only
+      Zone › Analytics › Read and Zone › Zone › Read, and a **block** token (Zone › Firewall Services › Edit) exists only
+      if you use blocking, with your own addresses in `allowIps`; `~/.config/tiphys/` stays `0700` (these tokens sit in
+      `agent.json`).
+- [ ] Security center, black box and lockdown: `security.blackbox.mode` is `local` on the monitoring server and the PC
+      pushes with a token of the `blackbox` scope only; `GET /v1/blackbox/verify` says `ok`; the nightly anchor reaches
+      Telegram; `chattr +a` on `blackbox/chain.jsonl` is applied if you accepted the root step; a **recovery code** exists,
+      is stored outside the phone, and `lockdownTargets` hold `lockdown`-scoped tokens only; the test alarm reached both
+      push and Telegram.
+- [ ] Security center, outside view: the targets are yours, an `ip` target is the *other* machine's public address, and
+      `expectedPorts` match what is meant to be open.
 
 Read [security.md](security.md) for the full threat model.
 
@@ -1314,10 +1572,16 @@ Read [security.md](security.md) for the full threat model.
 | Telegram bot token | in @BotFather: `/revoke` (choose the bot) to get a new token, then *Telegram › Replace bot token* in the app. The old token stops working immediately. |
 | SSH audit key (security center) | on the monitoring server: `ssh-keygen` a new key, run `tools/install-audit.sh` again for each host with the new `.pub` (it replaces the root-owned `authorized_keys` line), point the host's key file at the new key, delete the old key. A host whose key may be exposed: `--uninstall`. |
 | Service token (`security-report`) | `service-token revoke <id>` on the audited agent + restart, create a new one, enter it in the host's settings on the monitoring server (*Audit settings*). |
+| GitHub token (secret scan) | create a new fine-grained token (`Contents: read`), send it with `PATCH /v1/security/scanners {"github": {"owners": […], "token": "…"}}`, delete the old one on GitHub. To stop private scans, send `"token": null`. |
+| Registry token (image scan) | create a new read-only token at the registry, send `registryAuth` with the same `registry` and `username` and the new `token`, delete the old token. |
+| Cloudflare tokens (attack detection) | create new tokens in the Cloudflare dashboard, `PUT /v1/security/cloudflare` with `readToken` / `blockToken` (`null` removes one), delete the old tokens there. Existing `tiphys:` access rules stay and still expire; the old block token is needed to delete them, so rotate after they expired or remove them by hand. |
+| Service tokens (`blackbox`, `lockdown`) | `service-token revoke <id>` on the agent that issued it + restart, create a new one. `blackbox`: enter it as the pushing agent's token (`PUT /v1/blackbox/settings`, then restart). `lockdown`: delete and add the target again on the monitoring server (`/v1/security/lockdown/targets`). A pushing agent whose token is revoked keeps queueing (up to 10 000 records) and delivers after the new token is set. |
+| Recovery code | `POST /v1/security/recovery` makes a new one and replaces the old at once (shown once). Do it when the code may have been seen, and after every lockdown you triggered. |
+| Decoy tokens | `DELETE /v1/security/traps/tokens/:id` and create another where the old one was planted; a decoy that was used is burnt. |
 | ntfy publish token | create a new token on the ntfy server, put it into `push.token` on each agent (stop/edit/start), then delete the old token on the server. |
 | Grafana service account token | create a new token in Grafana, enter it in *Agent settings › Grafana alerts* (and *Settings › Integrations › Grafana*), delete the old one. |
 | Uptime Kuma / Sunshine passwords | change them in the service, then enter the new ones in *Agent settings*. |
-| Everything on one agent | *Lock everything* revokes all devices, all service tokens and all push endpoints. Then pair again, reconnect research and re-enable notifications. |
+| Everything on one agent | *Lock everything* revokes all devices, all service tokens and all push endpoints. Then pair again, reconnect research and re-enable notifications. The recovery-code lockdown does the same on the monitoring server and on every `lockdownTarget` at once. |
 | APK signing key | cannot be rotated in place; a new key means uninstalling the app (export an encrypted profile first). |
 
 ## 13. Troubleshooting
@@ -1359,6 +1623,14 @@ Most problems are covered in [troubleshooting.md](troubleshooting.md); error cod
 | `agent.security.scriptMissing` / `agent.security.scriptUnsafe` | `security.self.sudo` is on but `/usr/local/lib/tiphys/audit.sh` is missing or isn't root-owned and not group/other-writable. Install it as in [Security center](#security-center), or turn *Check with sudo* off. |
 | `agent.security.collectFailed` with `sudo: a password is required` in `stderr` | The agent user has no passwordless `sudo` on this machine (`sudo -n` is used). |
 | `agent.security.unauthorized` | The `security-report` token of an agent host was revoked, or its Tailscale login check rejects the monitoring server. |
+| Image status `needsCredentials` / `notAvailable` / `pending` (`GET /v1/security/vulns`) | `needsCredentials`: add `registryAuth` for the registry named in `error`. `notAvailable` (`noSource`): the image has no registry digest and no save route (an image on another agent). `pending` with `nightOnly` or `saveLimit`: an image of an SSH host is saved only at night, 2 a night. `failed` with `knownHostsMissing`, `sshFailed` or `saveFailed`: the SSH side (pinned key, `audit.sh` still `VERSION=1`: install again). |
+| `agent.security.githubUnauthorized` / `lokiUnavailable` / `lokiFailed` in `lastRun` of `GET /v1/security/secrets` | The GitHub token is expired or lacks `Contents: read`; no `scanners.loki` is set, the Loki container isn't running or has no address; Loki returned an error. |
+| A decoy file shows `noatime`, or a trap never fires | The file system is mounted `noatime` (move the decoy), the agent was restarted since the last arming (it re-arms within 30 s), or on an SSH host `auditd`/`ausearch` is missing or `audit.sh` is `VERSION=1` (`auditHosts` in `GET /v1/security/traps` shows `unavailable` or `error`; read the decoy yourself to test). |
+| `blackbox.broken` push, or `verify` says `ok: false` | `reason` and `brokenAt` say what and where: `hash`/`link`/`sequence` (a record was changed, removed or inserted), `truncated` (the file is shorter than what was written, also detected after a restart through `head.json`), `anchor` (an anchor disagrees with the chain or lies past its end; `anchorMismatch` lists the dates), `full` (the 1 GiB limit was reached; sent once, nothing more is appended). A line that isn't JSON (a crash mid-write) is skipped and counted in `torn` and doesn't make `ok` false. Compare with the anchors in Telegram before you trust the rest; the file is evidence, so copy it before touching anything. |
+| `agent.blackbox.notLocal` | The route needs `mode: local`, or the agent was not restarted after `PUT /v1/blackbox/settings` (`restartRequired`). A pusher shows `lastError: "http 401"` when its `blackbox` token was revoked, `"http 409"` when the server is not in `local` mode. |
+| `agent.security.badRecoveryCode` / `429` on lockdown | Wrong code (five groups of five, case and dashes don't matter), or no code was ever created (`401`; a malformed code costs nothing against the limits). `429`: 5 well-formed attempts per address per 10 minutes, 30 an hour in total, or another check is running; the counters reset when the agent restarts. A `403 agent.auth.tailnetUserNotAllowed` means the Tailscale-login check rejected the request. |
+| `agent.security.cloudflareUnauthorized` / `cloudflareFailed` | The read token is missing a permission or doesn't cover the zone, or Cloudflare's API or GraphQL answered an error (not yet validated against the live API). |
+| The outside view reports an open port you know is closed | The server probed its own public address, or a NAT/hairpin route answers locally. A target is probed by the agent it is configured on, so configure the address on an agent that runs on a *different* machine (for example `argo` probing `atlas`'s public address). |
 | `agent.uptime.notConnected` | Wrong Uptime Kuma URL/login, or the agent was not restarted after setting it. |
 | `agent.homepage.fileNotFound` | Wrong `services.yaml` path in *Agent settings › Homepage*. |
 | `agent.ports.shareFailed` | Run `sudo tailscale set --operator=$USER`. |

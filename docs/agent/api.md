@@ -14,7 +14,7 @@ Source of truth: `agent/src/server.ts` (registration), `agent/src/routes/*.ts`, 
   - [Always available](#always-available)
   - [system](#system) · [services](#services) · [docker](#docker) · [power](#power) · [wake](#wake) · [ports](#ports) · [transcribe](#transcribe) · [git](#git) · [homepage](#homepage)
   - [desktop](#desktop): [clipboard, screenshot, open](#clipboard-screenshot-open) · [media](#media) · [windows and apps](#windows-and-apps) · [Sunshine](#sunshine) · [Firefox bridge](#firefox-bridge) · [mobile view](#mobile-view-at-spi) · [live screen](#live-screen)
-  - [claude](#claude) · [watch](#watch) · [alerts](#alerts) · [backups](#backups) · [uptime](#uptime) · [research](#research) · [analysis](#analysis) · [telegram](#telegram) · [incidents](#incidents) · [configfiles](#configfiles) · [databases](#databases) · [security](#security)
+  - [claude](#claude) · [agy](#agy) · [watch](#watch) · [alerts](#alerts) · [backups](#backups) · [uptime](#uptime) · [research](#research) · [analysis](#analysis) · [telegram](#telegram) · [incidents](#incidents) · [configfiles](#configfiles) · [databases](#databases) · [security](#security)
 - [Protocols](#protocols)
   - [Live screen WebSocket](#live-screen-websocket)
   - [Claude session WebSocket](#claude-session-websocket)
@@ -36,7 +36,8 @@ Source of truth: `agent/src/server.ts` (registration), `agent/src/routes/*.ts`, 
 
 | Mechanism | Applies to | Details |
 | --- | --- | --- |
-| Service token | only routes that declare its scope (today: `research` → `POST /v1/research/jobs`, `GET`/`DELETE /v1/research/jobs/:id`; `analysis` → `POST /v1/analysis/jobs`, `GET`/`DELETE /v1/analysis/jobs/:id`; `security-report` → `GET /v1/security/raw`) | `Authorization: Bearer tps_…` (header only, never `?token=`). Issued for another agent with `tiphys-agent service-token create` or `POST /v1/service-tokens`; shown once, stored as a SHA-256 hash. Any other route, including unknown paths, returns `403 agent.auth.scopeDenied`. The Tailscale identity check applies as for devices. The audit log records the caller as `service:<id>`. |
+| Service token | only routes that declare its scope (today: `research` → `POST /v1/research/jobs`, `GET`/`DELETE /v1/research/jobs/:id`; `analysis` → `POST /v1/analysis/jobs`, `GET`/`DELETE /v1/analysis/jobs/:id`; `security-report` → `GET /v1/security/raw`; `blackbox` → `POST /v1/blackbox/append`; `lockdown` → `POST /v1/security/lockdown/remote`) | `Authorization: Bearer tps_…` (header only, never `?token=`). Issued for another agent with `tiphys-agent service-token create` or `POST /v1/service-tokens`; shown once, stored as a SHA-256 hash. Any other route, including unknown paths, returns `403 agent.auth.scopeDenied`. The Tailscale identity check applies as for devices. The audit log records the caller as `service:<id>`. A request with an unknown `tps_`/`tph_` token on any route is the same `401 agent.auth.invalidToken`, and if the token is a security-center decoy it also raises an alarm (see [traps](#traps-and-alerts)). |
+| None (own credential) | `POST /v1/security/lockdown` only (route config `public`) | Needs no token, because the phone and its token are lost: the body's recovery code is the credential (see [lost phone](#lost-phone-and-lockdown)). The Tailscale-login check **still applies** (`403 agent.auth.tailnetUserNotAllowed` when `requireTailscaleLogin` is set and the header differs). Rate limited per address and in total, see the error table. |
 | Device token | every route except `GET /v1/health` | `Authorization: Bearer tph_…`. Created by `tiphys-agent pair`; only its SHA-256 hash is stored, and comparison is constant-time. For WebSockets the token may also be sent as the `?token=` query parameter. |
 | Tailscale identity | every route except `GET /v1/health` | When `requireTailscaleLogin` is set, the `Tailscale-User-Login` header (added by `tailscale serve`) must equal it. Otherwise `403 agent.auth.tailnetUserNotAllowed`. |
 | Control token | mutating desktop routes, live screen, Firefox tabs, mobile view, Sunshine actions, Claude PC sessions | `X-Tiphys-Control: tpc_…`, obtained from `POST /v1/desktop/control/session`. It must belong to the calling device and not be expired, and the `control` feature must be on. |
@@ -166,23 +167,41 @@ Every error has the same envelope. The agent sends codes, never sentences; the a
 | `agent.telegram.research.notConfigured` | 409 | `research` (PC URL + service token) is not set in the config |
 | `agent.path.notFound` / `agent.path.notAllowed` | 404 / 403 | Path missing / outside `allowedRoots` |
 | `agent.security.hostNotFound` | 404 | Unknown host id (`params.id`) |
-| `agent.security.hostExists` | 409 | `POST /v1/security/hosts` with an id in use, or `self` (`params.id`) |
-| `agent.security.tooManyHosts` | 409 | More than 20 additional hosts |
+| `agent.security.hostExists` | 409 | `POST /v1/security/hosts` with an id in use, or `self`, or an id the app uses as a screen name (`settings`, `vulns`, `secrets`, `scanners`, `traps`, `exposure`, `attacks`, `cloudflare`, `blackbox`, `recovery`, `lockdown`); `POST /v1/security/lockdown/targets` with an id in use (`params.id`) |
+| `agent.security.tooManyHosts` | 409 | More than 20 additional hosts (or 20 lockdown targets) |
 | `agent.security.selfPermanent` | 409 | `DELETE /v1/security/hosts/self` |
-| `agent.security.tokenRequired` | 400 | An `agent` source without a token (on create, or on `PATCH` when the URL changed) |
+| `agent.security.tokenRequired` | 400 | An `agent` source without a token (on create, or on `PATCH` when the URL changed); a `registryAuth` entry that is new and has no token; `block: true` without a Cloudflare block token; black box `push` without URL or token |
 | `agent.security.noReport` | 409 | Accept baseline for a host that has no report yet |
-| `agent.security.rateLimited` | 429 | More than 6 checks per 10 minutes per device (`/check`), or more than 10 raw reports per 10 minutes per caller (`/raw`) |
+| `agent.security.rateLimited` | 429 | More than 6 checks per 10 minutes per device (`/check`), 10 raw reports per 10 minutes per caller (`/raw`), 3 scan/run calls per 10 minutes per device (images, secrets, exposure and attack runs share the limit), 10 black box appends per minute per token, or a recovery-code lockdown over its limits: 5 well-formed attempts per address per 10 minutes, 30 an hour in total, one check at a time (a malformed code is `401 badRecoveryCode` and counts against none of them) |
 | `agent.security.scriptMissing` / `agent.security.scriptUnsafe` | 409 | `security.self.sudo` is on but `/usr/local/lib/tiphys/audit.sh` is missing, or isn't a regular file owned by root and not writable by group/others (`params.path`) |
 | `agent.security.knownHostsMissing` | 409 | SSH source, but `security-known-hosts` doesn't exist next to `agent.json` |
 | `agent.security.sshFailed` | 502 | `ssh` exited with 255: connection, key or pinned-host-key failure (`params.code`, `params.stderr`, cut to 500 characters) |
 | `agent.security.collectFailed` | 502 | The audit script (or the remote command) exited non-zero (`params.code`, `params.stderr`) |
 | `agent.security.timeout` | 504 | The collector ran into its time limit (90 s ordinary / 300 s full, +20 s for SSH and agent pulls) |
-| `agent.security.reportTooLarge` | 502 | The report is over 2 MiB |
+| `agent.security.reportTooLarge` | 502 | The report is over 2 MiB (an agent source's JSON answer: over 4 MiB, checked while it streams in) |
 | `agent.security.unreachable` | 502 | Agent source: connection failed |
 | `agent.security.unauthorized` | 502 | Agent source answered 401/403 (`params.status`): token revoked or missing the `security-report` scope |
 | `agent.security.busy` | 502 | Agent source answered 429 (its raw rate limit) |
 | `agent.security.agentFailed` | 502 | Agent source answered another error or an unreadable body (`params.status`) |
-| `agent.security.badReport` | 502 | The output isn't a complete audit report (wrong header, or no final `@@end`); also stored as the host's `lastError.code` |
+| `agent.security.badReport` | 502 | The output isn't a complete audit report (wrong header, no final `@@end`, or a section header that appears twice); also stored as the host's `lastError.code` |
+| `agent.security.imageNotFound` | 404 | Unknown image id, or an image no running container uses any more |
+| `agent.security.scannerOff` | 409 | `POST /v1/security/vulns/scan` while `scanners.trivy` is off (`params.scanner`) |
+| `agent.security.scanBusy` | 409 | A scan of that kind is already running (images, secrets, outside view, Cloudflare run); also a scan of a single image while the image batch runs |
+| `agent.security.findingNotFound` | 404 | Unknown secret finding id |
+| `agent.security.imageTooLarge` | 502 | Image save over 3 GB (recorded as the image's `error`) |
+| `agent.security.scanFailed` | 502 | gitleaks on log data failed (recorded in `lastRun.loki`) |
+| `agent.security.lokiUnavailable` | 409 / 502 | No `scanners.loki` configured (409), or the Loki container has no address (502) |
+| `agent.security.lokiFailed` | 502 | Loki answered an error (`params.status`) |
+| `agent.security.githubUnauthorized` / `agent.security.githubFailed` | 502 | GitHub answered 401/403, or another error, when listing repositories (`params.status`; recorded in `lastRun.github`) |
+| `agent.security.tooManyTraps` | 409 | 20 decoy tokens or 20 decoy files exist already (checked before anything is written) |
+| `agent.security.trapExists` | 409 | The decoy file path already exists (never overwritten) |
+| `agent.security.trapCreateFailed` | 409 | The decoy file could not be created |
+| `agent.security.trapNotFound` | 404 | Unknown decoy token or file id |
+| `agent.security.badRecoveryCode` | 401 | Wrong, missing or malformed recovery code (also when none is set) |
+| `agent.blackbox.full` | 507 | The black box chain reached its size limit (1 GiB); nothing more is appended (`POST /v1/blackbox/append`) |
+| `agent.security.cloudflareNotConfigured` | 409 | `POST /v1/security/attacks/run` without a read token |
+| `agent.security.cloudflareUnauthorized` / `agent.security.cloudflareFailed` | 502 | Cloudflare answered 401/403, or an error or GraphQL errors (`params.status`; recorded in `lastRun.error`) |
+| `agent.blackbox.notLocal` | 409 | A black box route that needs `mode: local` on an agent in another mode |
 | `agent.exec.commandMissing` | 500 | Required binary not installed (`params.command`) |
 | `agent.exec.failed` | 502 | Command exited non-zero (`command`, `code`, `stderr`) |
 | `agent.exec.timeout` | 504 | Command timed out |
@@ -253,6 +272,19 @@ Every error has the same envelope. The agent sends codes, never sentences; the a
 | `agent.claude.terminalNotFound` / `.terminalBusy` / `.terminalStuck` | 404 / 409 / 504 | Terminal takeover |
 | `agent.claude.historyNotFound` / `.shotNotFound` | 404 | Transcript / screenshot missing |
 | `agent.claude.tooManySchedules` / `.scheduleRunning` | 400 / 409 | Schedules (max 50) |
+| `agent.agy.missing` | 501 | The `agy` binary is not on the agent's `PATH` |
+| `agent.agy.exited` | 502 | The `agy acp` process ended (`params.code`: its exit code, -1 when unknown) |
+| `agent.agy.timeout` | 504 | agy did not answer a protocol request in time (`params.method`; 60 s for most, 120 s for loading a conversation, 30 s for list/mode/model) |
+| `agent.agy.rpcError` | 502 | agy answered with a protocol error (`params.code`, `params.message` cut to 300 characters) |
+| `agent.agy.startFailed` | 502 | Starting the session failed for another reason (also recorded as an `error` event) |
+| `agent.agy.rateLimited` | 429 | More than 6 session starts per minute, or 10 conversation lists per minute, per device |
+| `agent.agy.sessionNotFound` | 404 | Unknown, or long ended and removed, session id (`params.id`) |
+| `agent.agy.tooManySessions` | 409 | Already 6 live sessions (`params.max`) |
+| `agent.agy.alreadyOpen` | 409 | `resume` names a conversation that is open in a live session of this agent |
+| `agent.agy.busy` | 409 | A message while a turn is running, a permission is pending or the session is starting |
+| `agent.agy.sessionEnded` | 409 | The session has ended or failed to start |
+| `agent.agy.permissionNotFound` | 404 | Unknown or already answered permission request |
+| `agent.agy.unknownMode` / `agent.agy.unknownModel` | 400 | Not one of the session's `modes` / `models` (`params.modeId` / `params.model`) |
 
 ## Endpoints
 
@@ -463,9 +495,54 @@ Feature `claude` (`claude/routes.ts`, `claude/schedules.ts`). See [Claude](../fe
 
 `when` takes one of three forms: `{kind: "daily", time: "HH:MM"}`, `{kind: "weekly", time, days: [1..7]}` (1 = Monday) or `{kind: "interval", everyMinutes: ≥15}`.
 
-A session summary has these fields: `{id, epoch, sdkSessionId, cwd, title, status: starting|running|waiting|idle|error|stopped, model, permissionMode, profileId, costUsd, contextTokens, contextWindow, createdAt, lastActivity, pendingPermissions, live, kind, control?}`.
+A session summary has these fields: `{id, epoch, sdkSessionId, cwd, title, status: starting|running|waiting|idle|error|stopped, model, permissionMode, profileId, costUsd, contextTokens, contextWindow, createdAt, lastActivity, pendingPermissions, live, resumeCommand, kind, control?}`.
+
+**`resumeCommand`** ("Continue on the PC"): `cd '<cwd>' && claude --resume <sdkSessionId>`, ready to paste into a terminal on the PC, or `null` while the session has no `sdkSessionId` yet. `cwd` is single-quoted for a POSIX shell (a `'` inside it is written `'\''`). Close the session on the phone first so the conversation isn't open in two places. `claude --resume` without an id lists only the sessions of the *current folder*, and a session started from the phone is saved under the folder chosen on the phone, hence the `cd`. See [Claude › Continue on the PC](../features/claude.md#continue-on-the-pc).
 
 For PC sessions, only the device holding the bound control session may send messages, answer permissions or change the mode.
+
+### agy
+
+Feature `agy` (`agy/acp.ts`, `agy/manager.ts`, `agy/routes.ts`), device tokens only. Antigravity CLI sessions from the phone, one `agy acp` process per session over the Agent Client Protocol. See [agy](../features/agy.md). Session ids are `agy-` plus 12 hex characters. Working folders are resolved like Claude's and must be inside `allowedRoots` (`agent.path.notAllowed` / `agent.path.notFound`).
+
+| Method | Path | Description |
+| --- | --- | --- |
+| GET | `/v1/agy/conversations?cwd=` | `{conversations: [{sessionId, cwd, title, updatedAt: string\|null, liveId: string\|null}]}`, newest first: agy's own list of earlier conversations (including ones started in a terminal; at most 5 pages of agy's answer). `cwd` defaults to `~` and must be inside `allowedRoots`. `liveId` is the id of the live session that has the conversation open, else `null`. Starts a short-lived `agy acp` for the call. 10 per minute per device (`agent.agy.rateLimited`). |
+| GET | `/v1/agy/sessions` | `{sessions: [summary]}`: every session this agent holds, ended ones included until they are removed (2 hours after they ended). |
+| POST | `/v1/agy/sessions` | Strict `{cwd: ≤1024, prompt?: ≤100000, resume?: conversation id (8–80 of A–Z a–z 0–9 -), modeId?: [a-z-]{1,40}, model?: [A-Za-z0-9._-]{1,80}}` → summary (status `idle`, or `running` when a `prompt` was sent). Starts the process and waits for agy to be ready (up to 60 s; 120 s when `resume` loads a conversation). `resume` replays the conversation's history as events marked `replay: true`. `modeId` and `model` are applied after the start. 6 per minute per device. `409 agent.agy.tooManySessions` (6 live), `409 agent.agy.alreadyOpen`, `501 agent.agy.missing`, `502 agent.agy.startFailed` / `agent.agy.rpcError` / `agent.agy.exited`, `504 agent.agy.timeout`. Audit `{session, cwd, resume?}` (never the prompt). |
+| GET | `/v1/agy/sessions/:id?after=SEQ&wait=MS` | `{session: summary, events: [event]}`: long poll, see below. `after` (default 0) is the highest `seq` the client has seen; `wait` 0–25000 ms (default 0). |
+| POST | `/v1/agy/sessions/:id/messages` | Strict `{text: 1–100000}` → `{ok: true}` at once; the turn runs in the background and its progress arrives as events. `409 agent.agy.busy` while the session is starting, running or waiting for a permission, `409 agent.agy.sessionEnded`. Audit `{session}`. |
+| POST | `/v1/agy/sessions/:id/cancel` | Body `{}`. Answers pending permission requests as cancelled and sends `session/cancel` to agy; the turn then ends with `stopReason: "cancelled"`. → `{ok: true}`; no effect on an ended session. Audit `{session}`. |
+| POST | `/v1/agy/sessions/:id/permissions/:requestId` | Strict `{optionId: 1–80}`. Answers agy's permission request (`requestId`: 12 hex, from the `permission` event or `pendingPermissions`) with one of its `options`; this is also what the notification buttons call. → `{ok: true}`. `404 agent.agy.permissionNotFound`, `400 agent.request.invalid` for an `optionId` that isn't one of the options. Audit `{session, option}`. |
+| POST | `/v1/agy/sessions/:id/mode` | Strict `{modeId}` → summary. `400 agent.agy.unknownMode` unless it is one of the session's `modes`. Audit `{session, mode}`. |
+| POST | `/v1/agy/sessions/:id/model` | Strict `{model}` → summary. `400 agent.agy.unknownModel` unless it is one of the session's `models` (when agy listed any). Audit `{session, model}`. |
+| DELETE | `/v1/agy/sessions/:id` | Cancels, closes the conversation in agy, kills the process and marks the session `ended` → `{ok: true}`. The conversation stays in agy and can be resumed. Audit `{session}`. |
+
+**summary**: `{id, conversationId, cwd, title, status: starting|idle|running|waiting|ended|error, modeId, modes: [{id, name, description?}], model: string|null, models: [{value, name}], usage: {used, size}|null (context tokens), commands: [{name, description}] (agy's slash commands), createdAt, lastActivity, pendingPermissions: [{requestId, options: [{optionId, name, kind}]}], resumeCommand}`. `title` starts as `agy` and follows agy's own title. `waiting` means a permission request is pending. `resumeCommand` is `cd '<cwd>' && agy --conversation <conversationId>` ("Continue on the PC"; close the session on the phone first, see [agy](../features/agy.md#continue-on-the-pc)), or `null` while `conversationId` is empty.
+
+**event**: `{eid, seq, at, kind, replay?: true, …}`; `kind` and its fields:
+
+| `kind` | Fields |
+| --- | --- |
+| `user`, `agent`, `thought` | `text` (what you sent / agy's answer / its reasoning; consecutive chunks of one kind are merged into one event, ≤100000 characters) |
+| `tool` | `toolCallId, title, toolKind, status, paths: [≤10], command?` (a shell command line, ≤2000 characters) |
+| `toolUpdate` | `toolCallId, status, title?` |
+| `plan` | `entries: [{content, status, priority}]` |
+| `permission` | `requestId, options: [{optionId, name, kind}], title, toolKind, toolCallId, command?` |
+| `permissionResolved` | `requestId, optionId` (`cancelled` when cancelled) |
+| `mode` | `modeId` (the mode changed) |
+| `error` | `text` (an `agent.agy.*` code, or `agy exited`) |
+| `turnEnd` | `stopReason` |
+
+**Long poll, `eid` and `seq`.** `eid` is an event's **identity** and stays the same for its whole life; `seq` is its **version**, a counter per session that moves on whenever *any* event is created or changed. A streamed answer is one event whose `text` grows: every added chunk gives that same `eid` a new, higher `seq`. The client keeps `after` = the highest `seq` it has received (0 at the start) and **upserts by `eid`**: an event with a known `eid` replaces the stored one, a new `eid` is added; display in `eid` order. The agent returns every event whose `seq` is greater than `after`, so a merged event reappears in full each time it grows. If there are none and `wait` > 0, the call waits up to `wait` ms and returns as soon as an event changes or the session's status changes (the `events` array may then be empty, so read `session.status` too); it never waits on an `ended` session. Poll again at once after every answer. The agent keeps the last 3000 events of a session in memory (the oldest are dropped; the conversation itself stays in agy). `replay: true` marks events that came from loading an earlier conversation.
+
+**Notifications** (all link to `tiphys://agy/<session id>`):
+
+| Key | Params | Notes |
+| --- | --- | --- |
+| `agy.waiting` | `title` (session title), `tool` (the tool's title, ≤120 characters) | priority high. Sent for every permission request. `data: {sessionId, requestId}` is what the notification buttons need to answer through `POST …/permissions/:requestId`. |
+| `agy.done` | `title` | priority low. A turn ended normally. |
+| `agy.error` | `title` | A turn failed (an `error` event carries the code); the session stays usable. |
 
 ### watch
 
@@ -722,7 +799,7 @@ Feature `databases` (`db/*.ts`; `pg` + `pg-cursor`, `mysql2` and `node:sqlite` l
 
 ### security
 
-Feature `security` (`security/*.ts`), device tokens only, except `GET /v1/security/raw`, which also accepts a service token with the `security-report` scope. The monitoring server collects reports of its own machine and of other hosts, evaluates findings and a score, and keeps baselines and changes. See [Security center](../features/security.md).
+Feature `security` (`security/*.ts`), device tokens only, except `GET /v1/security/raw` (also a service token with the `security-report` scope), `POST /v1/blackbox/append` (service token with the `blackbox` scope only), `POST /v1/security/lockdown/remote` (service token with the `lockdown` scope, or a device token) and `POST /v1/security/lockdown` (no token, recovery code). The monitoring server collects reports of its own machine and of other hosts, evaluates findings and a score, and keeps baselines and changes (S-1, the tables above). The sections below it cover the later phases: scanners (S-2), traps and alerts (S-3), the black box and lockdown (S-4), outside view and attack detection (S-5). See [Security center](../features/security.md).
 
 `:id` is a host id (`[a-z0-9][a-z0-9-]{0,62}`); `self` is this machine and always exists.
 
@@ -732,9 +809,9 @@ Feature `security` (`security/*.ts`), device tokens only, except `GET /v1/securi
 | GET | `/v1/security/hosts/:id` | Host `detail` (below). `404 agent.security.hostNotFound`. Before the first report: empty findings and changes, `report: null`. |
 | POST | `/v1/security/hosts/:id/check` | Strict `{full?: boolean (false)}`. Runs a check now (joins one that is already running) and returns the host `detail`. `full: true` also runs the SUID and world-writable scans. 6 per 10 minutes per device (`agent.security.rateLimited`, checked before the check starts). A failed check returns the collector's error (`agent.security.*`, or `agent.exec.commandMissing` when `ssh`/`sudo`/`sh` is missing) and records it as `lastError`. |
 | POST | `/v1/security/hosts/:id/baseline` | Strict `{confirm: true}` (anything else is `400 agent.request.invalid`; there is no dedicated `confirmRequired` code). Accepts the current state as the new baseline: clears the changes and sends `security.accepted`. Returns `{accepted: <number of changes cleared>, …detail}`. `409 agent.security.noReport` without a report. |
-| GET | `/v1/security/hosts` | `{self: {role, allowedPorts, sudo}, hosts: [host]}`: the settings (not the reports). A `host` is `{id, name, role, allowedPorts, source}`; an `agent` source is returned as `{kind, url, hasToken: true}`, never with its token. |
-| POST | `/v1/security/hosts` | Strict `{id, name (1–80), role?: server\|desktop (server), allowedPorts?: ["tcp/22", …] (≤100), source}` → `201 {host}`. `source` is `{kind: "ssh", host, user, port? (22), keyPath}` (`keyPath`: the private key on this machine, `~` is expanded) or `{kind: "agent", url (https), token (tps_…)}`. `409 agent.security.hostExists` (also for `self`), `409 agent.security.tooManyHosts`, `400 agent.security.tokenRequired`. |
-| PATCH | `/v1/security/hosts/:id` | Strict, all optional: `{name?, role?, allowedPorts?, source?}` → `{host}`. For an `agent` source the token may be omitted while the URL stays the same (kept); with a new URL it is required (`agent.security.tokenRequired`), so a stored token never goes to a new address. For `self`: strict `{role?, allowedPorts?, sudo?: boolean}` → `{self}`. The stored report is re-evaluated at once with the new role/ports. |
+| GET | `/v1/security/hosts` | `{self: {role, allowedPorts, sudo}, hosts: [host]}`: the settings (not the reports). A `host` is `{id, name, role, allowedPorts, source, traps}`; an `agent` source is returned as `{kind, url, hasToken: true}`, never with its token. |
+| POST | `/v1/security/hosts` | Strict `{id, name (1–80), role?: server\|desktop (server), allowedPorts?: ["tcp/22", …] (≤100), source, traps?: boolean (false)}` → `201 {host}`. `source` is `{kind: "ssh", host, user, port? (22), keyPath}` (`keyPath`: the private key on this machine, `~` is expanded) or `{kind: "agent", url (https), token (tps_…)}`. `409 agent.security.hostExists` (also for `self`), `409 agent.security.tooManyHosts`, `400 agent.security.tokenRequired`. |
+| PATCH | `/v1/security/hosts/:id` | Strict, all optional: `{name?, role?, allowedPorts?, source?, traps?}` → `{host}`. `traps: true` makes the agent poll that SSH host's decoy-file events (see [traps](#traps-and-alerts)); it has no effect for other source kinds. For an `agent` source the token may be omitted while the URL stays the same (kept); with a new URL it is required (`agent.security.tokenRequired`), so a stored token never goes to a new address. For `self`: strict `{role?, allowedPorts?, sudo?: boolean}` → `{self}`. The stored report is re-evaluated at once with the new role/ports. |
 | DELETE | `/v1/security/hosts/:id` | `{ok: true}`; also deletes the host's stored report and baseline. `409 agent.security.selfPermanent` for `self`. |
 | GET | `/v1/security/raw?mode=report\|report-full` | `{text}`: the raw audit output of **this** machine (the same text `audit.sh` prints, plus an `agentfiles` section with the modes of the agent's own files). It runs with this agent's `security.self.sudo` setting. For the monitoring server of another host. Device token or service token with scope `security-report`; 10 per 10 minutes per caller (device id or `service:<id>`). |
 
@@ -760,6 +837,124 @@ Host settings live in their own routes, not in `GET`/`PATCH /v1/config` (the `se
 **Audit** (`audit.jsonl` `detail`): check `{host, full}`, accept baseline `{host, accepted}`, add host `{host, source: ssh|agent}`, change `self` `{host: "self"}`, change another host `{host, source?}`, delete `{host}`. Tokens, key paths and addresses are never logged. The `GET` routes (including `/raw`) are not audited.
 
 **Limits**: 20 additional hosts; 100 expected ports per host; report ≤ 2 MiB; `intervalMinutes` 5–1440 (default 15).
+
+#### Vulnerability scan and secret scan (S-2)
+
+All routes are for device tokens. Scanning needs Docker on the agent and runs on the monitoring server. State:
+`security-vulns.json`, `security-secrets.json`. Behaviour: [Container vulnerability scan](../features/security.md#container-vulnerability-scan) and [Secret scan](../features/security.md#secret-scan).
+
+| Method | Path | Description |
+| --- | --- | --- |
+| GET | `/v1/security/vulns` | `{enabled (scanners.trivy), running, images: [image]}`. Refreshes the list from the hosts' latest reports first (images no longer running are dropped). Sorted by critical, then high count. |
+| GET | `/v1/security/vulns/:id` | `{image}` with the full `vulns` list. `:id` is the image id **without** the `sha256:` prefix (64 hex; anything else is `400 agent.request.invalid`). `404 agent.security.imageNotFound`. |
+| POST | `/v1/security/vulns/scan` | Strict `{imageId?: "sha256:<64 hex>"}`. Without `imageId`: starts a background run over all **due** images (forced: ignores the night window, but an SSH save still only happens at night) and returns `202 {started: true}`. With `imageId`: scans that one image and returns `{image}` **when done** (up to 15 minutes; use a long client timeout). `409 agent.security.scannerOff` (`params.scanner: "trivy"`), `409 agent.security.scanBusy` (a run is going; whole-run form only), `404 agent.security.imageNotFound`, `429 agent.security.rateLimited` (3 per 10 minutes per device, shared with the other scan routes). Audit `{image: <12 hex>}` or `{all: true}`. |
+| GET | `/v1/security/secrets` | `{lastRun: {at, github, loki, local} \| null, running, repos: [{repo, head, scannedAt, error?}], findings: [finding]}`. Each `lastRun` source is `null` (ok or not run) or an error code. Findings: open ones first, then newest first. |
+| POST | `/v1/security/secrets/scan` | No body needed. Runs the configured sources (GitHub and Loki when `scanners.gitleaks` is on, local roots when `localRoots` is not empty) in the background: `202 {started: true}`. `409 agent.security.scanBusy`, `429`. Audit `{all: true}`. |
+| POST | `/v1/security/secrets/:id/dismiss` | `:id` is the finding id (24 hex). Strict `{dismissed: boolean}` → `{finding}`. `404 agent.security.findingNotFound`. Audit `{finding, dismissed}`. |
+| GET | `/v1/security/scanners` | `{scanners}` (below). Tokens are never returned. |
+| PATCH | `/v1/security/scanners` | Strict, all optional: `{trivy?, gitleaks?, javaDb?: boolean, registryAuth?: [{registry, username, token?}] (≤10), github?: {owners: [names] (≤20), token?: string\|null}, loki?: {container, port? (3100)} \| {url} \| null, localRoots?: [paths] (≤20), nightHours?: [from 0–23, to 0–24]}` → `{scanners}`. `registryAuth` **replaces the whole list**: an entry keeps its stored token when `registry` and `username` match one already stored and `token` is omitted (a new entry without a token is `400 agent.security.tokenRequired`). `github.owners` replaces the list; `github.token` omitted = keep, `null` = remove, string = replace. `loki: null` clears. Changes apply at once. Audit `{fields: [names of the keys sent]}`. |
+
+**image**: `{imageId: "sha256:…", refs: [tags, or repositories of the digests], hosts: [{hostId, host, containers: [names]}], status: ok\|failed\|needsCredentials\|notAvailable\|pending, source: remote\|local\|ssh\|null, error: string\|null, scannedAt, os: string\|null, counts: {critical, high, fixable}, truncated}`; the detail adds `vulns: [{id, pkg, installed, fixed: string\|null, severity: CRITICAL\|HIGH, title, target}]` (≤300). `error` is a short code, not a message: `noSource`, `notFound`, `nightOnly`, `saveLimit`, `badOutput`, `scanFailed`, `saveFailed`, `imageTooLarge`, `knownHostsMissing`, an `agent.security.*` code, or the registry name for `needsCredentials`.
+
+**finding**: `{id (24 hex), source: github\|loki\|local, rule, where, file, line, commit (12 characters), stream, at, firstSeenAt, dismissed}`. `where` is `owner/repo` (github), the Loki `host` label (loki) or the repository folder relative to the home directory (local); fields that don't apply are `null`. There is never a secret value in it.
+
+**scanners**: `{trivy, gitleaks, javaDb, registryAuth: [{registry, username, hasToken: true}], github: {owners, hasToken}, loki, localRoots, nightHours}`.
+
+**Notifications.**
+
+| Key | Params | Notes |
+| --- | --- | --- |
+| `security.vulns` | `host (names of the hosts running the image, comma-separated), image (first tag, or 12 hex of the id), critical, high, agent` | priority default. Only when the image has critical findings and it is the first scan or the critical count rose. Link `tiphys://security/vulns/<64 hex image id>`. |
+| `security.secretFound` | `host, agent, count (new findings), sources (comma-separated), where (up to 3 locations, ≤140 characters)` | priority high; also to the owner's Telegram. One per run. Link `tiphys://security/secrets`. |
+
+#### Traps and alerts
+
+Device tokens only. Behaviour: [Traps](../features/security.md#traps), [Alerts](../features/security.md#alerts-to-the-owners-telegram).
+
+| Method | Path | Description |
+| --- | --- | --- |
+| GET | `/v1/security/traps` | `{tokens: [{id, name, createdAt}], files: [{id, path, kind: env\|sshkey, createdAt, status: armed\|noatime\|missing, lastTriggeredAt}], dbUsers: [names], auditHosts: [{id, status: ok\|unavailable\|error\|pending, at: string\|null}] (the hosts with traps on and how their last `traps` poll went; `unavailable` = the host has no auditd or the script isn't root there)}`. Token hashes are never returned. `lastTriggeredAt` and `status` live in memory (a restart resets them). |
+| POST | `/v1/security/traps/tokens` | Strict `{name: 1–80, trimmed}` → `201 {id, token}`. The `tps_…` token is shown **once**; only its hash is stored. `409 agent.security.tooManyTraps` (20). Audit `{trap: id}`. |
+| DELETE | `/v1/security/traps/tokens/:id` | `{ok: true}`. `404 agent.security.trapNotFound`. Audit `{trap: id}`. |
+| POST | `/v1/security/traps/files` | Strict `{path: ≤1024, kind: env\|sshkey}` → `201 {id, path (resolved), status}`. The directory must be inside `allowedRoots` (`agent.path.notAllowed` / `agent.path.notFound`); an existing path is `409 agent.security.trapExists`; other failures `409 agent.security.trapCreateFailed`. `env` also creates a decoy token. Up to 20 files and 20 decoy tokens (`409 agent.security.tooManyTraps`, checked before the file is written). Audit `{trap: id, kind}`. |
+| DELETE | `/v1/security/traps/files/:id` | `{ok: true}`. Stops watching; the file stays on disk. `404 agent.security.trapNotFound`. Audit `{trap: id}`. |
+| PUT | `/v1/security/traps/db-users` | Strict `{users: [≤10 names, [a-z_][a-z0-9_]{2,62}]}` → the `GET /v1/security/traps` answer. Replaces the list. Audit `{count}`. |
+| POST | `/v1/security/traps/test` | `{ok: true}`; sends a `security.trap` notice with `trap: "test"`. Audit `{test: true}`. |
+| GET | `/v1/security/alerts` | `{telegramRecipient: string\|null}` (an id from `telegram-state.json`). |
+| PUT | `/v1/security/alerts` | Strict `{telegramRecipient: string (1–64) \| null}` → the same shape. Audit `{telegram: boolean}`. |
+
+**Notification** `security.trap` (priority high, link `tiphys://security/traps`; also to the owner's Telegram). Common params: `host` (this agent's name, except where noted), `agent`, `trap`. By `trap`:
+
+| `trap` | More params |
+| --- | --- |
+| `token` | `name` (the decoy's name), `from` (client address, ≤64), `path` (request path, ≤120). At most once a minute per decoy. |
+| `file` | `path` |
+| `fileMissing` | `path` (once while it is missing, also when the agent starts and finds it gone; a file that comes back is armed without an alarm) |
+| `audit` | `host` (the audited host's *name*), `who` (`auid/uid`), `how` (program), `object` (path), `at` (audit time) of the newest new event, and `count` (new events found in that poll: **one alarm per host and poll**). Events of the last 10 minutes, each announced once, also in the first poll after a start. |
+| `db` | `user` (the decoy user), `host` (the log's `host` label), `stream` (container or unit) |
+| `test` | none |
+
+#### Black box
+
+Behaviour, record format and verification: [Black box](../features/security.md#black-box).
+
+| Method | Path | Description |
+| --- | --- | --- |
+| GET | `/v1/blackbox/status` | `{mode: off\|local\|push (the mode the agent **started** with), head: {count, hash} \| null (local), pending: number \| null (push: queued records), lastError: string \| null (push: "http 401", "unreachable", …), lastSentAt, url}`. |
+| GET | `/v1/blackbox/verify` | Local only (`409 agent.blackbox.notLocal`). Verifies the chain up to the head it had when the call started: `{ok, count, head, brokenAt: seq\|null, reason: sequence\|link\|hash\|truncated\|anchor\|null, anchors: [{date, count, hash, telegram, at}] (latest 60), anchorMismatch: [dates], torn: number}`. `torn` counts lines that hold no record (a crash mid-write); they are skipped and don't make `ok` false. All anchors on file are checked against the whole chain, and an anchor for a count past the chain's end is a mismatch (`reason: "anchor"`); a chain shorter than the `head.json` kept next to it is `truncated`, also after a restart. A failure sends `blackbox.broken` (once). |
+| GET | `/v1/blackbox/recent?limit=` | Local only. `{records: [record]}`, newest first. `limit` 1–500 (100); reads at most the last 2 MiB of the file. |
+| POST | `/v1/blackbox/anchor` | Local only. Verifies, and if today's anchor doesn't exist yet, sends it to the owner's Telegram and records it. → `{anchors}`. Audit `{anchor: true}`. |
+| PUT | `/v1/blackbox/settings` | Strict `{mode: off\|local\|push, url?: https URL\|null, token?: "tps_…"\|null}` → `{mode, url, hasToken, restartRequired}`. `push` needs a URL and token (`400 agent.security.tokenRequired`). The stored token is kept only while the URL stays the same (a new URL without a token drops it). `restartRequired: true` when `mode` differs from the running one. Audit `{mode}`. |
+| POST | `/v1/blackbox/append` | **Service token with the `blackbox` scope** (a device token is `403 agent.auth.scopeDenied`); body limit 1 MiB; 10 per minute per token (`429 agent.security.rateLimited`); local only; `507 agent.blackbox.full` at the size limit. Strict `{entries: [{at: string ≤40, kind: audit\|event\|lockdown, data: object}] (≤200), dropped?: integer}` → `{accepted, head: {count, hash}}`. Each entry is appended with `source: "service:<token name>"` and `data.sentAt = at`; `dropped` adds a `blackbox.dropped` event. |
+
+**record**: `{seq, at, source, kind: audit\|event\|lockdown, data, prev, hash}`, `hash = hex(SHA-256(prev + "\n" + JSON.stringify({seq, at, source, kind, data})))`, first `prev` 64 zeros. `audit` data is the audit entry (`{at, device, method, path, status, detail?}`; requests that never authenticated, with status 401, 403 or 429 and no device, are not recorded), `event` data is `{key, params}`, `lockdown` data is `{action: recoveryCodeCreated\|badRecoveryCode\|lockdown, …}` (`lockdown` adds `by`, `ip` and the fan-out result `targets: ["name:ok", "name:502", "name:unreachable"]`).
+
+**Notification** `blackbox.broken`: params `host, agent, at (first bad seq; the record count for `full`), reason (a verify reason, or `full` when the 1 GiB limit was reached)`; priority high; link `tiphys://security/blackbox`; also to the owner's Telegram.
+
+#### Lost phone and lockdown
+
+Behaviour: [Lost phone](../features/security.md#lost-phone).
+
+| Method | Path | Description |
+| --- | --- | --- |
+| POST | `/v1/security/recovery` | Device token. Strict `{confirm: true}` → `{code: "XXXXX-XXXXX-XXXXX-XXXXX-XXXXX", createdAt}`. The code is shown **once**; only a scrypt hash (`N=2^15, r=8, p=1`, 16-byte salt) is stored, replacing any earlier code. Audit `{recovery: "created"}` and a black box `lockdown` record. |
+| GET | `/v1/security/recovery` | `{configured, createdAt}`. |
+| POST | `/v1/security/lockdown` | **No token** (route config `public`; the Tailscale-login check **still applies**). Body limit 4 KiB. `{code}` → `{ok: true, targets: [{id, name, ok, status: number\|null}]}`. Order: the code shape is checked (`401 agent.security.badRecoveryCode` for a malformed one, no limit is used up), then the limits (`429 agent.security.rateLimited`: **5 attempts per address per 10 minutes, 30 an hour in total, one check at a time**; in memory), then the code, fan-out to `lockdownTargets`, revoke-all here, and **last** the `security.lockdown` notice (`by: "recovery"`), so that it reaches the owner's Telegram and not the revoked phone. A well-formed wrong code is `401` and is also written to the black box with the caller's address. Audit (success) `{lockdown: true, targets: n, failed: n}`; the entry's device is `null`. |
+| POST | `/v1/security/lockdown/remote` | Service token with the **`lockdown`** scope, or a device token. Strict `{confirm: true}` → `{ok: true}`. Records `{action: "lockdown", by: "service:<name>" \| "device:<id>"}` in the black box, revokes all here, then sends `security.lockdown` (`by: "remote"`). Audit `{lockdown: true}`. |
+| GET | `/v1/security/lockdown/targets` | `{targets: [{id, name, url, hasToken: true}]}`. |
+| POST | `/v1/security/lockdown/targets` | Strict `{id, name (1–80), url (https), token ("tps_…")}` → `201 {target}`. `409 agent.security.hostExists`, `409 agent.security.tooManyHosts` (20). Audit `{target: id}`. |
+| DELETE | `/v1/security/lockdown/targets/:id` | `{ok: true}`. Audit `{target: id}`. |
+
+*Revoke all* empties `devices`, `serviceTokens` and `push.endpoints` in `agent.json` (the same as `POST /v1/devices/revoke-all`). The fan-out calls each target with `Authorization: Bearer <target token>`, body `{"confirm": true}`, 15 s timeout, no redirects, all in parallel; a failure is reported in `targets`, never aborts the lockdown. CLI: `tiphys-agent lockdown --url https://atlas.my-tailnet.ts.net` (the code is read from standard input).
+
+**Notification** `security.lockdown`: params `host, agent, by: recovery\|remote`; priority high; link `tiphys://security`; also to the owner's Telegram.
+
+#### Outside view and attack detection (S-5)
+
+Device tokens only. Behaviour: [Outside view](../features/security.md#outside-view), [Attack detection from Cloudflare](../features/security.md#attack-detection-from-cloudflare).
+
+| Method | Path | Description |
+| --- | --- | --- |
+| GET | `/v1/security/exposure` | `{config: {enabled, targets: [{id, kind: ip\|domain, value, expectedPorts}], extraPorts, intervalDays}, running, last: run \| null, history: [{at, findings: count}] (≤12)}`. |
+| PUT | `/v1/security/exposure` | Strict `{enabled: boolean, targets: [{id, kind, value, expectedPorts?: [ports] (≤50)}] (≤30), extraPorts?: [ports] (≤100), intervalDays?: 1–30 (7)}` → `{config}`. `targets` replaces the list (a host name or an IPv4 address as `value`); an omitted `extraPorts` or `intervalDays` is kept. Audit `{enabled, targets: n}`. |
+| POST | `/v1/security/exposure/run` | Runs now (also when `enabled` is off): `202 {started: true}`. `409 agent.security.scanBusy`, `429`. Audit `{exposure: true}`. |
+| GET | `/v1/security/attacks` | `{configured (a read token is set), lastRun: {at, zones, error: string\|null} \| null, offenders: [{zone, ip, country, errors, scannerHits, paths: [≤10], firstSeenAt, lastSeenAt, blockedUntil: string\|null}]}`, newest sighting first. Offenders are kept 7 days. |
+| POST | `/v1/security/attacks/run` | Runs one pass **synchronously** → `{offenders (new today), blocked (blocked now)}`. `409 agent.security.cloudflareNotConfigured`, `502 agent.security.cloudflareUnauthorized` / `cloudflareFailed`, `409 agent.security.scanBusy`, `429`. Audit `{cloudflare: true}`. |
+| GET | `/v1/security/cloudflare` | `{hasReadToken, hasBlockToken, block, blockHours, zones, allowIps}`. |
+| PUT | `/v1/security/cloudflare` | Strict, all optional: `{readToken?: string (≤200)\|null, blockToken?: same, block?: boolean, blockHours?: 1–720 (24), zones?: [zone names] (≤50), allowIps?: [IP addresses] (≤50)}` → the `GET` shape. Tokens: omitted = keep, `null` = remove, string = replace. `block: true` without a block token (stored or sent) is `400 agent.security.tokenRequired`. Audit `{fields: [names]}`. |
+
+**run**: `{at, targets: [{id, kind, value, openPorts?: [ports] (ip), error?: "failed" (domain)}], findings: [{id, rule, severity: critical\|high\|medium\|low, target, params}]}`. Rules: `exposure.openPort` (high, `port`), `exposure.leakPath` (critical, `path`), `exposure.tlsExpiry` (high, critical under 3 days, `days`; the certificate is read without verifying it, so an expired one is reported with a negative `days` rather than as unreachable), `exposure.noHttps` (medium, `status`), `exposure.noHsts` (low), `exposure.headers` (low, `missing`), `exposure.unreachable` (medium, `what: tls\|https`).
+
+**Notifications.**
+
+| Key | Params | Notes |
+| --- | --- | --- |
+| `security.exposure` | `host, agent, count (new findings), targets (up to 3, comma-separated)` | priority high; link `tiphys://security/exposure`. First run: critical findings and expiring certificates (`exposure.tlsExpiry`) only; later runs: new open ports, leaking paths, expiring certificates and critical findings. |
+| `security.attack` | `host, agent, count (new offenders), zones (up to 3), blocked (blocks made in that run)` | priority default; link `tiphys://security/attacks`. At most once per address and zone per day. Not an incident. |
+
+#### Notifications (S-2 to S-5)
+
+Overview of the keys above, all sent by the monitoring server's agent (or whichever agent runs the feature): `security.vulns`, `security.secretFound`, `security.trap`, `security.exposure`, `security.attack`, `blackbox.broken`, `security.lockdown`. `security.trap`, `security.secretFound`, `blackbox.broken`, `security.lockdown` and `security.change` with `severity: critical` are relayed to the owner's Telegram as a title only (`🚨 Tiphys güvenlik · <host> · <title>`, Turkish text). Notices that are not `sensitive` are also appended to the black box as `event` records.
 
 ## Protocols
 

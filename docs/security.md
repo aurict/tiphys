@@ -69,9 +69,9 @@ To report a vulnerability, see [SECURITY.md](../SECURITY.md).
 
 Each area of functionality is a flag in `agent.json`. If a flag is off, its routes are not registered and heavy
 modules such as the Claude SDK are not even loaded. On a new configuration only `system`, `services`, `docker` and
-`power` are on. Everything that runs code on your behalf or touches the desktop (`claude`, `git`, `desktop`,
+`power` are on. Everything that runs code on your behalf or touches the desktop (`claude`, `agy`, `git`, `desktop`,
 `control`, `ports`, `transcribe`, `wake`, `watch`, `uptime`, `alerts`, `backups`, `homepage`, `security`) must be enabled
-explicitly. Enable only what a machine needs. A server usually needs no `claude`, `desktop` or `control`.
+explicitly. Enable only what a machine needs. A server usually needs no `claude`, `agy`, `desktop` or `control`.
 
 ## Path restrictions
 
@@ -158,6 +158,35 @@ action that is not named like one (for example an icon-only button outside a web
 coordinates) will not be caught. Watch the session, keep it short, and stop it when in doubt. Screenshots are kept
 in `claude-shots/` (last 60) and in Claude Code's own transcript.
 
+## agy sessions
+
+The `agy` feature ([agy](features/agy.md)) lets a paired phone start and drive Antigravity CLI sessions on the PC. Like
+a Claude code session, **an agy session runs code on the PC**: agy reads and edits files and runs shell commands as the
+agent's user, steered by whoever holds a device token. Treat the `agy` flag as `claude`: high risk, off on servers.
+What protects it:
+
+- **Device tokens only.** No service token reaches any `/v1/agy` route, and the routes don't exist unless the flag is
+  on.
+- **Folders inside `allowedRoots`.** A session's working folder (and the folder used to list earlier conversations) is
+  resolved with `realpath` and must lie inside `allowedRoots`, as for Claude sessions (`agent.path.notAllowed`).
+  Narrow the roots if you don't want agy to start in your whole home directory. agy itself is not confined to that
+  folder: once running, it can touch anything the agent's user can, subject to its own permission prompts.
+- **agy asks, the phone answers.** The agent never starts `agy` with `--dangerously-skip-permissions`. In the
+  `default` mode agy asks before edits and commands, and each question is shown on the phone (and as a notification
+  with buttons). The modes `accept-edits` and `auto` loosen that on purpose; choosing one is the holder's decision, as
+  with Claude's *Accept edits*. No mode answers a prompt by itself on the agent's side: an unanswered prompt waits.
+- **Few, short-lived processes.** One `agy acp` process per session, at most 6 live sessions, an idle session is closed
+  after 2 hours, start and conversation-list calls are rate limited per device, and the processes are killed when the
+  agent stops.
+- **No file system or terminal handed to agy.** The agent offers agy no file-system or terminal capability over the
+  protocol; any other request from agy is refused.
+- **Audit log.** Starting, answering a prompt, switching mode or model, cancelling and closing are written to
+  `audit.jsonl` with the session id, folder, mode or chosen option; never the prompt text.
+- **Not a boundary against the holder of a token.** Anyone with a paired device token can start an agy session and,
+  by approving prompts or choosing `auto`, run commands on the PC. Revoke lost devices at once (*Lock everything*).
+  agy talks to Google's services with your account: your prompts and the files it reads leave the PC the same way
+  they do when you run `agy` in a terminal.
+
 ## Mobile view (AT-SPI)
 
 - Only the window you choose is read, and only if it is visible on the active workspace. The window title must match
@@ -206,8 +235,11 @@ one thing. The design goal: the monitoring server must not become a way to run c
 - **Forced command.** The key's line in `authorized_keys` is
   `restrict,from="<monitoring server's Tailscale IP>",command="sudo -n /usr/local/lib/tiphys/audit.sh \"$SSH_ORIGINAL_COMMAND\"" ssh-ed25519 …`.
   Whatever the client asks for, sshd runs that command; the client's text arrives only as **one quoted argument**
-  (`$SSH_ORIGINAL_COMMAND`), never interpreted by a shell as a command line. The script accepts `report` and
-  `report-full` and exits with status 2 on anything else, without running anything.
+  (`$SSH_ORIGINAL_COMMAND`), never interpreted by a shell as a command line. The script accepts `report`,
+  `report-full`, `traps` and `image-save sha256:<64 hex>` (the two added for the
+  [later phases](#security-center-scanners-traps-black-box-and-lockdown)) and exits with status 2 on anything else,
+  without running anything. `image-save` is checked again on the host: exactly `sha256:` and 64 lowercase hex
+  characters, the image used by a running container, at most 3 GB.
 - **`restrict` and `from=`.** `restrict` turns off port, agent and X11 forwarding, tunnels and the terminal; `from=`
   makes the key useless from any other address, so a copy stolen from the monitoring server is not usable from
   elsewhere. The monitoring side also connects with `IdentitiesOnly`, no agent, `ClearAllForwardings` and a
@@ -233,8 +265,9 @@ one thing. The design goal: the monitoring server must not become a way to run c
   the root-owned copy at `/usr/local/lib/tiphys/audit.sh`, which the agent checks on every run (root-owned, not
   group/other writable). The agent's own copy in `helpers/` is never run as root: the agent user can change it.
 
-**What the monitoring server can do on the audited host:** run the audit script as root with `report` or
-`report-full`, and nothing else; it receives the script's text output. **What it cannot do:** run another command,
+**What the monitoring server can do on the audited host:** run the audit script as root with `report`,
+`report-full`, `traps` or `image-save`, and nothing else; it receives the script's text output (and, for
+`image-save`, the tar of an image that a running container uses). **What it cannot do:** run another command,
 get a shell or a terminal, forward ports, change a file, add a key or read a file other than through the script's fixed
 checks. The report does contain names and paths (users, container and image names, mount paths, published ports,
 login sources) and fingerprints and hashes, but no secrets: no environment, key material, password hashes or file
@@ -246,6 +279,93 @@ with `tools/install-audit.sh --uninstall` to cut it off.
 Between agents, `GET /v1/security/raw` hands the same report text to a holder of a `security-report` service token (or
 any device token). That service token can call no other route. If the audited agent has `security.self.sudo` on, the
 text is a root-level report, so treat the token like a read-only credential for that report.
+
+## Security center: scanners, traps, black box and lockdown
+
+The [audit](#security-center-audit-key) looks at machines from inside. The later phases add detection and response.
+They rest on the same trust assumptions as the rest of Tiphys (you, your tailnet, the machines the agents run on) and
+add the following to the threat model. Each one is off until you set it up, and each has limits that are listed here
+so you don't trust it for more than it does.
+
+**What they add**
+
+- **A way to notice a break-in that is already happening.** Decoy tokens, decoy files and decoy database users are
+  things no legitimate user touches, so a touch means an intruder, a stolen backup, or a tool that reads everything. The
+  alarm goes to the phone and, as a title only, to your Telegram.
+- **A record that is hard to rewrite quietly.** The black box chains every audited action through the agents with
+  hashes and puts the chain's head outside the machine (Telegram) every night. The ordinary `audit.jsonl` and
+  `events.jsonl` are editable by the agent's user; the chain is evidence that notices edits.
+- **A response that doesn't need the lost thing.** The recovery code locks the monitoring server and every agent it knows
+  without a paired phone.
+- **Findings before an attacker uses them:** known vulnerabilities in running images, secrets in repositories, logs
+  and tracked `.env` files, what the internet can reach, and who is scanning your sites at Cloudflare.
+
+**What new access exists**
+
+| Where | What it can do | Why it is acceptable |
+| --- | --- | --- |
+| `audit.sh` `image-save` on an SSH host | `docker save` of one image that a running container uses, up to 3 GB, as a tar stream to the monitoring server | The key still runs only the script; the request is validated (exactly `sha256:` and 64 hex characters), the image must be in use and not huge. The tar can contain **anything in the image**, including secrets baked into layers, and it travels to the monitoring server and is scanned and deleted there. It is also load on the production Docker daemon, hence night only, 2 a night. |
+| `audit.sh` `traps` | Reads the last 10 minutes of auditd events for the key `tiphys_trap` as root | Read-only, capped at 256 KiB and the newest 500 lines. |
+| `tools/install-audit.sh --trap` | An admin (with `sudo`, once) adds a decoy file and an audit rule on an SSH host | It is a separate, explicit command and is undone by `--untrap`; the audit key itself can never change files. The installer runs as root, so it refuses to write through anything another user controls: an existing path or a symlink at the decoy's path, a symlink among the directories on the way, a directory owned by a user other than root or the admin running it, or one writable by group or others. The file is created exclusively (`O_EXCL`); existing directories keep their mode. |
+| Trivy and gitleaks containers | Run as Docker containers on the monitoring server | Pinned by digest, memory/CPU limited, read-only root file system, `no-new-privileges`; gitleaks has **no network**. Trivy has network (it downloads its database and fetches images from registries). The registries are limited to a fixed list of well-known public ones plus those you configured credentials for, because the image names come from an audited host's report, and a crafted name must not make the monitoring server fetch from an arbitrary address such as a cloud metadata endpoint. Starting containers means the agent user is in the `docker` group, which is root-equivalent: another reason to scan on the monitoring server and not on a machine you care less about. |
+| GitHub token | `contents: read` on the repositories you pick (fine-grained) | It reaches GitHub's API as a bearer header and `git` through its **process environment**, never a URL or a command line; it sits in `agent.json` (`0600`). Anyone who can read that file or the agent's process environment while a scan runs has the token. Don't give it write rights. |
+| Registry credentials | Pull rights for private images | Same: in `agent.json`, in a Docker client's environment only during a scan; read-only tokens. |
+| Cloudflare tokens | Read: analytics of your zones. Block (optional): create and delete IP Access Rules in those zones | A separate block token with only *Firewall Services: Edit*; blocks expire; hand-made rules are never deleted. A leaked block token can lock real users out of your site (it can't read or change anything else); a leaked read token shows traffic metadata. |
+| `blackbox` service token | Append records to the monitoring server's chain | It can call that one route (10 requests a minute) and nothing else. Unauthenticated requests that were rejected (401, 403, 429) are never written to the chain, so a stranger can't fill it. A holder can **add** false records (their `source` is the token's name, so it is labelled) but cannot change or delete earlier ones. |
+| `lockdown` service token | Revoke **everything** on the agent that issued it | It is as powerful as *Lock everything*: anyone who gets it can lock out all your devices on that agent (a denial of service for you, not access to the machine). Guard it like the recovery code. Stored in `lockdownTargets` on the monitoring server. |
+| The recovery code | Calls the unauthenticated `POST /v1/security/lockdown` | The code (about 125 bits) is the credential; only the route's own limits apply (5 well-formed attempts per address per 10 minutes, 30 an hour in total, one check at a time; a malformed code is free), and the Tailscale-login check applies to it like to every route. See the limits below. |
+
+**Limits: what these do not protect against**
+
+- **Detection is not prevention.** Traps tell you after someone touched a decoy; the scans tell you about weaknesses,
+  they fix nothing. A quiet attacker who avoids the decoys is not caught by them.
+- **A decoy file is a read, not a login.** It fires on any read of the file, including your own backup, an indexer or
+  a recursive `grep`; on a `noatime` file system it can never fire (the agent reports `noatime`); a read while the
+  agent is down is not seen. A decoy **token** only fires if the intruder presents it to the agent that issued it. Decoy
+  database users depend on the database logging failed logins to Loki.
+- **The black box does not survive root on the monitoring server by itself.** Someone who becomes root there can
+  rewrite the whole file with consistent hashes, or stop the agent. What remains is the nightly **anchor in
+  Telegram** (an older anchor with a record count that the current chain doesn't reach, or a hash it doesn't have, is
+  proof; `verify` checks every anchor on file against the whole chain, including anchors past its end, but anchors on
+  file sit next to the chain, so the Telegram copies are the ones to trust) and, if you applied it, `chattr +a`, which only root can undo. `chattr +a` is **not enabled by default** (a root
+  step and a file you can then not rotate or delete); without it, the user the agent runs as (and malware running
+  as that user) can rewrite or truncate the chain. A cut made while the agent was stopped is found after the restart by
+  comparing the chain with `head.json` kept next to it, but someone who can write to the chain can also remove that
+  file, so again the anchors are what remains. The chain stops at 1 GiB (`blackbox.broken`, reason `full`) instead of
+  filling the disk; a crash can leave a torn last line, which verification skips and counts without hiding a change. If the monitoring server is compromised, anything
+  after the point of compromise on it is untrustworthy. Records of other agents are labelled by the token that sent
+  them, but an agent that is itself compromised can send false records.
+- **What the black box records is what the agents did through their API.** Not what happened on the machine outside
+  Tiphys, not `GET` requests, not bodies. Anything an intruder does with a shell is not in it unless it touches Tiphys.
+- **The lockdown can be abused to lock you out.** The endpoint takes no token. A malformed code is refused for
+  free; a well-formed one counts against 5 per address per 10 minutes and 30 an hour in total (in memory, reset by an
+  agent restart), and only one check runs at a time. The per-address limit keeps one peer from spending the shared budget
+  quickly, but a peer in the tailnet that keeps trying can still use it up and make a real lockdown wait (a **denial of
+  service** for the owner, not a break-in); a correct code cannot be guessed at that rate. Reaching the endpoint needs the
+  tailnet, and the Tailscale-login check still applies: with `requireTailscaleLogin` set, only requests that carry your
+  login get as far as the code. A lockdown's notice is sent after the revoke, so it reaches your Telegram rather than
+  the lost phone. It revokes tokens; it does not stop processes, close
+  sessions on the machine or remove SSH keys. Telegram recipients, trap tokens, the recovery code and the agents' own
+  outbound tokens are not revoked. If the agent has been taken over, the attacker has the config file; re-pairing
+  from the same machine is only meaningful once the machine itself is clean.
+- **The recovery code is a bearer secret.** Whoever has the code can lock everything; store it outside the phone and
+  not in the same place as other recovery material. Creating a new one replaces the old one.
+- **Telegram sees titles, not content,** but it is a third party, and the bot token sits in `agent.json`: someone who
+  has it can send messages as the bot. The alert and the anchor are only as trustworthy as that chat; messages are
+  best-effort and a failed send is not retried.
+- **Scans have blind spots.** Trivy finds only published vulnerabilities in packages it understands (and no Java
+  archive unless the Java DB is on); a remote scan covers the registry's image for the digest the host reports, not a
+  look inside the running container. gitleaks and the local patterns find well-known
+  formats and entropy, not every secret, and gitleaks scans only the default branch; the Loki scan sees the last 24
+  hours of what is logged. A finding stores no value, so dismissing it doesn't make the secret safe: rotate it.
+- **The outside view is one vantage point and a fixed list.** It tests 64 ports plus yours and twelve paths from one
+  machine, at one time. A machine probing its own public address may not pass its cloud firewall, so the result is
+  too good. It tells you what answers, not what is vulnerable. It must only be pointed at things you own.
+- **Attack detection depends on Cloudflare and is unvalidated.** It sees only traffic through Cloudflare (a site
+  reachable directly by IP is invisible to it), only 4xx/5xx responses, and decides on simple rules; a patient
+  scanner under the thresholds isn't flagged. It has **not yet been run against the live Cloudflare API**: until you
+  have set a token and watched the first runs, don't rely on it, and don't turn on blocking blindly. Blocking a shared
+  address (a company or mobile network) blocks everyone behind it, for the block time.
 
 ## Notifications and clipboard
 
@@ -264,7 +384,9 @@ text is a root-level report, so treat the token like a read-only credential for 
   app under *System › Tools › Activity log*.
 - `events.jsonl`: notifications and notable actions (control sessions, compose updates, git commits/pushes,
   schedules, backups, "mobile view opened"). URLs, typed text and clipboard content are excluded.
-- Both are files in your config folder, readable and editable by your user. They are not tamper-proof.
+- Both are files in your config folder, readable and editable by your user. They are not tamper-proof. For a record
+  that notices edits, turn on the [black box](features/security.md#black-box); its limits are described
+  [above](#security-center-scanners-traps-black-box-and-lockdown).
 
 ## Recommendations
 
@@ -274,5 +396,9 @@ text is a root-level report, so treat the token like a read-only credential for 
 - Keep Sunshine stopped when not in use.
 - Pin SSH host keys for the security audit yourself, install the audit script root-owned, and keep the audit key
   `0600` on the monitoring server only.
+- If you use the later security phases: keep the recovery code outside the phone and test the lockdown once; give the
+  GitHub, registry and Cloudflare tokens only the permissions listed in the [setup guide](setup-guide.md#security-center);
+  set up the Telegram alert and the nightly black box anchor so evidence lives outside the monitoring server; consider
+  `chattr +a` on the black box chain; plant decoys where only an intruder looks; and don't treat a clean scan as proof.
 - Use a dedicated Firefox profile (or ESR installation) for the bridge if you are uncomfortable disabling signature
   checks in your main profile.

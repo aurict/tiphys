@@ -131,8 +131,28 @@ alive and is the same process.
    process doesn't stop, you get *Close it on the PC and try again*.
 3. resumes the same session on the agent with its full history.
 
-To go back to the terminal later, run `claude --resume <session-id>` on the PC. Takeover uses Claude Code's own
-session files; it does not use tmux.
+To go back to the terminal later, run `claude --resume <session-id>` on the PC (or use the ready-made command, see
+[Continue on the PC](#continue-on-the-pc)). Takeover uses Claude Code's own session files; it does not use tmux.
+
+## Continue on the PC
+
+Every live session summary carries a `resumeCommand` (see the [API](../agent/api.md#claude)), a client can offer as
+*Continue on the PC*. It is a complete command for a terminal on the PC:
+
+```sh
+cd '/home/me/code/my-project' && claude --resume <sdkSessionId>
+```
+
+- The folder is the session's working folder, single-quoted for a POSIX shell, and the id is Claude Code's own session
+  id (`sdkSessionId`). `resumeCommand` is `null` until Claude has reported that id (a session that has not yet
+  produced its first message).
+- **Stop the session on the phone first** (close it), or at least let the turn finish: the same conversation open in a
+  terminal and in the agent at the same time would fork into two histories.
+- Run it from the folder the command changes into. `claude --resume` **without an id** lists only the sessions of the
+  **current folder**; a session started from the phone is saved under the folder chosen on the phone, so from your home
+  directory it will not show up in that list. That is why the command starts with `cd`.
+- Sessions that run in a terminal and are taken over on the phone, and the reverse direction, work the same way: the
+  transcript is Claude Code's own session file, so either side can continue it.
 
 ## While you were away, and session changes
 
