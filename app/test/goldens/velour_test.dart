@@ -77,6 +77,15 @@ void main() {
     await _finish(tester);
   });
 
+  testWidgets('velour: koyu temada mini oynatıcı okunur', (tester) async {
+    await Harness().pump(tester, route: _route, dark: true);
+    await _wait(tester);
+    await tester.tap(find.text('Sıradaki'));
+    await _wait(tester);
+    await golden('png/velour_queue_dark_tr.png');
+    await _finish(tester);
+  });
+
   testWidgets('velour: sıradaki listesi, atlama ve şarkı menüsü', (tester) async {
     await Harness().pump(tester, route: _route);
     await _wait(tester);

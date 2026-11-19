@@ -58,7 +58,8 @@ class _VelourScreenState extends ConsumerState<VelourScreen> with SingleTickerPr
     final t = context.tokens;
     final host = ref.watch(profileProvider).host(widget.hostId);
     return Scaffold(
-      backgroundColor: Colors.transparent,
+      // Opaque: the mini player's translucent dark-theme card needs the theme ground behind it.
+      backgroundColor: t.background,
       body: AmbientBackground(
         child: NestedScrollView(
           headerSliverBuilder: (context, _) => [
@@ -1186,7 +1187,8 @@ class VelourPageScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final t = context.tokens;
     return Scaffold(
-      backgroundColor: Colors.transparent,
+      // Opaque: the mini player's translucent dark-theme card needs the theme ground behind it.
+      backgroundColor: t.background,
       appBar: AppBar(
         backgroundColor: t.isDark ? const Color(0xCC000000) : t.background,
         title: Text(title, maxLines: 1, overflow: TextOverflow.ellipsis),
