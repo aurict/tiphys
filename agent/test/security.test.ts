@@ -217,6 +217,13 @@ describe("rules", () => {
 });
 
 describe("baseline", () => {
+  it("ephemeral UDP client ports don't count as port changes (still findings)", () => {
+    const a = snapshotOf(parseReport(auditText({ listen: "udp UNCONN 0 0 0.0.0.0:33257 0.0.0.0:*\nudp UNCONN 0 0 0.0.0.0:4242 0.0.0.0:*" })));
+    const b = snapshotOf(parseReport(auditText({ listen: "udp UNCONN 0 0 0.0.0.0:54670 0.0.0.0:*\nudp UNCONN 0 0 0.0.0.0:4242 0.0.0.0:*" })));
+    expect(diff(a, b)).toEqual([]);
+    expect(evaluate(parseReport(auditText({ listen: "udp UNCONN 0 0 0.0.0.0:54670 0.0.0.0:*" })), { role: "desktop", allowedPorts: [] }).map((f) => f.id)).toContain("port.exposed:udp/54670");
+  });
+
   it("diffs added/removed/changed, skips unknown categories, keeps first-seen", () => {
     const a = snapshotOf(parseReport(auditText()));
     const b = snapshotOf(
@@ -235,7 +242,6 @@ describe("baseline", () => {
     expect(d.map((c) => `${c.kind}:${c.id}`)).toEqual([
       "removed:authKeys|ubuntu SHA256:AAAAexampleFingerprint",
       "added:ports|tcp/8765",
-      "removed:ports|udp/41641",
       "changed:sudoers|/etc/sudoers.d/90-cloud-init-users",
       "added:users|mallory",
     ]);
@@ -352,12 +358,12 @@ describe("service + routes", () => {
     t.setNow(t.now() + 60_000);
     r = await t.app.inject({ method: "POST", url: "/v1/security/hosts/atlas/check", headers: t.auth, payload: {} });
     expect(t.calls[1]!.at(-1)).toBe("report");
-    expect(r.json().changes.map((c: { id: string }) => c.id)).toEqual(["ports|tcp/4444", "ports|udp/41641", "users|x"]);
+    expect(r.json().changes.map((c: { id: string }) => c.id)).toEqual(["ports|tcp/4444", "users|x"]);
     expect(r.json().findings.map((f: { id: string }) => f.id)).toContain("port.exposed:tcp/4444");
     expect(t.sent).toEqual([
       {
         key: "security.change",
-        params: { host: "atlas", hostId: "atlas", agent: "test", count: 3, categories: "ports,users", severity: "critical" },
+        params: { host: "atlas", hostId: "atlas", agent: "test", count: 2, categories: "ports,users", severity: "critical" },
         link: "tiphys://security/atlas",
         priority: "high",
       },
@@ -367,16 +373,16 @@ describe("service + routes", () => {
     expect(t.sent).toHaveLength(1);
 
     expect((await t.app.inject({ method: "POST", url: "/v1/security/hosts/atlas/baseline", headers: t.auth, payload: {} })).statusCode).toBe(400);
+    r = await t.app.inject({ method: "POST", url: "/v1/security/hosts/atlas/baseline", headers: t.auth, payload: { confirm: true, expected: 1 } });
+    expect(r.json().error).toMatchObject({ code: "agent.security.changesMoved", params: { expected: 1, current: 2 } });
     r = await t.app.inject({ method: "POST", url: "/v1/security/hosts/atlas/baseline", headers: t.auth, payload: { confirm: true, expected: 2 } });
-    expect(r.json().error).toMatchObject({ code: "agent.security.changesMoved", params: { expected: 2, current: 3 } });
-    r = await t.app.inject({ method: "POST", url: "/v1/security/hosts/atlas/baseline", headers: t.auth, payload: { confirm: true, expected: 3 } });
-    expect(r.json()).toMatchObject({ accepted: 3, changes: [] });
-    expect(t.sent.at(-1)).toMatchObject({ key: "security.accepted", params: { host: "atlas", count: 3 } });
+    expect(r.json()).toMatchObject({ accepted: 2, changes: [] });
+    expect(t.sent.at(-1)).toMatchObject({ key: "security.accepted", params: { host: "atlas", count: 2 } });
 
     const st = await stat(join(t.dir, "security-state.json"));
     expect(st.mode & 0o777).toBe(0o600);
     const audit = await readFile(join(t.dir, "audit.jsonl"), "utf8");
-    expect(audit).toContain('"accepted":3');
+    expect(audit).toContain('"accepted":2');
   });
 
   it("a report with a different privilege level starts a new baseline silently", async () => {

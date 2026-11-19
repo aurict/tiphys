@@ -54,7 +54,9 @@ const fromHashed = (l: { path: string; sha256: string }[]) => Object.fromEntries
 
 export function snapshotOf(r: SecurityReport, carriedSuid: SecurityReport["suid"] = null): Snapshot {
   const s: Snapshot = {};
-  if (r.listen) s.ports = Object.fromEntries(exposures(r).map((e) => [`${e.proto}/${e.port}`, "exposed"]));
+  // UDP sockets in Linux's ephemeral range (clients: browsers, mDNS, media apps) change on every report: they stay
+  // visible as findings, but would turn every check into a "port changed" alarm.
+  if (r.listen) s.ports = Object.fromEntries(exposures(r).filter((e) => !(e.proto === "udp" && e.port >= 32768 && e.port <= 60999)).map((e) => [`${e.proto}/${e.port}`, "exposed"]));
   s.users = Object.fromEntries(r.users.map((u) => [u.name, `${u.uid}:${u.shell}`]));
   if (r.passwords) s.passwords = Object.fromEntries(r.passwords.map((p) => [p.name, p.status]));
   if (r.sudoers) s.sudoers = fromHashed(r.sudoers);
