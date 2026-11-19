@@ -68,6 +68,12 @@ describe("exposure", () => {
     expect(t.sent).toEqual([]);
     expect(s.due()).toBe(false);
   });
+
+  it("a redirecting domain isn't judged on the redirect's headers", async () => {
+    const { s } = await setup({ "http://example.org/": { status: 301 }, "https://example.org/": { status: 301, headers: { location: "https://example.com/" } }, "*": { status: 404 } }, []);
+    const r = await s.run();
+    expect(r.findings.filter((f) => f.target === "example.org")).toEqual([]);
+  });
 });
 
 describe("cloudflare", () => {

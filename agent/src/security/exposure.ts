@@ -150,7 +150,10 @@ export class ExposureScanner {
       return;
     }
     const h = root.headers;
-    if (!h.get("strict-transport-security")) add({ rule: "exposure.noHsts", severity: "low", params: {} });
+    // A redirect (e.g. www → apex) is judged at its destination, which is a target of its own.
+    const redirect = root.status >= 300 && root.status < 400;
+    if (redirect) await root.body?.cancel().catch(() => {});
+    if (!redirect && !h.get("strict-transport-security")) add({ rule: "exposure.noHsts", severity: "low", params: {} });
     const missing = [
       ["x-content-type-options", h.get("x-content-type-options")],
       ["frame-ancestors/x-frame-options", h.get("x-frame-options") ?? (/(^|;)\s*frame-ancestors/i.test(h.get("content-security-policy") ?? "") ? "csp" : null)],
@@ -158,7 +161,7 @@ export class ExposureScanner {
     ]
       .filter(([, v]) => !v)
       .map(([k]) => k);
-    if (missing.length) add({ rule: "exposure.headers", severity: "low", params: { missing: missing.join(",") } });
+    if (missing.length && !redirect) add({ rule: "exposure.headers", severity: "low", params: { missing: missing.join(",") } });
     await root.body?.cancel().catch(() => {});
     for (const [path, looksLike] of LEAK_PATHS) {
       await wait();
