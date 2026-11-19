@@ -29,6 +29,8 @@ function parse<T>(schema: z.ZodType<T>, v: unknown): T {
 }
 
 const hostId = z.string().regex(/^[a-z0-9][a-z0-9-]{0,62}$/);
+/** Ids the app uses as /security/<section> routes can't name a host. */
+export const RESERVED_HOST_IDS = new Set(["self", "settings", "vulns", "secrets", "scanners", "traps", "exposure", "attacks", "cloudflare", "blackbox", "recovery", "lockdown"]);
 const ports = z.array(z.string().regex(/^(tcp|udp)\/([1-9]\d{0,3}|[1-5]\d{4}|6[0-4]\d{3}|65[0-4]\d{2}|655[0-2]\d|6553[0-5])$/)).max(100);
 const sourceInput = z.discriminatedUnion("kind", [
   securityHostSchema.shape.source.options[0],
@@ -587,7 +589,7 @@ export function securityRoutes(opts: SecurityRouteOpts = {}) {
 
     app.post("/v1/security/hosts", async (req, reply) => {
       const b = parse(createBody, req.body);
-      if (b.id === "self") throw new AppError("agent.security.hostExists", 409, { id: b.id });
+      if (RESERVED_HOST_IDS.has(b.id)) throw new AppError("agent.security.hostExists", 409, { id: b.id });
       const host: SecurityHost = { ...b, source: resolveSource(b.source, null) };
       await ctx.store.update((c: AgentConfig) => {
         if (c.security.hosts.some((h) => h.id === b.id)) throw new AppError("agent.security.hostExists", 409, { id: b.id });

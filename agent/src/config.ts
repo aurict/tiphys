@@ -209,6 +209,8 @@ export const agentConfigSchema = z.object({
     databases: z.boolean().default(false),
     /** Security center (PLAN.md §15): audits this host and others (restricted SSH key / another agent), score, changes. */
     security: z.boolean().default(false),
+    /** Antigravity CLI (agy) sessions from the phone over its Agent Client Protocol (PC; agy installed and logged in). */
+    agy: z.boolean().default(false),
   }),
   devices: z.array(deviceSchema).default([]),
   /** Scoped service tokens (tps_…): they open only routes that declare one of their scopes. */

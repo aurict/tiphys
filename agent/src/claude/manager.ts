@@ -245,6 +245,8 @@ export class LiveSession {
       lastActivity: new Date(this.lastActivity).toISOString(),
       pendingPermissions: this.pending.size,
       live: true,
+      // "Continue on the PC": run in a terminal there (after stopping it here).
+      resumeCommand: this.sdkSessionId ? `cd '${this.cwd.replace(/'/g, `'\\''`)}' && claude --resume ${this.sdkSessionId}` : null,
       kind: this.kind,
       ...(this.kind === "pc" ? { control: { active: this.control !== null && this.controlUntil() !== null, expiresAt: this.controlUntil() } } : {}),
     };

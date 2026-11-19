@@ -476,7 +476,7 @@ export class VulnScanner {
           r = await saver("ssh", args, file, { timeoutMs: SAVE_TIMEOUT_MS, maxBytes: MAX_SAVE_BYTES });
         }
       } catch (e) {
-        return { ok: false, status: "failed", error: e instanceof AppError ? e.code : "saveFailed", source: kind };
+        return { ok: false, status: "failed", error: e instanceof AppError ? e.code.replace(/^agent\.security\./, "") : "saveFailed", source: kind };
       }
       if (r.code !== 0 || r.bytes === 0) return { ok: false, status: "failed", error: r.code === 4 ? "imageTooLarge" : "saveFailed", source: kind };
       const t = await this.#trivy(trivyArgs({ target: { input: file }, platform: "", credentials: false, javaDb: this.#ctx.store.get().security.scanners.javaDb }), null);
