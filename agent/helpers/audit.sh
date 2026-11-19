@@ -17,7 +17,7 @@ set -u
 umask 077
 PATH=/usr/sbin:/usr/bin:/sbin:/bin
 export PATH LC_ALL=C.UTF-8
-VERSION=3
+VERSION=4
 
 refuse() { echo "tiphys-audit: unsupported request" >&2; exit 2; }
 [ "$#" -le 1 ] || refuse
@@ -51,8 +51,11 @@ if [ "$MODE" = traps ]; then
   [ "$ROOT" = 1 ] && has ausearch || { echo "tiphys-audit: unavailable" >&2; exit 3; }
   printf '@@tiphys-audit %s traps\n' "$VERSION"
   # Exit 1 = no matches; that is a normal, empty answer.
-  # "recent" = the last 10 minutes (polled every 30 s); newest kept if there are many.
-  t 20 ausearch -k tiphys_trap --start recent --format csv 2>/dev/null | tail -n 500 | cap 262144
+  # "recent" = the last 10 minutes (polled every 30 s); newest kept if there are many. The log is named explicitly:
+  # some ausearch versions (4.1.2 on Ubuntu 26.04) find nothing when they look it up themselves.
+  log=$(sed -n 's/^[[:space:]]*log_file[[:space:]]*=[[:space:]]*//p' /etc/audit/auditd.conf 2>/dev/null | tail -n1)
+  [ -n "$log" ] && [ -f "$log" ] || log=/var/log/audit/audit.log
+  t 20 ausearch -if "$log" -k tiphys_trap --start recent --format csv 2>/dev/null | tail -n 500 | cap 262144
   printf '\n@@end\n'
   exit 0
 fi
