@@ -48,7 +48,7 @@ async function setup(o: { notifier?: Notifier; now?: () => number } = {}) {
     c.stacks.roots = [join(dir, "stack")];
     return c;
   });
-  const meta = await SecretsMeta.open(join(dir, "cfg"));
+  const meta = await SecretsMeta.open(join(dir, "cfg"), o.now);
   const events: Array<{ key: string; params?: Record<string, unknown> }> = [];
   const stateDir = join(dir, "state");
   const svc = new ConfigFilesService({
