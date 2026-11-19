@@ -278,11 +278,13 @@ export class SecurityService {
   }
 
   /** Accepts the current state as the new baseline (the listed changes are cleared). */
-  async acceptBaseline(id: string): Promise<{ accepted: number }> {
+  async acceptBaseline(id: string, expected?: number): Promise<{ accepted: number }> {
     const h = this.hosts().find((x) => x.id === id);
     if (!h) throw new AppError("agent.security.hostNotFound", 404, { id });
     const s = this.states.get(id);
     if (!s?.report) throw new AppError("agent.security.noReport", 409);
+    // The user confirmed a list they saw; if more changes arrived meanwhile, they must look again.
+    if (expected !== undefined && expected !== s.changes.length) throw new AppError("agent.security.changesMoved", 409, { expected, current: s.changes.length });
     const accepted = s.changes.length;
     s.baseline = snapshotOf(s.report, s.suid);
     s.baselineAt = new Date(this.#now()).toISOString();

@@ -367,7 +367,9 @@ describe("service + routes", () => {
     expect(t.sent).toHaveLength(1);
 
     expect((await t.app.inject({ method: "POST", url: "/v1/security/hosts/atlas/baseline", headers: t.auth, payload: {} })).statusCode).toBe(400);
-    r = await t.app.inject({ method: "POST", url: "/v1/security/hosts/atlas/baseline", headers: t.auth, payload: { confirm: true } });
+    r = await t.app.inject({ method: "POST", url: "/v1/security/hosts/atlas/baseline", headers: t.auth, payload: { confirm: true, expected: 2 } });
+    expect(r.json().error).toMatchObject({ code: "agent.security.changesMoved", params: { expected: 2, current: 3 } });
+    r = await t.app.inject({ method: "POST", url: "/v1/security/hosts/atlas/baseline", headers: t.auth, payload: { confirm: true, expected: 3 } });
     expect(r.json()).toMatchObject({ accepted: 3, changes: [] });
     expect(t.sent.at(-1)).toMatchObject({ key: "security.accepted", params: { host: "atlas", count: 3 } });
 

@@ -185,8 +185,8 @@ export function securityRoutes(opts: SecurityRouteOpts = {}) {
 
     app.post("/v1/security/hosts/:id/baseline", async (req) => {
       const id = idOf(req);
-      parse(z.strictObject({ confirm: z.literal(true) }), req.body);
-      const r = await svc.acceptBaseline(id);
+      const b = parse(z.strictObject({ confirm: z.literal(true), expected: z.number().int().min(0).optional() }), req.body);
+      const r = await svc.acceptBaseline(id, b.expected);
       req.auditDetail = { host: id, accepted: r.accepted };
       return { ...r, ...svc.detail(id) };
     });
