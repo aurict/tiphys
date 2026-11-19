@@ -9,6 +9,7 @@ import '../../core/push/push_service.dart' show telegramReasonText;
 import '../../core/profile/model.dart';
 import '../../l10n/gen/app_localizations.dart';
 import '../../state/providers.dart';
+import '../agy/agy_texts.dart';
 import '../configfiles/configfiles_texts.dart';
 import '../databases/db_texts.dart';
 import '../incidents/incident_texts.dart';
@@ -172,7 +173,8 @@ String agentErrorText(AppLocalizations l, Object e) {
     // Incident room (PLAN.md §13.1).
     final c when c.startsWith('agent.incident.') || c == 'agent.preview.invalid' => incidentErrorText(l, c, e.params),
     // Config files and secrets (PLAN.md §13.3).
-    final c when c.startsWith('agent.security.') => securityErrorText(l, c, e.params),
+    final c when c.startsWith('agent.security.') || c.startsWith('agent.blackbox.') => securityErrorText(l, c, e.params),
+    final c when c.startsWith('agent.agy.') => agyErrorText(l, c),
     final c when c.startsWith('agent.db.') => dbErrorText(l, c, e.params),
     final c when c.startsWith('agent.configfiles.') => configErrorText(l, c, e.params),
     _ => '${l.commonError} (${e.code})',

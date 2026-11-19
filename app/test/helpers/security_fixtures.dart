@@ -91,6 +91,7 @@ class FakeSecHost {
   bool running;
   Duration? lastOkAgo;
   List<String> allowedPorts = [];
+  bool traps = false;
   // Settings (SSH or agent source).
   Map<String, dynamic>? sourceConfig;
 
@@ -228,6 +229,7 @@ dynamic fakeSecurityRoute(String agentId, String method, String path, Object? bo
   if (b['name'] != null) host.name = b['name'] as String;
   if (b['role'] != null) host.role = b['role'] as String;
   if (b['allowedPorts'] != null) host.allowedPorts = [for (final p in b['allowedPorts'] as List) '$p'];
+  if (b['traps'] != null) host.traps = b['traps'] == true;
   if (b['source'] != null) host.sourceConfig = Map<String, dynamic>.from(b['source'] as Map)..remove('token');
   return {'host': _publicHost(host)};
 }
@@ -239,6 +241,7 @@ Map<String, dynamic> _publicHost(FakeSecHost h) {
     'name': h.name,
     'role': h.role,
     'allowedPorts': h.allowedPorts,
+    'traps': h.traps,
     'source': s['kind'] == 'agent' ? {'kind': 'agent', 'url': s['url'], 'hasToken': true} : s,
   };
 }

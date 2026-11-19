@@ -9170,4 +9170,1652 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get secSecMeta => 'Machine info';
+
+  @override
+  String get secSectionsTitle => 'Scanners and protection';
+
+  @override
+  String get secSectionVulns => 'Vulnerabilities';
+
+  @override
+  String get secSectionVulnsHint =>
+      'Known flaws in the images that run on your machines';
+
+  @override
+  String get secSectionSecrets => 'Secrets';
+
+  @override
+  String get secSectionSecretsHint =>
+      'Keys and passwords that ended up in code or logs';
+
+  @override
+  String get secSectionTraps => 'Traps';
+
+  @override
+  String get secSectionTrapsHint =>
+      'Decoy tokens and files that raise an alarm when touched';
+
+  @override
+  String get secSectionExposure => 'Outside view';
+
+  @override
+  String get secSectionExposureHint =>
+      'What the internet can reach on your addresses and domains';
+
+  @override
+  String get secSectionAttacks => 'Attacks';
+
+  @override
+  String get secSectionAttacksHint =>
+      'Sources probing your sites, from Cloudflare';
+
+  @override
+  String get secSectionBlackbox => 'Black box';
+
+  @override
+  String get secSectionBlackboxHint =>
+      'A tamper-evident record of what was done';
+
+  @override
+  String get secSectionRecovery => 'Lost phone';
+
+  @override
+  String get secSectionRecoveryHint => 'Recovery code and lock everything';
+
+  @override
+  String get secScannersTitle => 'Scanner settings';
+
+  @override
+  String get secScanNow => 'Scan now';
+
+  @override
+  String get secScanRunning => 'Scan is running';
+
+  @override
+  String get secScanStarted => 'Scan started';
+
+  @override
+  String get secScanDone => 'Scan finished';
+
+  @override
+  String secMoreRows(int count) {
+    return '… and $count more';
+  }
+
+  @override
+  String get secTokenSaved => 'token saved';
+
+  @override
+  String get secTokenMissing => 'no token';
+
+  @override
+  String get secTokenRemove => 'Remove token';
+
+  @override
+  String get secOnceShownOnce => 'Shown only once. It cannot be read again.';
+
+  @override
+  String get secOnceCopy => 'Copy';
+
+  @override
+  String get secOnceCopied => 'Copied. The clipboard is cleared in 30 seconds.';
+
+  @override
+  String get secOnceDone => 'I saved it, close';
+
+  @override
+  String get secVulnsTitle => 'Vulnerabilities';
+
+  @override
+  String get secVulnsOff =>
+      'Vulnerability scanning is off on this agent. Turn on Trivy in the scanner settings.';
+
+  @override
+  String secVulnsSummary(int images, int critical, int high) {
+    return '$images images · $critical critical · $high high';
+  }
+
+  @override
+  String get secVulnsEmpty =>
+      'No image has been scanned yet. Images appear once the audit has seen running containers.';
+
+  @override
+  String get secVulnsInfo =>
+      'Only critical and high findings are listed. Images from a registry are scanned remotely. A private image on GitHub’s registry (ghcr.io) needs a token: add it in the scanner settings under registry logins. Production images that are not in a registry are copied from the machine only at night, at most 2 per night, so they wait as “pending” until then.';
+
+  @override
+  String get secVulnStatusOk => 'Scanned';
+
+  @override
+  String get secVulnStatusFailed => 'Failed';
+
+  @override
+  String get secVulnStatusNeedsCredentials => 'Login needed';
+
+  @override
+  String get secVulnStatusNotAvailable => 'Cannot be scanned';
+
+  @override
+  String get secVulnStatusPending => 'Pending';
+
+  @override
+  String secVulnErrCredentials(String registry) {
+    return '$registry needs a login. Add a user name and token under registry logins in the scanner settings.';
+  }
+
+  @override
+  String secVulnCredentialsHelp(String registry) {
+    return 'The image is in a private registry ($registry). For GitHub’s registry (ghcr.io) create a token that can read packages and add it, with your user name, under registry logins in the scanner settings.';
+  }
+
+  @override
+  String get secVulnErrNightOnly =>
+      'Waiting for the night: this image is copied from the machine only between the night hours.';
+
+  @override
+  String get secVulnErrSaveLimit =>
+      'Tonight’s limit of 2 image copies is used up. It continues tomorrow night.';
+
+  @override
+  String get secVulnErrNoSource => 'No source to scan this image from.';
+
+  @override
+  String get secVulnErrBadOutput => 'The scanner’s answer could not be read.';
+
+  @override
+  String get secVulnErrScanFailed => 'The scanner failed.';
+
+  @override
+  String get secVulnErrSaveFailed =>
+      'The image could not be copied from the machine.';
+
+  @override
+  String get secVulnErrFailed => 'The scan failed.';
+
+  @override
+  String get secVulnErrNotFound => 'The image is not in the registry.';
+
+  @override
+  String get secVulnSourceRemote => 'from registry';
+
+  @override
+  String get secVulnSourceLocal => 'local copy';
+
+  @override
+  String get secVulnSourceSsh => 'copied over SSH';
+
+  @override
+  String get secVulnClean => 'No critical or high';
+
+  @override
+  String secVulnFixableChip(int count) {
+    return '$count fixable';
+  }
+
+  @override
+  String secVulnCounts(int critical, int high, int fixable) {
+    return '$critical critical, $high high, $fixable fixable';
+  }
+
+  @override
+  String get secVulnRunsOn => 'Runs on';
+
+  @override
+  String get secVulnNeverScanned => 'Not scanned yet';
+
+  @override
+  String secVulnScannedAgo(String ago) {
+    return 'Scanned $ago';
+  }
+
+  @override
+  String secVulnOs(String os) {
+    return 'Base system: $os';
+  }
+
+  @override
+  String get secVulnFixedOnly => 'Only fixable';
+
+  @override
+  String get secVulnFixedOnlyHint =>
+      'Hide findings that have no fixed version yet';
+
+  @override
+  String secVulnTableTitle(int count) {
+    return 'Findings · $count';
+  }
+
+  @override
+  String get secVulnNone => 'No critical or high findings.';
+
+  @override
+  String get secVulnNoneFixed =>
+      'None of the findings has a fixed version yet.';
+
+  @override
+  String get secVulnNoFix => 'no fix yet';
+
+  @override
+  String get secVulnTruncated =>
+      'The list is cut off: the scanner found more than it keeps. The most severe come first.';
+
+  @override
+  String get secSecretsTitle => 'Secrets';
+
+  @override
+  String get secSecretsInfo =>
+      'Shows where a key or password was found (repository, file, line, or log stream), never the value itself. If one was found, treat it as leaked: rotate it, then dismiss the finding.';
+
+  @override
+  String secSecretsLastRun(String ago) {
+    return 'Last scan $ago';
+  }
+
+  @override
+  String get secSecretsNeverRun =>
+      'Not scanned yet. Turn on Gitleaks or add a local folder in the scanner settings, then scan.';
+
+  @override
+  String secSecretsFindings(int count) {
+    return 'Findings · $count';
+  }
+
+  @override
+  String get secSecretsNone => 'Nothing found in the last scan.';
+
+  @override
+  String get secSecretsDismiss => 'Dismiss';
+
+  @override
+  String get secSecretsUndismiss => 'Undo dismiss';
+
+  @override
+  String get secSecretsDismissedChip => 'dismissed';
+
+  @override
+  String secSecretsShowDismissed(int count) {
+    return 'Show dismissed ($count)';
+  }
+
+  @override
+  String secSecretsCommit(String commit) {
+    return 'commit $commit';
+  }
+
+  @override
+  String secSecretsFirstSeen(String when) {
+    return 'first seen $when';
+  }
+
+  @override
+  String secSecretsRepos(int count) {
+    return 'Repositories · $count';
+  }
+
+  @override
+  String get secSecretSourceGithub => 'GitHub';
+
+  @override
+  String get secSecretSourceLoki => 'Logs (Loki)';
+
+  @override
+  String get secSecretSourceLocal => 'Local repository';
+
+  @override
+  String get secSecretRepoCloneFailed => 'could not be cloned';
+
+  @override
+  String get secScannersHint =>
+      'Scans run at night. Heavy scanners run in pinned containers without network access, except Trivy’s own downloads.';
+
+  @override
+  String get secScanTrivy => 'Trivy (vulnerabilities)';
+
+  @override
+  String get secScanTrivyHint => 'Scans the images of running containers';
+
+  @override
+  String get secScanGitleaks => 'Gitleaks (secrets)';
+
+  @override
+  String get secScanGitleaksHint => 'Scans GitHub repositories and logs';
+
+  @override
+  String get secScanJavaDb => 'Java database';
+
+  @override
+  String get secScanJavaDbHint =>
+      'Also checks Java libraries; downloads a large database';
+
+  @override
+  String get secRegistryTitle => 'Registry logins';
+
+  @override
+  String get secRegistryEmpty => 'No registry login. Public images need none.';
+
+  @override
+  String get secRegistryAdd => 'Add registry login';
+
+  @override
+  String get secRegistryEdit => 'Edit registry login';
+
+  @override
+  String get secRegistryHost => 'Registry';
+
+  @override
+  String get secRegistryUser => 'User name';
+
+  @override
+  String get secRegistryToken => 'Token';
+
+  @override
+  String get secRegistryTokenHint => 'Written only; it is never shown again.';
+
+  @override
+  String get secRegistryHint =>
+      'For ghcr.io use a GitHub token that can read packages.';
+
+  @override
+  String secRegistryRemove(String registry) {
+    return 'Remove login for $registry';
+  }
+
+  @override
+  String secRegistryRemoveConfirm(String registry) {
+    return 'Remove the login for $registry? Its token is deleted from the agent.';
+  }
+
+  @override
+  String get secGhTitle => 'GitHub';
+
+  @override
+  String get secGhOwners => 'Accounts and organizations to scan';
+
+  @override
+  String get secGhAddOwner => 'Add owner';
+
+  @override
+  String get secGhOwner => 'GitHub user or organization';
+
+  @override
+  String secGhRemoveOwner(String owner) {
+    return 'Remove $owner';
+  }
+
+  @override
+  String get secGhToken => 'GitHub token';
+
+  @override
+  String get secGhTokenHint =>
+      'Optional. Without it only public repositories are scanned; with a read-only token private ones too.';
+
+  @override
+  String get secGhTokenRemoveConfirm => 'Remove the saved GitHub token?';
+
+  @override
+  String get secLokiTitle => 'Log source (Loki)';
+
+  @override
+  String get secLokiOff => 'Off';
+
+  @override
+  String get secLokiContainer => 'Container';
+
+  @override
+  String get secLokiUrl => 'URL';
+
+  @override
+  String get secLokiContainerName => 'Container name';
+
+  @override
+  String get secLokiPort => 'Port';
+
+  @override
+  String get secLokiUrlLabel => 'Loki address';
+
+  @override
+  String get secLokiOffHint => 'Logs are not scanned for secrets.';
+
+  @override
+  String get secRootsTitle => 'Local repositories';
+
+  @override
+  String get secRootsHint =>
+      'Folders on this machine whose git repositories are scanned. Only the location of a finding leaves the machine.';
+
+  @override
+  String get secRootAdd => 'Add folder';
+
+  @override
+  String get secRootLabel => 'Folder';
+
+  @override
+  String get secRootRemove => 'Remove folder';
+
+  @override
+  String get secNightTitle => 'Night hours';
+
+  @override
+  String get secNightHint =>
+      'Heavy scans and image copies run only in this window (hours, 0–24).';
+
+  @override
+  String get secNightFrom => 'From';
+
+  @override
+  String get secNightTo => 'To';
+
+  @override
+  String get secTrapsTitle => 'Traps';
+
+  @override
+  String get secTrapsInfo =>
+      'A trap is something nobody should touch. If a decoy token is used, a decoy file is read or a decoy database user logs in, you get an urgent alarm (and a Telegram message if set up below).';
+
+  @override
+  String get secTrapTest => 'Send test alarm';
+
+  @override
+  String get secTrapTestSent => 'Test alarm sent';
+
+  @override
+  String get secTrapTokens => 'Decoy tokens';
+
+  @override
+  String get secTrapTokensEmpty => 'No decoy token.';
+
+  @override
+  String get secTrapTokenAdd => 'Add decoy token';
+
+  @override
+  String get secTrapTokenName => 'Name';
+
+  @override
+  String get secTrapTokenNameHint =>
+      'Says where you will plant it, e.g. backup-token. It is shown in the alarm.';
+
+  @override
+  String get secTrapCreate => 'Create';
+
+  @override
+  String secTrapCreatedAt(String when) {
+    return 'created $when';
+  }
+
+  @override
+  String secTrapDeleteTooltip(String name) {
+    return 'Delete $name';
+  }
+
+  @override
+  String secTrapTokenDeleteConfirm(String name) {
+    return 'Delete the decoy token $name? Using it will no longer raise an alarm.';
+  }
+
+  @override
+  String secTrapTokenShownTitle(String name) {
+    return 'Decoy token: $name';
+  }
+
+  @override
+  String get secTrapTokenPlantHint =>
+      'Plant it where an intruder would look: in an old .env backup, a notes file, a password-manager entry, or a repository you do not use. Anyone who tries it gets a normal “unauthorized” answer and you get the alarm.';
+
+  @override
+  String get secTrapTokenOpensNothing =>
+      'This token opens nothing. Do not use it yourself.';
+
+  @override
+  String get secTrapFiles => 'Decoy files';
+
+  @override
+  String get secTrapFilesEmpty => 'No decoy file.';
+
+  @override
+  String get secTrapFileAdd => 'Add decoy file';
+
+  @override
+  String get secTrapFilePath => 'File path';
+
+  @override
+  String get secTrapFilePathHint =>
+      'The agent creates the file here; it must not exist yet.';
+
+  @override
+  String get secTrapKindEnv => '.env backup';
+
+  @override
+  String get secTrapKindSshKey => 'SSH key';
+
+  @override
+  String get secTrapFileBackupWarn =>
+      'Backup or sync tools that read this folder will trigger the alarm too. Put decoys in a folder they skip.';
+
+  @override
+  String secTrapFileDeleteConfirm(String path) {
+    return 'Stop watching $path? The file stays on disk; delete it yourself if you do not want it.';
+  }
+
+  @override
+  String get secTrapStatusArmed => 'Armed';
+
+  @override
+  String get secTrapStatusNoatime => 'Cannot detect reads';
+
+  @override
+  String get secTrapStatusMissing => 'File missing';
+
+  @override
+  String get secTrapStatusError => 'Error';
+
+  @override
+  String get secTrapStatusNoatimeHint =>
+      'The disk is mounted without access times, so reads cannot be seen. Put the file on another disk.';
+
+  @override
+  String get secTrapStatusMissingHint =>
+      'The file was deleted or moved. That raised an alarm.';
+
+  @override
+  String get secTrapStatusErrorHint => 'The file could not be checked.';
+
+  @override
+  String get secTrapNeverTriggered => 'Never triggered';
+
+  @override
+  String secTrapTriggeredAgo(String ago) {
+    return 'Triggered $ago';
+  }
+
+  @override
+  String get secTrapDbUsers => 'Decoy database users';
+
+  @override
+  String get secTrapDbHint =>
+      'Names that exist only in decoy files. A login attempt with one of them in the logs is an alarm.';
+
+  @override
+  String get secTrapDbAdd => 'Add user name';
+
+  @override
+  String get secTrapDbUser => 'User name';
+
+  @override
+  String get secTrapDbUserHint =>
+      'Lower-case letters, digits and underscore, at least 3 characters.';
+
+  @override
+  String get secTrapDbRemove => 'Remove user name';
+
+  @override
+  String get secTrapSshHosts => 'SSH-audited machines';
+
+  @override
+  String get secTrapSshNone => 'No machine is audited over SSH.';
+
+  @override
+  String get secTrapSshSwitch => 'Report reads of the decoy file';
+
+  @override
+  String get secTrapSshHint =>
+      'Needs the trap rule installed on that machine (install-audit.sh --trap).';
+
+  @override
+  String get secTrapAlertsTitle => 'Telegram alerts to the owner';
+
+  @override
+  String get secTrapAlertsHint =>
+      'Critical alarms (trap, secret found, broken black box, lockdown) also go to this Telegram recipient, as a short title only. It works even if this app is the problem.';
+
+  @override
+  String get secTrapAlertsOff => 'Off';
+
+  @override
+  String secTrapAlertsUnknown(String id) {
+    return 'Unknown recipient ($id)';
+  }
+
+  @override
+  String get secTrapAlertsNoTelegram =>
+      'This agent has no Telegram connection. Set up the bot under Telegram first.';
+
+  @override
+  String get secTrapAlertsNoRecipients =>
+      'No recipient yet. Invite yourself in the Telegram section.';
+
+  @override
+  String get secExposureTitle => 'Outside view';
+
+  @override
+  String get secExposureInfo =>
+      'Looks at your machines the way an outsider does: open ports on IP addresses; certificate expiry, HTTPS redirect, security headers and leaking files (such as /.env) on domains. It runs gently, once a week at night.';
+
+  @override
+  String get secExposureEnabled => 'Weekly check';
+
+  @override
+  String secExposureEnabledHint(int days) {
+    return 'Runs every $days days at night when on.';
+  }
+
+  @override
+  String get secExposureRunNow => 'Run now';
+
+  @override
+  String get secExposureEditTargets => 'Edit targets';
+
+  @override
+  String get secExposureNoTargets =>
+      'No target. Add an IP address or a domain to check.';
+
+  @override
+  String get secExposureLastRun => 'Last result';
+
+  @override
+  String get secExposureNeverRun => 'Not run yet.';
+
+  @override
+  String get secExposureNoOpenPorts => 'No open port found.';
+
+  @override
+  String get secExposureTargetFailed => 'This target could not be checked.';
+
+  @override
+  String get secExposureClean => 'Nothing to report.';
+
+  @override
+  String get secExposureHistory => 'History';
+
+  @override
+  String secExposureFindingsCount(int count) {
+    return '$count findings';
+  }
+
+  @override
+  String get secExposureTargetsHint =>
+      'Ports you list as expected are not reported for that IP address.';
+
+  @override
+  String secExposureExpected(String ports) {
+    return 'expected ports: $ports';
+  }
+
+  @override
+  String get secExposureExpectedNone => 'no expected port';
+
+  @override
+  String secExposureRemoveTarget(String target) {
+    return 'Remove $target';
+  }
+
+  @override
+  String get secExposureAddTarget => 'Add target';
+
+  @override
+  String get secExposureKindDomain => 'Domain';
+
+  @override
+  String get secExposureKindIp => 'IP address';
+
+  @override
+  String get secExposureDomainLabel => 'Domain name';
+
+  @override
+  String get secExposureIpLabel => 'IPv4 address';
+
+  @override
+  String get secExposureExpectedLabel => 'Expected open ports';
+
+  @override
+  String get secExposureExpectedHint => 'Comma separated, e.g. 22, 443';
+
+  @override
+  String get secExposureDuplicate => 'This target is already in the list.';
+
+  @override
+  String get secExposureExtraPorts => 'Extra ports to probe';
+
+  @override
+  String get secExposureExtraPortsHint =>
+      'Added to the built-in list of common ports.';
+
+  @override
+  String get secExposureInterval => 'Days between runs';
+
+  @override
+  String get secExposureIntervalHint => '1 to 30';
+
+  @override
+  String secExpRuleOpenPort(String port, String target) {
+    return 'Port $port is open to the internet on $target';
+  }
+
+  @override
+  String secExpRuleLeakPath(String path, String target) {
+    return '$target serves $path, a file that should not be public';
+  }
+
+  @override
+  String secExpRuleTlsExpiry(String target, int days) {
+    return 'The certificate of $target expires in $days days';
+  }
+
+  @override
+  String secExpRuleTlsExpired(String target) {
+    return 'The certificate of $target has expired';
+  }
+
+  @override
+  String secExpRuleNoHttps(String target) {
+    return '$target answers over plain HTTP without redirecting to HTTPS';
+  }
+
+  @override
+  String secExpRuleNoHsts(String target) {
+    return '$target does not send the HSTS header';
+  }
+
+  @override
+  String secExpRuleHeaders(String target, String missing) {
+    return '$target lacks security headers: $missing';
+  }
+
+  @override
+  String secExpRuleUnreachable(String target) {
+    return '$target could not be reached over HTTPS';
+  }
+
+  @override
+  String secExpRuleUnreachableTls(String target) {
+    return 'No TLS certificate could be read from $target';
+  }
+
+  @override
+  String get secExpFixOpenPort =>
+      'Close it in the firewall or bind the service to the private network; if it is meant to be public, add it to the expected ports.';
+
+  @override
+  String get secExpFixLeakPath =>
+      'Remove the file from the web root or block the path at the proxy, then rotate everything in it.';
+
+  @override
+  String get secExpFixTlsExpiry =>
+      'Renew the certificate and check that automatic renewal works.';
+
+  @override
+  String get secExpFixNoHttps => 'Redirect HTTP to HTTPS at the proxy.';
+
+  @override
+  String get secExpFixNoHsts =>
+      'Send Strict-Transport-Security once HTTPS works everywhere.';
+
+  @override
+  String get secExpFixHeaders =>
+      'Add the missing headers at the proxy (X-Content-Type-Options, frame-ancestors or X-Frame-Options, Referrer-Policy).';
+
+  @override
+  String get secExpFixUnreachable =>
+      'Check that the site is up and the certificate is valid.';
+
+  @override
+  String get secAttacksTitle => 'Attacks';
+
+  @override
+  String get secAttacksInfo =>
+      'Sources that sent many error responses or asked for typical scanner paths (such as /wp-login.php), as seen by Cloudflare. This is the normal noise of the internet; it matters when it grows or hits a path you really use.';
+
+  @override
+  String get secAttacksNotConfigured =>
+      'Cloudflare is not connected. Add a read token in the Cloudflare settings.';
+
+  @override
+  String secAttacksLastRun(String ago, int zones) {
+    return 'Last check $ago · $zones zones';
+  }
+
+  @override
+  String get secAttacksNeverRun => 'Not checked yet.';
+
+  @override
+  String get secAttacksCheckNow => 'Check now';
+
+  @override
+  String secAttacksChecked(int offenders, int blocked) {
+    return 'Checked: $offenders new sources, $blocked blocked';
+  }
+
+  @override
+  String secAttacksOffenders(int count) {
+    return 'Sources · $count';
+  }
+
+  @override
+  String get secAttacksNone => 'No suspicious source.';
+
+  @override
+  String secAttacksErrors(int count) {
+    return '$count errors';
+  }
+
+  @override
+  String secAttacksScannerHits(int count) {
+    return '$count scanner paths';
+  }
+
+  @override
+  String secAttacksSeen(String first, String last) {
+    return 'first $first, last $last';
+  }
+
+  @override
+  String secAttacksBlockedUntil(String when) {
+    return 'blocked until $when';
+  }
+
+  @override
+  String get secCfTitle => 'Cloudflare settings';
+
+  @override
+  String get secCfPermissionsTitle => 'Token permissions';
+
+  @override
+  String get secCfPermissions =>
+      'Read token: Zone Analytics Read + Zone Read. Block token (only if you want automatic blocking): Zone Firewall Services Edit. Create each as a separate API token in Cloudflare, limited to your zones.';
+
+  @override
+  String get secCfReadToken => 'Read token';
+
+  @override
+  String get secCfReadTokenHint =>
+      'Written only; never shown again. Leave empty to keep the saved one.';
+
+  @override
+  String get secCfBlockToken => 'Block token';
+
+  @override
+  String get secCfBlockTokenHint =>
+      'Only needed for automatic blocking. Leave empty to keep the saved one.';
+
+  @override
+  String get secCfNothingToSave => 'Enter a token first.';
+
+  @override
+  String get secCfRemoveRead => 'Remove read token';
+
+  @override
+  String get secCfRemoveBlock => 'Remove block token';
+
+  @override
+  String get secCfRemoveReadConfirm =>
+      'Remove the read token? Attack detection stops.';
+
+  @override
+  String get secCfRemoveBlockConfirm =>
+      'Remove the block token? Automatic blocking is turned off too.';
+
+  @override
+  String get secCfBlock => 'Block attackers automatically';
+
+  @override
+  String get secCfBlockWarn =>
+      'Blocking adds a Cloudflare firewall rule for the source IP. A wrong block can lock out a real visitor or yourself, so your own addresses and private ranges are never blocked; add other addresses you rely on below.';
+
+  @override
+  String secCfBlockConfirm(int hours) {
+    return 'Turn on automatic blocking? Sources that probe your sites will be blocked for $hours hours.';
+  }
+
+  @override
+  String get secCfBlockOn => 'Turn on';
+
+  @override
+  String get secCfBlockHours => 'Block duration (hours)';
+
+  @override
+  String get secCfBlockHoursHint =>
+      '1 to 720. The block is lifted automatically.';
+
+  @override
+  String get secCfZones => 'Zones to watch';
+
+  @override
+  String get secCfZonesHint =>
+      'Domain names. Empty means every zone the token can read.';
+
+  @override
+  String get secCfAddZone => 'Add zone';
+
+  @override
+  String get secCfZone => 'Zone (domain name)';
+
+  @override
+  String get secCfRemoveZone => 'Remove zone';
+
+  @override
+  String get secCfAllow => 'Never block';
+
+  @override
+  String get secCfAllowHint =>
+      'IP addresses that are never blocked, such as your own office or home address.';
+
+  @override
+  String get secCfAddAllow => 'Add address';
+
+  @override
+  String get secCfAllowIp => 'IP address';
+
+  @override
+  String get secCfRemoveAllow => 'Remove address';
+
+  @override
+  String get secBbTitle => 'Black box';
+
+  @override
+  String get secBbInfo =>
+      'An append-only record of what was done through the agents (requests and notices). Each record contains the hash of the previous one, so changing or deleting any of them breaks the chain. Every night the latest hash is sent to your Telegram as an outside anchor.';
+
+  @override
+  String get secBbModeOff => 'Off';
+
+  @override
+  String get secBbModeLocal => 'Keep here';
+
+  @override
+  String get secBbModePush => 'Send to server';
+
+  @override
+  String secBbModeNow(String mode) {
+    return 'Mode: $mode';
+  }
+
+  @override
+  String secBbHead(int count, String hash) {
+    return '$count records · latest $hash';
+  }
+
+  @override
+  String secBbPending(int count) {
+    return '$count records waiting to be sent';
+  }
+
+  @override
+  String get secBbNeverSent => 'Nothing sent yet';
+
+  @override
+  String secBbLastSent(String ago) {
+    return 'Last sent $ago';
+  }
+
+  @override
+  String get secBbOffHint => 'The black box is off: nothing is recorded.';
+
+  @override
+  String get secBbLocalHint =>
+      'This agent keeps the chain and receives the records of the other agents.';
+
+  @override
+  String get secBbPushHint =>
+      'This agent sends its records to the agent that keeps the chain. It needs that agent’s address and a token of the “blackbox” kind created there.';
+
+  @override
+  String get secBbVerify => 'Verify the chain';
+
+  @override
+  String get secBbAnchor => 'Send today’s anchor';
+
+  @override
+  String get secBbAnchored => 'Anchor saved';
+
+  @override
+  String get secBbVerifiedOk => 'The chain is intact';
+
+  @override
+  String secBbVerifiedCount(int count) {
+    return '$count records checked, every link matches.';
+  }
+
+  @override
+  String get secBbBroken => 'The chain is broken';
+
+  @override
+  String secBbBrokenAt(int seq) {
+    return 'Broken at record $seq';
+  }
+
+  @override
+  String get secBbBrokenAdvice =>
+      'Someone may have changed or removed records. Copy the file away before anything else, and compare it with the anchors in Telegram.';
+
+  @override
+  String get secBbAnchorMismatchTitle => 'The chain does not match its anchors';
+
+  @override
+  String secBbAnchorMismatch(String dates) {
+    return 'These days’ anchors are no longer in the chain: $dates';
+  }
+
+  @override
+  String secBbAnchors(int count) {
+    return 'Anchors · $count';
+  }
+
+  @override
+  String get secBbAnchorsNone =>
+      'No anchor yet. One is made at night, or send today’s.';
+
+  @override
+  String get secBbAnchorTelegram => 'Telegram';
+
+  @override
+  String get secBbAnchorLocalOnly => 'only here';
+
+  @override
+  String secBbRecords(int count) {
+    return '$count records';
+  }
+
+  @override
+  String get secBbReasonSequence => 'The record numbers are not consecutive.';
+
+  @override
+  String get secBbReasonLink => 'A record does not point to the one before it.';
+
+  @override
+  String get secBbReasonHash => 'A record’s content does not match its hash.';
+
+  @override
+  String get secBbReasonTruncated => 'The end of the file is missing.';
+
+  @override
+  String get secBbReasonUnreadable => 'A record could not be read.';
+
+  @override
+  String get secBbReasonUnknown => 'Unknown reason.';
+
+  @override
+  String get secBbRecent => 'Latest records';
+
+  @override
+  String get secBbRecentEmpty => 'No record yet.';
+
+  @override
+  String get secBbKindAudit => 'request';
+
+  @override
+  String get secBbKindEvent => 'event';
+
+  @override
+  String get secBbKindLockdown => 'lockdown';
+
+  @override
+  String get secBbSettings => 'Settings';
+
+  @override
+  String get secBbUrl => 'Server address';
+
+  @override
+  String get secBbToken => 'Token';
+
+  @override
+  String get secBbTokenHint =>
+      'Written only; never shown again. A new address needs a new token.';
+
+  @override
+  String get secBbRestartRequired =>
+      'The agent reads this setting at start. Restart the agent for the change to take effect.';
+
+  @override
+  String get secRecTitle => 'Lost phone';
+
+  @override
+  String get secRecInfo =>
+      'If your phone is lost, a recovery code lets you lock everything from any device on your network: all paired phones, tokens and push registrations are revoked on the monitoring server and on the agents listed below. Afterwards you pair again on each machine. Create the code now, write it on paper and keep it somewhere safe.';
+
+  @override
+  String secRecConfigured(String when) {
+    return 'A recovery code exists (created $when)';
+  }
+
+  @override
+  String get secRecNotConfigured => 'No recovery code yet';
+
+  @override
+  String get secRecCreate => 'Create recovery code';
+
+  @override
+  String get secRecReplace => 'Create a new code';
+
+  @override
+  String get secRecCreateConfirm =>
+      'Create a recovery code? It is shown once, after you confirm with your app lock.';
+
+  @override
+  String get secRecReplaceConfirm =>
+      'Create a new code? The old one stops working immediately.';
+
+  @override
+  String get secRecNeedsLock =>
+      'Set up a PIN or fingerprint lock in the app settings first.';
+
+  @override
+  String get secRecCodeTitle => 'Your recovery code';
+
+  @override
+  String get secRecCodeHint =>
+      'Write it on paper, exactly as shown, and keep it where only you can reach it. Do not photograph it and do not store it on this phone or in a note app.';
+
+  @override
+  String get secRecCodeWarn =>
+      'Anyone with this code can lock all your machines out. There is no copy button on purpose.';
+
+  @override
+  String get secRecTargets => 'Agents to lock too';
+
+  @override
+  String get secRecTargetsHint =>
+      'On each of these agents create a service token of the “lockdown” kind, then add the agent here. The token is stored on the monitoring server and never shown.';
+
+  @override
+  String get secRecTargetsEmpty =>
+      'No agent added. Only the monitoring server itself would be locked.';
+
+  @override
+  String get secRecTargetAdd => 'Add agent';
+
+  @override
+  String get secRecTargetToken => 'Lockdown token';
+
+  @override
+  String get secRecTargetTokenHint =>
+      'Starts with tps_. Written only; never shown again.';
+
+  @override
+  String secRecTargetRemove(String name) {
+    return 'Remove $name';
+  }
+
+  @override
+  String secRecTargetDeleteConfirm(String name) {
+    return 'Remove $name from the lockdown list?';
+  }
+
+  @override
+  String get secLockdownTitle => 'Lock with recovery code';
+
+  @override
+  String get secLockdownRowHint =>
+      'For when this phone is lost: do this from another device.';
+
+  @override
+  String get secLockdownWarnTitle => 'This locks everything';
+
+  @override
+  String get secLockdownWarn =>
+      'All paired phones, service tokens and push registrations are revoked, including this phone, and the listed agents are locked too. Nothing is deleted, but you must pair again on every machine. This cannot be undone.';
+
+  @override
+  String get secLockdownUrl => 'Monitoring server address';
+
+  @override
+  String get secLockdownUrlHint =>
+      'The code is sent to this address without any token. Check it before you continue.';
+
+  @override
+  String get secLockdownCode => 'Recovery code';
+
+  @override
+  String get secLockdownCodeHint => '5 groups of 5 letters and digits';
+
+  @override
+  String get secLockdownCodeInvalid => 'The code has 25 letters and digits.';
+
+  @override
+  String get secLockdownConfirm =>
+      'Lock everything now? All pairings are revoked and you will have to pair again on every machine.';
+
+  @override
+  String get secLockdownDo => 'Lock everything';
+
+  @override
+  String get secLockdownDone => 'Everything is locked';
+
+  @override
+  String get secLockdownPairAgain =>
+      'Pair again on each machine (tiphys-agent pair), starting with the monitoring server. This phone’s own access is revoked too.';
+
+  @override
+  String get secLockdownResults => 'Agents';
+
+  @override
+  String get secLockdownNoTargets => 'No other agent was on the list.';
+
+  @override
+  String get secLockdownTargetOk => 'Locked';
+
+  @override
+  String get secLockdownTargetUnreachable =>
+      'Could not be reached: lock it yourself on that machine';
+
+  @override
+  String secLockdownTargetFailed(int status) {
+    return 'The agent refused (HTTP $status): lock it yourself on that machine';
+  }
+
+  @override
+  String secErrScannerOff(String scanner) {
+    return '$scanner is turned off. Turn it on in the scanner settings.';
+  }
+
+  @override
+  String get secErrScanBusy => 'A scan is already running.';
+
+  @override
+  String get secErrScanFailed => 'The scanner failed.';
+
+  @override
+  String get secErrImageNotFound => 'This image is not known (anymore).';
+
+  @override
+  String get secErrFindingNotFound => 'This finding no longer exists.';
+
+  @override
+  String get secErrGithubUnauthorized =>
+      'GitHub did not accept the token. Check its permissions and expiry.';
+
+  @override
+  String get secErrGithubFailed =>
+      'GitHub could not be reached or answered with an error.';
+
+  @override
+  String get secErrLokiUnavailable =>
+      'The Loki container or address is not available. Check the log source settings.';
+
+  @override
+  String get secErrLokiFailed => 'Loki answered with an error.';
+
+  @override
+  String get secErrImageTooLarge =>
+      'The image is too large to copy for scanning (over 3 GB).';
+
+  @override
+  String get secErrTrapExists =>
+      'A file already exists at this path. Choose a path that is free.';
+
+  @override
+  String get secErrTrapCreateFailed =>
+      'The decoy file could not be created. Check the folder and its permissions.';
+
+  @override
+  String get secErrTrapNotFound => 'This trap no longer exists.';
+
+  @override
+  String get secErrTooManyTraps => 'Too many traps (at most 20 of each kind).';
+
+  @override
+  String get secErrBadRecoveryCode => 'The recovery code is wrong.';
+
+  @override
+  String get secErrCloudflareUnauthorized =>
+      'Cloudflare did not accept the token. Check its permissions and zones.';
+
+  @override
+  String get secErrCloudflareFailed =>
+      'Cloudflare could not be reached or answered with an error.';
+
+  @override
+  String get secErrCloudflareNotConfigured =>
+      'Cloudflare is not connected. Add a read token first.';
+
+  @override
+  String get secErrBlackboxNotLocal =>
+      'The black box is not kept on this agent. Choose “Keep here” and restart it, or use the agent that keeps the chain.';
+
+  @override
+  String notifSecVulnsTitle(String image) {
+    return 'Critical vulnerability in $image';
+  }
+
+  @override
+  String notifSecVulnsBody(String host, int critical, int high) {
+    return '$host · $critical critical, $high high';
+  }
+
+  @override
+  String notifSecSecretTitle(String host) {
+    return 'Secret found · $host';
+  }
+
+  @override
+  String notifSecSecretBody(int count, String sources, String where) {
+    return '$count findings ($sources) · $where';
+  }
+
+  @override
+  String notifSecTrapTitle(String host) {
+    return 'Trap triggered · $host';
+  }
+
+  @override
+  String notifSecTrapTestTitle(String host) {
+    return 'Test alarm · $host';
+  }
+
+  @override
+  String notifSecTrapToken(String name, String from, String path) {
+    return 'Decoy token “$name” was used (from $from, $path)';
+  }
+
+  @override
+  String notifSecTrapFile(String path) {
+    return 'Decoy file was read: $path';
+  }
+
+  @override
+  String notifSecTrapFileMissing(String path) {
+    return 'Decoy file was deleted or moved: $path';
+  }
+
+  @override
+  String notifSecTrapAudit(String object, String who, String how) {
+    return '$object was accessed ($who, $how)';
+  }
+
+  @override
+  String notifSecTrapDb(String user, String stream) {
+    return 'Login attempt with decoy database user $user ($stream)';
+  }
+
+  @override
+  String get notifSecTrapTest => 'This is a test alarm. Nothing was touched.';
+
+  @override
+  String get notifSecTrapUnknown => 'A trap was triggered.';
+
+  @override
+  String notifBbBrokenTitle(String host) {
+    return 'Black box chain broken · $host';
+  }
+
+  @override
+  String notifBbBrokenBody(int at, String reason) {
+    return 'Record $at: $reason';
+  }
+
+  @override
+  String notifSecLockdownTitle(String host) {
+    return 'Lockdown done · $host';
+  }
+
+  @override
+  String get notifSecLockdownRecovery =>
+      'Locked with the recovery code. Pair again on every machine.';
+
+  @override
+  String get notifSecLockdownRemote =>
+      'Locked remotely from another agent. Pair again on this machine.';
+
+  @override
+  String notifSecExposureTitle(String host) {
+    return 'New finding in the outside view · $host';
+  }
+
+  @override
+  String notifSecExposureBody(int count, String targets) {
+    return '$count findings: $targets';
+  }
+
+  @override
+  String notifSecAttackTitle(String host) {
+    return 'Attack attempts · $host';
+  }
+
+  @override
+  String notifSecAttackBody(int count, String zones, int blocked) {
+    return '$count new sources ($zones) · $blocked blocked';
+  }
+
+  @override
+  String secSecretsGroupCount(int count) {
+    return '$count findings';
+  }
+
+  @override
+  String get secSecretsGroupDismiss => 'Dismiss this group';
+
+  @override
+  String get secSecretsGroupUndismiss => 'Undo dismiss for this group';
+
+  @override
+  String secSecretsGroupDismissConfirm(int count, String rule, String where) {
+    return 'Dismiss $count findings of rule $rule? ($where)';
+  }
+
+  @override
+  String secSecretsGroupUndismissConfirm(int count, String rule, String where) {
+    return 'Reopen $count findings of rule $rule? ($where)';
+  }
+
+  @override
+  String secSecretsGroupChanged(int count) {
+    return '$count findings updated';
+  }
+
+  @override
+  String get agyEntrySubtitle => 'Antigravity CLI sessions';
+
+  @override
+  String get agyNewSession => 'New agy session';
+
+  @override
+  String get agyNoLive => 'No open agy sessions.';
+
+  @override
+  String get agyPrevious => 'Previous conversations';
+
+  @override
+  String get agyPreviousEmpty => 'No earlier conversations in this folder.';
+
+  @override
+  String get agyPreviousHint =>
+      'Ones started in a terminal show up here too. Picking one continues where it left off.';
+
+  @override
+  String get agyOpenBadge => 'open';
+
+  @override
+  String get agyNoHost =>
+      'No agent has agy enabled. Turn the agy feature on in the agent settings and restart the agent.';
+
+  @override
+  String get agyMode => 'Mode';
+
+  @override
+  String get agyModeDefault => 'Default';
+
+  @override
+  String get agyModeAcceptEdits => 'Accept edits';
+
+  @override
+  String get agyModeAuto => 'Auto';
+
+  @override
+  String get agyModePlan => 'Plan';
+
+  @override
+  String get agyModeHintDefault => 'agy asks you before every action.';
+
+  @override
+  String get agyModeHintAcceptEdits =>
+      'Applies file edits without asking; still asks for commands.';
+
+  @override
+  String get agyModeHintAuto =>
+      'Does most things without asking. Use with care.';
+
+  @override
+  String get agyModeHintPlan => 'Only plans; does not touch files.';
+
+  @override
+  String get agyModel => 'Model';
+
+  @override
+  String get agyPromptHint => 'What should agy do?';
+
+  @override
+  String get agyBusyHint => 'agy is working; wait for it to finish…';
+
+  @override
+  String get agyWaitingHint => 'agy is waiting for your permission…';
+
+  @override
+  String get agyWorking => 'agy is working…';
+
+  @override
+  String get agyCancel => 'Cancel';
+
+  @override
+  String get agyReplayLabel => 'earlier conversation';
+
+  @override
+  String get agyPlanTitle => 'Plan';
+
+  @override
+  String get agyPermissionTitle => 'agy asks for permission';
+
+  @override
+  String agyAnswered(String name) {
+    return 'Answered: $name';
+  }
+
+  @override
+  String get agyPermissionCancelled => 'Cancelled';
+
+  @override
+  String get agyTurnDone => 'done';
+
+  @override
+  String get agyTurnCancelled => 'cancelled';
+
+  @override
+  String agyTurnStop(String reason) {
+    return 'stopped ($reason)';
+  }
+
+  @override
+  String agyModeChanged(String mode) {
+    return 'Mode: $mode';
+  }
+
+  @override
+  String get agySessionEnded => 'The session has ended.';
+
+  @override
+  String get agySessionFailed => 'The session failed.';
+
+  @override
+  String get agyReopen => 'Reopen conversation';
+
+  @override
+  String agyUsageSemantics(String text) {
+    return 'Context usage $text';
+  }
+
+  @override
+  String get agyChooseMode => 'Choose mode';
+
+  @override
+  String get agyChooseModel => 'Choose model';
+
+  @override
+  String get notifAgyWaitingTitle => 'agy needs your permission';
+
+  @override
+  String notifAgyWaitingBody(String title, String tool) {
+    return '$title · wants to run $tool';
+  }
+
+  @override
+  String notifAgyDoneTitleWith(String title) {
+    return 'agy finished: $title';
+  }
+
+  @override
+  String get notifAgyErrorTitle => 'agy stopped with an error';
+
+  @override
+  String get continuePcMenu => 'Continue on the PC';
+
+  @override
+  String get continuePcTitle => 'Continue on the PC';
+
+  @override
+  String get continuePcIntro =>
+      'This command continues the conversation in a terminal on the PC.';
+
+  @override
+  String get continuePcHint => 'Paste it in a terminal on the PC.';
+
+  @override
+  String get continuePcCopied => 'Copied';
+
+  @override
+  String get continuePcUnavailable =>
+      'No command is available for this session yet.';
+
+  @override
+  String get continuePcStopMessage =>
+      'This session is running right now. Stop it here before continuing on the PC: if two programs write to the same conversation, it forks.';
+
+  @override
+  String get continuePcStopAndShow => 'Stop and show the command';
+
+  @override
+  String get agyErrMissing =>
+      'agy is not installed on this computer or could not be found.';
+
+  @override
+  String get agyErrExited => 'agy quit unexpectedly.';
+
+  @override
+  String get agyErrTimeout => 'agy did not answer in time.';
+
+  @override
+  String get agyErrRpc => 'agy reported an error.';
+
+  @override
+  String get agyErrBusy =>
+      'agy is working or waiting for permission; try again when it is done.';
+
+  @override
+  String get agyErrSessionNotFound =>
+      'This agy session no longer exists. Reopen it from the previous conversations.';
+
+  @override
+  String get agyErrSessionEnded => 'This session has ended.';
+
+  @override
+  String get agyErrTooMany => 'Too many open agy sessions; close one.';
+
+  @override
+  String get agyErrAlreadyOpen => 'This conversation is already open.';
+
+  @override
+  String get agyErrPermissionNotFound =>
+      'This permission request is no longer valid.';
+
+  @override
+  String get agyErrUnknownMode => 'agy does not know this mode.';
+
+  @override
+  String get agyErrUnknownModel => 'agy does not know this model.';
+
+  @override
+  String get agyErrStartFailed => 'Could not start the agy session.';
+
+  @override
+  String get agyErrPromptFailed => 'The message could not be delivered to agy.';
+
+  @override
+  String get agyErrRateLimited =>
+      'Too many requests; wait a moment and try again.';
 }

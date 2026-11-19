@@ -8933,4 +8933,1652 @@ class AppLocalizationsTr extends AppLocalizations {
 
   @override
   String get secSecMeta => 'Makine bilgisi';
+
+  @override
+  String get secSectionsTitle => 'Tarayıcılar ve koruma';
+
+  @override
+  String get secSectionVulns => 'Açıklar';
+
+  @override
+  String get secSectionVulnsHint =>
+      'Makinelerde çalışan imajlardaki bilinen açıklar';
+
+  @override
+  String get secSectionSecrets => 'Sırlar';
+
+  @override
+  String get secSectionSecretsHint =>
+      'Koda veya günlüklere sızmış anahtar ve parolalar';
+
+  @override
+  String get secSectionTraps => 'Tuzaklar';
+
+  @override
+  String get secSectionTrapsHint =>
+      'Dokunulunca alarm veren sahte belirteç ve dosyalar';
+
+  @override
+  String get secSectionExposure => 'Dış görünüm';
+
+  @override
+  String get secSectionExposureHint =>
+      'İnternetten adreslerine ve alan adlarına neler erişiliyor';
+
+  @override
+  String get secSectionAttacks => 'Saldırılar';
+
+  @override
+  String get secSectionAttacksHint =>
+      'Sitelerini yoklayan kaynaklar (Cloudflare)';
+
+  @override
+  String get secSectionBlackbox => 'Kara kutu';
+
+  @override
+  String get secSectionBlackboxHint => 'Yapılanların değiştirilemez kaydı';
+
+  @override
+  String get secSectionRecovery => 'Telefon kaybı';
+
+  @override
+  String get secSectionRecoveryHint => 'Kurtarma kodu ve her şeyi kilitleme';
+
+  @override
+  String get secScannersTitle => 'Tarayıcı ayarları';
+
+  @override
+  String get secScanNow => 'Şimdi tara';
+
+  @override
+  String get secScanRunning => 'Tarama sürüyor';
+
+  @override
+  String get secScanStarted => 'Tarama başlatıldı';
+
+  @override
+  String get secScanDone => 'Tarama bitti';
+
+  @override
+  String secMoreRows(int count) {
+    return '… ve $count tane daha';
+  }
+
+  @override
+  String get secTokenSaved => 'belirteç kayıtlı';
+
+  @override
+  String get secTokenMissing => 'belirteç yok';
+
+  @override
+  String get secTokenRemove => 'Belirteci kaldır';
+
+  @override
+  String get secOnceShownOnce =>
+      'Yalnızca bir kez gösterilir. Sonra tekrar okunamaz.';
+
+  @override
+  String get secOnceCopy => 'Kopyala';
+
+  @override
+  String get secOnceCopied => 'Kopyalandı. Pano 30 saniye sonra temizlenir.';
+
+  @override
+  String get secOnceDone => 'Sakladım, kapat';
+
+  @override
+  String get secVulnsTitle => 'Açıklar';
+
+  @override
+  String get secVulnsOff =>
+      'Bu ajanda açık taraması kapalı. Tarayıcı ayarlarından Trivy’yi aç.';
+
+  @override
+  String secVulnsSummary(int images, int critical, int high) {
+    return '$images imaj · $critical kritik · $high yüksek';
+  }
+
+  @override
+  String get secVulnsEmpty =>
+      'Henüz taranmış imaj yok. Denetim çalışan kapsayıcıları gördükten sonra imajlar burada listelenir.';
+
+  @override
+  String get secVulnsInfo =>
+      'Yalnızca kritik ve yüksek bulgular listelenir. Kayıt defterindeki imajlar uzaktan taranır. GitHub’ın kayıt defterindeki (ghcr.io) özel bir imaj için belirteç gerekir: tarayıcı ayarlarında kayıt defteri girişlerine ekle. Kayıt defterinde olmayan üretim imajları makineden yalnızca geceleri, gecede en fazla 2 tane kopyalanır; o zamana kadar “bekliyor” görünür.';
+
+  @override
+  String get secVulnStatusOk => 'Tarandı';
+
+  @override
+  String get secVulnStatusFailed => 'Başarısız';
+
+  @override
+  String get secVulnStatusNeedsCredentials => 'Giriş gerekli';
+
+  @override
+  String get secVulnStatusNotAvailable => 'Taranamıyor';
+
+  @override
+  String get secVulnStatusPending => 'Bekliyor';
+
+  @override
+  String secVulnErrCredentials(String registry) {
+    return '$registry giriş istiyor. Tarayıcı ayarlarında kayıt defteri girişlerine kullanıcı adı ve belirteç ekle.';
+  }
+
+  @override
+  String secVulnCredentialsHelp(String registry) {
+    return 'İmaj özel bir kayıt defterinde ($registry). GitHub’ın kayıt defteri (ghcr.io) için paketleri okuyabilen bir belirteç oluştur ve kullanıcı adınla birlikte tarayıcı ayarlarında kayıt defteri girişlerine ekle.';
+  }
+
+  @override
+  String get secVulnErrNightOnly =>
+      'Geceyi bekliyor: bu imaj makineden yalnızca gece saatlerinde kopyalanır.';
+
+  @override
+  String get secVulnErrSaveLimit =>
+      'Bu gecenin 2 imaj kopyası sınırı doldu. Yarın gece devam eder.';
+
+  @override
+  String get secVulnErrNoSource => 'Bu imajı taramak için kaynak yok.';
+
+  @override
+  String get secVulnErrBadOutput => 'Tarayıcının cevabı okunamadı.';
+
+  @override
+  String get secVulnErrScanFailed => 'Tarayıcı başarısız oldu.';
+
+  @override
+  String get secVulnErrSaveFailed => 'İmaj makineden kopyalanamadı.';
+
+  @override
+  String get secVulnErrFailed => 'Tarama başarısız oldu.';
+
+  @override
+  String get secVulnErrNotFound => 'İmaj kayıt defterinde yok.';
+
+  @override
+  String get secVulnSourceRemote => 'kayıt defterinden';
+
+  @override
+  String get secVulnSourceLocal => 'yerel kopya';
+
+  @override
+  String get secVulnSourceSsh => 'SSH ile kopyalandı';
+
+  @override
+  String get secVulnClean => 'Kritik/yüksek yok';
+
+  @override
+  String secVulnFixableChip(int count) {
+    return '$count düzeltilebilir';
+  }
+
+  @override
+  String secVulnCounts(int critical, int high, int fixable) {
+    return '$critical kritik, $high yüksek, $fixable düzeltilebilir';
+  }
+
+  @override
+  String get secVulnRunsOn => 'Çalıştığı yer';
+
+  @override
+  String get secVulnNeverScanned => 'Henüz taranmadı';
+
+  @override
+  String secVulnScannedAgo(String ago) {
+    return '$ago tarandı';
+  }
+
+  @override
+  String secVulnOs(String os) {
+    return 'Taban sistem: $os';
+  }
+
+  @override
+  String get secVulnFixedOnly => 'Yalnız düzeltilebilenler';
+
+  @override
+  String get secVulnFixedOnlyHint =>
+      'Henüz düzeltilmiş sürümü olmayanları gizle';
+
+  @override
+  String secVulnTableTitle(int count) {
+    return 'Bulgular · $count';
+  }
+
+  @override
+  String get secVulnNone => 'Kritik veya yüksek bulgu yok.';
+
+  @override
+  String get secVulnNoneFixed =>
+      'Hiçbir bulgunun henüz düzeltilmiş sürümü yok.';
+
+  @override
+  String get secVulnNoFix => 'düzeltme yok';
+
+  @override
+  String get secVulnTruncated =>
+      'Liste kısaltıldı: tarayıcı sakladığından fazlasını buldu. En ciddi olanlar başta.';
+
+  @override
+  String get secSecretsTitle => 'Sırlar';
+
+  @override
+  String get secSecretsInfo =>
+      'Anahtar veya parolanın nerede bulunduğunu (depo, dosya, satır ya da günlük akışı) gösterir, değerin kendisini asla. Bulunduysa sızmış say: değiştir, sonra bulguyu yoksay.';
+
+  @override
+  String secSecretsLastRun(String ago) {
+    return 'Son tarama $ago';
+  }
+
+  @override
+  String get secSecretsNeverRun =>
+      'Henüz taranmadı. Tarayıcı ayarlarında Gitleaks’i aç ya da yerel klasör ekle, sonra tara.';
+
+  @override
+  String secSecretsFindings(int count) {
+    return 'Bulgular · $count';
+  }
+
+  @override
+  String get secSecretsNone => 'Son taramada bir şey bulunmadı.';
+
+  @override
+  String get secSecretsDismiss => 'Yoksay';
+
+  @override
+  String get secSecretsUndismiss => 'Yoksaymayı geri al';
+
+  @override
+  String get secSecretsDismissedChip => 'yoksayıldı';
+
+  @override
+  String secSecretsShowDismissed(int count) {
+    return 'Yoksayılanları göster ($count)';
+  }
+
+  @override
+  String secSecretsCommit(String commit) {
+    return 'commit $commit';
+  }
+
+  @override
+  String secSecretsFirstSeen(String when) {
+    return 'ilk görülme $when';
+  }
+
+  @override
+  String secSecretsRepos(int count) {
+    return 'Depolar · $count';
+  }
+
+  @override
+  String get secSecretSourceGithub => 'GitHub';
+
+  @override
+  String get secSecretSourceLoki => 'Günlükler (Loki)';
+
+  @override
+  String get secSecretSourceLocal => 'Yerel depo';
+
+  @override
+  String get secSecretRepoCloneFailed => 'klonlanamadı';
+
+  @override
+  String get secScannersHint =>
+      'Taramalar geceleri çalışır. Ağır tarayıcılar sabitlenmiş kapsayıcılarda, ağ erişimi olmadan çalışır (Trivy’nin kendi indirmeleri hariç).';
+
+  @override
+  String get secScanTrivy => 'Trivy (açıklar)';
+
+  @override
+  String get secScanTrivyHint => 'Çalışan kapsayıcıların imajlarını tarar';
+
+  @override
+  String get secScanGitleaks => 'Gitleaks (sırlar)';
+
+  @override
+  String get secScanGitleaksHint => 'GitHub depolarını ve günlükleri tarar';
+
+  @override
+  String get secScanJavaDb => 'Java veritabanı';
+
+  @override
+  String get secScanJavaDbHint =>
+      'Java kütüphanelerini de denetler; büyük bir veritabanı indirir';
+
+  @override
+  String get secRegistryTitle => 'Kayıt defteri girişleri';
+
+  @override
+  String get secRegistryEmpty =>
+      'Kayıt defteri girişi yok. Herkese açık imajlar için gerekmez.';
+
+  @override
+  String get secRegistryAdd => 'Kayıt defteri girişi ekle';
+
+  @override
+  String get secRegistryEdit => 'Kayıt defteri girişini düzenle';
+
+  @override
+  String get secRegistryHost => 'Kayıt defteri';
+
+  @override
+  String get secRegistryUser => 'Kullanıcı adı';
+
+  @override
+  String get secRegistryToken => 'Belirteç';
+
+  @override
+  String get secRegistryTokenHint => 'Yalnızca yazılır; bir daha gösterilmez.';
+
+  @override
+  String get secRegistryHint =>
+      'ghcr.io için paketleri okuyabilen bir GitHub belirteci kullan.';
+
+  @override
+  String secRegistryRemove(String registry) {
+    return '$registry girişini kaldır';
+  }
+
+  @override
+  String secRegistryRemoveConfirm(String registry) {
+    return '$registry girişi kaldırılsın mı? Belirteci ajandan silinir.';
+  }
+
+  @override
+  String get secGhTitle => 'GitHub';
+
+  @override
+  String get secGhOwners => 'Taranacak hesap ve organizasyonlar';
+
+  @override
+  String get secGhAddOwner => 'Sahip ekle';
+
+  @override
+  String get secGhOwner => 'GitHub kullanıcısı veya organizasyonu';
+
+  @override
+  String secGhRemoveOwner(String owner) {
+    return '$owner sahibini kaldır';
+  }
+
+  @override
+  String get secGhToken => 'GitHub belirteci';
+
+  @override
+  String get secGhTokenHint =>
+      'İsteğe bağlı. Olmadan yalnızca herkese açık depolar taranır; salt okunur belirteçle özel olanlar da.';
+
+  @override
+  String get secGhTokenRemoveConfirm =>
+      'Kayıtlı GitHub belirteci kaldırılsın mı?';
+
+  @override
+  String get secLokiTitle => 'Günlük kaynağı (Loki)';
+
+  @override
+  String get secLokiOff => 'Kapalı';
+
+  @override
+  String get secLokiContainer => 'Kapsayıcı';
+
+  @override
+  String get secLokiUrl => 'URL';
+
+  @override
+  String get secLokiContainerName => 'Kapsayıcı adı';
+
+  @override
+  String get secLokiPort => 'Port';
+
+  @override
+  String get secLokiUrlLabel => 'Loki adresi';
+
+  @override
+  String get secLokiOffHint => 'Günlükler sırlar için taranmaz.';
+
+  @override
+  String get secRootsTitle => 'Yerel depolar';
+
+  @override
+  String get secRootsHint =>
+      'Git depoları taranacak, bu makinedeki klasörler. Makineden yalnızca bulgunun yeri çıkar.';
+
+  @override
+  String get secRootAdd => 'Klasör ekle';
+
+  @override
+  String get secRootLabel => 'Klasör';
+
+  @override
+  String get secRootRemove => 'Klasörü kaldır';
+
+  @override
+  String get secNightTitle => 'Gece saatleri';
+
+  @override
+  String get secNightHint =>
+      'Ağır taramalar ve imaj kopyalama yalnızca bu aralıkta çalışır (saat, 0–24).';
+
+  @override
+  String get secNightFrom => 'Başlangıç';
+
+  @override
+  String get secNightTo => 'Bitiş';
+
+  @override
+  String get secTrapsTitle => 'Tuzaklar';
+
+  @override
+  String get secTrapsInfo =>
+      'Tuzak, kimsenin dokunmaması gereken şeydir. Sahte bir belirteç kullanılırsa, sahte bir dosya okunursa ya da sahte bir veritabanı kullanıcısıyla giriş denenirse acil alarm alırsın (aşağıda kuruluysa Telegram mesajı da).';
+
+  @override
+  String get secTrapTest => 'Deneme uyarısı gönder';
+
+  @override
+  String get secTrapTestSent => 'Deneme uyarısı gönderildi';
+
+  @override
+  String get secTrapTokens => 'Sahte belirteçler';
+
+  @override
+  String get secTrapTokensEmpty => 'Sahte belirteç yok.';
+
+  @override
+  String get secTrapTokenAdd => 'Sahte belirteç ekle';
+
+  @override
+  String get secTrapTokenName => 'Ad';
+
+  @override
+  String get secTrapTokenNameHint =>
+      'Nereye koyacağını söyler, örn. yedek-belirteci. Alarmda görünür.';
+
+  @override
+  String get secTrapCreate => 'Oluştur';
+
+  @override
+  String secTrapCreatedAt(String when) {
+    return 'oluşturuldu $when';
+  }
+
+  @override
+  String secTrapDeleteTooltip(String name) {
+    return '$name sil';
+  }
+
+  @override
+  String secTrapTokenDeleteConfirm(String name) {
+    return '$name sahte belirteci silinsin mi? Kullanılması artık alarm vermez.';
+  }
+
+  @override
+  String secTrapTokenShownTitle(String name) {
+    return 'Sahte belirteç: $name';
+  }
+
+  @override
+  String get secTrapTokenPlantHint =>
+      'Saldırganın bakacağı bir yere koy: eski bir .env yedeğine, not dosyasına, parola yöneticisinde bir kayda ya da kullanmadığın bir depoya. Deneyen kişi normal bir “yetkisiz” cevabı alır, sen alarmı alırsın.';
+
+  @override
+  String get secTrapTokenOpensNothing =>
+      'Bu belirteç hiçbir şeyi açmaz. Kendin kullanma.';
+
+  @override
+  String get secTrapFiles => 'Sahte dosyalar';
+
+  @override
+  String get secTrapFilesEmpty => 'Sahte dosya yok.';
+
+  @override
+  String get secTrapFileAdd => 'Sahte dosya ekle';
+
+  @override
+  String get secTrapFilePath => 'Dosya yolu';
+
+  @override
+  String get secTrapFilePathHint =>
+      'Ajan dosyayı buraya oluşturur; henüz var olmamalı.';
+
+  @override
+  String get secTrapKindEnv => '.env yedeği';
+
+  @override
+  String get secTrapKindSshKey => 'SSH anahtarı';
+
+  @override
+  String get secTrapFileBackupWarn =>
+      'Bu klasörü okuyan yedekleme veya eşitleme araçları da alarmı tetikler. Sahte dosyaları onların atladığı bir klasöre koy.';
+
+  @override
+  String secTrapFileDeleteConfirm(String path) {
+    return '$path izlenmesi durdurulsun mu? Dosya diskte kalır; istemezsen kendin sil.';
+  }
+
+  @override
+  String get secTrapStatusArmed => 'Kurulu';
+
+  @override
+  String get secTrapStatusNoatime => 'Okuma algılanamıyor';
+
+  @override
+  String get secTrapStatusMissing => 'Dosya yok';
+
+  @override
+  String get secTrapStatusError => 'Hata';
+
+  @override
+  String get secTrapStatusNoatimeHint =>
+      'Disk erişim zamanı tutmadan bağlı, bu yüzden okumalar görülemiyor. Dosyayı başka bir diske koy.';
+
+  @override
+  String get secTrapStatusMissingHint =>
+      'Dosya silindi ya da taşındı. Bu bir alarm verdi.';
+
+  @override
+  String get secTrapStatusErrorHint => 'Dosya denetlenemedi.';
+
+  @override
+  String get secTrapNeverTriggered => 'Hiç tetiklenmedi';
+
+  @override
+  String secTrapTriggeredAgo(String ago) {
+    return '$ago tetiklendi';
+  }
+
+  @override
+  String get secTrapDbUsers => 'Sahte veritabanı kullanıcıları';
+
+  @override
+  String get secTrapDbHint =>
+      'Yalnızca sahte dosyalarda geçen adlar. Günlüklerde bunlardan biriyle giriş denemesi alarmdır.';
+
+  @override
+  String get secTrapDbAdd => 'Kullanıcı adı ekle';
+
+  @override
+  String get secTrapDbUser => 'Kullanıcı adı';
+
+  @override
+  String get secTrapDbUserHint =>
+      'Küçük harf, rakam ve alt çizgi, en az 3 karakter.';
+
+  @override
+  String get secTrapDbRemove => 'Kullanıcı adını kaldır';
+
+  @override
+  String get secTrapSshHosts => 'SSH ile denetlenen makineler';
+
+  @override
+  String get secTrapSshNone => 'SSH ile denetlenen makine yok.';
+
+  @override
+  String get secTrapSshSwitch => 'Sahte dosya okumalarını bildir';
+
+  @override
+  String get secTrapSshHint =>
+      'O makinede tuzak kuralının kurulu olması gerekir (install-audit.sh --trap).';
+
+  @override
+  String get secTrapAlertsTitle => 'Sahibe Telegram uyarıları';
+
+  @override
+  String get secTrapAlertsHint =>
+      'Kritik alarmlar (tuzak, sır bulundu, bozuk kara kutu, kilitleme) kısa bir başlık olarak bu Telegram alıcısına da gider. Sorun bu uygulamada olsa bile çalışır.';
+
+  @override
+  String get secTrapAlertsOff => 'Kapalı';
+
+  @override
+  String secTrapAlertsUnknown(String id) {
+    return 'Bilinmeyen alıcı ($id)';
+  }
+
+  @override
+  String get secTrapAlertsNoTelegram =>
+      'Bu ajanın Telegram bağlantısı yok. Önce Telegram bölümünde botu kur.';
+
+  @override
+  String get secTrapAlertsNoRecipients =>
+      'Henüz alıcı yok. Telegram bölümünden kendini davet et.';
+
+  @override
+  String get secExposureTitle => 'Dış görünüm';
+
+  @override
+  String get secExposureInfo =>
+      'Makinelerine dışarıdan biri gibi bakar: IP adreslerinde açık portlar; alan adlarında sertifika süresi, HTTPS yönlendirmesi, güvenlik başlıkları ve sızdıran dosyalar (örn. /.env). Nazikçe, haftada bir gece çalışır.';
+
+  @override
+  String get secExposureEnabled => 'Haftalık kontrol';
+
+  @override
+  String secExposureEnabledHint(int days) {
+    return 'Açıkken $days günde bir gece çalışır.';
+  }
+
+  @override
+  String get secExposureRunNow => 'Şimdi çalıştır';
+
+  @override
+  String get secExposureEditTargets => 'Hedefleri düzenle';
+
+  @override
+  String get secExposureNoTargets =>
+      'Hedef yok. Denetlenecek bir IP adresi ya da alan adı ekle.';
+
+  @override
+  String get secExposureLastRun => 'Son sonuç';
+
+  @override
+  String get secExposureNeverRun => 'Henüz çalışmadı.';
+
+  @override
+  String get secExposureNoOpenPorts => 'Açık port bulunmadı.';
+
+  @override
+  String get secExposureTargetFailed => 'Bu hedef denetlenemedi.';
+
+  @override
+  String get secExposureClean => 'Bildirilecek bir şey yok.';
+
+  @override
+  String get secExposureHistory => 'Geçmiş';
+
+  @override
+  String secExposureFindingsCount(int count) {
+    return '$count bulgu';
+  }
+
+  @override
+  String get secExposureTargetsHint =>
+      'Beklenen olarak yazdığın portlar o IP adresi için bildirilmez.';
+
+  @override
+  String secExposureExpected(String ports) {
+    return 'beklenen portlar: $ports';
+  }
+
+  @override
+  String get secExposureExpectedNone => 'beklenen port yok';
+
+  @override
+  String secExposureRemoveTarget(String target) {
+    return '$target hedefini kaldır';
+  }
+
+  @override
+  String get secExposureAddTarget => 'Hedef ekle';
+
+  @override
+  String get secExposureKindDomain => 'Alan adı';
+
+  @override
+  String get secExposureKindIp => 'IP adresi';
+
+  @override
+  String get secExposureDomainLabel => 'Alan adı';
+
+  @override
+  String get secExposureIpLabel => 'IPv4 adresi';
+
+  @override
+  String get secExposureExpectedLabel => 'Beklenen açık portlar';
+
+  @override
+  String get secExposureExpectedHint => 'Virgülle ayır, örn. 22, 443';
+
+  @override
+  String get secExposureDuplicate => 'Bu hedef zaten listede.';
+
+  @override
+  String get secExposureExtraPorts => 'Yoklanacak ek portlar';
+
+  @override
+  String get secExposureExtraPortsHint =>
+      'Yaygın portların yerleşik listesine eklenir.';
+
+  @override
+  String get secExposureInterval => 'Çalışmalar arası gün';
+
+  @override
+  String get secExposureIntervalHint => '1 ile 30 arası';
+
+  @override
+  String secExpRuleOpenPort(String port, String target) {
+    return '$target üzerinde $port portu internete açık';
+  }
+
+  @override
+  String secExpRuleLeakPath(String path, String target) {
+    return '$target herkese açık olmaması gereken $path dosyasını sunuyor';
+  }
+
+  @override
+  String secExpRuleTlsExpiry(String target, int days) {
+    return '$target sertifikasının süresi $days gün sonra doluyor';
+  }
+
+  @override
+  String secExpRuleTlsExpired(String target) {
+    return '$target sertifikasının süresi dolmuş';
+  }
+
+  @override
+  String secExpRuleNoHttps(String target) {
+    return '$target HTTPS’e yönlendirmeden düz HTTP ile cevap veriyor';
+  }
+
+  @override
+  String secExpRuleNoHsts(String target) {
+    return '$target HSTS başlığını göndermiyor';
+  }
+
+  @override
+  String secExpRuleHeaders(String target, String missing) {
+    return '$target güvenlik başlıklarını eksik gönderiyor: $missing';
+  }
+
+  @override
+  String secExpRuleUnreachable(String target) {
+    return '$target HTTPS ile erişilemedi';
+  }
+
+  @override
+  String secExpRuleUnreachableTls(String target) {
+    return '$target üzerinden TLS sertifikası okunamadı';
+  }
+
+  @override
+  String get secExpFixOpenPort =>
+      'Güvenlik duvarında kapat ya da servisi özel ağa bağla; herkese açık olması gerekiyorsa beklenen portlara ekle.';
+
+  @override
+  String get secExpFixLeakPath =>
+      'Dosyayı web kökünden kaldır ya da yolu vekil sunucuda engelle, sonra içindeki her şeyi değiştir.';
+
+  @override
+  String get secExpFixTlsExpiry =>
+      'Sertifikayı yenile ve otomatik yenilemenin çalıştığını kontrol et.';
+
+  @override
+  String get secExpFixNoHttps => 'Vekil sunucuda HTTP’yi HTTPS’e yönlendir.';
+
+  @override
+  String get secExpFixNoHsts =>
+      'HTTPS her yerde çalışınca Strict-Transport-Security gönder.';
+
+  @override
+  String get secExpFixHeaders =>
+      'Eksik başlıkları vekil sunucuda ekle (X-Content-Type-Options, frame-ancestors veya X-Frame-Options, Referrer-Policy).';
+
+  @override
+  String get secExpFixUnreachable =>
+      'Sitenin açık ve sertifikanın geçerli olduğunu kontrol et.';
+
+  @override
+  String get secAttacksTitle => 'Saldırılar';
+
+  @override
+  String get secAttacksInfo =>
+      'Cloudflare’in gördüğü, çok hata cevabı alan ya da tipik tarayıcı yollarını (örn. /wp-login.php) isteyen kaynaklar. Bu internetin olağan gürültüsüdür; artarsa ya da gerçekten kullandığın bir yola vurursa önem kazanır.';
+
+  @override
+  String get secAttacksNotConfigured =>
+      'Cloudflare bağlı değil. Cloudflare ayarlarında bir okuma belirteci ekle.';
+
+  @override
+  String secAttacksLastRun(String ago, int zones) {
+    return 'Son kontrol $ago · $zones bölge';
+  }
+
+  @override
+  String get secAttacksNeverRun => 'Henüz kontrol edilmedi.';
+
+  @override
+  String get secAttacksCheckNow => 'Şimdi kontrol et';
+
+  @override
+  String secAttacksChecked(int offenders, int blocked) {
+    return 'Kontrol edildi: $offenders yeni kaynak, $blocked engellendi';
+  }
+
+  @override
+  String secAttacksOffenders(int count) {
+    return 'Kaynaklar · $count';
+  }
+
+  @override
+  String get secAttacksNone => 'Şüpheli kaynak yok.';
+
+  @override
+  String secAttacksErrors(int count) {
+    return '$count hata';
+  }
+
+  @override
+  String secAttacksScannerHits(int count) {
+    return '$count tarayıcı yolu';
+  }
+
+  @override
+  String secAttacksSeen(String first, String last) {
+    return 'ilk $first, son $last';
+  }
+
+  @override
+  String secAttacksBlockedUntil(String when) {
+    return '$when tarihine kadar engelli';
+  }
+
+  @override
+  String get secCfTitle => 'Cloudflare ayarları';
+
+  @override
+  String get secCfPermissionsTitle => 'Belirteç izinleri';
+
+  @override
+  String get secCfPermissions =>
+      'Okuma belirteci: Zone Analytics Read + Zone Read. Engelleme belirteci (yalnızca otomatik engelleme istiyorsan): Zone Firewall Services Edit. Her birini Cloudflare’de ayrı bir API belirteci olarak, yalnızca bölgelerinle sınırlı oluştur.';
+
+  @override
+  String get secCfReadToken => 'Okuma belirteci';
+
+  @override
+  String get secCfReadTokenHint =>
+      'Yalnızca yazılır; bir daha gösterilmez. Kayıtlıyı korumak için boş bırak.';
+
+  @override
+  String get secCfBlockToken => 'Engelleme belirteci';
+
+  @override
+  String get secCfBlockTokenHint =>
+      'Yalnızca otomatik engelleme için gerekir. Kayıtlıyı korumak için boş bırak.';
+
+  @override
+  String get secCfNothingToSave => 'Önce bir belirteç gir.';
+
+  @override
+  String get secCfRemoveRead => 'Okuma belirtecini kaldır';
+
+  @override
+  String get secCfRemoveBlock => 'Engelleme belirtecini kaldır';
+
+  @override
+  String get secCfRemoveReadConfirm =>
+      'Okuma belirteci kaldırılsın mı? Saldırı algılama durur.';
+
+  @override
+  String get secCfRemoveBlockConfirm =>
+      'Engelleme belirteci kaldırılsın mı? Otomatik engelleme de kapanır.';
+
+  @override
+  String get secCfBlock => 'Saldırganları otomatik engelle';
+
+  @override
+  String get secCfBlockWarn =>
+      'Engelleme, kaynak IP için bir Cloudflare güvenlik duvarı kuralı ekler. Yanlış bir engel gerçek bir ziyaretçiyi ya da seni dışarıda bırakabilir; bu yüzden kendi adreslerin ve özel aralıklar asla engellenmez, güvendiğin diğer adresleri aşağıya ekle.';
+
+  @override
+  String secCfBlockConfirm(int hours) {
+    return 'Otomatik engelleme açılsın mı? Sitelerini yoklayan kaynaklar $hours saat engellenecek.';
+  }
+
+  @override
+  String get secCfBlockOn => 'Aç';
+
+  @override
+  String get secCfBlockHours => 'Engel süresi (saat)';
+
+  @override
+  String get secCfBlockHoursHint =>
+      '1 ile 720 arası. Engel kendiliğinden kalkar.';
+
+  @override
+  String get secCfZones => 'İzlenecek bölgeler';
+
+  @override
+  String get secCfZonesHint =>
+      'Alan adları. Boşsa belirtecin okuyabildiği her bölge izlenir.';
+
+  @override
+  String get secCfAddZone => 'Bölge ekle';
+
+  @override
+  String get secCfZone => 'Bölge (alan adı)';
+
+  @override
+  String get secCfRemoveZone => 'Bölgeyi kaldır';
+
+  @override
+  String get secCfAllow => 'Asla engelleme';
+
+  @override
+  String get secCfAllowHint =>
+      'Asla engellenmeyen IP adresleri, örn. kendi ofis veya ev adresin.';
+
+  @override
+  String get secCfAddAllow => 'Adres ekle';
+
+  @override
+  String get secCfAllowIp => 'IP adresi';
+
+  @override
+  String get secCfRemoveAllow => 'Adresi kaldır';
+
+  @override
+  String get secBbTitle => 'Kara kutu';
+
+  @override
+  String get secBbInfo =>
+      'Ajanlar üzerinden yapılanların (istekler ve bildirimler) yalnızca eklenebilen kaydı. Her kayıt öncekinin özetini içerir, bu yüzden birini değiştirmek ya da silmek zinciri bozar. Her gece son özet dışarıdaki bir çapa olarak Telegram’ına gönderilir.';
+
+  @override
+  String get secBbModeOff => 'Kapalı';
+
+  @override
+  String get secBbModeLocal => 'Burada tut';
+
+  @override
+  String get secBbModePush => 'Sunucuya gönder';
+
+  @override
+  String secBbModeNow(String mode) {
+    return 'Mod: $mode';
+  }
+
+  @override
+  String secBbHead(int count, String hash) {
+    return '$count kayıt · son $hash';
+  }
+
+  @override
+  String secBbPending(int count) {
+    return '$count kayıt gönderilmeyi bekliyor';
+  }
+
+  @override
+  String get secBbNeverSent => 'Henüz bir şey gönderilmedi';
+
+  @override
+  String secBbLastSent(String ago) {
+    return 'Son gönderim $ago';
+  }
+
+  @override
+  String get secBbOffHint => 'Kara kutu kapalı: hiçbir şey kaydedilmiyor.';
+
+  @override
+  String get secBbLocalHint =>
+      'Bu ajan zinciri tutar ve diğer ajanların kayıtlarını alır.';
+
+  @override
+  String get secBbPushHint =>
+      'Bu ajan kayıtlarını zinciri tutan ajana gönderir. O ajanın adresi ve orada oluşturulmuş “blackbox” türünde bir belirteç gerekir.';
+
+  @override
+  String get secBbVerify => 'Zinciri doğrula';
+
+  @override
+  String get secBbAnchor => 'Bugünün çapasını gönder';
+
+  @override
+  String get secBbAnchored => 'Çapa kaydedildi';
+
+  @override
+  String get secBbVerifiedOk => 'Zincir sağlam';
+
+  @override
+  String secBbVerifiedCount(int count) {
+    return '$count kayıt denetlendi, her halka uyuyor.';
+  }
+
+  @override
+  String get secBbBroken => 'Zincir bozuk';
+
+  @override
+  String secBbBrokenAt(int seq) {
+    return '$seq. kayıtta bozuk';
+  }
+
+  @override
+  String get secBbBrokenAdvice =>
+      'Biri kayıtları değiştirmiş ya da silmiş olabilir. Her şeyden önce dosyayı kopyalayıp sakla ve Telegram’daki çapalarla karşılaştır.';
+
+  @override
+  String get secBbAnchorMismatchTitle => 'Zincir çapalarıyla uyuşmuyor';
+
+  @override
+  String secBbAnchorMismatch(String dates) {
+    return 'Bu günlerin çapaları artık zincirde yok: $dates';
+  }
+
+  @override
+  String secBbAnchors(int count) {
+    return 'Çapalar · $count';
+  }
+
+  @override
+  String get secBbAnchorsNone =>
+      'Henüz çapa yok. Gece bir tane yapılır ya da bugünküsünü gönder.';
+
+  @override
+  String get secBbAnchorTelegram => 'Telegram';
+
+  @override
+  String get secBbAnchorLocalOnly => 'yalnız burada';
+
+  @override
+  String secBbRecords(int count) {
+    return '$count kayıt';
+  }
+
+  @override
+  String get secBbReasonSequence => 'Kayıt numaraları ardışık değil.';
+
+  @override
+  String get secBbReasonLink => 'Bir kayıt kendinden öncekini göstermiyor.';
+
+  @override
+  String get secBbReasonHash => 'Bir kaydın içeriği özetiyle uyuşmuyor.';
+
+  @override
+  String get secBbReasonTruncated => 'Dosyanın sonu eksik.';
+
+  @override
+  String get secBbReasonUnreadable => 'Bir kayıt okunamadı.';
+
+  @override
+  String get secBbReasonUnknown => 'Bilinmeyen neden.';
+
+  @override
+  String get secBbRecent => 'Son kayıtlar';
+
+  @override
+  String get secBbRecentEmpty => 'Henüz kayıt yok.';
+
+  @override
+  String get secBbKindAudit => 'istek';
+
+  @override
+  String get secBbKindEvent => 'olay';
+
+  @override
+  String get secBbKindLockdown => 'kilitleme';
+
+  @override
+  String get secBbSettings => 'Ayarlar';
+
+  @override
+  String get secBbUrl => 'Sunucu adresi';
+
+  @override
+  String get secBbToken => 'Belirteç';
+
+  @override
+  String get secBbTokenHint =>
+      'Yalnızca yazılır; bir daha gösterilmez. Yeni bir adres yeni bir belirteç ister.';
+
+  @override
+  String get secBbRestartRequired =>
+      'Ajan bu ayarı başlarken okur. Değişikliğin geçerli olması için ajanı yeniden başlat.';
+
+  @override
+  String get secRecTitle => 'Telefon kaybı';
+
+  @override
+  String get secRecInfo =>
+      'Telefonun kaybolursa kurtarma kodu, ağındaki herhangi bir cihazdan her şeyi kilitlemeni sağlar: izleme sunucusunda ve aşağıda listelenen ajanlarda eşleşmiş tüm telefonlar, belirteçler ve bildirim kayıtları iptal edilir. Sonra her makinede yeniden eşleşirsin. Kodu şimdi oluştur, kâğıda yaz ve güvenli bir yerde sakla.';
+
+  @override
+  String secRecConfigured(String when) {
+    return 'Bir kurtarma kodu var (oluşturuldu $when)';
+  }
+
+  @override
+  String get secRecNotConfigured => 'Henüz kurtarma kodu yok';
+
+  @override
+  String get secRecCreate => 'Kurtarma kodu oluştur';
+
+  @override
+  String get secRecReplace => 'Yeni kod oluştur';
+
+  @override
+  String get secRecCreateConfirm =>
+      'Kurtarma kodu oluşturulsun mu? Uygulama kilidinle onayladıktan sonra bir kez gösterilir.';
+
+  @override
+  String get secRecReplaceConfirm =>
+      'Yeni kod oluşturulsun mu? Eski kod hemen geçersiz olur.';
+
+  @override
+  String get secRecNeedsLock =>
+      'Önce uygulama ayarlarında PIN veya parmak izi kilidi kur.';
+
+  @override
+  String get secRecCodeTitle => 'Kurtarma kodun';
+
+  @override
+  String get secRecCodeHint =>
+      'Gösterildiği gibi kâğıda yaz ve yalnızca senin ulaşabileceğin bir yerde sakla. Fotoğrafını çekme, bu telefonda ya da not uygulamasında tutma.';
+
+  @override
+  String get secRecCodeWarn =>
+      'Bu koda sahip olan herkes tüm makinelerini kilitleyebilir. Kopyalama düğmesi bilerek yok.';
+
+  @override
+  String get secRecTargets => 'Birlikte kilitlenecek ajanlar';
+
+  @override
+  String get secRecTargetsHint =>
+      'Bu ajanların her birinde “lockdown” türünde bir hizmet belirteci oluştur, sonra ajanı buraya ekle. Belirteç izleme sunucusunda saklanır ve gösterilmez.';
+
+  @override
+  String get secRecTargetsEmpty =>
+      'Ajan eklenmedi. Yalnızca izleme sunucusunun kendisi kilitlenir.';
+
+  @override
+  String get secRecTargetAdd => 'Ajan ekle';
+
+  @override
+  String get secRecTargetToken => 'Kilitleme belirteci';
+
+  @override
+  String get secRecTargetTokenHint =>
+      'tps_ ile başlar. Yalnızca yazılır; bir daha gösterilmez.';
+
+  @override
+  String secRecTargetRemove(String name) {
+    return '$name ajanını kaldır';
+  }
+
+  @override
+  String secRecTargetDeleteConfirm(String name) {
+    return '$name kilitleme listesinden çıkarılsın mı?';
+  }
+
+  @override
+  String get secLockdownTitle => 'Kurtarma koduyla kilitle';
+
+  @override
+  String get secLockdownRowHint =>
+      'Bu telefon kaybolduğunda: bunu başka bir cihazdan yap.';
+
+  @override
+  String get secLockdownWarnTitle => 'Bu her şeyi kilitler';
+
+  @override
+  String get secLockdownWarn =>
+      'Eşleşmiş tüm telefonlar, hizmet belirteçleri ve bildirim kayıtları, bu telefon dahil, iptal edilir ve listedeki ajanlar da kilitlenir. Hiçbir şey silinmez ama her makinede yeniden eşleşmen gerekir. Geri alınamaz.';
+
+  @override
+  String get secLockdownUrl => 'İzleme sunucusu adresi';
+
+  @override
+  String get secLockdownUrlHint =>
+      'Kod bu adrese hiçbir belirteç olmadan gönderilir. Devam etmeden önce kontrol et.';
+
+  @override
+  String get secLockdownCode => 'Kurtarma kodu';
+
+  @override
+  String get secLockdownCodeHint => '5’erli 5 grup harf ve rakam';
+
+  @override
+  String get secLockdownCodeInvalid => 'Kod 25 harf ve rakamdan oluşur.';
+
+  @override
+  String get secLockdownConfirm =>
+      'Her şey şimdi kilitlensin mi? Tüm eşleşmeler iptal edilir ve her makinede yeniden eşleşmen gerekir.';
+
+  @override
+  String get secLockdownDo => 'Her şeyi kilitle';
+
+  @override
+  String get secLockdownDone => 'Her şey kilitlendi';
+
+  @override
+  String get secLockdownPairAgain =>
+      'Her makinede yeniden eşleş (tiphys-agent pair), izleme sunucusundan başla. Bu telefonun kendi erişimi de iptal edildi.';
+
+  @override
+  String get secLockdownResults => 'Ajanlar';
+
+  @override
+  String get secLockdownNoTargets => 'Listede başka ajan yoktu.';
+
+  @override
+  String get secLockdownTargetOk => 'Kilitlendi';
+
+  @override
+  String get secLockdownTargetUnreachable =>
+      'Ulaşılamadı: o makinede kendin kilitle';
+
+  @override
+  String secLockdownTargetFailed(int status) {
+    return 'Ajan reddetti (HTTP $status): o makinede kendin kilitle';
+  }
+
+  @override
+  String secErrScannerOff(String scanner) {
+    return '$scanner kapalı. Tarayıcı ayarlarından aç.';
+  }
+
+  @override
+  String get secErrScanBusy => 'Bir tarama zaten sürüyor.';
+
+  @override
+  String get secErrScanFailed => 'Tarayıcı başarısız oldu.';
+
+  @override
+  String get secErrImageNotFound => 'Bu imaj (artık) bilinmiyor.';
+
+  @override
+  String get secErrFindingNotFound => 'Bu bulgu artık yok.';
+
+  @override
+  String get secErrGithubUnauthorized =>
+      'GitHub belirteci kabul etmedi. İzinlerini ve süresini kontrol et.';
+
+  @override
+  String get secErrGithubFailed =>
+      'GitHub’a ulaşılamadı ya da hata ile cevap verdi.';
+
+  @override
+  String get secErrLokiUnavailable =>
+      'Loki kapsayıcısı ya da adresi kullanılamıyor. Günlük kaynağı ayarlarını kontrol et.';
+
+  @override
+  String get secErrLokiFailed => 'Loki hata ile cevap verdi.';
+
+  @override
+  String get secErrImageTooLarge =>
+      'İmaj tarama için kopyalanamayacak kadar büyük (3 GB üstü).';
+
+  @override
+  String get secErrTrapExists =>
+      'Bu yolda zaten bir dosya var. Boş bir yol seç.';
+
+  @override
+  String get secErrTrapCreateFailed =>
+      'Sahte dosya oluşturulamadı. Klasörü ve izinlerini kontrol et.';
+
+  @override
+  String get secErrTrapNotFound => 'Bu tuzak artık yok.';
+
+  @override
+  String get secErrTooManyTraps => 'Çok fazla tuzak (her türden en çok 20).';
+
+  @override
+  String get secErrBadRecoveryCode => 'Kurtarma kodu yanlış.';
+
+  @override
+  String get secErrCloudflareUnauthorized =>
+      'Cloudflare belirteci kabul etmedi. İzinlerini ve bölgelerini kontrol et.';
+
+  @override
+  String get secErrCloudflareFailed =>
+      'Cloudflare’e ulaşılamadı ya da hata ile cevap verdi.';
+
+  @override
+  String get secErrCloudflareNotConfigured =>
+      'Cloudflare bağlı değil. Önce bir okuma belirteci ekle.';
+
+  @override
+  String get secErrBlackboxNotLocal =>
+      'Kara kutu bu ajanda tutulmuyor. “Burada tut” seç ve yeniden başlat ya da zinciri tutan ajanı kullan.';
+
+  @override
+  String notifSecVulnsTitle(String image) {
+    return '$image imajında kritik açık';
+  }
+
+  @override
+  String notifSecVulnsBody(String host, int critical, int high) {
+    return '$host · $critical kritik, $high yüksek';
+  }
+
+  @override
+  String notifSecSecretTitle(String host) {
+    return 'Sır bulundu · $host';
+  }
+
+  @override
+  String notifSecSecretBody(int count, String sources, String where) {
+    return '$count bulgu ($sources) · $where';
+  }
+
+  @override
+  String notifSecTrapTitle(String host) {
+    return 'Tuzak tetiklendi · $host';
+  }
+
+  @override
+  String notifSecTrapTestTitle(String host) {
+    return 'Deneme uyarısı · $host';
+  }
+
+  @override
+  String notifSecTrapToken(String name, String from, String path) {
+    return '“$name” sahte belirteci kullanıldı ($from, $path)';
+  }
+
+  @override
+  String notifSecTrapFile(String path) {
+    return 'Sahte dosya okundu: $path';
+  }
+
+  @override
+  String notifSecTrapFileMissing(String path) {
+    return 'Sahte dosya silindi ya da taşındı: $path';
+  }
+
+  @override
+  String notifSecTrapAudit(String object, String who, String how) {
+    return '$object dosyasına erişildi ($who, $how)';
+  }
+
+  @override
+  String notifSecTrapDb(String user, String stream) {
+    return 'Sahte veritabanı kullanıcısı $user ile giriş denendi ($stream)';
+  }
+
+  @override
+  String get notifSecTrapTest =>
+      'Bu bir deneme uyarısıdır. Hiçbir şeye dokunulmadı.';
+
+  @override
+  String get notifSecTrapUnknown => 'Bir tuzak tetiklendi.';
+
+  @override
+  String notifBbBrokenTitle(String host) {
+    return 'Kara kutu zinciri bozuldu · $host';
+  }
+
+  @override
+  String notifBbBrokenBody(int at, String reason) {
+    return '$at. kayıt: $reason';
+  }
+
+  @override
+  String notifSecLockdownTitle(String host) {
+    return 'Kilitleme yapıldı · $host';
+  }
+
+  @override
+  String get notifSecLockdownRecovery =>
+      'Kurtarma koduyla kilitlendi. Her makinede yeniden eşleş.';
+
+  @override
+  String get notifSecLockdownRemote =>
+      'Başka bir ajandan uzaktan kilitlendi. Bu makinede yeniden eşleş.';
+
+  @override
+  String notifSecExposureTitle(String host) {
+    return 'Dış görünümde yeni bulgu · $host';
+  }
+
+  @override
+  String notifSecExposureBody(int count, String targets) {
+    return '$count bulgu: $targets';
+  }
+
+  @override
+  String notifSecAttackTitle(String host) {
+    return 'Saldırı denemeleri · $host';
+  }
+
+  @override
+  String notifSecAttackBody(int count, String zones, int blocked) {
+    return '$count yeni kaynak ($zones) · $blocked engellendi';
+  }
+
+  @override
+  String secSecretsGroupCount(int count) {
+    return '$count bulgu';
+  }
+
+  @override
+  String get secSecretsGroupDismiss => 'Bu gruptakileri kapat';
+
+  @override
+  String get secSecretsGroupUndismiss => 'Bu gruptakileri geri aç';
+
+  @override
+  String secSecretsGroupDismissConfirm(int count, String rule, String where) {
+    return '$rule kuralının $count bulgusu yoksayılsın mı? ($where)';
+  }
+
+  @override
+  String secSecretsGroupUndismissConfirm(int count, String rule, String where) {
+    return '$rule kuralının $count bulgusu yeniden açılsın mı? ($where)';
+  }
+
+  @override
+  String secSecretsGroupChanged(int count) {
+    return '$count bulgu güncellendi';
+  }
+
+  @override
+  String get agyEntrySubtitle => 'Antigravity CLI oturumları';
+
+  @override
+  String get agyNewSession => 'Yeni agy oturumu';
+
+  @override
+  String get agyNoLive => 'Açık agy oturumu yok.';
+
+  @override
+  String get agyPrevious => 'Önceki konuşmalar';
+
+  @override
+  String get agyPreviousEmpty => 'Bu klasörde önceki konuşma yok.';
+
+  @override
+  String get agyPreviousHint =>
+      'Terminalde başlattıkların da burada görünür. Birini seçince kaldığı yerden sürer.';
+
+  @override
+  String get agyOpenBadge => 'açık';
+
+  @override
+  String get agyNoHost =>
+      'agy açık olan bir ajan yok. Ajan ayarlarından agy özelliğini aç ve ajanı yeniden başlat.';
+
+  @override
+  String get agyMode => 'Kip';
+
+  @override
+  String get agyModeDefault => 'Varsayılan';
+
+  @override
+  String get agyModeAcceptEdits => 'Düzenlemeleri kabul et';
+
+  @override
+  String get agyModeAuto => 'Otomatik';
+
+  @override
+  String get agyModePlan => 'Plan';
+
+  @override
+  String get agyModeHintDefault => 'agy her işlemden önce sana sorar.';
+
+  @override
+  String get agyModeHintAcceptEdits =>
+      'Dosya düzenlemelerini sormadan yapar; komutlar için yine sorar.';
+
+  @override
+  String get agyModeHintAuto =>
+      'İşlemlerin çoğunu sormadan yapar. Dikkatli kullan.';
+
+  @override
+  String get agyModeHintPlan => 'Yalnızca plan hazırlar; dosyalara dokunmaz.';
+
+  @override
+  String get agyModel => 'Model';
+
+  @override
+  String get agyPromptHint => 'agy ne yapsın?';
+
+  @override
+  String get agyBusyHint => 'agy çalışıyor; bitmesini bekle…';
+
+  @override
+  String get agyWaitingHint => 'agy senden izin bekliyor…';
+
+  @override
+  String get agyWorking => 'agy çalışıyor…';
+
+  @override
+  String get agyCancel => 'İptal et';
+
+  @override
+  String get agyReplayLabel => 'önceki konuşma';
+
+  @override
+  String get agyPlanTitle => 'Plan';
+
+  @override
+  String get agyPermissionTitle => 'agy izin istiyor';
+
+  @override
+  String agyAnswered(String name) {
+    return 'Yanıt: $name';
+  }
+
+  @override
+  String get agyPermissionCancelled => 'İptal edildi';
+
+  @override
+  String get agyTurnDone => 'bitti';
+
+  @override
+  String get agyTurnCancelled => 'iptal edildi';
+
+  @override
+  String agyTurnStop(String reason) {
+    return 'durdu ($reason)';
+  }
+
+  @override
+  String agyModeChanged(String mode) {
+    return 'Kip: $mode';
+  }
+
+  @override
+  String get agySessionEnded => 'Oturum kapandı.';
+
+  @override
+  String get agySessionFailed => 'Oturum hata verdi.';
+
+  @override
+  String get agyReopen => 'Konuşmayı yeniden aç';
+
+  @override
+  String agyUsageSemantics(String text) {
+    return 'Bağlam kullanımı $text';
+  }
+
+  @override
+  String get agyChooseMode => 'Kip seç';
+
+  @override
+  String get agyChooseModel => 'Model seç';
+
+  @override
+  String get notifAgyWaitingTitle => 'agy iznini bekliyor';
+
+  @override
+  String notifAgyWaitingBody(String title, String tool) {
+    return '$title · $tool çalıştırmak istiyor';
+  }
+
+  @override
+  String notifAgyDoneTitleWith(String title) {
+    return 'agy bitirdi: $title';
+  }
+
+  @override
+  String get notifAgyErrorTitle => 'agy hatayla durdu';
+
+  @override
+  String get continuePcMenu => 'PC’de devam et';
+
+  @override
+  String get continuePcTitle => 'PC’de devam et';
+
+  @override
+  String get continuePcIntro =>
+      'Bu komut konuşmayı PC’deki terminalde sürdürür.';
+
+  @override
+  String get continuePcHint => 'PC’de bir terminalde yapıştırın.';
+
+  @override
+  String get continuePcCopied => 'Kopyalandı';
+
+  @override
+  String get continuePcUnavailable => 'Bu oturum için henüz bir komut yok.';
+
+  @override
+  String get continuePcStopMessage =>
+      'Bu oturum şu an çalışıyor. PC’de devam etmeden önce burada durdurulmalı: iki program aynı konuşmaya yazarsa konuşma ikiye ayrılır.';
+
+  @override
+  String get continuePcStopAndShow => 'Durdur ve komutu göster';
+
+  @override
+  String get agyErrMissing =>
+      'agy bu bilgisayarda kurulu değil ya da bulunamadı.';
+
+  @override
+  String get agyErrExited => 'agy beklenmedik şekilde kapandı.';
+
+  @override
+  String get agyErrTimeout => 'agy zamanında yanıt vermedi.';
+
+  @override
+  String get agyErrRpc => 'agy bir hata bildirdi.';
+
+  @override
+  String get agyErrBusy =>
+      'agy şu an çalışıyor ya da izin bekliyor; bitince tekrar dene.';
+
+  @override
+  String get agyErrSessionNotFound =>
+      'Bu agy oturumu artık yok. Önceki konuşmalardan yeniden aç.';
+
+  @override
+  String get agyErrSessionEnded => 'Bu oturum kapandı.';
+
+  @override
+  String get agyErrTooMany => 'Çok fazla açık agy oturumu var; birini kapat.';
+
+  @override
+  String get agyErrAlreadyOpen => 'Bu konuşma zaten açık.';
+
+  @override
+  String get agyErrPermissionNotFound => 'Bu izin isteği artık geçerli değil.';
+
+  @override
+  String get agyErrUnknownMode => 'agy bu kipi tanımıyor.';
+
+  @override
+  String get agyErrUnknownModel => 'agy bu modeli tanımıyor.';
+
+  @override
+  String get agyErrStartFailed => 'agy oturumu başlatılamadı.';
+
+  @override
+  String get agyErrPromptFailed => 'Mesaj agy’ye iletilemedi.';
+
+  @override
+  String get agyErrRateLimited =>
+      'Çok sık istendi; biraz bekleyip tekrar dene.';
 }

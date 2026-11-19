@@ -9,6 +9,8 @@ import 'features/files/share_to_pc.dart';
 import 'features/notes/obsidian.dart';
 import 'features/notes/quick_note_screen.dart';
 import 'features/git/git_screen.dart';
+import 'features/agy/agy_chat_screen.dart';
+import 'features/agy/agy_screen.dart';
 import 'features/claude/claude_chat_screen.dart';
 import 'features/claude/claude_screen.dart';
 import 'features/files/files_screen.dart';
@@ -36,7 +38,15 @@ import 'features/databases/db_restore_screen.dart';
 import 'features/databases/db_screen.dart';
 import 'features/incidents/incident_screen.dart';
 import 'features/incidents/incidents_screen.dart';
+import 'features/security/security_attacks_screen.dart';
+import 'features/security/security_blackbox_screen.dart';
+import 'features/security/security_exposure_screen.dart';
 import 'features/security/security_host_screen.dart';
+import 'features/security/security_recovery_screen.dart';
+import 'features/security/security_scanners_screen.dart';
+import 'features/security/security_secrets_screen.dart';
+import 'features/security/security_traps_screen.dart';
+import 'features/security/security_vulns_screen.dart';
 import 'features/security/security_screen.dart';
 import 'features/security/security_settings_screen.dart';
 import 'features/system/system_screen.dart';
@@ -126,6 +136,18 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(path: '/security', builder: (c, s) => const SecurityScreen()),
       // Before :hostId, so a host can't shadow the settings screen.
       GoRoute(path: '/security/settings', builder: (c, s) => const SecuritySettingsScreen()),
+      // Sections of the security center (S-2…S-5); before /security/:hostId. `host` = the agent a link names.
+      GoRoute(path: '/security/vulns', builder: (c, s) => SecurityVulnsScreen(agentHint: s.uri.queryParameters['host'])),
+      GoRoute(path: '/security/vulns/:hex', builder: (c, s) => SecurityVulnDetailScreen(hex: s.pathParameters['hex']!, agentHint: s.uri.queryParameters['host'])),
+      GoRoute(path: '/security/secrets', builder: (c, s) => SecuritySecretsScreen(agentHint: s.uri.queryParameters['host'])),
+      GoRoute(path: '/security/scanners', builder: (c, s) => SecurityScannersScreen(agentHint: s.uri.queryParameters['host'])),
+      GoRoute(path: '/security/traps', builder: (c, s) => SecurityTrapsScreen(agentHint: s.uri.queryParameters['host'])),
+      GoRoute(path: '/security/exposure', builder: (c, s) => SecurityExposureScreen(agentHint: s.uri.queryParameters['host'])),
+      GoRoute(path: '/security/attacks', builder: (c, s) => SecurityAttacksScreen(agentHint: s.uri.queryParameters['host'])),
+      GoRoute(path: '/security/cloudflare', builder: (c, s) => SecurityCloudflareScreen(agentHint: s.uri.queryParameters['host'])),
+      GoRoute(path: '/security/blackbox', builder: (c, s) => SecurityBlackboxScreen(agentHint: s.uri.queryParameters['host'])),
+      GoRoute(path: '/security/recovery', builder: (c, s) => SecurityRecoveryScreen(agentHint: s.uri.queryParameters['host'])),
+      GoRoute(path: '/security/lockdown', builder: (c, s) => SecurityLockdownScreen(agentHint: s.uri.queryParameters['host'])),
       GoRoute(path: '/security/:hostId', builder: (c, s) => SecurityHostScreen(hostId: s.pathParameters['hostId']!, agentHint: s.uri.queryParameters['host'])),
       GoRoute(path: '/system/backups', builder: (c, s) => const BackupsScreen()),
       GoRoute(path: '/system/compose', builder: (c, s) => const ComposeScreen()),
@@ -144,6 +166,8 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(path: '/system/telegram', builder: (c, s) => TelegramScreen(hostId: s.uri.queryParameters['host'])),
       GoRoute(path: '/system/research', builder: (c, s) => ResearchScreen(hostId: s.uri.queryParameters['host'] ?? '')),
       GoRoute(path: '/telegram/issues/:id', builder: (c, s) => IssueScreen(hostId: s.uri.queryParameters['host'], issueId: s.pathParameters['id']!)),
+      GoRoute(path: '/agy', builder: (c, s) => AgyScreen(hostHint: s.uri.queryParameters['host'])),
+      GoRoute(path: '/agy/:id', builder: (c, s) => AgyChatScreen(sessionId: s.pathParameters['id']!, hostHint: s.uri.queryParameters['host'])),
       GoRoute(path: '/claude/session/:id', builder: (c, s) => ClaudeChatScreen(sessionId: s.pathParameters['id'])),
       GoRoute(
         path: '/claude/history/:id',

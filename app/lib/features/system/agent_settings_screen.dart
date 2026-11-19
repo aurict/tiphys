@@ -18,7 +18,7 @@ final agentConfigProvider = FutureProvider.autoDispose.family<Map<String, dynami
   return withAgent(ref, hostId, (c) => c.get('/v1/config'));
 });
 
-const agentFeatures = ['system', 'services', 'docker', 'power', 'git', 'desktop', 'control', 'ports', 'transcribe', 'alerts', 'backups', 'homepage', 'claude', 'uptime', 'wake', 'watch', 'research', 'telegram', 'incidents'];
+const agentFeatures = ['system', 'services', 'docker', 'power', 'git', 'desktop', 'control', 'ports', 'transcribe', 'alerts', 'backups', 'homepage', 'claude', 'uptime', 'wake', 'watch', 'research', 'telegram', 'incidents', 'agy'];
 
 class AgentSettingsScreen extends ConsumerStatefulWidget {
   const AgentSettingsScreen({super.key, required this.hostId});
@@ -312,6 +312,7 @@ String agentFeatureName(AppLocalizations l, String f) => switch (f) {
       'research' => l.researchTitle,
       'telegram' => 'Telegram',
       'incidents' => l.incTitle,
+      'agy' => 'agy (Antigravity)',
       _ => l.agentFeatWatch,
     };
 

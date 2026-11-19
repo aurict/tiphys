@@ -2,6 +2,7 @@
 // categories, error codes and the notifications. Pure functions of the localizations, shared by the screens, the push
 // notifications and agentErrorText. An unknown rule shows its id.
 import '../../l10n/gen/app_localizations.dart';
+import 'security_more_texts.dart';
 
 /// Rules of agent/src/security/rules.ts.
 const securityRules = [
@@ -14,7 +15,10 @@ const securityRules = [
 /// agent.security.* codes the app has a text for.
 const securityErrorCodes = [
   'timeout', 'reportTooLarge', 'scriptMissing', 'scriptUnsafe', 'collectFailed', 'knownHostsMissing', 'sshFailed', 'unreachable', 'unauthorized', 'busy',
-  'agentFailed', 'badReport', 'hostNotFound', 'hostExists', 'tooManyHosts', 'tokenRequired', 'selfPermanent', 'noReport', 'rateLimited', //
+  'agentFailed', 'badReport', 'hostNotFound', 'hostExists', 'tooManyHosts', 'tokenRequired', 'selfPermanent', 'noReport', 'rateLimited',
+  // S-2…S-5
+  'scannerOff', 'scanBusy', 'scanFailed', 'imageNotFound', 'findingNotFound', 'githubUnauthorized', 'githubFailed', 'lokiUnavailable', 'lokiFailed', 'imageTooLarge',
+  'trapExists', 'trapCreateFailed', 'trapNotFound', 'tooManyTraps', 'badRecoveryCode', 'cloudflareUnauthorized', 'cloudflareFailed', 'cloudflareNotConfigured', //
 ];
 
 String _s(Map<String, dynamic> p, String k) => '${p[k] ?? ''}';
@@ -207,6 +211,25 @@ String securityErrorText(AppLocalizations l, String code, [Map<String, dynamic> 
       'agent.security.selfPermanent' => l.secErrSelfPermanent,
       'agent.security.noReport' => l.secErrNoReport,
       'agent.security.rateLimited' => l.secErrRateLimited,
+      'agent.security.scannerOff' => l.secErrScannerOff(params['scanner'] == 'gitleaks' ? 'Gitleaks' : 'Trivy'),
+      'agent.security.scanBusy' => l.secErrScanBusy,
+      'agent.security.scanFailed' => l.secErrScanFailed,
+      'agent.security.imageNotFound' => l.secErrImageNotFound,
+      'agent.security.findingNotFound' => l.secErrFindingNotFound,
+      'agent.security.githubUnauthorized' => l.secErrGithubUnauthorized,
+      'agent.security.githubFailed' => l.secErrGithubFailed,
+      'agent.security.lokiUnavailable' => l.secErrLokiUnavailable,
+      'agent.security.lokiFailed' => l.secErrLokiFailed,
+      'agent.security.imageTooLarge' => l.secErrImageTooLarge,
+      'agent.security.trapExists' => l.secErrTrapExists,
+      'agent.security.trapCreateFailed' => l.secErrTrapCreateFailed,
+      'agent.security.trapNotFound' => l.secErrTrapNotFound,
+      'agent.security.tooManyTraps' => l.secErrTooManyTraps,
+      'agent.security.badRecoveryCode' => l.secErrBadRecoveryCode,
+      'agent.security.cloudflareUnauthorized' => l.secErrCloudflareUnauthorized,
+      'agent.security.cloudflareFailed' => l.secErrCloudflareFailed,
+      'agent.security.cloudflareNotConfigured' => l.secErrCloudflareNotConfigured,
+      'agent.blackbox.notLocal' => l.secErrBlackboxNotLocal,
       _ => '${l.commonError} ($code)',
     };
 
@@ -219,5 +242,5 @@ String securityErrorText(AppLocalizations l, String code, [Map<String, dynamic> 
       'security.accepted' => (l.notifSecAcceptedTitle(_s(p, 'host')), l.notifSecAcceptedBody(_n(p, 'count'))),
       'security.unreachable' => (l.notifSecUnreachableTitle(_s(p, 'host')), l.notifSecUnreachableBody(_n(p, 'hours'), securityErrorText(l, _s(p, 'code')))),
       'security.reachable' => (l.notifSecReachableTitle(_s(p, 'host')), ''),
-      _ => null,
+      _ => securityMoreNoticeText(l, key, p),
     };

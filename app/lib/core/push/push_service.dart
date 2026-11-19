@@ -12,8 +12,11 @@ import 'package:intl/intl.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:unifiedpush/unifiedpush.dart';
 
+import '../../features/agy/agy_data.dart' show agyOptionFor;
 import '../../features/databases/db_texts.dart' show restoreNotificationReason;
 import '../../features/incidents/incident_texts.dart';
+import '../../features/incidents/incidents_data.dart' show exactHostFor;
+import '../../features/security/security_more_texts.dart' show securityUrgentKeys;
 import '../../features/security/security_texts.dart';
 import '../../l10n/gen/app_localizations.dart';
 import '../agent/agent_client.dart';
@@ -35,6 +38,10 @@ const _endpointKey = 'app:pushEndpoint';
     'claude.waiting' => (l.notifClaudeWaitingTitle, l.notifClaudeWaitingBody(s('title'), s('tool'))),
     'claude.error' => (l.notifClaudeErrorTitle, s('title')),
     // Claude using the PC: control ended (while Claude is running) / ends within 2 min (with an "Extend" button).
+    // agy sessions (Antigravity CLI): same three notices as Claude.
+    'agy.done' => (l.notifAgyDoneTitleWith(s('title')), ''),
+    'agy.waiting' => (l.notifAgyWaitingTitle, l.notifAgyWaitingBody(s('title'), s('tool'))),
+    'agy.error' => (l.notifAgyErrorTitle, s('title')),
     'claude.pcEnded' => (l.notifPcEndedTitle, s('reason') == 'expired' ? l.notifPcEndedExpired(s('title')) : l.notifPcEndedOther(s('title'))),
     'claude.pcExpiring' => (l.notifPcExpiringTitle(n('minutes')), s('title')),
     'host.offline' => (l.notifHostOfflineTitle(s('host')), l.notifHostOfflineBody(n('minutes'))),
@@ -192,8 +199,9 @@ String claudeDoneBody(AppLocalizations l, Map<String, dynamic> p) {
 
 /// Should it be shown according to the profile preferences?
 bool noticeAllowed(Profile p, String key, [Map<String, dynamic> params = const {}]) => switch (key) {
-      'claude.done' => p.claude.notifyDone,
-      'claude.waiting' => p.claude.notifyWaiting,
+      'claude.done' || 'agy.done' => p.claude.notifyDone,
+      'claude.waiting' || 'agy.waiting' => p.claude.notifyWaiting,
+      'agy.error' => p.claude.notifyError,
       'claude.error' || 'claude.scheduleFailed' || 'claude.pcEnded' => p.claude.notifyError,
       'claude.pcExpiring' => p.claude.notifyWaiting,
       'host.offline' || 'host.online' => p.notifications.pcOffline,
@@ -227,9 +235,9 @@ NotificationVisibility? lockScreenVisibility(String key, Map<String, dynamic> pa
 int noticeId(String key, Map<String, dynamic> p, {String? link, String? requestId}) {
   String s(String k) => '${p[k] ?? ''}';
   final topic = switch (key) {
-    'claude.done' || 'claude.error' || 'claude.pcEnded' => 'claude|$link',
+    'claude.done' || 'claude.error' || 'claude.pcEnded' || 'agy.done' || 'agy.error' => 'claude|$link',
     'claude.pcExpiring' => 'claude-pc-expiring|$link',
-    'claude.waiting' => 'claude-wait|$link|$requestId',
+    'claude.waiting' || 'agy.waiting' => 'claude-wait|$link|$requestId',
     'host.offline' || 'host.online' => 'host|${s('host')}',
     'disk.full' => 'disk|${s('host')}|${s('mount')}',
     'disk.ok' => 'disk|${s('host')}|${s('name')}',
@@ -284,7 +292,7 @@ int noticeIdFor(String key, Map<String, dynamic> params, {String? link, String? 
 /// Shown without sound, vibration or heads-up: the agent marks such updates `data.silent == "1"`.
 bool noticeSilent(Map<String, dynamic>? data) => data?['silent'] == '1';
 
-/// Notification buttons (Claude permission request).
+/// Notification buttons (Claude and agy permission request).
 const actionAllow = 'claude-allow';
 const actionDeny = 'claude-deny';
 
@@ -309,6 +317,8 @@ String? routeForPayload(String? payload) {
         final test = j['test'];
         return '/db/restore?host=${Uri.encodeQueryComponent('${host ?? ''}')}${test is String ? '&test=${Uri.encodeQueryComponent(test)}' : ''}';
       }
+      // agy links carry the agent's host name too (the screen maps it to a host; without it the first agy host is used).
+      if (route != null && route.startsWith('/agy/') && host is String && host.isNotEmpty) return '$route?host=${Uri.encodeQueryComponent(host)}';
       return route != null && (route.startsWith('/incidents/') || route.startsWith('/security/')) && host is String && host.isNotEmpty
           ? '$route?host=${Uri.encodeQueryComponent(host)}'
           : route;
@@ -332,7 +342,7 @@ String? incidentPayload(String? link, Map<String, dynamic> params) {
 /// agent with the feature).
 String? securityPayload(String key, String? link, Map<String, dynamic> params) {
   final agent = params['agent'];
-  if (!key.startsWith('security.') || link == null || agent is! String || agent.isEmpty) return null;
+  if (!(key.startsWith('security.') || key == 'blackbox.broken') || link == null || agent is! String || agent.isEmpty) return null;
   return jsonEncode({'link': link, 'host': agent});
 }
 
@@ -368,6 +378,9 @@ Future<bool> decideFromNotification(
   }
   final host = profile.host(profile.claude.agentHostId) ?? profile.hosts.where((h) => h.agent != null).firstOrNull;
   final agent = host?.agent;
+  if ('${j['link']}'.startsWith('tiphys://agy/') && j['sessionId'] != null && j['requestId'] != null) {
+    return _decideAgyAnywhere('${j['sessionId']}', '${j['requestId']}', allow, hint: j['host'] is String ? j['host'] as String : null, profile: profile, secrets: secrets, clientFor: clientFor);
+  }
   if (agent == null || j['sessionId'] == null || j['requestId'] == null) return false;
   final token = await secrets.read(secretIdOf(agent.tokenRef));
   if (token == null) return false;
@@ -380,6 +393,67 @@ Future<bool> decideFromNotification(
   } finally {
     c.close();
   }
+}
+
+/// The agent's name from an agy push (`params.agent`), used as a host hint; null for other keys or when absent.
+String? agyAgentHint(String key, Map<String, dynamic> params) {
+  final a = params['agent'];
+  return key.startsWith('agy.') && a is String && a.isNotEmpty ? a : null;
+}
+
+/// Payload of an agy notice without buttons: the link plus the agent's name (the screen maps it to a host); null without a hint.
+String? agyPayload(String key, String? link, Map<String, dynamic> params) {
+  final a = agyAgentHint(key, params);
+  return a == null || link == null ? null : jsonEncode({'link': link, 'host': a});
+}
+
+/// With a [hint] that names one agent host (exactHostFor), only that host is asked. Without one (older agents) the Claude
+/// host is tried first, then the other agent hosts; an agent that doesn't know the session (or doesn't have the feature)
+/// passes it on. True on success.
+Future<bool> _decideAgyAnywhere(
+  String sessionId,
+  String requestId,
+  bool allow, {
+  String? hint,
+  required Profile profile,
+  required SecretStore secrets,
+  AgentClient Function(String url, String token)? clientFor,
+}) async {
+  final agents = profile.hosts.where((h) => h.agent != null).toList();
+  final named = exactHostFor(agents, hint);
+  final first = profile.host(profile.claude.agentHostId) ?? agents.firstOrNull;
+  final hosts = named != null ? [named] : [?first, ...agents.where((h) => h.id != first?.id)];
+  for (final h in hosts) {
+    final token = await secrets.read(secretIdOf(h.agent!.tokenRef));
+    if (token == null) continue;
+    final c = (clientFor ?? (u, t) => AgentClient(baseUrl: u, token: t))(h.agent!.url, token);
+    try {
+      if (await _decideAgy(c, sessionId, requestId, allow)) return true;
+    } on AgentError catch (e) {
+      if (e.code != 'agent.route.notFound' && !e.code.startsWith('net.')) return false;
+    } catch (_) {
+      return false;
+    } finally {
+      c.close();
+    }
+  }
+  return false;
+}
+
+/// agy answers with one of the options it offered: the push only has the request id, so the session's pending request is
+/// read first (allow_once / reject_once by kind); if it can't be found, agy's own ids "allow" / "deny" are used.
+Future<bool> _decideAgy(AgentClient c, String sessionId, String requestId, bool allow) async {
+  String? optionId;
+  try {
+    final j = await c.get('/v1/agy/sessions/$sessionId');
+    final pending = ((j['session'] as Map?)?['pendingPermissions'] as List? ?? const []).cast<Map>();
+    final mine = pending.where((p) => p['requestId'] == requestId).firstOrNull;
+    if (mine != null) optionId = agyOptionFor(mine['options'] as List? ?? const [], allow);
+  } on AgentError catch (e) {
+    if (e.code == 'agent.agy.sessionNotFound') return false;
+  }
+  await c.post('/v1/agy/sessions/$sessionId/permissions/$requestId', {'optionId': optionId ?? (allow ? 'allow' : 'deny')});
+  return true;
 }
 
 /// "Send / Cancel" in a telegram.approval notification: approves or rejects the issue without opening the app. The
@@ -648,6 +722,9 @@ String? routeForLink(String? link) {
   final rest = link.substring('tiphys://'.length);
   if (rest == 'claude/schedules') return '/claude/schedules';
   if (rest.startsWith('claude/')) return '/claude/session/${rest.substring(7)}';
+  if (rest == 'agy') return '/agy';
+  final agy = RegExp(r'^agy/(agy-[a-f0-9]{12})$').firstMatch(rest);
+  if (agy != null) return '/agy/${agy.group(1)}';
   if (rest == 'system') return '/system';
   if (rest == 'system/backups') return '/system/backups';
   if (rest == 'system/events') return '/system/events';
@@ -662,6 +739,8 @@ String? routeForLink(String? link) {
   if (rest == 'security') return '/security';
   final security = RegExp(r'^security/([a-z0-9][a-z0-9-]{0,62})$').firstMatch(rest);
   if (security != null) return '/security/${security.group(1)}';
+  final vulns = RegExp(r'^security/vulns/([a-f0-9]{64})$').firstMatch(rest);
+  if (vulns != null) return '/security/vulns/${vulns.group(1)}';
   final incident = RegExp(r'^incidents/([A-Za-z0-9_-]{1,64})$').firstMatch(rest);
   if (incident != null) return '/incidents/${incident.group(1)}';
   final issue = RegExp(r'^telegram/issues/([A-Za-z0-9_-]{1,64})$').firstMatch(rest);
@@ -811,30 +890,31 @@ class PushService {
     final l = lookupAppLocalizations(_localeOf(profile));
     final text = noticeText(l, key, params);
     if (text == null) return;
-    final high = const {'claude.pcExpiring', 'claude.pcEnded', 'claude.waiting', 'host.offline', 'disk.full', 'service.failed', 'grafana.alert', 'agent.restarted', 'docker.died', 'docker.oom', 'docker.unhealthy', 'docker.restartLoop', 'uptime.down', 'incident.actionFailed', 'config.restartFailed', 'db.restoreTest.failed', 'backup.stale', 'backup.failed', 'claude.scheduleFailed', 'telegram.approval', 'telegram.pcUnreachable'}.contains(key) ||
+    final high = const {'claude.pcExpiring', 'claude.pcEnded', 'claude.waiting', 'agy.waiting', 'host.offline', 'disk.full', 'service.failed', 'grafana.alert', 'agent.restarted', 'docker.died', 'docker.oom', 'docker.unhealthy', 'docker.restartLoop', 'uptime.down', 'incident.actionFailed', 'config.restartFailed', 'db.restoreTest.failed', 'backup.stale', 'backup.failed', 'claude.scheduleFailed', 'telegram.approval', 'telegram.pcUnreachable'}.contains(key) ||
         (key == 'security.change' && params['severity'] == 'critical') ||
+        securityUrgentKeys.contains(key) ||
         (key == 'telegram.failed' && params['reason'] != 'agent.telegram.approvalExpired');
     // Telegram issue waiting for approval: "Send / Cancel" buttons (decision without opening the app).
     final tgDecision = key == 'telegram.approval' && data?['issueId'] != null;
     // Claude permission request: "Allow / Deny" buttons in the notification (decision without opening the app).
     final extend = key == 'claude.pcExpiring' && data?['sessionId'] != null;
-    final decision = key == 'claude.waiting' && data?['sessionId'] != null && data?['requestId'] != null;
+    final decision = (key == 'claude.waiting' || key == 'agy.waiting') && data?['sessionId'] != null && data?['requestId'] != null;
     final held = key == 'claude.waiting' ? PcHold.fromJson(await secrets.read(pcControlSecretId))?.sessionId : null;
     final visibility = lockScreenVisibility(key, params, data?['sessionId']?.toString(), held);
     // Session ended/failed: that session's remaining approval notifications are now invalid (their buttons do nothing).
-    if ((key == 'claude.done' || key == 'claude.error') && link != null) await _cancelWaiting(link);
+    if ((key == 'claude.done' || key == 'claude.error' || key == 'agy.done' || key == 'agy.error') && link != null) await _cancelWaiting(link);
     if (key == 'clipboard.pc') return _showClipboard(l, '${params['text'] ?? ''}');
     await notifications.show(
       id: noticeIdFor(key, params, link: link, requestId: data?['requestId'] as String?, data: data),
       title: text.$1,
       body: text.$2,
       payload: decision
-          ? jsonEncode({'link': link, 'sessionId': data!['sessionId'], 'requestId': data['requestId']})
+          ? jsonEncode({'link': link, 'sessionId': data!['sessionId'], 'requestId': data['requestId'], if (agyAgentHint(key, params) != null) 'host': agyAgentHint(key, params)})
           : extend
               ? jsonEncode({'link': link, 'sessionId': data!['sessionId']})
               : tgDecision
                   ? jsonEncode({'link': link, 'issueId': data!['issueId'], 'feedId': data['feedId']})
-                  : securityPayload(key, link, params) ?? incidentPayload(link, params) ?? configPayload(key, params, data) ?? restorePayload(key, params) ?? link,
+                  : securityPayload(key, link, params) ?? incidentPayload(link, params) ?? configPayload(key, params, data) ?? restorePayload(key, params) ?? agyPayload(key, link, params) ?? link,
       notificationDetails: NotificationDetails(
         android: AndroidNotificationDetails(
           high ? 'tiphys-urgent' : 'tiphys',
@@ -844,7 +924,7 @@ class PushService {
           // An update of a notification that already alerted (incident.analyzed): no new sound or vibration.
           silent: noticeSilent(data),
           onlyAlertOnce: noticeSilent(data),
-          tag: key == 'claude.waiting' ? link : null,
+          tag: key == 'claude.waiting' || key == 'agy.waiting' ? link : null,
           visibility: visibility,
           // Show the whole multi-line body (e.g. Claude summary + stats) when expanded.
           styleInformation: text.$2.contains('\n') || text.$2.length > 60 ? BigTextStyleInformation(text.$2) : null,

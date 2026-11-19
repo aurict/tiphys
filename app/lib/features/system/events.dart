@@ -70,7 +70,7 @@ String eventType(String key) => switch (key.split('.').first) {
       'backup' => 'backup',
       'grafana' => 'grafana',
       'command' => 'command',
-      'host' || 'disk' || 'service' || 'agent' || 'push' || 'control' || 'ui' || 'security' => 'system',
+      'host' || 'disk' || 'service' || 'agent' || 'push' || 'control' || 'ui' || 'security' || 'blackbox' => 'system',
       _ => 'other',
     };
 
@@ -91,6 +91,7 @@ String eventTypeName(AppLocalizations l, String type) => switch (type) {
   const bad = {
     'host.offline', 'disk.full', 'service.failed', 'grafana.alert', 'agent.restarted', 'command.failed', 'claude.error', 'docker.died', 'docker.oom', //
     'backup.failed', 'backup.stale', 'security.unreachable', 'compose.failed', 'claude.scheduleFailed', 'config.restartFailed', 'db.restoreTest.failed',
+    'security.trap', 'security.secretFound', 'blackbox.broken', 'security.lockdown',
   };
   const good = {'host.online', 'disk.ok', 'service.recovered', 'grafana.resolved', 'command.done', 'backup.ok', 'compose.updated', 'db.restoreTest.ok', 'security.reachable', 'security.accepted'};
   final icon = key.startsWith('claude.schedule') ? LucideIcons.alarmClock : switch (key.split('.').first) {
@@ -108,7 +109,7 @@ String eventTypeName(AppLocalizations l, String type) => switch (type) {
     'git' => LucideIcons.gitCommitHorizontal,
     'control' => LucideIcons.mousePointer2,
     'ui' => LucideIcons.layoutList,
-    'security' => LucideIcons.shieldAlert,
+    'security' || 'blackbox' => LucideIcons.shieldAlert,
     _ => LucideIcons.dot,
   };
   final color = bad.contains(key)

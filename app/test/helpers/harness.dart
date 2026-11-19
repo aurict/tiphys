@@ -34,16 +34,20 @@ import 'package:tiphys/core/integrations/dozzle_client.dart';
 import 'package:tiphys/features/terminal/sessions.dart';
 
 import 'png.dart';
+import 'agy_fixtures.dart';
 import 'config_fixtures.dart';
 import 'db_fixtures.dart';
 import 'incident_fixtures.dart';
 import 'security_fixtures.dart';
+import 'security_more_fixtures.dart';
 import 'ui_fixtures.dart';
 
+export 'agy_fixtures.dart';
 export 'config_fixtures.dart';
 export 'db_fixtures.dart';
 export 'incident_fixtures.dart';
 export 'security_fixtures.dart';
+export 'security_more_fixtures.dart';
 export 'ui_fixtures.dart';
 
 final codec = ProfileCodec(File('assets/profile/tiphys.schema.json').readAsStringSync());
@@ -239,12 +243,21 @@ class FakeAgent extends AgentClient {
   /// Config files and secrets (GET/POST/PUT /v1/config-files*, /v1/secrets/meta).
   static FakeConfigState config = FakeConfigState();
 
+  /// agy sessions (GET/POST/DELETE /v1/agy/*).
+  static FakeAgyState agy = FakeAgyState();
+
   static void resetConfig() => config = FakeConfigState();
 
   /// Security center (GET/POST/PATCH/DELETE /v1/security/*).
   static FakeSecurityState security = FakeSecurityState();
 
-  static void resetSecurity() => security = FakeSecurityState();
+  static void resetSecurity() {
+    security = FakeSecurityState();
+    securityMore = FakeSecurityMoreState();
+  }
+
+  /// Security center S-2…S-5 (scanners, traps, outside view, attacks, black box, lost phone).
+  static FakeSecurityMoreState securityMore = FakeSecurityMoreState();
 
   /// Database console (GET/POST /v1/db/*).
   static FakeDbState db = FakeDbState();
@@ -377,6 +390,17 @@ class FakeAgent extends AgentClient {
       path = path.substring(0, q);
     }
     calls.add((method, path, method == 'GET' && query != null ? query : body));
+    if (path.startsWith('/v1/agy/')) return agy.route(method, path, body, query);
+    if (path == '/v1/fs/dirs') {
+      return {
+        'path': '/home/user',
+        'home': '/home/user',
+        'dirs': [
+          {'name': 'Desktop', 'path': '/home/user/Desktop'},
+          {'name': 'projects', 'path': '/home/user/projects'},
+        ],
+      };
+    }
     if (path.startsWith('/v1/desktop/') && path != '/v1/desktop/clipboard' && path != '/v1/desktop/open') {
       headersByPath[path] = headers;
       if (path.startsWith('/v1/desktop/browser')) return _browser(method, path, body, headers);
@@ -614,7 +638,7 @@ class FakeAgent extends AgentClient {
         };
       }
       return {
-        'session': {'id': 'a1', 'epoch': 'E1', 'cwd': '/home/user/Desktop/website', 'title': 'Testleri düzelt ve raporla', 'status': 'waiting', 'model': 'claude-opus-5-5', 'costUsd': 0.84},
+        'session': {'id': 'a1', 'epoch': 'E1', 'cwd': '/home/user/Desktop/website', 'title': 'Testleri düzelt ve raporla', 'status': 'waiting', 'model': 'claude-opus-5-5', 'costUsd': 0.84, 'resumeCommand': "cd '/home/user/Desktop/website' && claude --resume s1"},
         'events': [
           e({'kind': 'user', 'text': 'runner.py testlerini düzelt, sonra kısaca raporla', 'images': 0}),
           e({'kind': 'init', 'model': 'claude-opus-5-5', 'cwd': '/home/user/Desktop/website', 'permissionMode': 'default', 'slashCommands': []}),
@@ -802,7 +826,12 @@ class FakeAgent extends AgentClient {
         if (incident.analysisMode != null) 'incidents': {'links': [], 'analysis': {'mode': incident.analysisMode, 'url': null, 'language': 'tr', 'hasToken': false}},
       };
     }
-    if (path.startsWith('/v1/security/')) return fakeSecurityRoute(hostId, method, path, body, security);
+    if (path == '/v1/telegram/recipients' && method == 'GET') return fakeTelegramRecipients();
+    if (path.startsWith('/v1/security/') || path.startsWith('/v1/blackbox/')) {
+      final more = fakeSecurityMoreRoute(hostId, method, path, body, securityMore);
+      if (!identical(more, notMore)) return more;
+      return fakeSecurityRoute(hostId, method, path, body, security);
+    }
     if (path.startsWith('/v1/db/')) return fakeDbRoute(hostId, method, path, body, db);
     if (path.startsWith('/v1/config-files') || path == '/v1/secrets/meta') return fakeConfigRoute(hostId, method, path, body, config);
     if (path.startsWith('/v1/incidents')) return fakeIncidentRoute(hostId, method, path, body, incidents, incident);

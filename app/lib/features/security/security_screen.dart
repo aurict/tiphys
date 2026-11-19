@@ -13,6 +13,7 @@ import '../../widgets/surfaces.dart';
 import '../claude/claude_screen.dart' show relativeTime;
 import '../system/agent_providers.dart';
 import 'security_data.dart';
+import 'security_more_data.dart' show securitySectionAgent, securitySectionRoute;
 import 'security_texts.dart';
 import 'security_widgets.dart';
 
@@ -38,8 +39,11 @@ class SecurityScreen extends ConsumerWidget {
         IconButton(tooltip: l.commonRefresh, icon: const Icon(LucideIcons.refreshCw), onPressed: refresh),
         PopupMenuButton<String>(
           tooltip: MaterialLocalizations.of(context).showMenuTooltip,
-          onSelected: (_) => context.push('/security/settings'),
-          itemBuilder: (_) => [PopupMenuItem(value: 'settings', child: Text(l.secMenuSettings))],
+          onSelected: (v) => context.push(v == 'scanners' ? '/security/scanners' : '/security/settings'),
+          itemBuilder: (_) => [
+            PopupMenuItem(value: 'settings', child: Text(l.secMenuSettings)),
+            PopupMenuItem(value: 'scanners', child: Text(l.secScannersTitle)),
+          ],
         ),
       ],
       children: agents.hasValue && agents.value!.isEmpty
@@ -59,6 +63,7 @@ class SecurityScreen extends ConsumerWidget {
                 if (f.agents.isEmpty) return [TCard(child: Text(l.secNoAgents))];
                 final multi = f.agents.length > 1;
                 return [
+                  SecuritySections(agent: securitySectionAgent(f.agents)),
                   for (final a in f.agents) ...[
                     if (multi) SectionLabel(a.name),
                     if (f.errors[a.id] case final err?)
@@ -186,5 +191,28 @@ class HomeSecurityCard extends ConsumerWidget {
         ),
       ]),
     );
+  }
+}
+
+/// Entries of the S-2…S-5 sections; with one agent they open on it, with several they list every agent.
+class SecuritySections extends StatelessWidget {
+  const SecuritySections({super.key, this.agent});
+  final String? agent;
+
+  @override
+  Widget build(BuildContext context) {
+    final l = AppLocalizations.of(context);
+    final t = context.tokens;
+    GroupedRow row(String id, String title, String subtitle, IconData icon, Color color) =>
+        GroupedRow(title: title, subtitle: subtitle, icon: icon, iconBackground: color, onTap: () => context.push(securitySectionRoute(id, agentId: agent)));
+    return GroupedSection(title: l.secSectionsTitle, children: [
+      row('vulns', l.secSectionVulns, l.secSectionVulnsHint, LucideIcons.bug, t.danger),
+      row('secrets', l.secSectionSecrets, l.secSectionSecretsHint, LucideIcons.keyRound, t.warning),
+      row('traps', l.secSectionTraps, l.secSectionTrapsHint, LucideIcons.bellRing, const Color(0xFF8E5CD9)),
+      row('exposure', l.secSectionExposure, l.secSectionExposureHint, LucideIcons.radar, const Color(0xFF2F8FD6)),
+      row('attacks', l.secSectionAttacks, l.secSectionAttacksHint, LucideIcons.shieldAlert, const Color(0xFFD9692F)),
+      row('blackbox', l.secSectionBlackbox, l.secSectionBlackboxHint, LucideIcons.archive, const Color(0xFF5C6BD9)),
+      row('recovery', l.secSectionRecovery, l.secSectionRecoveryHint, LucideIcons.smartphoneNfc, const Color(0xFF2F9E6A)),
+    ]);
   }
 }

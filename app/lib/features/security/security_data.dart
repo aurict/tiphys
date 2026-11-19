@@ -543,7 +543,8 @@ class SecurityHostConfig {
         sshPort = _int(_map(j['source'])['port']),
         keyPath = _map(j['source'])['keyPath'] as String?,
         url = _map(j['source'])['url'] as String?,
-        hasToken = _map(j['source'])['hasToken'] == true;
+        hasToken = _map(j['source'])['hasToken'] == true,
+        traps = j['traps'] == true;
   final String id, name, role;
   final List<String> allowedPorts;
 
@@ -552,6 +553,9 @@ class SecurityHostConfig {
   final String? sshHost, sshUser, keyPath, url;
   final int? sshPort;
   final bool hasToken;
+
+  /// SSH hosts: the agent polls the auditd decoy-file events of this host.
+  final bool traps;
 
   bool get isSsh => kind == 'ssh';
 }

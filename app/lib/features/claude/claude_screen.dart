@@ -15,6 +15,7 @@ import '../../theme/tokens.dart';
 import '../../widgets/floating_tab_bar.dart';
 import '../../widgets/surfaces.dart';
 import '../desktop/desktop_data.dart' show controlHeader, controlProvider;
+import '../agy/agy_data.dart';
 import '../system/agent_providers.dart';
 
 /// Host that runs Claude (Settings › Claude; otherwise the first agent host).
@@ -98,6 +99,11 @@ class _ClaudeScreenState extends ConsumerState<ClaudeScreen> {
                   ]),
           ),
           const SizedBox(height: 12),
+          // agy sessions: only when an agent reports the `agy` feature.
+          if (ref.watch(agyHostProvider(null)).value != null)
+            GroupedSection(children: [
+              GroupedRow(title: 'agy', subtitle: l.agyEntrySubtitle, icon: LucideIcons.sparkles, iconBackground: const Color(0xFF4285F4), onTap: () => context.push('/agy')),
+            ]),
           if (host == null)
             TCard(child: Text(l.integrationNeedsAgentHost))
           else

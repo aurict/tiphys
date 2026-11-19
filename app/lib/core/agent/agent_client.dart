@@ -85,7 +85,8 @@ class AgentClient {
     final t = timeout ?? this.timeout;
     try {
       final req = await _http.openUrl(method, _uri(path, query)).timeout(t);
-      req.headers.set(HttpHeaders.authorizationHeader, 'Bearer $token');
+      // No token = an anonymous call (the lost-phone lockdown): no Authorization header at all.
+      if (token.isNotEmpty) req.headers.set(HttpHeaders.authorizationHeader, 'Bearer $token');
       req.headers.set(HttpHeaders.acceptHeader, accept);
       headers?.forEach(req.headers.set);
       if (body != null) {

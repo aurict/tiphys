@@ -23,6 +23,7 @@ import 'chat_markdown.dart';
 import 'session_insights.dart';
 import 'claude_controller.dart';
 import 'claude_screen.dart';
+import 'continue_on_pc.dart';
 import 'pc_panel.dart';
 
 /// Set to false in tests (no WebSocket is opened).
@@ -155,6 +156,23 @@ class _ClaudeChatScreenState extends ConsumerState<ClaudeChatScreen> {
       setState(() => _takingOver = false);
       toast(context, agentErrorText(l, e));
     }
+  }
+
+  /// "Continue on the PC": the agent's resumeCommand, or built from the session id and folder (history entries).
+  Future<void> _continueOnPc(ClaudeSessionController c) {
+    final cwd = (c.summary?['cwd'] as String?) ?? widget.historyCwd;
+    final sdk = c.isLive ? (c.summary?['sdkSessionId'] as String?) : widget.historyId;
+    final command = (c.summary?['resumeCommand'] as String?) ?? (cwd != null && cwd != '~' && sdk != null ? claudeResumeCommand(cwd, sdk) : null);
+    return continueOnPc(
+      context,
+      command: command,
+      active: c.isLive && (c.busy || c.status == 'waiting'),
+      // Interrupt the running turn, then close the session, so only the terminal writes to the conversation.
+      stop: () async {
+        await c.interrupt();
+        await c.close();
+      },
+    );
   }
 
   void _openChanges(ClaudeSessionController c) => Navigator.of(context).push(MaterialPageRoute<void>(
@@ -373,7 +391,9 @@ class _ClaudeChatScreenState extends ConsumerState<ClaudeChatScreen> {
                     icon: const Icon(LucideIcons.ellipsisVertical),
                     onSelected: (v) async {
                       try {
-                        if (v == 'close') {
+                        if (v == 'pc') {
+                          await _continueOnPc(c);
+                        } else if (v == 'close') {
                           await c.close();
                           if (context.mounted) context.pop();
                         } else {
@@ -388,8 +408,17 @@ class _ClaudeChatScreenState extends ConsumerState<ClaudeChatScreen> {
                       PopupMenuItem(value: 'acceptEdits', child: Text(l.claudeModeAcceptShort)),
                       PopupMenuItem(value: 'default', child: Text(l.claudeModeDefaultShort)),
                       PopupMenuItem(value: 'plan', child: Text(l.claudeModePlan)),
+                      PopupMenuItem(value: 'pc', child: Text(l.continuePcMenu)),
                       PopupMenuItem(value: 'close', child: Text(l.claudeEndSession)),
                     ],
+                  ),
+                // A past session (history): the command to continue it on the PC.
+                if (c != null && !c.isLive && !widget.inTerminal && widget.historyId != null)
+                  PopupMenuButton<String>(
+                    tooltip: l.filesMore,
+                    icon: const Icon(LucideIcons.ellipsisVertical),
+                    onSelected: (_) => _continueOnPc(c),
+                    itemBuilder: (_) => [PopupMenuItem(value: 'pc', child: Text(l.continuePcMenu))],
                   ),
               ]),
             ),
@@ -612,14 +641,18 @@ class _Thinking extends StatelessWidget {
   Widget build(BuildContext context) {
     final l = AppLocalizations.of(context);
     final t = context.tokens;
-    return Theme(
-      data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
-      child: ExpansionTile(
-        tilePadding: EdgeInsets.zero,
-        dense: true,
-        leading: Icon(LucideIcons.brain, size: 16, color: t.textSecondary),
-        title: Text(l.claudeThinking, style: Theme.of(context).textTheme.labelMedium),
-        children: [SelectableText(text, style: TextStyle(fontSize: 13, color: t.textSecondary, fontStyle: FontStyle.italic))],
+    // A transparent Material under the tile: the screen's background is a ColoredBox that would hide the tile's ink.
+    return Material(
+      type: MaterialType.transparency,
+      child: Theme(
+        data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+        child: ExpansionTile(
+          tilePadding: EdgeInsets.zero,
+          dense: true,
+          leading: Icon(LucideIcons.brain, size: 16, color: t.textSecondary),
+          title: Text(l.claudeThinking, style: Theme.of(context).textTheme.labelMedium),
+          children: [SelectableText(text, style: TextStyle(fontSize: 13, color: t.textSecondary, fontStyle: FontStyle.italic))],
+        ),
       ),
     );
   }

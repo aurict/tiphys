@@ -15229,6 +15229,2742 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Machine info'**
   String get secSecMeta;
+
+  /// No description provided for @secSectionsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Scanners and protection'**
+  String get secSectionsTitle;
+
+  /// No description provided for @secSectionVulns.
+  ///
+  /// In en, this message translates to:
+  /// **'Vulnerabilities'**
+  String get secSectionVulns;
+
+  /// No description provided for @secSectionVulnsHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Known flaws in the images that run on your machines'**
+  String get secSectionVulnsHint;
+
+  /// No description provided for @secSectionSecrets.
+  ///
+  /// In en, this message translates to:
+  /// **'Secrets'**
+  String get secSectionSecrets;
+
+  /// No description provided for @secSectionSecretsHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Keys and passwords that ended up in code or logs'**
+  String get secSectionSecretsHint;
+
+  /// No description provided for @secSectionTraps.
+  ///
+  /// In en, this message translates to:
+  /// **'Traps'**
+  String get secSectionTraps;
+
+  /// No description provided for @secSectionTrapsHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Decoy tokens and files that raise an alarm when touched'**
+  String get secSectionTrapsHint;
+
+  /// No description provided for @secSectionExposure.
+  ///
+  /// In en, this message translates to:
+  /// **'Outside view'**
+  String get secSectionExposure;
+
+  /// No description provided for @secSectionExposureHint.
+  ///
+  /// In en, this message translates to:
+  /// **'What the internet can reach on your addresses and domains'**
+  String get secSectionExposureHint;
+
+  /// No description provided for @secSectionAttacks.
+  ///
+  /// In en, this message translates to:
+  /// **'Attacks'**
+  String get secSectionAttacks;
+
+  /// No description provided for @secSectionAttacksHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Sources probing your sites, from Cloudflare'**
+  String get secSectionAttacksHint;
+
+  /// No description provided for @secSectionBlackbox.
+  ///
+  /// In en, this message translates to:
+  /// **'Black box'**
+  String get secSectionBlackbox;
+
+  /// No description provided for @secSectionBlackboxHint.
+  ///
+  /// In en, this message translates to:
+  /// **'A tamper-evident record of what was done'**
+  String get secSectionBlackboxHint;
+
+  /// No description provided for @secSectionRecovery.
+  ///
+  /// In en, this message translates to:
+  /// **'Lost phone'**
+  String get secSectionRecovery;
+
+  /// No description provided for @secSectionRecoveryHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Recovery code and lock everything'**
+  String get secSectionRecoveryHint;
+
+  /// No description provided for @secScannersTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Scanner settings'**
+  String get secScannersTitle;
+
+  /// No description provided for @secScanNow.
+  ///
+  /// In en, this message translates to:
+  /// **'Scan now'**
+  String get secScanNow;
+
+  /// No description provided for @secScanRunning.
+  ///
+  /// In en, this message translates to:
+  /// **'Scan is running'**
+  String get secScanRunning;
+
+  /// No description provided for @secScanStarted.
+  ///
+  /// In en, this message translates to:
+  /// **'Scan started'**
+  String get secScanStarted;
+
+  /// No description provided for @secScanDone.
+  ///
+  /// In en, this message translates to:
+  /// **'Scan finished'**
+  String get secScanDone;
+
+  /// No description provided for @secMoreRows.
+  ///
+  /// In en, this message translates to:
+  /// **'… and {count} more'**
+  String secMoreRows(int count);
+
+  /// No description provided for @secTokenSaved.
+  ///
+  /// In en, this message translates to:
+  /// **'token saved'**
+  String get secTokenSaved;
+
+  /// No description provided for @secTokenMissing.
+  ///
+  /// In en, this message translates to:
+  /// **'no token'**
+  String get secTokenMissing;
+
+  /// No description provided for @secTokenRemove.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove token'**
+  String get secTokenRemove;
+
+  /// No description provided for @secOnceShownOnce.
+  ///
+  /// In en, this message translates to:
+  /// **'Shown only once. It cannot be read again.'**
+  String get secOnceShownOnce;
+
+  /// No description provided for @secOnceCopy.
+  ///
+  /// In en, this message translates to:
+  /// **'Copy'**
+  String get secOnceCopy;
+
+  /// No description provided for @secOnceCopied.
+  ///
+  /// In en, this message translates to:
+  /// **'Copied. The clipboard is cleared in 30 seconds.'**
+  String get secOnceCopied;
+
+  /// No description provided for @secOnceDone.
+  ///
+  /// In en, this message translates to:
+  /// **'I saved it, close'**
+  String get secOnceDone;
+
+  /// No description provided for @secVulnsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Vulnerabilities'**
+  String get secVulnsTitle;
+
+  /// No description provided for @secVulnsOff.
+  ///
+  /// In en, this message translates to:
+  /// **'Vulnerability scanning is off on this agent. Turn on Trivy in the scanner settings.'**
+  String get secVulnsOff;
+
+  /// No description provided for @secVulnsSummary.
+  ///
+  /// In en, this message translates to:
+  /// **'{images} images · {critical} critical · {high} high'**
+  String secVulnsSummary(int images, int critical, int high);
+
+  /// No description provided for @secVulnsEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'No image has been scanned yet. Images appear once the audit has seen running containers.'**
+  String get secVulnsEmpty;
+
+  /// No description provided for @secVulnsInfo.
+  ///
+  /// In en, this message translates to:
+  /// **'Only critical and high findings are listed. Images from a registry are scanned remotely. A private image on GitHub’s registry (ghcr.io) needs a token: add it in the scanner settings under registry logins. Production images that are not in a registry are copied from the machine only at night, at most 2 per night, so they wait as “pending” until then.'**
+  String get secVulnsInfo;
+
+  /// No description provided for @secVulnStatusOk.
+  ///
+  /// In en, this message translates to:
+  /// **'Scanned'**
+  String get secVulnStatusOk;
+
+  /// No description provided for @secVulnStatusFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Failed'**
+  String get secVulnStatusFailed;
+
+  /// No description provided for @secVulnStatusNeedsCredentials.
+  ///
+  /// In en, this message translates to:
+  /// **'Login needed'**
+  String get secVulnStatusNeedsCredentials;
+
+  /// No description provided for @secVulnStatusNotAvailable.
+  ///
+  /// In en, this message translates to:
+  /// **'Cannot be scanned'**
+  String get secVulnStatusNotAvailable;
+
+  /// No description provided for @secVulnStatusPending.
+  ///
+  /// In en, this message translates to:
+  /// **'Pending'**
+  String get secVulnStatusPending;
+
+  /// No description provided for @secVulnErrCredentials.
+  ///
+  /// In en, this message translates to:
+  /// **'{registry} needs a login. Add a user name and token under registry logins in the scanner settings.'**
+  String secVulnErrCredentials(String registry);
+
+  /// No description provided for @secVulnCredentialsHelp.
+  ///
+  /// In en, this message translates to:
+  /// **'The image is in a private registry ({registry}). For GitHub’s registry (ghcr.io) create a token that can read packages and add it, with your user name, under registry logins in the scanner settings.'**
+  String secVulnCredentialsHelp(String registry);
+
+  /// No description provided for @secVulnErrNightOnly.
+  ///
+  /// In en, this message translates to:
+  /// **'Waiting for the night: this image is copied from the machine only between the night hours.'**
+  String get secVulnErrNightOnly;
+
+  /// No description provided for @secVulnErrSaveLimit.
+  ///
+  /// In en, this message translates to:
+  /// **'Tonight’s limit of 2 image copies is used up. It continues tomorrow night.'**
+  String get secVulnErrSaveLimit;
+
+  /// No description provided for @secVulnErrNoSource.
+  ///
+  /// In en, this message translates to:
+  /// **'No source to scan this image from.'**
+  String get secVulnErrNoSource;
+
+  /// No description provided for @secVulnErrBadOutput.
+  ///
+  /// In en, this message translates to:
+  /// **'The scanner’s answer could not be read.'**
+  String get secVulnErrBadOutput;
+
+  /// No description provided for @secVulnErrScanFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'The scanner failed.'**
+  String get secVulnErrScanFailed;
+
+  /// No description provided for @secVulnErrSaveFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'The image could not be copied from the machine.'**
+  String get secVulnErrSaveFailed;
+
+  /// No description provided for @secVulnErrFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'The scan failed.'**
+  String get secVulnErrFailed;
+
+  /// No description provided for @secVulnErrNotFound.
+  ///
+  /// In en, this message translates to:
+  /// **'The image is not in the registry.'**
+  String get secVulnErrNotFound;
+
+  /// No description provided for @secVulnSourceRemote.
+  ///
+  /// In en, this message translates to:
+  /// **'from registry'**
+  String get secVulnSourceRemote;
+
+  /// No description provided for @secVulnSourceLocal.
+  ///
+  /// In en, this message translates to:
+  /// **'local copy'**
+  String get secVulnSourceLocal;
+
+  /// No description provided for @secVulnSourceSsh.
+  ///
+  /// In en, this message translates to:
+  /// **'copied over SSH'**
+  String get secVulnSourceSsh;
+
+  /// No description provided for @secVulnClean.
+  ///
+  /// In en, this message translates to:
+  /// **'No critical or high'**
+  String get secVulnClean;
+
+  /// No description provided for @secVulnFixableChip.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} fixable'**
+  String secVulnFixableChip(int count);
+
+  /// No description provided for @secVulnCounts.
+  ///
+  /// In en, this message translates to:
+  /// **'{critical} critical, {high} high, {fixable} fixable'**
+  String secVulnCounts(int critical, int high, int fixable);
+
+  /// No description provided for @secVulnRunsOn.
+  ///
+  /// In en, this message translates to:
+  /// **'Runs on'**
+  String get secVulnRunsOn;
+
+  /// No description provided for @secVulnNeverScanned.
+  ///
+  /// In en, this message translates to:
+  /// **'Not scanned yet'**
+  String get secVulnNeverScanned;
+
+  /// No description provided for @secVulnScannedAgo.
+  ///
+  /// In en, this message translates to:
+  /// **'Scanned {ago}'**
+  String secVulnScannedAgo(String ago);
+
+  /// No description provided for @secVulnOs.
+  ///
+  /// In en, this message translates to:
+  /// **'Base system: {os}'**
+  String secVulnOs(String os);
+
+  /// No description provided for @secVulnFixedOnly.
+  ///
+  /// In en, this message translates to:
+  /// **'Only fixable'**
+  String get secVulnFixedOnly;
+
+  /// No description provided for @secVulnFixedOnlyHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Hide findings that have no fixed version yet'**
+  String get secVulnFixedOnlyHint;
+
+  /// No description provided for @secVulnTableTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Findings · {count}'**
+  String secVulnTableTitle(int count);
+
+  /// No description provided for @secVulnNone.
+  ///
+  /// In en, this message translates to:
+  /// **'No critical or high findings.'**
+  String get secVulnNone;
+
+  /// No description provided for @secVulnNoneFixed.
+  ///
+  /// In en, this message translates to:
+  /// **'None of the findings has a fixed version yet.'**
+  String get secVulnNoneFixed;
+
+  /// No description provided for @secVulnNoFix.
+  ///
+  /// In en, this message translates to:
+  /// **'no fix yet'**
+  String get secVulnNoFix;
+
+  /// No description provided for @secVulnTruncated.
+  ///
+  /// In en, this message translates to:
+  /// **'The list is cut off: the scanner found more than it keeps. The most severe come first.'**
+  String get secVulnTruncated;
+
+  /// No description provided for @secSecretsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Secrets'**
+  String get secSecretsTitle;
+
+  /// No description provided for @secSecretsInfo.
+  ///
+  /// In en, this message translates to:
+  /// **'Shows where a key or password was found (repository, file, line, or log stream), never the value itself. If one was found, treat it as leaked: rotate it, then dismiss the finding.'**
+  String get secSecretsInfo;
+
+  /// No description provided for @secSecretsLastRun.
+  ///
+  /// In en, this message translates to:
+  /// **'Last scan {ago}'**
+  String secSecretsLastRun(String ago);
+
+  /// No description provided for @secSecretsNeverRun.
+  ///
+  /// In en, this message translates to:
+  /// **'Not scanned yet. Turn on Gitleaks or add a local folder in the scanner settings, then scan.'**
+  String get secSecretsNeverRun;
+
+  /// No description provided for @secSecretsFindings.
+  ///
+  /// In en, this message translates to:
+  /// **'Findings · {count}'**
+  String secSecretsFindings(int count);
+
+  /// No description provided for @secSecretsNone.
+  ///
+  /// In en, this message translates to:
+  /// **'Nothing found in the last scan.'**
+  String get secSecretsNone;
+
+  /// No description provided for @secSecretsDismiss.
+  ///
+  /// In en, this message translates to:
+  /// **'Dismiss'**
+  String get secSecretsDismiss;
+
+  /// No description provided for @secSecretsUndismiss.
+  ///
+  /// In en, this message translates to:
+  /// **'Undo dismiss'**
+  String get secSecretsUndismiss;
+
+  /// No description provided for @secSecretsDismissedChip.
+  ///
+  /// In en, this message translates to:
+  /// **'dismissed'**
+  String get secSecretsDismissedChip;
+
+  /// No description provided for @secSecretsShowDismissed.
+  ///
+  /// In en, this message translates to:
+  /// **'Show dismissed ({count})'**
+  String secSecretsShowDismissed(int count);
+
+  /// No description provided for @secSecretsCommit.
+  ///
+  /// In en, this message translates to:
+  /// **'commit {commit}'**
+  String secSecretsCommit(String commit);
+
+  /// No description provided for @secSecretsFirstSeen.
+  ///
+  /// In en, this message translates to:
+  /// **'first seen {when}'**
+  String secSecretsFirstSeen(String when);
+
+  /// No description provided for @secSecretsRepos.
+  ///
+  /// In en, this message translates to:
+  /// **'Repositories · {count}'**
+  String secSecretsRepos(int count);
+
+  /// No description provided for @secSecretSourceGithub.
+  ///
+  /// In en, this message translates to:
+  /// **'GitHub'**
+  String get secSecretSourceGithub;
+
+  /// No description provided for @secSecretSourceLoki.
+  ///
+  /// In en, this message translates to:
+  /// **'Logs (Loki)'**
+  String get secSecretSourceLoki;
+
+  /// No description provided for @secSecretSourceLocal.
+  ///
+  /// In en, this message translates to:
+  /// **'Local repository'**
+  String get secSecretSourceLocal;
+
+  /// No description provided for @secSecretRepoCloneFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'could not be cloned'**
+  String get secSecretRepoCloneFailed;
+
+  /// No description provided for @secScannersHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Scans run at night. Heavy scanners run in pinned containers without network access, except Trivy’s own downloads.'**
+  String get secScannersHint;
+
+  /// No description provided for @secScanTrivy.
+  ///
+  /// In en, this message translates to:
+  /// **'Trivy (vulnerabilities)'**
+  String get secScanTrivy;
+
+  /// No description provided for @secScanTrivyHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Scans the images of running containers'**
+  String get secScanTrivyHint;
+
+  /// No description provided for @secScanGitleaks.
+  ///
+  /// In en, this message translates to:
+  /// **'Gitleaks (secrets)'**
+  String get secScanGitleaks;
+
+  /// No description provided for @secScanGitleaksHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Scans GitHub repositories and logs'**
+  String get secScanGitleaksHint;
+
+  /// No description provided for @secScanJavaDb.
+  ///
+  /// In en, this message translates to:
+  /// **'Java database'**
+  String get secScanJavaDb;
+
+  /// No description provided for @secScanJavaDbHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Also checks Java libraries; downloads a large database'**
+  String get secScanJavaDbHint;
+
+  /// No description provided for @secRegistryTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Registry logins'**
+  String get secRegistryTitle;
+
+  /// No description provided for @secRegistryEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'No registry login. Public images need none.'**
+  String get secRegistryEmpty;
+
+  /// No description provided for @secRegistryAdd.
+  ///
+  /// In en, this message translates to:
+  /// **'Add registry login'**
+  String get secRegistryAdd;
+
+  /// No description provided for @secRegistryEdit.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit registry login'**
+  String get secRegistryEdit;
+
+  /// No description provided for @secRegistryHost.
+  ///
+  /// In en, this message translates to:
+  /// **'Registry'**
+  String get secRegistryHost;
+
+  /// No description provided for @secRegistryUser.
+  ///
+  /// In en, this message translates to:
+  /// **'User name'**
+  String get secRegistryUser;
+
+  /// No description provided for @secRegistryToken.
+  ///
+  /// In en, this message translates to:
+  /// **'Token'**
+  String get secRegistryToken;
+
+  /// No description provided for @secRegistryTokenHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Written only; it is never shown again.'**
+  String get secRegistryTokenHint;
+
+  /// No description provided for @secRegistryHint.
+  ///
+  /// In en, this message translates to:
+  /// **'For ghcr.io use a GitHub token that can read packages.'**
+  String get secRegistryHint;
+
+  /// No description provided for @secRegistryRemove.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove login for {registry}'**
+  String secRegistryRemove(String registry);
+
+  /// No description provided for @secRegistryRemoveConfirm.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove the login for {registry}? Its token is deleted from the agent.'**
+  String secRegistryRemoveConfirm(String registry);
+
+  /// No description provided for @secGhTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'GitHub'**
+  String get secGhTitle;
+
+  /// No description provided for @secGhOwners.
+  ///
+  /// In en, this message translates to:
+  /// **'Accounts and organizations to scan'**
+  String get secGhOwners;
+
+  /// No description provided for @secGhAddOwner.
+  ///
+  /// In en, this message translates to:
+  /// **'Add owner'**
+  String get secGhAddOwner;
+
+  /// No description provided for @secGhOwner.
+  ///
+  /// In en, this message translates to:
+  /// **'GitHub user or organization'**
+  String get secGhOwner;
+
+  /// No description provided for @secGhRemoveOwner.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove {owner}'**
+  String secGhRemoveOwner(String owner);
+
+  /// No description provided for @secGhToken.
+  ///
+  /// In en, this message translates to:
+  /// **'GitHub token'**
+  String get secGhToken;
+
+  /// No description provided for @secGhTokenHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Optional. Without it only public repositories are scanned; with a read-only token private ones too.'**
+  String get secGhTokenHint;
+
+  /// No description provided for @secGhTokenRemoveConfirm.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove the saved GitHub token?'**
+  String get secGhTokenRemoveConfirm;
+
+  /// No description provided for @secLokiTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Log source (Loki)'**
+  String get secLokiTitle;
+
+  /// No description provided for @secLokiOff.
+  ///
+  /// In en, this message translates to:
+  /// **'Off'**
+  String get secLokiOff;
+
+  /// No description provided for @secLokiContainer.
+  ///
+  /// In en, this message translates to:
+  /// **'Container'**
+  String get secLokiContainer;
+
+  /// No description provided for @secLokiUrl.
+  ///
+  /// In en, this message translates to:
+  /// **'URL'**
+  String get secLokiUrl;
+
+  /// No description provided for @secLokiContainerName.
+  ///
+  /// In en, this message translates to:
+  /// **'Container name'**
+  String get secLokiContainerName;
+
+  /// No description provided for @secLokiPort.
+  ///
+  /// In en, this message translates to:
+  /// **'Port'**
+  String get secLokiPort;
+
+  /// No description provided for @secLokiUrlLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Loki address'**
+  String get secLokiUrlLabel;
+
+  /// No description provided for @secLokiOffHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Logs are not scanned for secrets.'**
+  String get secLokiOffHint;
+
+  /// No description provided for @secRootsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Local repositories'**
+  String get secRootsTitle;
+
+  /// No description provided for @secRootsHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Folders on this machine whose git repositories are scanned. Only the location of a finding leaves the machine.'**
+  String get secRootsHint;
+
+  /// No description provided for @secRootAdd.
+  ///
+  /// In en, this message translates to:
+  /// **'Add folder'**
+  String get secRootAdd;
+
+  /// No description provided for @secRootLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Folder'**
+  String get secRootLabel;
+
+  /// No description provided for @secRootRemove.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove folder'**
+  String get secRootRemove;
+
+  /// No description provided for @secNightTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Night hours'**
+  String get secNightTitle;
+
+  /// No description provided for @secNightHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Heavy scans and image copies run only in this window (hours, 0–24).'**
+  String get secNightHint;
+
+  /// No description provided for @secNightFrom.
+  ///
+  /// In en, this message translates to:
+  /// **'From'**
+  String get secNightFrom;
+
+  /// No description provided for @secNightTo.
+  ///
+  /// In en, this message translates to:
+  /// **'To'**
+  String get secNightTo;
+
+  /// No description provided for @secTrapsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Traps'**
+  String get secTrapsTitle;
+
+  /// No description provided for @secTrapsInfo.
+  ///
+  /// In en, this message translates to:
+  /// **'A trap is something nobody should touch. If a decoy token is used, a decoy file is read or a decoy database user logs in, you get an urgent alarm (and a Telegram message if set up below).'**
+  String get secTrapsInfo;
+
+  /// No description provided for @secTrapTest.
+  ///
+  /// In en, this message translates to:
+  /// **'Send test alarm'**
+  String get secTrapTest;
+
+  /// No description provided for @secTrapTestSent.
+  ///
+  /// In en, this message translates to:
+  /// **'Test alarm sent'**
+  String get secTrapTestSent;
+
+  /// No description provided for @secTrapTokens.
+  ///
+  /// In en, this message translates to:
+  /// **'Decoy tokens'**
+  String get secTrapTokens;
+
+  /// No description provided for @secTrapTokensEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'No decoy token.'**
+  String get secTrapTokensEmpty;
+
+  /// No description provided for @secTrapTokenAdd.
+  ///
+  /// In en, this message translates to:
+  /// **'Add decoy token'**
+  String get secTrapTokenAdd;
+
+  /// No description provided for @secTrapTokenName.
+  ///
+  /// In en, this message translates to:
+  /// **'Name'**
+  String get secTrapTokenName;
+
+  /// No description provided for @secTrapTokenNameHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Says where you will plant it, e.g. backup-token. It is shown in the alarm.'**
+  String get secTrapTokenNameHint;
+
+  /// No description provided for @secTrapCreate.
+  ///
+  /// In en, this message translates to:
+  /// **'Create'**
+  String get secTrapCreate;
+
+  /// No description provided for @secTrapCreatedAt.
+  ///
+  /// In en, this message translates to:
+  /// **'created {when}'**
+  String secTrapCreatedAt(String when);
+
+  /// No description provided for @secTrapDeleteTooltip.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete {name}'**
+  String secTrapDeleteTooltip(String name);
+
+  /// No description provided for @secTrapTokenDeleteConfirm.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete the decoy token {name}? Using it will no longer raise an alarm.'**
+  String secTrapTokenDeleteConfirm(String name);
+
+  /// No description provided for @secTrapTokenShownTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Decoy token: {name}'**
+  String secTrapTokenShownTitle(String name);
+
+  /// No description provided for @secTrapTokenPlantHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Plant it where an intruder would look: in an old .env backup, a notes file, a password-manager entry, or a repository you do not use. Anyone who tries it gets a normal “unauthorized” answer and you get the alarm.'**
+  String get secTrapTokenPlantHint;
+
+  /// No description provided for @secTrapTokenOpensNothing.
+  ///
+  /// In en, this message translates to:
+  /// **'This token opens nothing. Do not use it yourself.'**
+  String get secTrapTokenOpensNothing;
+
+  /// No description provided for @secTrapFiles.
+  ///
+  /// In en, this message translates to:
+  /// **'Decoy files'**
+  String get secTrapFiles;
+
+  /// No description provided for @secTrapFilesEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'No decoy file.'**
+  String get secTrapFilesEmpty;
+
+  /// No description provided for @secTrapFileAdd.
+  ///
+  /// In en, this message translates to:
+  /// **'Add decoy file'**
+  String get secTrapFileAdd;
+
+  /// No description provided for @secTrapFilePath.
+  ///
+  /// In en, this message translates to:
+  /// **'File path'**
+  String get secTrapFilePath;
+
+  /// No description provided for @secTrapFilePathHint.
+  ///
+  /// In en, this message translates to:
+  /// **'The agent creates the file here; it must not exist yet.'**
+  String get secTrapFilePathHint;
+
+  /// No description provided for @secTrapKindEnv.
+  ///
+  /// In en, this message translates to:
+  /// **'.env backup'**
+  String get secTrapKindEnv;
+
+  /// No description provided for @secTrapKindSshKey.
+  ///
+  /// In en, this message translates to:
+  /// **'SSH key'**
+  String get secTrapKindSshKey;
+
+  /// No description provided for @secTrapFileBackupWarn.
+  ///
+  /// In en, this message translates to:
+  /// **'Backup or sync tools that read this folder will trigger the alarm too. Put decoys in a folder they skip.'**
+  String get secTrapFileBackupWarn;
+
+  /// No description provided for @secTrapFileDeleteConfirm.
+  ///
+  /// In en, this message translates to:
+  /// **'Stop watching {path}? The file stays on disk; delete it yourself if you do not want it.'**
+  String secTrapFileDeleteConfirm(String path);
+
+  /// No description provided for @secTrapStatusArmed.
+  ///
+  /// In en, this message translates to:
+  /// **'Armed'**
+  String get secTrapStatusArmed;
+
+  /// No description provided for @secTrapStatusNoatime.
+  ///
+  /// In en, this message translates to:
+  /// **'Cannot detect reads'**
+  String get secTrapStatusNoatime;
+
+  /// No description provided for @secTrapStatusMissing.
+  ///
+  /// In en, this message translates to:
+  /// **'File missing'**
+  String get secTrapStatusMissing;
+
+  /// No description provided for @secTrapStatusError.
+  ///
+  /// In en, this message translates to:
+  /// **'Error'**
+  String get secTrapStatusError;
+
+  /// No description provided for @secTrapStatusNoatimeHint.
+  ///
+  /// In en, this message translates to:
+  /// **'The disk is mounted without access times, so reads cannot be seen. Put the file on another disk.'**
+  String get secTrapStatusNoatimeHint;
+
+  /// No description provided for @secTrapStatusMissingHint.
+  ///
+  /// In en, this message translates to:
+  /// **'The file was deleted or moved. That raised an alarm.'**
+  String get secTrapStatusMissingHint;
+
+  /// No description provided for @secTrapStatusErrorHint.
+  ///
+  /// In en, this message translates to:
+  /// **'The file could not be checked.'**
+  String get secTrapStatusErrorHint;
+
+  /// No description provided for @secTrapNeverTriggered.
+  ///
+  /// In en, this message translates to:
+  /// **'Never triggered'**
+  String get secTrapNeverTriggered;
+
+  /// No description provided for @secTrapTriggeredAgo.
+  ///
+  /// In en, this message translates to:
+  /// **'Triggered {ago}'**
+  String secTrapTriggeredAgo(String ago);
+
+  /// No description provided for @secTrapDbUsers.
+  ///
+  /// In en, this message translates to:
+  /// **'Decoy database users'**
+  String get secTrapDbUsers;
+
+  /// No description provided for @secTrapDbHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Names that exist only in decoy files. A login attempt with one of them in the logs is an alarm.'**
+  String get secTrapDbHint;
+
+  /// No description provided for @secTrapDbAdd.
+  ///
+  /// In en, this message translates to:
+  /// **'Add user name'**
+  String get secTrapDbAdd;
+
+  /// No description provided for @secTrapDbUser.
+  ///
+  /// In en, this message translates to:
+  /// **'User name'**
+  String get secTrapDbUser;
+
+  /// No description provided for @secTrapDbUserHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Lower-case letters, digits and underscore, at least 3 characters.'**
+  String get secTrapDbUserHint;
+
+  /// No description provided for @secTrapDbRemove.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove user name'**
+  String get secTrapDbRemove;
+
+  /// No description provided for @secTrapSshHosts.
+  ///
+  /// In en, this message translates to:
+  /// **'SSH-audited machines'**
+  String get secTrapSshHosts;
+
+  /// No description provided for @secTrapSshNone.
+  ///
+  /// In en, this message translates to:
+  /// **'No machine is audited over SSH.'**
+  String get secTrapSshNone;
+
+  /// No description provided for @secTrapSshSwitch.
+  ///
+  /// In en, this message translates to:
+  /// **'Report reads of the decoy file'**
+  String get secTrapSshSwitch;
+
+  /// No description provided for @secTrapSshHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Needs the trap rule installed on that machine (install-audit.sh --trap).'**
+  String get secTrapSshHint;
+
+  /// No description provided for @secTrapAlertsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Telegram alerts to the owner'**
+  String get secTrapAlertsTitle;
+
+  /// No description provided for @secTrapAlertsHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Critical alarms (trap, secret found, broken black box, lockdown) also go to this Telegram recipient, as a short title only. It works even if this app is the problem.'**
+  String get secTrapAlertsHint;
+
+  /// No description provided for @secTrapAlertsOff.
+  ///
+  /// In en, this message translates to:
+  /// **'Off'**
+  String get secTrapAlertsOff;
+
+  /// No description provided for @secTrapAlertsUnknown.
+  ///
+  /// In en, this message translates to:
+  /// **'Unknown recipient ({id})'**
+  String secTrapAlertsUnknown(String id);
+
+  /// No description provided for @secTrapAlertsNoTelegram.
+  ///
+  /// In en, this message translates to:
+  /// **'This agent has no Telegram connection. Set up the bot under Telegram first.'**
+  String get secTrapAlertsNoTelegram;
+
+  /// No description provided for @secTrapAlertsNoRecipients.
+  ///
+  /// In en, this message translates to:
+  /// **'No recipient yet. Invite yourself in the Telegram section.'**
+  String get secTrapAlertsNoRecipients;
+
+  /// No description provided for @secExposureTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Outside view'**
+  String get secExposureTitle;
+
+  /// No description provided for @secExposureInfo.
+  ///
+  /// In en, this message translates to:
+  /// **'Looks at your machines the way an outsider does: open ports on IP addresses; certificate expiry, HTTPS redirect, security headers and leaking files (such as /.env) on domains. It runs gently, once a week at night.'**
+  String get secExposureInfo;
+
+  /// No description provided for @secExposureEnabled.
+  ///
+  /// In en, this message translates to:
+  /// **'Weekly check'**
+  String get secExposureEnabled;
+
+  /// No description provided for @secExposureEnabledHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Runs every {days} days at night when on.'**
+  String secExposureEnabledHint(int days);
+
+  /// No description provided for @secExposureRunNow.
+  ///
+  /// In en, this message translates to:
+  /// **'Run now'**
+  String get secExposureRunNow;
+
+  /// No description provided for @secExposureEditTargets.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit targets'**
+  String get secExposureEditTargets;
+
+  /// No description provided for @secExposureNoTargets.
+  ///
+  /// In en, this message translates to:
+  /// **'No target. Add an IP address or a domain to check.'**
+  String get secExposureNoTargets;
+
+  /// No description provided for @secExposureLastRun.
+  ///
+  /// In en, this message translates to:
+  /// **'Last result'**
+  String get secExposureLastRun;
+
+  /// No description provided for @secExposureNeverRun.
+  ///
+  /// In en, this message translates to:
+  /// **'Not run yet.'**
+  String get secExposureNeverRun;
+
+  /// No description provided for @secExposureNoOpenPorts.
+  ///
+  /// In en, this message translates to:
+  /// **'No open port found.'**
+  String get secExposureNoOpenPorts;
+
+  /// No description provided for @secExposureTargetFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'This target could not be checked.'**
+  String get secExposureTargetFailed;
+
+  /// No description provided for @secExposureClean.
+  ///
+  /// In en, this message translates to:
+  /// **'Nothing to report.'**
+  String get secExposureClean;
+
+  /// No description provided for @secExposureHistory.
+  ///
+  /// In en, this message translates to:
+  /// **'History'**
+  String get secExposureHistory;
+
+  /// No description provided for @secExposureFindingsCount.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} findings'**
+  String secExposureFindingsCount(int count);
+
+  /// No description provided for @secExposureTargetsHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Ports you list as expected are not reported for that IP address.'**
+  String get secExposureTargetsHint;
+
+  /// No description provided for @secExposureExpected.
+  ///
+  /// In en, this message translates to:
+  /// **'expected ports: {ports}'**
+  String secExposureExpected(String ports);
+
+  /// No description provided for @secExposureExpectedNone.
+  ///
+  /// In en, this message translates to:
+  /// **'no expected port'**
+  String get secExposureExpectedNone;
+
+  /// No description provided for @secExposureRemoveTarget.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove {target}'**
+  String secExposureRemoveTarget(String target);
+
+  /// No description provided for @secExposureAddTarget.
+  ///
+  /// In en, this message translates to:
+  /// **'Add target'**
+  String get secExposureAddTarget;
+
+  /// No description provided for @secExposureKindDomain.
+  ///
+  /// In en, this message translates to:
+  /// **'Domain'**
+  String get secExposureKindDomain;
+
+  /// No description provided for @secExposureKindIp.
+  ///
+  /// In en, this message translates to:
+  /// **'IP address'**
+  String get secExposureKindIp;
+
+  /// No description provided for @secExposureDomainLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Domain name'**
+  String get secExposureDomainLabel;
+
+  /// No description provided for @secExposureIpLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'IPv4 address'**
+  String get secExposureIpLabel;
+
+  /// No description provided for @secExposureExpectedLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Expected open ports'**
+  String get secExposureExpectedLabel;
+
+  /// No description provided for @secExposureExpectedHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Comma separated, e.g. 22, 443'**
+  String get secExposureExpectedHint;
+
+  /// No description provided for @secExposureDuplicate.
+  ///
+  /// In en, this message translates to:
+  /// **'This target is already in the list.'**
+  String get secExposureDuplicate;
+
+  /// No description provided for @secExposureExtraPorts.
+  ///
+  /// In en, this message translates to:
+  /// **'Extra ports to probe'**
+  String get secExposureExtraPorts;
+
+  /// No description provided for @secExposureExtraPortsHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Added to the built-in list of common ports.'**
+  String get secExposureExtraPortsHint;
+
+  /// No description provided for @secExposureInterval.
+  ///
+  /// In en, this message translates to:
+  /// **'Days between runs'**
+  String get secExposureInterval;
+
+  /// No description provided for @secExposureIntervalHint.
+  ///
+  /// In en, this message translates to:
+  /// **'1 to 30'**
+  String get secExposureIntervalHint;
+
+  /// No description provided for @secExpRuleOpenPort.
+  ///
+  /// In en, this message translates to:
+  /// **'Port {port} is open to the internet on {target}'**
+  String secExpRuleOpenPort(String port, String target);
+
+  /// No description provided for @secExpRuleLeakPath.
+  ///
+  /// In en, this message translates to:
+  /// **'{target} serves {path}, a file that should not be public'**
+  String secExpRuleLeakPath(String path, String target);
+
+  /// No description provided for @secExpRuleTlsExpiry.
+  ///
+  /// In en, this message translates to:
+  /// **'The certificate of {target} expires in {days} days'**
+  String secExpRuleTlsExpiry(String target, int days);
+
+  /// No description provided for @secExpRuleTlsExpired.
+  ///
+  /// In en, this message translates to:
+  /// **'The certificate of {target} has expired'**
+  String secExpRuleTlsExpired(String target);
+
+  /// No description provided for @secExpRuleNoHttps.
+  ///
+  /// In en, this message translates to:
+  /// **'{target} answers over plain HTTP without redirecting to HTTPS'**
+  String secExpRuleNoHttps(String target);
+
+  /// No description provided for @secExpRuleNoHsts.
+  ///
+  /// In en, this message translates to:
+  /// **'{target} does not send the HSTS header'**
+  String secExpRuleNoHsts(String target);
+
+  /// No description provided for @secExpRuleHeaders.
+  ///
+  /// In en, this message translates to:
+  /// **'{target} lacks security headers: {missing}'**
+  String secExpRuleHeaders(String target, String missing);
+
+  /// No description provided for @secExpRuleUnreachable.
+  ///
+  /// In en, this message translates to:
+  /// **'{target} could not be reached over HTTPS'**
+  String secExpRuleUnreachable(String target);
+
+  /// No description provided for @secExpRuleUnreachableTls.
+  ///
+  /// In en, this message translates to:
+  /// **'No TLS certificate could be read from {target}'**
+  String secExpRuleUnreachableTls(String target);
+
+  /// No description provided for @secExpFixOpenPort.
+  ///
+  /// In en, this message translates to:
+  /// **'Close it in the firewall or bind the service to the private network; if it is meant to be public, add it to the expected ports.'**
+  String get secExpFixOpenPort;
+
+  /// No description provided for @secExpFixLeakPath.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove the file from the web root or block the path at the proxy, then rotate everything in it.'**
+  String get secExpFixLeakPath;
+
+  /// No description provided for @secExpFixTlsExpiry.
+  ///
+  /// In en, this message translates to:
+  /// **'Renew the certificate and check that automatic renewal works.'**
+  String get secExpFixTlsExpiry;
+
+  /// No description provided for @secExpFixNoHttps.
+  ///
+  /// In en, this message translates to:
+  /// **'Redirect HTTP to HTTPS at the proxy.'**
+  String get secExpFixNoHttps;
+
+  /// No description provided for @secExpFixNoHsts.
+  ///
+  /// In en, this message translates to:
+  /// **'Send Strict-Transport-Security once HTTPS works everywhere.'**
+  String get secExpFixNoHsts;
+
+  /// No description provided for @secExpFixHeaders.
+  ///
+  /// In en, this message translates to:
+  /// **'Add the missing headers at the proxy (X-Content-Type-Options, frame-ancestors or X-Frame-Options, Referrer-Policy).'**
+  String get secExpFixHeaders;
+
+  /// No description provided for @secExpFixUnreachable.
+  ///
+  /// In en, this message translates to:
+  /// **'Check that the site is up and the certificate is valid.'**
+  String get secExpFixUnreachable;
+
+  /// No description provided for @secAttacksTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Attacks'**
+  String get secAttacksTitle;
+
+  /// No description provided for @secAttacksInfo.
+  ///
+  /// In en, this message translates to:
+  /// **'Sources that sent many error responses or asked for typical scanner paths (such as /wp-login.php), as seen by Cloudflare. This is the normal noise of the internet; it matters when it grows or hits a path you really use.'**
+  String get secAttacksInfo;
+
+  /// No description provided for @secAttacksNotConfigured.
+  ///
+  /// In en, this message translates to:
+  /// **'Cloudflare is not connected. Add a read token in the Cloudflare settings.'**
+  String get secAttacksNotConfigured;
+
+  /// No description provided for @secAttacksLastRun.
+  ///
+  /// In en, this message translates to:
+  /// **'Last check {ago} · {zones} zones'**
+  String secAttacksLastRun(String ago, int zones);
+
+  /// No description provided for @secAttacksNeverRun.
+  ///
+  /// In en, this message translates to:
+  /// **'Not checked yet.'**
+  String get secAttacksNeverRun;
+
+  /// No description provided for @secAttacksCheckNow.
+  ///
+  /// In en, this message translates to:
+  /// **'Check now'**
+  String get secAttacksCheckNow;
+
+  /// No description provided for @secAttacksChecked.
+  ///
+  /// In en, this message translates to:
+  /// **'Checked: {offenders} new sources, {blocked} blocked'**
+  String secAttacksChecked(int offenders, int blocked);
+
+  /// No description provided for @secAttacksOffenders.
+  ///
+  /// In en, this message translates to:
+  /// **'Sources · {count}'**
+  String secAttacksOffenders(int count);
+
+  /// No description provided for @secAttacksNone.
+  ///
+  /// In en, this message translates to:
+  /// **'No suspicious source.'**
+  String get secAttacksNone;
+
+  /// No description provided for @secAttacksErrors.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} errors'**
+  String secAttacksErrors(int count);
+
+  /// No description provided for @secAttacksScannerHits.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} scanner paths'**
+  String secAttacksScannerHits(int count);
+
+  /// No description provided for @secAttacksSeen.
+  ///
+  /// In en, this message translates to:
+  /// **'first {first}, last {last}'**
+  String secAttacksSeen(String first, String last);
+
+  /// No description provided for @secAttacksBlockedUntil.
+  ///
+  /// In en, this message translates to:
+  /// **'blocked until {when}'**
+  String secAttacksBlockedUntil(String when);
+
+  /// No description provided for @secCfTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Cloudflare settings'**
+  String get secCfTitle;
+
+  /// No description provided for @secCfPermissionsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Token permissions'**
+  String get secCfPermissionsTitle;
+
+  /// No description provided for @secCfPermissions.
+  ///
+  /// In en, this message translates to:
+  /// **'Read token: Zone Analytics Read + Zone Read. Block token (only if you want automatic blocking): Zone Firewall Services Edit. Create each as a separate API token in Cloudflare, limited to your zones.'**
+  String get secCfPermissions;
+
+  /// No description provided for @secCfReadToken.
+  ///
+  /// In en, this message translates to:
+  /// **'Read token'**
+  String get secCfReadToken;
+
+  /// No description provided for @secCfReadTokenHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Written only; never shown again. Leave empty to keep the saved one.'**
+  String get secCfReadTokenHint;
+
+  /// No description provided for @secCfBlockToken.
+  ///
+  /// In en, this message translates to:
+  /// **'Block token'**
+  String get secCfBlockToken;
+
+  /// No description provided for @secCfBlockTokenHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Only needed for automatic blocking. Leave empty to keep the saved one.'**
+  String get secCfBlockTokenHint;
+
+  /// No description provided for @secCfNothingToSave.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter a token first.'**
+  String get secCfNothingToSave;
+
+  /// No description provided for @secCfRemoveRead.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove read token'**
+  String get secCfRemoveRead;
+
+  /// No description provided for @secCfRemoveBlock.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove block token'**
+  String get secCfRemoveBlock;
+
+  /// No description provided for @secCfRemoveReadConfirm.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove the read token? Attack detection stops.'**
+  String get secCfRemoveReadConfirm;
+
+  /// No description provided for @secCfRemoveBlockConfirm.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove the block token? Automatic blocking is turned off too.'**
+  String get secCfRemoveBlockConfirm;
+
+  /// No description provided for @secCfBlock.
+  ///
+  /// In en, this message translates to:
+  /// **'Block attackers automatically'**
+  String get secCfBlock;
+
+  /// No description provided for @secCfBlockWarn.
+  ///
+  /// In en, this message translates to:
+  /// **'Blocking adds a Cloudflare firewall rule for the source IP. A wrong block can lock out a real visitor or yourself, so your own addresses and private ranges are never blocked; add other addresses you rely on below.'**
+  String get secCfBlockWarn;
+
+  /// No description provided for @secCfBlockConfirm.
+  ///
+  /// In en, this message translates to:
+  /// **'Turn on automatic blocking? Sources that probe your sites will be blocked for {hours} hours.'**
+  String secCfBlockConfirm(int hours);
+
+  /// No description provided for @secCfBlockOn.
+  ///
+  /// In en, this message translates to:
+  /// **'Turn on'**
+  String get secCfBlockOn;
+
+  /// No description provided for @secCfBlockHours.
+  ///
+  /// In en, this message translates to:
+  /// **'Block duration (hours)'**
+  String get secCfBlockHours;
+
+  /// No description provided for @secCfBlockHoursHint.
+  ///
+  /// In en, this message translates to:
+  /// **'1 to 720. The block is lifted automatically.'**
+  String get secCfBlockHoursHint;
+
+  /// No description provided for @secCfZones.
+  ///
+  /// In en, this message translates to:
+  /// **'Zones to watch'**
+  String get secCfZones;
+
+  /// No description provided for @secCfZonesHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Domain names. Empty means every zone the token can read.'**
+  String get secCfZonesHint;
+
+  /// No description provided for @secCfAddZone.
+  ///
+  /// In en, this message translates to:
+  /// **'Add zone'**
+  String get secCfAddZone;
+
+  /// No description provided for @secCfZone.
+  ///
+  /// In en, this message translates to:
+  /// **'Zone (domain name)'**
+  String get secCfZone;
+
+  /// No description provided for @secCfRemoveZone.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove zone'**
+  String get secCfRemoveZone;
+
+  /// No description provided for @secCfAllow.
+  ///
+  /// In en, this message translates to:
+  /// **'Never block'**
+  String get secCfAllow;
+
+  /// No description provided for @secCfAllowHint.
+  ///
+  /// In en, this message translates to:
+  /// **'IP addresses that are never blocked, such as your own office or home address.'**
+  String get secCfAllowHint;
+
+  /// No description provided for @secCfAddAllow.
+  ///
+  /// In en, this message translates to:
+  /// **'Add address'**
+  String get secCfAddAllow;
+
+  /// No description provided for @secCfAllowIp.
+  ///
+  /// In en, this message translates to:
+  /// **'IP address'**
+  String get secCfAllowIp;
+
+  /// No description provided for @secCfRemoveAllow.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove address'**
+  String get secCfRemoveAllow;
+
+  /// No description provided for @secBbTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Black box'**
+  String get secBbTitle;
+
+  /// No description provided for @secBbInfo.
+  ///
+  /// In en, this message translates to:
+  /// **'An append-only record of what was done through the agents (requests and notices). Each record contains the hash of the previous one, so changing or deleting any of them breaks the chain. Every night the latest hash is sent to your Telegram as an outside anchor.'**
+  String get secBbInfo;
+
+  /// No description provided for @secBbModeOff.
+  ///
+  /// In en, this message translates to:
+  /// **'Off'**
+  String get secBbModeOff;
+
+  /// No description provided for @secBbModeLocal.
+  ///
+  /// In en, this message translates to:
+  /// **'Keep here'**
+  String get secBbModeLocal;
+
+  /// No description provided for @secBbModePush.
+  ///
+  /// In en, this message translates to:
+  /// **'Send to server'**
+  String get secBbModePush;
+
+  /// No description provided for @secBbModeNow.
+  ///
+  /// In en, this message translates to:
+  /// **'Mode: {mode}'**
+  String secBbModeNow(String mode);
+
+  /// No description provided for @secBbHead.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} records · latest {hash}'**
+  String secBbHead(int count, String hash);
+
+  /// No description provided for @secBbPending.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} records waiting to be sent'**
+  String secBbPending(int count);
+
+  /// No description provided for @secBbNeverSent.
+  ///
+  /// In en, this message translates to:
+  /// **'Nothing sent yet'**
+  String get secBbNeverSent;
+
+  /// No description provided for @secBbLastSent.
+  ///
+  /// In en, this message translates to:
+  /// **'Last sent {ago}'**
+  String secBbLastSent(String ago);
+
+  /// No description provided for @secBbOffHint.
+  ///
+  /// In en, this message translates to:
+  /// **'The black box is off: nothing is recorded.'**
+  String get secBbOffHint;
+
+  /// No description provided for @secBbLocalHint.
+  ///
+  /// In en, this message translates to:
+  /// **'This agent keeps the chain and receives the records of the other agents.'**
+  String get secBbLocalHint;
+
+  /// No description provided for @secBbPushHint.
+  ///
+  /// In en, this message translates to:
+  /// **'This agent sends its records to the agent that keeps the chain. It needs that agent’s address and a token of the “blackbox” kind created there.'**
+  String get secBbPushHint;
+
+  /// No description provided for @secBbVerify.
+  ///
+  /// In en, this message translates to:
+  /// **'Verify the chain'**
+  String get secBbVerify;
+
+  /// No description provided for @secBbAnchor.
+  ///
+  /// In en, this message translates to:
+  /// **'Send today’s anchor'**
+  String get secBbAnchor;
+
+  /// No description provided for @secBbAnchored.
+  ///
+  /// In en, this message translates to:
+  /// **'Anchor saved'**
+  String get secBbAnchored;
+
+  /// No description provided for @secBbVerifiedOk.
+  ///
+  /// In en, this message translates to:
+  /// **'The chain is intact'**
+  String get secBbVerifiedOk;
+
+  /// No description provided for @secBbVerifiedCount.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} records checked, every link matches.'**
+  String secBbVerifiedCount(int count);
+
+  /// No description provided for @secBbBroken.
+  ///
+  /// In en, this message translates to:
+  /// **'The chain is broken'**
+  String get secBbBroken;
+
+  /// No description provided for @secBbBrokenAt.
+  ///
+  /// In en, this message translates to:
+  /// **'Broken at record {seq}'**
+  String secBbBrokenAt(int seq);
+
+  /// No description provided for @secBbBrokenAdvice.
+  ///
+  /// In en, this message translates to:
+  /// **'Someone may have changed or removed records. Copy the file away before anything else, and compare it with the anchors in Telegram.'**
+  String get secBbBrokenAdvice;
+
+  /// No description provided for @secBbAnchorMismatchTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'The chain does not match its anchors'**
+  String get secBbAnchorMismatchTitle;
+
+  /// No description provided for @secBbAnchorMismatch.
+  ///
+  /// In en, this message translates to:
+  /// **'These days’ anchors are no longer in the chain: {dates}'**
+  String secBbAnchorMismatch(String dates);
+
+  /// No description provided for @secBbAnchors.
+  ///
+  /// In en, this message translates to:
+  /// **'Anchors · {count}'**
+  String secBbAnchors(int count);
+
+  /// No description provided for @secBbAnchorsNone.
+  ///
+  /// In en, this message translates to:
+  /// **'No anchor yet. One is made at night, or send today’s.'**
+  String get secBbAnchorsNone;
+
+  /// No description provided for @secBbAnchorTelegram.
+  ///
+  /// In en, this message translates to:
+  /// **'Telegram'**
+  String get secBbAnchorTelegram;
+
+  /// No description provided for @secBbAnchorLocalOnly.
+  ///
+  /// In en, this message translates to:
+  /// **'only here'**
+  String get secBbAnchorLocalOnly;
+
+  /// No description provided for @secBbRecords.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} records'**
+  String secBbRecords(int count);
+
+  /// No description provided for @secBbReasonSequence.
+  ///
+  /// In en, this message translates to:
+  /// **'The record numbers are not consecutive.'**
+  String get secBbReasonSequence;
+
+  /// No description provided for @secBbReasonLink.
+  ///
+  /// In en, this message translates to:
+  /// **'A record does not point to the one before it.'**
+  String get secBbReasonLink;
+
+  /// No description provided for @secBbReasonHash.
+  ///
+  /// In en, this message translates to:
+  /// **'A record’s content does not match its hash.'**
+  String get secBbReasonHash;
+
+  /// No description provided for @secBbReasonTruncated.
+  ///
+  /// In en, this message translates to:
+  /// **'The end of the file is missing.'**
+  String get secBbReasonTruncated;
+
+  /// No description provided for @secBbReasonUnreadable.
+  ///
+  /// In en, this message translates to:
+  /// **'A record could not be read.'**
+  String get secBbReasonUnreadable;
+
+  /// No description provided for @secBbReasonUnknown.
+  ///
+  /// In en, this message translates to:
+  /// **'Unknown reason.'**
+  String get secBbReasonUnknown;
+
+  /// No description provided for @secBbRecent.
+  ///
+  /// In en, this message translates to:
+  /// **'Latest records'**
+  String get secBbRecent;
+
+  /// No description provided for @secBbRecentEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'No record yet.'**
+  String get secBbRecentEmpty;
+
+  /// No description provided for @secBbKindAudit.
+  ///
+  /// In en, this message translates to:
+  /// **'request'**
+  String get secBbKindAudit;
+
+  /// No description provided for @secBbKindEvent.
+  ///
+  /// In en, this message translates to:
+  /// **'event'**
+  String get secBbKindEvent;
+
+  /// No description provided for @secBbKindLockdown.
+  ///
+  /// In en, this message translates to:
+  /// **'lockdown'**
+  String get secBbKindLockdown;
+
+  /// No description provided for @secBbSettings.
+  ///
+  /// In en, this message translates to:
+  /// **'Settings'**
+  String get secBbSettings;
+
+  /// No description provided for @secBbUrl.
+  ///
+  /// In en, this message translates to:
+  /// **'Server address'**
+  String get secBbUrl;
+
+  /// No description provided for @secBbToken.
+  ///
+  /// In en, this message translates to:
+  /// **'Token'**
+  String get secBbToken;
+
+  /// No description provided for @secBbTokenHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Written only; never shown again. A new address needs a new token.'**
+  String get secBbTokenHint;
+
+  /// No description provided for @secBbRestartRequired.
+  ///
+  /// In en, this message translates to:
+  /// **'The agent reads this setting at start. Restart the agent for the change to take effect.'**
+  String get secBbRestartRequired;
+
+  /// No description provided for @secRecTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Lost phone'**
+  String get secRecTitle;
+
+  /// No description provided for @secRecInfo.
+  ///
+  /// In en, this message translates to:
+  /// **'If your phone is lost, a recovery code lets you lock everything from any device on your network: all paired phones, tokens and push registrations are revoked on the monitoring server and on the agents listed below. Afterwards you pair again on each machine. Create the code now, write it on paper and keep it somewhere safe.'**
+  String get secRecInfo;
+
+  /// No description provided for @secRecConfigured.
+  ///
+  /// In en, this message translates to:
+  /// **'A recovery code exists (created {when})'**
+  String secRecConfigured(String when);
+
+  /// No description provided for @secRecNotConfigured.
+  ///
+  /// In en, this message translates to:
+  /// **'No recovery code yet'**
+  String get secRecNotConfigured;
+
+  /// No description provided for @secRecCreate.
+  ///
+  /// In en, this message translates to:
+  /// **'Create recovery code'**
+  String get secRecCreate;
+
+  /// No description provided for @secRecReplace.
+  ///
+  /// In en, this message translates to:
+  /// **'Create a new code'**
+  String get secRecReplace;
+
+  /// No description provided for @secRecCreateConfirm.
+  ///
+  /// In en, this message translates to:
+  /// **'Create a recovery code? It is shown once, after you confirm with your app lock.'**
+  String get secRecCreateConfirm;
+
+  /// No description provided for @secRecReplaceConfirm.
+  ///
+  /// In en, this message translates to:
+  /// **'Create a new code? The old one stops working immediately.'**
+  String get secRecReplaceConfirm;
+
+  /// No description provided for @secRecNeedsLock.
+  ///
+  /// In en, this message translates to:
+  /// **'Set up a PIN or fingerprint lock in the app settings first.'**
+  String get secRecNeedsLock;
+
+  /// No description provided for @secRecCodeTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Your recovery code'**
+  String get secRecCodeTitle;
+
+  /// No description provided for @secRecCodeHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Write it on paper, exactly as shown, and keep it where only you can reach it. Do not photograph it and do not store it on this phone or in a note app.'**
+  String get secRecCodeHint;
+
+  /// No description provided for @secRecCodeWarn.
+  ///
+  /// In en, this message translates to:
+  /// **'Anyone with this code can lock all your machines out. There is no copy button on purpose.'**
+  String get secRecCodeWarn;
+
+  /// No description provided for @secRecTargets.
+  ///
+  /// In en, this message translates to:
+  /// **'Agents to lock too'**
+  String get secRecTargets;
+
+  /// No description provided for @secRecTargetsHint.
+  ///
+  /// In en, this message translates to:
+  /// **'On each of these agents create a service token of the “lockdown” kind, then add the agent here. The token is stored on the monitoring server and never shown.'**
+  String get secRecTargetsHint;
+
+  /// No description provided for @secRecTargetsEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'No agent added. Only the monitoring server itself would be locked.'**
+  String get secRecTargetsEmpty;
+
+  /// No description provided for @secRecTargetAdd.
+  ///
+  /// In en, this message translates to:
+  /// **'Add agent'**
+  String get secRecTargetAdd;
+
+  /// No description provided for @secRecTargetToken.
+  ///
+  /// In en, this message translates to:
+  /// **'Lockdown token'**
+  String get secRecTargetToken;
+
+  /// No description provided for @secRecTargetTokenHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Starts with tps_. Written only; never shown again.'**
+  String get secRecTargetTokenHint;
+
+  /// No description provided for @secRecTargetRemove.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove {name}'**
+  String secRecTargetRemove(String name);
+
+  /// No description provided for @secRecTargetDeleteConfirm.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove {name} from the lockdown list?'**
+  String secRecTargetDeleteConfirm(String name);
+
+  /// No description provided for @secLockdownTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Lock with recovery code'**
+  String get secLockdownTitle;
+
+  /// No description provided for @secLockdownRowHint.
+  ///
+  /// In en, this message translates to:
+  /// **'For when this phone is lost: do this from another device.'**
+  String get secLockdownRowHint;
+
+  /// No description provided for @secLockdownWarnTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'This locks everything'**
+  String get secLockdownWarnTitle;
+
+  /// No description provided for @secLockdownWarn.
+  ///
+  /// In en, this message translates to:
+  /// **'All paired phones, service tokens and push registrations are revoked, including this phone, and the listed agents are locked too. Nothing is deleted, but you must pair again on every machine. This cannot be undone.'**
+  String get secLockdownWarn;
+
+  /// No description provided for @secLockdownUrl.
+  ///
+  /// In en, this message translates to:
+  /// **'Monitoring server address'**
+  String get secLockdownUrl;
+
+  /// No description provided for @secLockdownUrlHint.
+  ///
+  /// In en, this message translates to:
+  /// **'The code is sent to this address without any token. Check it before you continue.'**
+  String get secLockdownUrlHint;
+
+  /// No description provided for @secLockdownCode.
+  ///
+  /// In en, this message translates to:
+  /// **'Recovery code'**
+  String get secLockdownCode;
+
+  /// No description provided for @secLockdownCodeHint.
+  ///
+  /// In en, this message translates to:
+  /// **'5 groups of 5 letters and digits'**
+  String get secLockdownCodeHint;
+
+  /// No description provided for @secLockdownCodeInvalid.
+  ///
+  /// In en, this message translates to:
+  /// **'The code has 25 letters and digits.'**
+  String get secLockdownCodeInvalid;
+
+  /// No description provided for @secLockdownConfirm.
+  ///
+  /// In en, this message translates to:
+  /// **'Lock everything now? All pairings are revoked and you will have to pair again on every machine.'**
+  String get secLockdownConfirm;
+
+  /// No description provided for @secLockdownDo.
+  ///
+  /// In en, this message translates to:
+  /// **'Lock everything'**
+  String get secLockdownDo;
+
+  /// No description provided for @secLockdownDone.
+  ///
+  /// In en, this message translates to:
+  /// **'Everything is locked'**
+  String get secLockdownDone;
+
+  /// No description provided for @secLockdownPairAgain.
+  ///
+  /// In en, this message translates to:
+  /// **'Pair again on each machine (tiphys-agent pair), starting with the monitoring server. This phone’s own access is revoked too.'**
+  String get secLockdownPairAgain;
+
+  /// No description provided for @secLockdownResults.
+  ///
+  /// In en, this message translates to:
+  /// **'Agents'**
+  String get secLockdownResults;
+
+  /// No description provided for @secLockdownNoTargets.
+  ///
+  /// In en, this message translates to:
+  /// **'No other agent was on the list.'**
+  String get secLockdownNoTargets;
+
+  /// No description provided for @secLockdownTargetOk.
+  ///
+  /// In en, this message translates to:
+  /// **'Locked'**
+  String get secLockdownTargetOk;
+
+  /// No description provided for @secLockdownTargetUnreachable.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not be reached: lock it yourself on that machine'**
+  String get secLockdownTargetUnreachable;
+
+  /// No description provided for @secLockdownTargetFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'The agent refused (HTTP {status}): lock it yourself on that machine'**
+  String secLockdownTargetFailed(int status);
+
+  /// No description provided for @secErrScannerOff.
+  ///
+  /// In en, this message translates to:
+  /// **'{scanner} is turned off. Turn it on in the scanner settings.'**
+  String secErrScannerOff(String scanner);
+
+  /// No description provided for @secErrScanBusy.
+  ///
+  /// In en, this message translates to:
+  /// **'A scan is already running.'**
+  String get secErrScanBusy;
+
+  /// No description provided for @secErrScanFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'The scanner failed.'**
+  String get secErrScanFailed;
+
+  /// No description provided for @secErrImageNotFound.
+  ///
+  /// In en, this message translates to:
+  /// **'This image is not known (anymore).'**
+  String get secErrImageNotFound;
+
+  /// No description provided for @secErrFindingNotFound.
+  ///
+  /// In en, this message translates to:
+  /// **'This finding no longer exists.'**
+  String get secErrFindingNotFound;
+
+  /// No description provided for @secErrGithubUnauthorized.
+  ///
+  /// In en, this message translates to:
+  /// **'GitHub did not accept the token. Check its permissions and expiry.'**
+  String get secErrGithubUnauthorized;
+
+  /// No description provided for @secErrGithubFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'GitHub could not be reached or answered with an error.'**
+  String get secErrGithubFailed;
+
+  /// No description provided for @secErrLokiUnavailable.
+  ///
+  /// In en, this message translates to:
+  /// **'The Loki container or address is not available. Check the log source settings.'**
+  String get secErrLokiUnavailable;
+
+  /// No description provided for @secErrLokiFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Loki answered with an error.'**
+  String get secErrLokiFailed;
+
+  /// No description provided for @secErrImageTooLarge.
+  ///
+  /// In en, this message translates to:
+  /// **'The image is too large to copy for scanning (over 3 GB).'**
+  String get secErrImageTooLarge;
+
+  /// No description provided for @secErrTrapExists.
+  ///
+  /// In en, this message translates to:
+  /// **'A file already exists at this path. Choose a path that is free.'**
+  String get secErrTrapExists;
+
+  /// No description provided for @secErrTrapCreateFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'The decoy file could not be created. Check the folder and its permissions.'**
+  String get secErrTrapCreateFailed;
+
+  /// No description provided for @secErrTrapNotFound.
+  ///
+  /// In en, this message translates to:
+  /// **'This trap no longer exists.'**
+  String get secErrTrapNotFound;
+
+  /// No description provided for @secErrTooManyTraps.
+  ///
+  /// In en, this message translates to:
+  /// **'Too many traps (at most 20 of each kind).'**
+  String get secErrTooManyTraps;
+
+  /// No description provided for @secErrBadRecoveryCode.
+  ///
+  /// In en, this message translates to:
+  /// **'The recovery code is wrong.'**
+  String get secErrBadRecoveryCode;
+
+  /// No description provided for @secErrCloudflareUnauthorized.
+  ///
+  /// In en, this message translates to:
+  /// **'Cloudflare did not accept the token. Check its permissions and zones.'**
+  String get secErrCloudflareUnauthorized;
+
+  /// No description provided for @secErrCloudflareFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Cloudflare could not be reached or answered with an error.'**
+  String get secErrCloudflareFailed;
+
+  /// No description provided for @secErrCloudflareNotConfigured.
+  ///
+  /// In en, this message translates to:
+  /// **'Cloudflare is not connected. Add a read token first.'**
+  String get secErrCloudflareNotConfigured;
+
+  /// No description provided for @secErrBlackboxNotLocal.
+  ///
+  /// In en, this message translates to:
+  /// **'The black box is not kept on this agent. Choose “Keep here” and restart it, or use the agent that keeps the chain.'**
+  String get secErrBlackboxNotLocal;
+
+  /// No description provided for @notifSecVulnsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Critical vulnerability in {image}'**
+  String notifSecVulnsTitle(String image);
+
+  /// No description provided for @notifSecVulnsBody.
+  ///
+  /// In en, this message translates to:
+  /// **'{host} · {critical} critical, {high} high'**
+  String notifSecVulnsBody(String host, int critical, int high);
+
+  /// No description provided for @notifSecSecretTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Secret found · {host}'**
+  String notifSecSecretTitle(String host);
+
+  /// No description provided for @notifSecSecretBody.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} findings ({sources}) · {where}'**
+  String notifSecSecretBody(int count, String sources, String where);
+
+  /// No description provided for @notifSecTrapTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Trap triggered · {host}'**
+  String notifSecTrapTitle(String host);
+
+  /// No description provided for @notifSecTrapTestTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Test alarm · {host}'**
+  String notifSecTrapTestTitle(String host);
+
+  /// No description provided for @notifSecTrapToken.
+  ///
+  /// In en, this message translates to:
+  /// **'Decoy token “{name}” was used (from {from}, {path})'**
+  String notifSecTrapToken(String name, String from, String path);
+
+  /// No description provided for @notifSecTrapFile.
+  ///
+  /// In en, this message translates to:
+  /// **'Decoy file was read: {path}'**
+  String notifSecTrapFile(String path);
+
+  /// No description provided for @notifSecTrapFileMissing.
+  ///
+  /// In en, this message translates to:
+  /// **'Decoy file was deleted or moved: {path}'**
+  String notifSecTrapFileMissing(String path);
+
+  /// No description provided for @notifSecTrapAudit.
+  ///
+  /// In en, this message translates to:
+  /// **'{object} was accessed ({who}, {how})'**
+  String notifSecTrapAudit(String object, String who, String how);
+
+  /// No description provided for @notifSecTrapDb.
+  ///
+  /// In en, this message translates to:
+  /// **'Login attempt with decoy database user {user} ({stream})'**
+  String notifSecTrapDb(String user, String stream);
+
+  /// No description provided for @notifSecTrapTest.
+  ///
+  /// In en, this message translates to:
+  /// **'This is a test alarm. Nothing was touched.'**
+  String get notifSecTrapTest;
+
+  /// No description provided for @notifSecTrapUnknown.
+  ///
+  /// In en, this message translates to:
+  /// **'A trap was triggered.'**
+  String get notifSecTrapUnknown;
+
+  /// No description provided for @notifBbBrokenTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Black box chain broken · {host}'**
+  String notifBbBrokenTitle(String host);
+
+  /// No description provided for @notifBbBrokenBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Record {at}: {reason}'**
+  String notifBbBrokenBody(int at, String reason);
+
+  /// No description provided for @notifSecLockdownTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Lockdown done · {host}'**
+  String notifSecLockdownTitle(String host);
+
+  /// No description provided for @notifSecLockdownRecovery.
+  ///
+  /// In en, this message translates to:
+  /// **'Locked with the recovery code. Pair again on every machine.'**
+  String get notifSecLockdownRecovery;
+
+  /// No description provided for @notifSecLockdownRemote.
+  ///
+  /// In en, this message translates to:
+  /// **'Locked remotely from another agent. Pair again on this machine.'**
+  String get notifSecLockdownRemote;
+
+  /// No description provided for @notifSecExposureTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'New finding in the outside view · {host}'**
+  String notifSecExposureTitle(String host);
+
+  /// No description provided for @notifSecExposureBody.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} findings: {targets}'**
+  String notifSecExposureBody(int count, String targets);
+
+  /// No description provided for @notifSecAttackTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Attack attempts · {host}'**
+  String notifSecAttackTitle(String host);
+
+  /// No description provided for @notifSecAttackBody.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} new sources ({zones}) · {blocked} blocked'**
+  String notifSecAttackBody(int count, String zones, int blocked);
+
+  /// No description provided for @secSecretsGroupCount.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} findings'**
+  String secSecretsGroupCount(int count);
+
+  /// No description provided for @secSecretsGroupDismiss.
+  ///
+  /// In en, this message translates to:
+  /// **'Dismiss this group'**
+  String get secSecretsGroupDismiss;
+
+  /// No description provided for @secSecretsGroupUndismiss.
+  ///
+  /// In en, this message translates to:
+  /// **'Undo dismiss for this group'**
+  String get secSecretsGroupUndismiss;
+
+  /// No description provided for @secSecretsGroupDismissConfirm.
+  ///
+  /// In en, this message translates to:
+  /// **'Dismiss {count} findings of rule {rule}? ({where})'**
+  String secSecretsGroupDismissConfirm(int count, String rule, String where);
+
+  /// No description provided for @secSecretsGroupUndismissConfirm.
+  ///
+  /// In en, this message translates to:
+  /// **'Reopen {count} findings of rule {rule}? ({where})'**
+  String secSecretsGroupUndismissConfirm(int count, String rule, String where);
+
+  /// No description provided for @secSecretsGroupChanged.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} findings updated'**
+  String secSecretsGroupChanged(int count);
+
+  /// No description provided for @agyEntrySubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Antigravity CLI sessions'**
+  String get agyEntrySubtitle;
+
+  /// No description provided for @agyNewSession.
+  ///
+  /// In en, this message translates to:
+  /// **'New agy session'**
+  String get agyNewSession;
+
+  /// No description provided for @agyNoLive.
+  ///
+  /// In en, this message translates to:
+  /// **'No open agy sessions.'**
+  String get agyNoLive;
+
+  /// No description provided for @agyPrevious.
+  ///
+  /// In en, this message translates to:
+  /// **'Previous conversations'**
+  String get agyPrevious;
+
+  /// No description provided for @agyPreviousEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'No earlier conversations in this folder.'**
+  String get agyPreviousEmpty;
+
+  /// No description provided for @agyPreviousHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Ones started in a terminal show up here too. Picking one continues where it left off.'**
+  String get agyPreviousHint;
+
+  /// No description provided for @agyOpenBadge.
+  ///
+  /// In en, this message translates to:
+  /// **'open'**
+  String get agyOpenBadge;
+
+  /// No description provided for @agyNoHost.
+  ///
+  /// In en, this message translates to:
+  /// **'No agent has agy enabled. Turn the agy feature on in the agent settings and restart the agent.'**
+  String get agyNoHost;
+
+  /// No description provided for @agyMode.
+  ///
+  /// In en, this message translates to:
+  /// **'Mode'**
+  String get agyMode;
+
+  /// No description provided for @agyModeDefault.
+  ///
+  /// In en, this message translates to:
+  /// **'Default'**
+  String get agyModeDefault;
+
+  /// No description provided for @agyModeAcceptEdits.
+  ///
+  /// In en, this message translates to:
+  /// **'Accept edits'**
+  String get agyModeAcceptEdits;
+
+  /// No description provided for @agyModeAuto.
+  ///
+  /// In en, this message translates to:
+  /// **'Auto'**
+  String get agyModeAuto;
+
+  /// No description provided for @agyModePlan.
+  ///
+  /// In en, this message translates to:
+  /// **'Plan'**
+  String get agyModePlan;
+
+  /// No description provided for @agyModeHintDefault.
+  ///
+  /// In en, this message translates to:
+  /// **'agy asks you before every action.'**
+  String get agyModeHintDefault;
+
+  /// No description provided for @agyModeHintAcceptEdits.
+  ///
+  /// In en, this message translates to:
+  /// **'Applies file edits without asking; still asks for commands.'**
+  String get agyModeHintAcceptEdits;
+
+  /// No description provided for @agyModeHintAuto.
+  ///
+  /// In en, this message translates to:
+  /// **'Does most things without asking. Use with care.'**
+  String get agyModeHintAuto;
+
+  /// No description provided for @agyModeHintPlan.
+  ///
+  /// In en, this message translates to:
+  /// **'Only plans; does not touch files.'**
+  String get agyModeHintPlan;
+
+  /// No description provided for @agyModel.
+  ///
+  /// In en, this message translates to:
+  /// **'Model'**
+  String get agyModel;
+
+  /// No description provided for @agyPromptHint.
+  ///
+  /// In en, this message translates to:
+  /// **'What should agy do?'**
+  String get agyPromptHint;
+
+  /// No description provided for @agyBusyHint.
+  ///
+  /// In en, this message translates to:
+  /// **'agy is working; wait for it to finish…'**
+  String get agyBusyHint;
+
+  /// No description provided for @agyWaitingHint.
+  ///
+  /// In en, this message translates to:
+  /// **'agy is waiting for your permission…'**
+  String get agyWaitingHint;
+
+  /// No description provided for @agyWorking.
+  ///
+  /// In en, this message translates to:
+  /// **'agy is working…'**
+  String get agyWorking;
+
+  /// No description provided for @agyCancel.
+  ///
+  /// In en, this message translates to:
+  /// **'Cancel'**
+  String get agyCancel;
+
+  /// No description provided for @agyReplayLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'earlier conversation'**
+  String get agyReplayLabel;
+
+  /// No description provided for @agyPlanTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Plan'**
+  String get agyPlanTitle;
+
+  /// No description provided for @agyPermissionTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'agy asks for permission'**
+  String get agyPermissionTitle;
+
+  /// No description provided for @agyAnswered.
+  ///
+  /// In en, this message translates to:
+  /// **'Answered: {name}'**
+  String agyAnswered(String name);
+
+  /// No description provided for @agyPermissionCancelled.
+  ///
+  /// In en, this message translates to:
+  /// **'Cancelled'**
+  String get agyPermissionCancelled;
+
+  /// No description provided for @agyTurnDone.
+  ///
+  /// In en, this message translates to:
+  /// **'done'**
+  String get agyTurnDone;
+
+  /// No description provided for @agyTurnCancelled.
+  ///
+  /// In en, this message translates to:
+  /// **'cancelled'**
+  String get agyTurnCancelled;
+
+  /// No description provided for @agyTurnStop.
+  ///
+  /// In en, this message translates to:
+  /// **'stopped ({reason})'**
+  String agyTurnStop(String reason);
+
+  /// No description provided for @agyModeChanged.
+  ///
+  /// In en, this message translates to:
+  /// **'Mode: {mode}'**
+  String agyModeChanged(String mode);
+
+  /// No description provided for @agySessionEnded.
+  ///
+  /// In en, this message translates to:
+  /// **'The session has ended.'**
+  String get agySessionEnded;
+
+  /// No description provided for @agySessionFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'The session failed.'**
+  String get agySessionFailed;
+
+  /// No description provided for @agyReopen.
+  ///
+  /// In en, this message translates to:
+  /// **'Reopen conversation'**
+  String get agyReopen;
+
+  /// No description provided for @agyUsageSemantics.
+  ///
+  /// In en, this message translates to:
+  /// **'Context usage {text}'**
+  String agyUsageSemantics(String text);
+
+  /// No description provided for @agyChooseMode.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose mode'**
+  String get agyChooseMode;
+
+  /// No description provided for @agyChooseModel.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose model'**
+  String get agyChooseModel;
+
+  /// No description provided for @notifAgyWaitingTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'agy needs your permission'**
+  String get notifAgyWaitingTitle;
+
+  /// No description provided for @notifAgyWaitingBody.
+  ///
+  /// In en, this message translates to:
+  /// **'{title} · wants to run {tool}'**
+  String notifAgyWaitingBody(String title, String tool);
+
+  /// No description provided for @notifAgyDoneTitleWith.
+  ///
+  /// In en, this message translates to:
+  /// **'agy finished: {title}'**
+  String notifAgyDoneTitleWith(String title);
+
+  /// No description provided for @notifAgyErrorTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'agy stopped with an error'**
+  String get notifAgyErrorTitle;
+
+  /// No description provided for @continuePcMenu.
+  ///
+  /// In en, this message translates to:
+  /// **'Continue on the PC'**
+  String get continuePcMenu;
+
+  /// No description provided for @continuePcTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Continue on the PC'**
+  String get continuePcTitle;
+
+  /// No description provided for @continuePcIntro.
+  ///
+  /// In en, this message translates to:
+  /// **'This command continues the conversation in a terminal on the PC.'**
+  String get continuePcIntro;
+
+  /// No description provided for @continuePcHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Paste it in a terminal on the PC.'**
+  String get continuePcHint;
+
+  /// No description provided for @continuePcCopied.
+  ///
+  /// In en, this message translates to:
+  /// **'Copied'**
+  String get continuePcCopied;
+
+  /// No description provided for @continuePcUnavailable.
+  ///
+  /// In en, this message translates to:
+  /// **'No command is available for this session yet.'**
+  String get continuePcUnavailable;
+
+  /// No description provided for @continuePcStopMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'This session is running right now. Stop it here before continuing on the PC: if two programs write to the same conversation, it forks.'**
+  String get continuePcStopMessage;
+
+  /// No description provided for @continuePcStopAndShow.
+  ///
+  /// In en, this message translates to:
+  /// **'Stop and show the command'**
+  String get continuePcStopAndShow;
+
+  /// No description provided for @agyErrMissing.
+  ///
+  /// In en, this message translates to:
+  /// **'agy is not installed on this computer or could not be found.'**
+  String get agyErrMissing;
+
+  /// No description provided for @agyErrExited.
+  ///
+  /// In en, this message translates to:
+  /// **'agy quit unexpectedly.'**
+  String get agyErrExited;
+
+  /// No description provided for @agyErrTimeout.
+  ///
+  /// In en, this message translates to:
+  /// **'agy did not answer in time.'**
+  String get agyErrTimeout;
+
+  /// No description provided for @agyErrRpc.
+  ///
+  /// In en, this message translates to:
+  /// **'agy reported an error.'**
+  String get agyErrRpc;
+
+  /// No description provided for @agyErrBusy.
+  ///
+  /// In en, this message translates to:
+  /// **'agy is working or waiting for permission; try again when it is done.'**
+  String get agyErrBusy;
+
+  /// No description provided for @agyErrSessionNotFound.
+  ///
+  /// In en, this message translates to:
+  /// **'This agy session no longer exists. Reopen it from the previous conversations.'**
+  String get agyErrSessionNotFound;
+
+  /// No description provided for @agyErrSessionEnded.
+  ///
+  /// In en, this message translates to:
+  /// **'This session has ended.'**
+  String get agyErrSessionEnded;
+
+  /// No description provided for @agyErrTooMany.
+  ///
+  /// In en, this message translates to:
+  /// **'Too many open agy sessions; close one.'**
+  String get agyErrTooMany;
+
+  /// No description provided for @agyErrAlreadyOpen.
+  ///
+  /// In en, this message translates to:
+  /// **'This conversation is already open.'**
+  String get agyErrAlreadyOpen;
+
+  /// No description provided for @agyErrPermissionNotFound.
+  ///
+  /// In en, this message translates to:
+  /// **'This permission request is no longer valid.'**
+  String get agyErrPermissionNotFound;
+
+  /// No description provided for @agyErrUnknownMode.
+  ///
+  /// In en, this message translates to:
+  /// **'agy does not know this mode.'**
+  String get agyErrUnknownMode;
+
+  /// No description provided for @agyErrUnknownModel.
+  ///
+  /// In en, this message translates to:
+  /// **'agy does not know this model.'**
+  String get agyErrUnknownModel;
+
+  /// No description provided for @agyErrStartFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not start the agy session.'**
+  String get agyErrStartFailed;
+
+  /// No description provided for @agyErrPromptFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'The message could not be delivered to agy.'**
+  String get agyErrPromptFailed;
+
+  /// No description provided for @agyErrRateLimited.
+  ///
+  /// In en, this message translates to:
+  /// **'Too many requests; wait a moment and try again.'**
+  String get agyErrRateLimited;
 }
 
 class _AppLocalizationsDelegate
