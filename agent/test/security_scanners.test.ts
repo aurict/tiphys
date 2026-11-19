@@ -198,6 +198,11 @@ describe("secret scanning", () => {
     expect((await s.run()).fresh).toBe(0);
     const f = await s.dismiss(l.findings[0]!.id, true);
     expect(f.dismissed).toBe(true);
+    const gh = s.list().findings.find((x) => x.rule === "github")!;
+    await s.dismiss(gh.id, false);
+    expect(await s.dismissGroup({ source: "local", where: gh.where, rule: "github", pathPrefix: "other/" }, true)).toBe(0);
+    expect(await s.dismissGroup({ source: "local", where: gh.where, rule: "github", pathPrefix: "config" }, true)).toBe(1);
+    expect(s.list().findings.find((x) => x.rule === "github")!.dismissed).toBe(true);
     // Roots outside allowedRoots are skipped.
     await t.store.update((c) => ((c.allowedRoots = [join(root, "nope")]), c));
     const s2 = new SecretScanner({ store: t.store, notifier: t.notifier });

@@ -403,6 +403,20 @@ export class SecretScanner {
     return fresh;
   }
 
+  /** Dismisses every finding of one source/place/rule (optionally under a path prefix or one log stream). */
+  async dismissGroup(g: { source: SecretSource; where: string; rule: string; pathPrefix?: string; stream?: string }, dismissed: boolean): Promise<number> {
+    let n = 0;
+    for (const f of Object.values(this.state.findings)) {
+      if (f.source !== g.source || f.where !== g.where || f.rule !== g.rule) continue;
+      if (g.pathPrefix !== undefined && !(f.file ?? "").startsWith(g.pathPrefix)) continue;
+      if (g.stream !== undefined && f.stream !== g.stream) continue;
+      if (f.dismissed !== dismissed) n++;
+      f.dismissed = dismissed;
+    }
+    await this.#persist();
+    return n;
+  }
+
   async dismiss(id: string, dismissed: boolean) {
     const f = this.state.findings[id];
     if (!f) throw new AppError("agent.security.findingNotFound", 404);

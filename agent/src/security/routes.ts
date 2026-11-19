@@ -225,6 +225,23 @@ export function securityRoutes(opts: SecurityRouteOpts = {}) {
       reply.code(202);
       return { started: true };
     });
+    app.post("/v1/security/secrets/dismiss-group", async (req) => {
+      const b = parse(
+        z.strictObject({
+          source: z.enum(["github", "loki", "local"]),
+          where: z.string().min(1).max(300),
+          rule: z.string().min(1).max(80),
+          pathPrefix: z.string().max(300).optional(),
+          stream: z.string().max(80).optional(),
+          dismissed: z.boolean(),
+        }),
+        req.body,
+      );
+      const { dismissed, ...g } = b;
+      const n = await secrets.dismissGroup(g, dismissed);
+      req.auditDetail = { source: b.source, rule: b.rule, count: n, dismissed };
+      return { changed: n };
+    });
     app.post("/v1/security/secrets/:id/dismiss", async (req) => {
       const id = parse(z.object({ id: z.string().regex(/^[a-f0-9]{24}$/) }), req.params).id;
       const b = parse(z.strictObject({ dismissed: z.boolean() }), req.body);
