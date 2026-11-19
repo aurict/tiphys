@@ -3016,6 +3016,210 @@ class AppLocalizationsEn extends AppLocalizations {
   String get mediaVolumeFailed => 'Could not read or change the volume (wpctl)';
 
   @override
+  String get velourTitle => 'Velour';
+
+  @override
+  String get velourOpen => 'Open in Velour remote';
+
+  @override
+  String get velourOpenHint => 'Search, up next, lyrics and your library';
+
+  @override
+  String get velourTabNowPlaying => 'Now playing';
+
+  @override
+  String get velourTabQueue => 'Up next';
+
+  @override
+  String get velourTabSearch => 'Search';
+
+  @override
+  String get velourTabLibrary => 'Library';
+
+  @override
+  String get velourUnavailable =>
+      'Can\'t reach Velour. Is it running, with Settings → Desktop → Remote control turned on?';
+
+  @override
+  String get velourNotSignedIn =>
+      'Velour isn\'t signed in to YouTube Music yet';
+
+  @override
+  String get velourTimeout => 'Velour didn\'t answer in time';
+
+  @override
+  String get velourNotFound => 'That song isn\'t in the queue any more';
+
+  @override
+  String get velourFailed => 'Velour couldn\'t do that';
+
+  @override
+  String get velourNothingPlaying => 'Nothing is playing in Velour';
+
+  @override
+  String get velourNothingHint => 'Find a song in Search to start.';
+
+  @override
+  String get velourShuffle => 'Shuffle';
+
+  @override
+  String get velourRepeatOff => 'Repeat is off';
+
+  @override
+  String get velourRepeatAll => 'Repeating all';
+
+  @override
+  String get velourRepeatOne => 'Repeating this song';
+
+  @override
+  String get velourLike => 'Like';
+
+  @override
+  String get velourUnlike => 'Remove from Liked Music';
+
+  @override
+  String get velourLiked => 'Liked';
+
+  @override
+  String get velourUnliked => 'Removed from Liked Music';
+
+  @override
+  String get velourLyrics => 'Lyrics';
+
+  @override
+  String get velourLyricsNone => 'No lyrics found for this song';
+
+  @override
+  String velourLyricsSource(String source) {
+    return 'Source: $source';
+  }
+
+  @override
+  String velourQueueCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count songs',
+      one: '1 song',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get velourQueueRadio => 'radio keeps it going';
+
+  @override
+  String get velourQueueEmpty => 'The queue is empty';
+
+  @override
+  String get velourQueueClear => 'Clear';
+
+  @override
+  String get velourQueueClearConfirm =>
+      'Remove everything except the current song from the queue?';
+
+  @override
+  String get velourRemove => 'Remove';
+
+  @override
+  String get velourRemoved => 'Removed from the queue';
+
+  @override
+  String get velourReorder => 'Drag to reorder';
+
+  @override
+  String get velourSearchHint => 'Songs, artists, albums';
+
+  @override
+  String get velourClearSearch => 'Clear search';
+
+  @override
+  String get velourSearchStart => 'Search YouTube Music';
+
+  @override
+  String get velourSearchStartHint => 'Results play in Velour on the PC.';
+
+  @override
+  String get velourLibPlaylists => 'Playlists';
+
+  @override
+  String get velourLibAlbums => 'Albums';
+
+  @override
+  String get velourLibArtists => 'Artists';
+
+  @override
+  String get velourLibLiked => 'Liked';
+
+  @override
+  String get velourLibHistory => 'History';
+
+  @override
+  String get velourLoadMore => 'Load more';
+
+  @override
+  String get velourPlay => 'Play';
+
+  @override
+  String get velourShufflePlay => 'Shuffle';
+
+  @override
+  String get velourRadio => 'Start radio';
+
+  @override
+  String get velourRadioStarted => 'Radio started';
+
+  @override
+  String get velourPlayNext => 'Play next';
+
+  @override
+  String get velourAddToQueue => 'Add to queue';
+
+  @override
+  String get velourAddToPlaylist => 'Add to playlist';
+
+  @override
+  String get velourGoArtist => 'Go to artist';
+
+  @override
+  String get velourGoAlbum => 'Go to album';
+
+  @override
+  String get velourMore => 'More options';
+
+  @override
+  String get velourNewPlaylist => 'New playlist';
+
+  @override
+  String get velourPlaylistName => 'Playlist name';
+
+  @override
+  String get velourNoPlaylists => 'You have no playlists of your own yet';
+
+  @override
+  String get velourTrackUnavailable => 'This song can\'t be played';
+
+  @override
+  String velourAddedNext(String title) {
+    return '“$title” plays next';
+  }
+
+  @override
+  String velourAddedQueue(String title) {
+    return 'Added “$title” to the queue';
+  }
+
+  @override
+  String velourAddedToPlaylist(String playlist) {
+    return 'Added to $playlist';
+  }
+
+  @override
+  String velourCreatedPlaylist(String title) {
+    return 'Created “$title”';
+  }
+
+  @override
   String get homeCardsNowPlaying => 'Now playing';
 
   @override

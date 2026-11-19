@@ -26,6 +26,7 @@ import 'features/system/compose.dart';
 import 'features/system/events.dart';
 import 'features/system/log_search.dart';
 import 'features/system/media.dart';
+import 'features/system/velour_screen.dart';
 import 'features/desktop/desktop_screen.dart';
 import 'features/desktop/live_screen.dart';
 import 'features/configfiles/config_backups_screen.dart';
@@ -154,6 +155,7 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(path: '/system/logs', builder: (c, s) => LogSearchScreen(initialPattern: s.uri.queryParameters['q'])),
       GoRoute(path: '/vault', builder: (c, s) => const VaultScreen()),
       GoRoute(path: '/system/media', builder: (c, s) => MediaScreen(hostId: s.uri.queryParameters['host'] ?? '')),
+      GoRoute(path: '/system/velour', builder: (c, s) => VelourScreen(hostId: s.uri.queryParameters['host'] ?? '')),
       GoRoute(path: '/system/desktop', builder: (c, s) => DesktopScreen(hostId: s.uri.queryParameters['host'] ?? '')),
       GoRoute(
         path: '/system/desktop/live',

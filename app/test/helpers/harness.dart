@@ -199,6 +199,9 @@ class FakeAgent extends AgentClient {
   /// GET /v1/media and /v1/media/volume responses (in the agent's format; tests may change them).
   static Map<String, dynamic> media = sampleMedia();
 
+  /// POST /v1/velour results by op, or an AgentError to throw (tests may change them).
+  static Map<String, Object?> velour = sampleVelour();
+
   /// GET /v1/desktop/windows response or the error to throw (tests may change it).
   static Object desktop = sampleDesktop();
 
@@ -747,6 +750,11 @@ class FakeAgent extends AgentClient {
     }
     if (path == '/v1/desktop/clipboard') return method == 'PUT' ? {'ok': true} : {'text': 'ssh user@100.64.0.2'};
     if (method == 'POST' && path == '/v1/desktop/open') return {'ok': true};
+    if (method == 'POST' && path == '/v1/velour') {
+      final r = velour.containsKey((body as Map)['op']) ? velour[body['op']] : velour['state'];
+      if (r is AgentError) throw r;
+      return {'result': r};
+    }
     if (path == '/v1/media/volume') return method == 'PUT' ? {...media['volume'] as Map, ...(body as Map)} : media['volume'];
     if (path == '/v1/media' || (method == 'POST' && path.startsWith('/v1/media/'))) return media['state'];
     if (method == 'POST' && path == '/v1/git/commit') return {'ok': true, 'hash': 'a1b2c3d4e5f60718293a4b5c6d7e8f9012345678'};
@@ -977,6 +985,78 @@ Map<String, dynamic> sampleMedia() => {
       },
       'volume': {'percent': 60, 'muted': false},
     };
+
+/// Velour sample (agent POST /v1/velour results, in Velour's wire format): a Turkish song playing, a 4-song queue,
+/// search results, the library, an album page and synced lyrics. No thumbnails (no network in tests).
+Map<String, Object?> sampleVelour() {
+  Map<String, Object?> track(String id, String title, String artist, int duration, {String? album, String? like}) => {
+        'videoId': id, 'title': title, 'artists': [{'name': artist, 'browseId': 'UC$id'}],
+        'album': album == null ? null : {'name': album, 'browseId': 'MPRE$id'}, 'duration': duration, 'thumbnail': null,
+        'setVideoId': null, 'playable': true, 'like': like, 'detail': null,
+      };
+  final queue = [
+    track('a1', 'Gidiyorum', 'Sezen Aksu', 251, album: 'Gülümse'),
+    track('a2', 'Kaç Kadeh Kırıldı', 'Sezen Aksu', 245, album: 'Gülümse', like: 'like'),
+    track('a3', 'Kuzu Kuzu', 'Tarkan', 236, album: 'Karma'),
+    track('a4', 'Tüm Bir Yaşam', 'Erol Evgin', 249, album: 'Altın Düetler 2'),
+  ];
+  Map<String, Object?> card(String title, String subtitle, Map<String, Object?> target, {bool round = false}) =>
+      {'kind': 'card', 'title': title, 'subtitle': subtitle, 'thumbnail': null, 'target': target, 'round': round};
+  Map<String, Object?> browse(String id, String type) => {'kind': 'browse', 'id': id, 'params': null, 'pageType': type};
+  return {
+    'state': {
+      'track': queue[1], 'index': 1, 'queueLength': 4, 'playing': true, 'loading': false, 'position': 61.5, 'duration': 245.0,
+      'volume': 70.0, 'muted': false, 'shuffle': false, 'repeat': 'all', 'signedIn': true,
+    },
+    'queue': {'index': 1, 'tracks': queue, 'radio': true},
+    'lyrics': {
+      'videoId': 'a2', 'kind': 'synced', 'text': null, 'source': 'LRCLIB',
+      'lines': [
+        {'time': 20.0, 'text': 'Kaç kadeh kırıldı sarhoş olunmadı'},
+        {'time': 40.0, 'text': 'Kaç gönül yıkıldı sevda bulunmadı'},
+        {'time': 60.0, 'text': 'Sana kim söyledi'},
+        {'time': 75.0, 'text': 'Sevmenin kolay olduğunu'},
+        {'time': 90.0, 'text': ''},
+        {'time': 100.0, 'text': 'Kaç kadeh kırıldı'},
+      ],
+    },
+    'search': {
+      'header': null, 'continuation': null,
+      'sections': [
+        {'title': 'Top result', 'layout': 'grid', 'more': null, 'items': [card('Sezen Aksu', 'Artist • 4.1M subscribers', browse('UCsezen', 'artist'), round: true)]},
+        {'title': 'Songs', 'layout': 'list', 'more': null, 'items': [for (final t in queue.take(3)) {'kind': 'track', ...t}]},
+        {
+          'title': 'Albums', 'layout': 'carousel', 'more': null,
+          'items': [card('Gülümse', 'Album • Sezen Aksu • 1991', browse('MPREa', 'album')), card('Deliveren', 'Album • Sezen Aksu • 2000', browse('MPREb', 'album'))],
+        },
+      ],
+    },
+    'suggest': ['sezen aksu', 'sezen aksu gidiyorum', 'sezen aksu kaç kadeh kırıldı'],
+    'library': {
+      'header': null, 'continuation': null,
+      'sections': [
+        {
+          'title': '', 'layout': 'grid', 'more': null,
+          'items': [
+            card('Liked Music', 'Auto playlist', browse('VLLM', 'playlist')),
+            card('Olds', 'Playlist • You • 42 songs', browse('VLPLolds', 'playlist')),
+            card('PopMusic', 'Playlist • You • 18 songs', browse('VLPLpop', 'playlist')),
+          ],
+        },
+      ],
+    },
+    'page': {
+      'header': {
+        'title': 'Gülümse', 'subtitle': 'Album • 1991', 'secondSubtitle': '10 songs • 45 minutes', 'description': '', 'thumbnail': null,
+        'play': {'kind': 'watch', 'videoId': null, 'playlistId': 'OLAKgulumse', 'params': null},
+        'radio': {'kind': 'watch', 'videoId': null, 'playlistId': 'RDAMPLgulumse', 'params': 'wAEB'}, 'playlistId': 'OLAKgulumse', 'round': false,
+      },
+      'sections': [{'title': '', 'layout': 'list', 'more': null, 'items': [for (final t in queue.take(2)) {'kind': 'track', ...t}]}],
+      'continuation': null,
+    },
+    'playlists': [{'id': 'PLolds', 'title': 'Olds'}, {'id': 'PLpop', 'title': 'PopMusic'}],
+  };
+}
 
 /// Scheduled task samples (in the agent's GET /v1/claude/schedules format; clock 2026-11-14 14:05).
 final sampleSchedules = <Map<String, dynamic>>[

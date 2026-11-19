@@ -2986,6 +2986,210 @@ class AppLocalizationsTr extends AppLocalizations {
       'Ses düzeyi okunamadı ya da değiştirilemedi (wpctl)';
 
   @override
+  String get velourTitle => 'Velour';
+
+  @override
+  String get velourOpen => 'Velour kumandasını aç';
+
+  @override
+  String get velourOpenHint => 'Arama, sıradakiler, sözler ve kütüphanen';
+
+  @override
+  String get velourTabNowPlaying => 'Çalıyor';
+
+  @override
+  String get velourTabQueue => 'Sıradaki';
+
+  @override
+  String get velourTabSearch => 'Ara';
+
+  @override
+  String get velourTabLibrary => 'Kütüphane';
+
+  @override
+  String get velourUnavailable =>
+      'Velour\'a ulaşılamadı. Velour açık mı ve Ayarlar → Desktop → Remote control açık mı?';
+
+  @override
+  String get velourNotSignedIn => 'Velour henüz YouTube Music\'e giriş yapmadı';
+
+  @override
+  String get velourTimeout => 'Velour zamanında yanıt vermedi';
+
+  @override
+  String get velourNotFound => 'Bu şarkı artık sırada değil';
+
+  @override
+  String get velourFailed => 'Velour bu isteği yerine getiremedi';
+
+  @override
+  String get velourNothingPlaying => 'Velour\'da çalan bir şey yok';
+
+  @override
+  String get velourNothingHint =>
+      'Ara sekmesinden bir şarkı bulup başlatabilirsin.';
+
+  @override
+  String get velourShuffle => 'Karıştır';
+
+  @override
+  String get velourRepeatOff => 'Tekrar kapalı';
+
+  @override
+  String get velourRepeatAll => 'Tümü tekrarlanıyor';
+
+  @override
+  String get velourRepeatOne => 'Bu şarkı tekrarlanıyor';
+
+  @override
+  String get velourLike => 'Beğen';
+
+  @override
+  String get velourUnlike => 'Beğenilenlerden çıkar';
+
+  @override
+  String get velourLiked => 'Beğenildi';
+
+  @override
+  String get velourUnliked => 'Beğenilenlerden çıkarıldı';
+
+  @override
+  String get velourLyrics => 'Sözler';
+
+  @override
+  String get velourLyricsNone => 'Bu şarkının sözleri bulunamadı';
+
+  @override
+  String velourLyricsSource(String source) {
+    return 'Kaynak: $source';
+  }
+
+  @override
+  String velourQueueCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count şarkı',
+      one: '1 şarkı',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get velourQueueRadio => 'radyo sırayı uzatıyor';
+
+  @override
+  String get velourQueueEmpty => 'Sıra boş';
+
+  @override
+  String get velourQueueClear => 'Temizle';
+
+  @override
+  String get velourQueueClearConfirm =>
+      'Çalan şarkı dışındaki her şey sıradan kaldırılsın mı?';
+
+  @override
+  String get velourRemove => 'Kaldır';
+
+  @override
+  String get velourRemoved => 'Sıradan kaldırıldı';
+
+  @override
+  String get velourReorder => 'Sırayı değiştirmek için sürükle';
+
+  @override
+  String get velourSearchHint => 'Şarkı, sanatçı, albüm';
+
+  @override
+  String get velourClearSearch => 'Aramayı temizle';
+
+  @override
+  String get velourSearchStart => 'YouTube Music\'te ara';
+
+  @override
+  String get velourSearchStartHint => 'Sonuçlar PC\'deki Velour\'da çalar.';
+
+  @override
+  String get velourLibPlaylists => 'Listeler';
+
+  @override
+  String get velourLibAlbums => 'Albümler';
+
+  @override
+  String get velourLibArtists => 'Sanatçılar';
+
+  @override
+  String get velourLibLiked => 'Beğenilenler';
+
+  @override
+  String get velourLibHistory => 'Geçmiş';
+
+  @override
+  String get velourLoadMore => 'Daha fazla yükle';
+
+  @override
+  String get velourPlay => 'Çal';
+
+  @override
+  String get velourShufflePlay => 'Karışık çal';
+
+  @override
+  String get velourRadio => 'Radyo başlat';
+
+  @override
+  String get velourRadioStarted => 'Radyo başladı';
+
+  @override
+  String get velourPlayNext => 'Sıradaki çal';
+
+  @override
+  String get velourAddToQueue => 'Sıraya ekle';
+
+  @override
+  String get velourAddToPlaylist => 'Listeye ekle';
+
+  @override
+  String get velourGoArtist => 'Sanatçıya git';
+
+  @override
+  String get velourGoAlbum => 'Albüme git';
+
+  @override
+  String get velourMore => 'Diğer seçenekler';
+
+  @override
+  String get velourNewPlaylist => 'Yeni çalma listesi';
+
+  @override
+  String get velourPlaylistName => 'Liste adı';
+
+  @override
+  String get velourNoPlaylists => 'Henüz kendi çalma listen yok';
+
+  @override
+  String get velourTrackUnavailable => 'Bu şarkı çalınamıyor';
+
+  @override
+  String velourAddedNext(String title) {
+    return '“$title” sıradaki';
+  }
+
+  @override
+  String velourAddedQueue(String title) {
+    return '“$title” sıraya eklendi';
+  }
+
+  @override
+  String velourAddedToPlaylist(String playlist) {
+    return '$playlist listesine eklendi';
+  }
+
+  @override
+  String velourCreatedPlaylist(String title) {
+    return '“$title” oluşturuldu';
+  }
+
+  @override
   String get homeCardsNowPlaying => 'Şimdi çalıyor';
 
   @override

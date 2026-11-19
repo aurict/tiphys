@@ -217,6 +217,21 @@ What protects it:
 - Any process running as your user can connect to the native-messaging host or the agent socket, just as it could
   drive Firefox directly.
 
+## Velour remote
+
+`POST /v1/velour` (`desktop` flag, paired device; like the MPRIS media remote it needs no control session) forwards one
+validated operation to the Velour player's local socket, `$XDG_RUNTIME_DIR/velour/control.sock`.
+
+- Velour keeps the socket off until you turn on *Settings → Desktop → Remote control*. It creates the directory
+  `0700` and the socket `0600`, and refuses a directory that is a symlink or belongs to another user. The agent
+  connects only to a socket owned by its own user.
+- Every operation is checked against a fixed schema (Zod) before it is sent: a closed list of ops, bounded strings,
+  at most 2000 tracks, watch targets only for playback. Velour validates again on its side.
+- Search queries, library contents and lyrics travel in the POST body, so they don't appear in request logs, and
+  they are not written to logs or events.
+- Account-changing ops are limited to liking songs, adding songs to a playlist and creating a playlist. Removing
+  songs from a playlist, renaming and deleting playlists are not available remotely.
+
 ## Sunshine / Moonlight
 
 - Sunshine's web credentials are stored only in `agent.json`. The app never gets the password back. TLS to Sunshine

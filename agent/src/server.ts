@@ -19,6 +19,7 @@ import { desktopRoutes, openRoutes } from "./routes/desktop.ts";
 import { browserOpener, browserRoutes } from "./routes/browser.ts";
 import type { BrowserBridge } from "./browser_bridge.ts";
 import { mediaRoutes } from "./routes/media.ts";
+import { velourRoutes } from "./routes/velour.ts";
 import { hyprRoutes } from "./routes/hypr.ts";
 import { streamRoutes } from "./routes/stream.ts";
 import { sunshineRoutes } from "./routes/sunshine.ts";
@@ -167,6 +168,7 @@ export async function buildApp(ctx: Ctx, opts: { logger?: boolean; logStream?: {
     desktopRoutes(app, ctx);
     openRoutes(app, browserOpener(ctx)); // "Open on PC": new tab if the extension is connected
     mediaRoutes(app, ctx);
+    velourRoutes(app, ctx); // Velour (YouTube Music player) remote over its local control socket
     hyprRoutes(app, ctx);
     browserRoutes(app, ctx); // Firefox bridge (11.2): uses hyprRoutes' control session
     streamRoutes(app, ctx); // live screen (10.2): uses hyprRoutes' control session

@@ -5216,6 +5216,372 @@ abstract class AppLocalizations {
   /// **'Could not read or change the volume (wpctl)'**
   String get mediaVolumeFailed;
 
+  /// No description provided for @velourTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Velour'**
+  String get velourTitle;
+
+  /// No description provided for @velourOpen.
+  ///
+  /// In en, this message translates to:
+  /// **'Open in Velour remote'**
+  String get velourOpen;
+
+  /// No description provided for @velourOpenHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Search, up next, lyrics and your library'**
+  String get velourOpenHint;
+
+  /// No description provided for @velourTabNowPlaying.
+  ///
+  /// In en, this message translates to:
+  /// **'Now playing'**
+  String get velourTabNowPlaying;
+
+  /// No description provided for @velourTabQueue.
+  ///
+  /// In en, this message translates to:
+  /// **'Up next'**
+  String get velourTabQueue;
+
+  /// No description provided for @velourTabSearch.
+  ///
+  /// In en, this message translates to:
+  /// **'Search'**
+  String get velourTabSearch;
+
+  /// No description provided for @velourTabLibrary.
+  ///
+  /// In en, this message translates to:
+  /// **'Library'**
+  String get velourTabLibrary;
+
+  /// No description provided for @velourUnavailable.
+  ///
+  /// In en, this message translates to:
+  /// **'Can\'t reach Velour. Is it running, with Settings → Desktop → Remote control turned on?'**
+  String get velourUnavailable;
+
+  /// No description provided for @velourNotSignedIn.
+  ///
+  /// In en, this message translates to:
+  /// **'Velour isn\'t signed in to YouTube Music yet'**
+  String get velourNotSignedIn;
+
+  /// No description provided for @velourTimeout.
+  ///
+  /// In en, this message translates to:
+  /// **'Velour didn\'t answer in time'**
+  String get velourTimeout;
+
+  /// No description provided for @velourNotFound.
+  ///
+  /// In en, this message translates to:
+  /// **'That song isn\'t in the queue any more'**
+  String get velourNotFound;
+
+  /// No description provided for @velourFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Velour couldn\'t do that'**
+  String get velourFailed;
+
+  /// No description provided for @velourNothingPlaying.
+  ///
+  /// In en, this message translates to:
+  /// **'Nothing is playing in Velour'**
+  String get velourNothingPlaying;
+
+  /// No description provided for @velourNothingHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Find a song in Search to start.'**
+  String get velourNothingHint;
+
+  /// No description provided for @velourShuffle.
+  ///
+  /// In en, this message translates to:
+  /// **'Shuffle'**
+  String get velourShuffle;
+
+  /// No description provided for @velourRepeatOff.
+  ///
+  /// In en, this message translates to:
+  /// **'Repeat is off'**
+  String get velourRepeatOff;
+
+  /// No description provided for @velourRepeatAll.
+  ///
+  /// In en, this message translates to:
+  /// **'Repeating all'**
+  String get velourRepeatAll;
+
+  /// No description provided for @velourRepeatOne.
+  ///
+  /// In en, this message translates to:
+  /// **'Repeating this song'**
+  String get velourRepeatOne;
+
+  /// No description provided for @velourLike.
+  ///
+  /// In en, this message translates to:
+  /// **'Like'**
+  String get velourLike;
+
+  /// No description provided for @velourUnlike.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove from Liked Music'**
+  String get velourUnlike;
+
+  /// No description provided for @velourLiked.
+  ///
+  /// In en, this message translates to:
+  /// **'Liked'**
+  String get velourLiked;
+
+  /// No description provided for @velourUnliked.
+  ///
+  /// In en, this message translates to:
+  /// **'Removed from Liked Music'**
+  String get velourUnliked;
+
+  /// No description provided for @velourLyrics.
+  ///
+  /// In en, this message translates to:
+  /// **'Lyrics'**
+  String get velourLyrics;
+
+  /// No description provided for @velourLyricsNone.
+  ///
+  /// In en, this message translates to:
+  /// **'No lyrics found for this song'**
+  String get velourLyricsNone;
+
+  /// No description provided for @velourLyricsSource.
+  ///
+  /// In en, this message translates to:
+  /// **'Source: {source}'**
+  String velourLyricsSource(String source);
+
+  /// No description provided for @velourQueueCount.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 song} other{{count} songs}}'**
+  String velourQueueCount(int count);
+
+  /// No description provided for @velourQueueRadio.
+  ///
+  /// In en, this message translates to:
+  /// **'radio keeps it going'**
+  String get velourQueueRadio;
+
+  /// No description provided for @velourQueueEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'The queue is empty'**
+  String get velourQueueEmpty;
+
+  /// No description provided for @velourQueueClear.
+  ///
+  /// In en, this message translates to:
+  /// **'Clear'**
+  String get velourQueueClear;
+
+  /// No description provided for @velourQueueClearConfirm.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove everything except the current song from the queue?'**
+  String get velourQueueClearConfirm;
+
+  /// No description provided for @velourRemove.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove'**
+  String get velourRemove;
+
+  /// No description provided for @velourRemoved.
+  ///
+  /// In en, this message translates to:
+  /// **'Removed from the queue'**
+  String get velourRemoved;
+
+  /// No description provided for @velourReorder.
+  ///
+  /// In en, this message translates to:
+  /// **'Drag to reorder'**
+  String get velourReorder;
+
+  /// No description provided for @velourSearchHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Songs, artists, albums'**
+  String get velourSearchHint;
+
+  /// No description provided for @velourClearSearch.
+  ///
+  /// In en, this message translates to:
+  /// **'Clear search'**
+  String get velourClearSearch;
+
+  /// No description provided for @velourSearchStart.
+  ///
+  /// In en, this message translates to:
+  /// **'Search YouTube Music'**
+  String get velourSearchStart;
+
+  /// No description provided for @velourSearchStartHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Results play in Velour on the PC.'**
+  String get velourSearchStartHint;
+
+  /// No description provided for @velourLibPlaylists.
+  ///
+  /// In en, this message translates to:
+  /// **'Playlists'**
+  String get velourLibPlaylists;
+
+  /// No description provided for @velourLibAlbums.
+  ///
+  /// In en, this message translates to:
+  /// **'Albums'**
+  String get velourLibAlbums;
+
+  /// No description provided for @velourLibArtists.
+  ///
+  /// In en, this message translates to:
+  /// **'Artists'**
+  String get velourLibArtists;
+
+  /// No description provided for @velourLibLiked.
+  ///
+  /// In en, this message translates to:
+  /// **'Liked'**
+  String get velourLibLiked;
+
+  /// No description provided for @velourLibHistory.
+  ///
+  /// In en, this message translates to:
+  /// **'History'**
+  String get velourLibHistory;
+
+  /// No description provided for @velourLoadMore.
+  ///
+  /// In en, this message translates to:
+  /// **'Load more'**
+  String get velourLoadMore;
+
+  /// No description provided for @velourPlay.
+  ///
+  /// In en, this message translates to:
+  /// **'Play'**
+  String get velourPlay;
+
+  /// No description provided for @velourShufflePlay.
+  ///
+  /// In en, this message translates to:
+  /// **'Shuffle'**
+  String get velourShufflePlay;
+
+  /// No description provided for @velourRadio.
+  ///
+  /// In en, this message translates to:
+  /// **'Start radio'**
+  String get velourRadio;
+
+  /// No description provided for @velourRadioStarted.
+  ///
+  /// In en, this message translates to:
+  /// **'Radio started'**
+  String get velourRadioStarted;
+
+  /// No description provided for @velourPlayNext.
+  ///
+  /// In en, this message translates to:
+  /// **'Play next'**
+  String get velourPlayNext;
+
+  /// No description provided for @velourAddToQueue.
+  ///
+  /// In en, this message translates to:
+  /// **'Add to queue'**
+  String get velourAddToQueue;
+
+  /// No description provided for @velourAddToPlaylist.
+  ///
+  /// In en, this message translates to:
+  /// **'Add to playlist'**
+  String get velourAddToPlaylist;
+
+  /// No description provided for @velourGoArtist.
+  ///
+  /// In en, this message translates to:
+  /// **'Go to artist'**
+  String get velourGoArtist;
+
+  /// No description provided for @velourGoAlbum.
+  ///
+  /// In en, this message translates to:
+  /// **'Go to album'**
+  String get velourGoAlbum;
+
+  /// No description provided for @velourMore.
+  ///
+  /// In en, this message translates to:
+  /// **'More options'**
+  String get velourMore;
+
+  /// No description provided for @velourNewPlaylist.
+  ///
+  /// In en, this message translates to:
+  /// **'New playlist'**
+  String get velourNewPlaylist;
+
+  /// No description provided for @velourPlaylistName.
+  ///
+  /// In en, this message translates to:
+  /// **'Playlist name'**
+  String get velourPlaylistName;
+
+  /// No description provided for @velourNoPlaylists.
+  ///
+  /// In en, this message translates to:
+  /// **'You have no playlists of your own yet'**
+  String get velourNoPlaylists;
+
+  /// No description provided for @velourTrackUnavailable.
+  ///
+  /// In en, this message translates to:
+  /// **'This song can\'t be played'**
+  String get velourTrackUnavailable;
+
+  /// No description provided for @velourAddedNext.
+  ///
+  /// In en, this message translates to:
+  /// **'“{title}” plays next'**
+  String velourAddedNext(String title);
+
+  /// No description provided for @velourAddedQueue.
+  ///
+  /// In en, this message translates to:
+  /// **'Added “{title}” to the queue'**
+  String velourAddedQueue(String title);
+
+  /// No description provided for @velourAddedToPlaylist.
+  ///
+  /// In en, this message translates to:
+  /// **'Added to {playlist}'**
+  String velourAddedToPlaylist(String playlist);
+
+  /// No description provided for @velourCreatedPlaylist.
+  ///
+  /// In en, this message translates to:
+  /// **'Created “{title}”'**
+  String velourCreatedPlaylist(String title);
+
   /// No description provided for @homeCardsNowPlaying.
   ///
   /// In en, this message translates to:

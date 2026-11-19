@@ -11,6 +11,12 @@ extension is `0.1.0`.
 
 ### Added
 
+- Velour remote (*System › Media*, `desktop` feature): for the [Velour](https://github.com/mikailustuner/velour)
+  YouTube Music player, search with suggestions, the queue (jump, remove, reorder, clear), synced lyrics, like,
+  shuffle/repeat, the library (playlists, albums, artists, liked, history) with album/playlist/artist pages, play
+  next, add to queue, radio, and add to or create a playlist. Agent `POST /v1/velour` forwards to Velour's local
+  control socket.
+
 **Second feature round**
 
 - Event timeline: every agent records notifications and notable actions (`events.jsonl`, `GET /v1/events`). The

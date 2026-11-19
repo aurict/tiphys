@@ -234,6 +234,19 @@ class _MediaScreenState extends ConsumerState<MediaScreen> {
                 await _act('position', seconds: v);
                 if (mounted) setState(() => _seekDrag = null);
               }, onAction: _act),
+            // Velour (YouTube Music) has its own full remote: search, queue, lyrics, library.
+            if (p != null && playerLabel(p.name) == 'Velour') ...[
+              const SizedBox(height: 12),
+              GroupedSection(children: [
+                GroupedRow(
+                  title: l.velourOpen,
+                  subtitle: l.velourOpenHint,
+                  icon: LucideIcons.listMusic,
+                  iconBackground: const Color(0xFFFF375F),
+                  onTap: () => context.push('/system/velour?host=${Uri.encodeQueryComponent(widget.hostId)}'),
+                ),
+              ]),
+            ],
             if (s.volume case (final percent, final muted)) ...[
               const SizedBox(height: 12),
               TCard(

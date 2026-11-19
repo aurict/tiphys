@@ -72,6 +72,12 @@ All changing desktop endpoints require the token of an open control session, sen
   `Exec=` lines are never run directly.
 - **Tools**: media, clipboard, screenshot, **Turn the screen off/on** (DPMS), high quality mode, plus the
   [system](system.md) power actions.
+- **Media** controls any MPRIS player (`playerctl`) and the system volume. When the player is
+  [Velour](https://github.com/mikailustuner/velour) (YouTube Music), **Open in Velour remote** adds search with
+  suggestions, the queue (jump, swipe to remove, drag to reorder, clear), synced lyrics, like, shuffle/repeat, and the
+  library (playlists, albums, artists, liked songs, history) with album/playlist/artist pages, play next, add to
+  queue, radio and add to a playlist. It needs Velour's *Settings → Desktop → Remote control*; see
+  [security](../security.md#velour-remote).
 
 Browsing needs no session. The first changing action opens one, and a *Control on · 14:59 · Stop* bar stays at the
 bottom while it is open.
