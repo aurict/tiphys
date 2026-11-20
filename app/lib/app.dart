@@ -56,7 +56,10 @@ import 'features/telegram/issue_screen.dart';
 import 'features/telegram/research_screen.dart';
 import 'features/telegram/telegram_screen.dart';
 import 'features/terminal/terminal_screen.dart';
+import 'core/push/live_events.dart';
 import 'features/lock/lock_gate.dart';
+import 'features/onboarding/onboarding_screen.dart';
+import 'features/onboarding/onboarding_state.dart';
 import 'features/vault/vault_screen.dart';
 import 'features/settings/settings_routes.dart';
 import 'l10n/gen/app_localizations.dart';
@@ -94,6 +97,8 @@ String tabLabel(AppLocalizations l, String id) => switch (id) {
 final routerProvider = Provider<GoRouter>((ref) {
   return GoRouter(
     initialLocation: '/',
+    // First launch without a host: the setup wizard (K7) until it's finished or skipped.
+    redirect: (c, s) => s.uri.path == '/' && !ref.read(onboardingSeenProvider) && ref.read(profileProvider).hosts.isEmpty ? '/welcome' : null,
     routes: [
       ShellRoute(
         builder: (context, state, child) => AppShell(location: state.uri.path, child: child),
@@ -181,6 +186,10 @@ final routerProvider = Provider<GoRouter>((ref) {
           inTerminal: s.uri.queryParameters['terminal'] == '1',
         ),
       ),
+      GoRoute(
+        path: '/welcome',
+        builder: (c, s) => OnboardingScreen(fromSettings: s.uri.queryParameters['from'] == 'settings', initialStep: s.uri.queryParameters['step'], hostId: s.uri.queryParameters['host']),
+      ),
       settingsRoute,
     ],
   );
@@ -211,7 +220,7 @@ class TiphysApp extends ConsumerWidget {
         return const Locale('en');
       },
       routerConfig: ref.watch(routerProvider),
-      builder: (context, child) => LockGate(child: ClipboardSyncGate(child: child!)),
+      builder: (context, child) => LockGate(child: ClipboardSyncGate(child: LiveEventsGate(child: child!))),
     );
   }
 }

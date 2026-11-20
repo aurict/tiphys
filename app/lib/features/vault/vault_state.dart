@@ -23,7 +23,7 @@ const vaultIdleTimeout = Duration(minutes: 2);
 final vaultStoreProvider = Provider<VaultStore>((ref) => VaultStore(ref.watch(secretStoreProvider)));
 
 /// Password copying (sensitive flag + clearing after 30 s). Kept alive so the timer survives the vault closing.
-final sensitiveClipboardProvider = Provider<SensitiveClipboard>((ref) => SensitiveClipboard(const TiphysSensitiveClipboard()));
+final sensitiveClipboardProvider = Provider<SensitiveClipboard>((ref) => SensitiveClipboard(TiphysSensitiveClipboard()));
 
 /// Toggles FLAG_SECURE (recorded in tests). Silently skipped if there is no plugin.
 final secureWindowProvider = Provider<Future<void> Function(bool)>((ref) => (on) async {

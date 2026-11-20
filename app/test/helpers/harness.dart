@@ -19,6 +19,7 @@ import 'package:tiphys/features/claude/claude_screen.dart';
 import 'package:tiphys/features/claude/session_insights.dart';
 import 'package:tiphys/features/home/home_data.dart';
 import 'package:tiphys/features/lock/lock_gate.dart';
+import 'package:tiphys/features/onboarding/onboarding_state.dart';
 import 'package:tiphys/state/providers.dart';
 import 'package:tiphys/widgets/painters.dart';
 import 'package:tiphys/core/agent/agent_client.dart';
@@ -73,7 +74,7 @@ class NoBiometrics implements Biometrics {
 }
 
 class Harness {
-  Harness({Profile? profile, Map<String, String>? secrets, this.homeData = sampleHomeData, this.pin, this.extra = const [], this.agent, this.biometrics, this.agentFeatures = defaultAgentFeatures, this.clock})
+  Harness({Profile? profile, Map<String, String>? secrets, this.homeData = sampleHomeData, this.pin, this.extra = const [], this.agent, this.biometrics, this.agentFeatures = defaultAgentFeatures, this.clock, this.onboarded = true, this.agentVersion = '0.3.0', this.health})
       : profile = profile ?? exampleProfile(),
         secrets = MemorySecretStore(secrets ?? {'ssh-phone': 'x', 'agent-argo': 'x', 'grafana-atlas': 'x'});
   final Profile profile;
@@ -95,6 +96,15 @@ class Harness {
 
   /// Features enabled in the agent's health response.
   final List<String> agentFeatures;
+
+  /// The setup wizard was already seen (false: a first launch).
+  final bool onboarded;
+
+  /// Version in the agent's health response.
+  final String agentVersion;
+
+  /// Replaces the tokenless health check entirely (e.g. a version that changes after an update).
+  final Future<Map<String, dynamic>> Function(String url)? health;
   static const defaultAgentFeatures = ['system', 'services', 'docker', 'power', 'git', 'desktop', 'control', 'ports', 'transcribe', 'claude', 'homepage', 'backups'];
   final vault = MemoryVault();
 
@@ -118,9 +128,9 @@ class Harness {
         sshOpenerProvider.overrideWithValue((h) async => throw const SshFailure('unreachable')),
         agentClientFactoryProvider.overrideWithValue(agent ?? (h) async => FakeAgent(h.id)),
         tcpProbeProvider.overrideWithValue((host, port) async => true),
-        agentHealthFnProvider.overrideWithValue((url) async => {
+        agentHealthFnProvider.overrideWithValue(health ?? (url) async => {
               'name': 'argo',
-              'version': '0.3.0',
+              'version': agentVersion,
               'features': {for (final f in agentFeatures) f: true},
             }),
         claudeStreamEnabledProvider.overrideWithValue(false),
@@ -128,6 +138,8 @@ class Harness {
         grafanaFactoryProvider.overrideWithValue((g) async => FakeGrafana()),
         dozzleFactoryProvider.overrideWithValue((d) async => FakeDozzle()),
         pcNotificationsProvider.overrideWithValue(pcNotifications),
+        onboardingSeenInitialProvider.overrideWithValue(onboarded),
+        onboardingVaultProvider.overrideWithValue(vault),
         ...extra,
       ];
 
@@ -204,6 +216,30 @@ class FakeAgent extends AgentClient {
 
   /// GET /v1/desktop/windows response or the error to throw (tests may change it).
   static Object desktop = sampleDesktop();
+
+  /// GET /v1/desktop/capabilities, /v1/doctor, /v1/update responses or the errors to throw; null = an older agent
+  /// without the route (404). POST /v1/update/apply answers [updateApply]. Tests change them, then call [resetSetup].
+  static Object? capabilities;
+  static Object? doctor;
+  static Object? update;
+  static Object updateApply = {'ok': true, 'version': '0.4.0', 'restarting': true};
+
+  /// Version in GET /v1/agent/status.
+  static String statusVersion = '0.3.0';
+
+  static void resetSetup() {
+    capabilities = null;
+    doctor = null;
+    update = null;
+    updateApply = {'ok': true, 'version': '0.4.0', 'restarting': true};
+    statusVersion = '0.3.0';
+  }
+
+  static dynamic _orNotFound(Object? v) {
+    if (v == null) throw const AgentError('agent.route.notFound', {}, 404);
+    if (v is AgentError) throw v;
+    return v;
+  }
 
   /// GET /v1/desktop/sunshine response or the error to throw (tests may change it); start/stop flips `running`.
   static Object sunshine = sampleSunshine();
@@ -431,6 +467,7 @@ class FakeAgent extends AgentClient {
         if (desktop is AgentError) throw desktop;
         return desktop;
       }
+      if (path == '/v1/desktop/capabilities') return _orNotFound(capabilities);
       if (path == '/v1/desktop/apps') return {'apps': sampleApps};
       if (path == '/v1/desktop/control/session') {
         return method == 'DELETE' ? {'ended': true} : {'token': 'tpc_fake', 'expiresAt': DateTime(2026, 11, 14, 14, 20).toUtc().toIso8601String()};
@@ -479,9 +516,15 @@ class FakeAgent extends AgentClient {
       pcControl = true;
       return {'id': 'pc1', 'kind': 'pc', 'control': {'active': true, 'expiresAt': DateTime(2026, 11, 14, 14, 20).toUtc().toIso8601String()}};
     }
+    if (path == '/v1/doctor') return _orNotFound(doctor);
+    if (path == '/v1/update' && method == 'GET') return _orNotFound(update);
+    if (path == '/v1/update/apply' && method == 'POST') {
+      if (updateApply is AgentError) throw updateApply;
+      return updateApply;
+    }
     if (path == '/v1/agent/status') {
       return {
-        'version': '0.3.0',
+        'version': statusVersion,
         'startedAt': '2026-11-14T08:00:00Z',
         'uptimeSeconds': 3 * 3600 + 25 * 60,
         'memory': {'agentBytes': 96 * 1024 * 1024, 'childrenBytes': 1300 * 1024 * 1024},
@@ -1322,3 +1365,27 @@ class FakePcNotifications implements PcNotifications {
     log.add('cancel');
   }
 }
+
+/// GET /v1/doctor (agent's format): one failure with a fix, two warnings, the rest OK.
+Map<String, dynamic> sampleDoctor() => {
+      'version': '0.3.0',
+      'checks': [
+        {'id': 'tailscale', 'status': 'ok', 'code': 'doctor.tailscale.ok', 'params': {'dnsName': 'argo.my-tailnet.ts.net'}},
+        {'id': 'tailscale.serve', 'status': 'fail', 'code': 'doctor.tailscale.notServed', 'params': {'port': 7443}, 'fix': 'sudo tailscale serve --bg --https=7443 http://127.0.0.1:7443'},
+        {'id': 'agent', 'status': 'ok', 'code': 'doctor.agent.listening', 'params': {'host': '127.0.0.1', 'port': 7443}},
+        {'id': 'config', 'status': 'ok', 'code': 'doctor.config.ok', 'params': {'path': '~/.config/tiphys/agent.json'}},
+        {'id': 'time', 'status': 'ok', 'code': 'doctor.time.synced', 'params': {}},
+        {'id': 'disk', 'status': 'warn', 'code': 'doctor.disk.low', 'params': {'freeMb': 1480, 'totalMb': 240000}},
+        {'id': 'node', 'status': 'ok', 'code': 'doctor.node.ok', 'params': {'node': '24.11.0'}},
+        {'id': 'push', 'status': 'warn', 'code': 'doctor.push.notConfigured', 'params': {}},
+        {'id': 'version', 'status': 'ok', 'code': 'doctor.version.latest', 'params': {'current': '0.3.0', 'latest': '0.3.0'}},
+      ],
+    };
+
+/// GET /v1/desktop/capabilities of a Mac running the helper (no thumbnails, workspaces, H.264, mobile view, Sunshine…).
+Map<String, dynamic> sampleMacCaps() => {
+      'backend': 'helper',
+      'platform': 'macos',
+      'version': '0.1.0',
+      'capabilities': ['windows', 'windowActions', 'monitors', 'screenshot', 'stream', 'input', 'text', 'apps', 'launch', 'clipboard'],
+    };

@@ -30,6 +30,13 @@ class SettingsHome extends ConsumerWidget {
     return SettingsPage(title: l.settingsTitle, children: [
       GroupedSection(children: [
         row(l.settingsHosts, l.settingsHostsHint, LucideIcons.server, const Color(0xFF4338CA), 'hosts', trailing: '${p.hosts.length}'),
+        GroupedRow(
+          title: l.onbSettingsRow,
+          subtitle: l.onbSettingsRowHint,
+          icon: LucideIcons.wand,
+          iconBackground: const Color(0xFF2F9E6A),
+          onTap: () => context.push('/welcome?from=settings'),
+        ),
         row(l.settingsKeys, l.settingsKeysHint, LucideIcons.keyRound, const Color(0xFFB45309), 'secrets',
             badge: missingCount > 0 ? '$missingCount' : null),
         row(l.settingsClaude, l.settingsClaudeHint, LucideIcons.asterisk, const Color(0xFF1E1B4B), 'claude'),

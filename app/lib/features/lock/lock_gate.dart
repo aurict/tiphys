@@ -63,7 +63,8 @@ class _LockGateState extends ConsumerState<LockGate> with WidgetsBindingObserver
   Widget build(BuildContext context) {
     final required = ref.watch(lockRequiredProvider);
     final mustLock = required.value ?? true;
-    if (required.isLoading) return ColoredBox(color: context.tokens.background);
+    // An error (e.g. a desktop without a keyring service) fails closed to the lock screen instead of a blank screen.
+    if (required.isLoading && !required.hasError) return ColoredBox(color: context.tokens.background);
     if (!mustLock || !_locked) return widget.child;
     return LockScreen(onUnlocked: () => setState(() => _locked = false));
   }
@@ -98,7 +99,8 @@ class _LockScreenState extends ConsumerState<LockScreen> {
 
   Future<void> _init() async {
     final lock = ref.read(profileProvider).app.lock;
-    final hasPin = lock.pin && await ref.read(appLockProvider).hasPin();
+    // The PIN store may be unreachable (a desktop without a keyring): then no PIN pad, the screen stays locked.
+    final hasPin = lock.pin && await ref.read(appLockProvider).hasPin().catchError((Object _) => false);
     final bio = lock.biometric && await ref.read(biometricsProvider).available();
     if (!mounted) return;
     setState(() {

@@ -1,11 +1,14 @@
 // Notifications: UnifiedPush (distributor = the ntfy app on the phone). Agents send encrypted JSON;
 // here we take the decrypted version and show it as a local notification in the selected language. Works even when
 // the app is closed (UnifiedPush starts the app in the background with the "--unifiedpush-bg" argument).
+// UnifiedPush exists on Android only; elsewhere (and on Android without a distributor) live_events.dart polls the
+// agents while the app is open and shows the same notifications through [PushService.showNotice].
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 import 'dart:ui' show DartPluginRegistrant;
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:intl/intl.dart';
@@ -20,6 +23,7 @@ import '../../features/security/security_more_texts.dart' show securityUrgentKey
 import '../../features/security/security_texts.dart';
 import '../../l10n/gen/app_localizations.dart';
 import '../agent/agent_client.dart';
+import '../platform.dart';
 import '../profile/model.dart';
 import '../security/app_lock.dart';
 import '../secrets/secret_store.dart';
@@ -781,36 +785,53 @@ class PushService {
   /// The agent reported that control of the PC session ended (clear the state if the app is open).
   void Function(String sessionId)? onPcEnded;
 
+  /// Hosts the current endpoint was registered with in this run ([registerHost]).
+  final _registered = <String>{};
+
   Future<void> init({required bool background}) async {
-    await notifications.initialize(
-      settings: const InitializationSettings(android: AndroidInitializationSettings('ic_notification')),
-      onDidReceiveNotificationResponse: (r) async {
-        if (r.actionId == actionCopyClipboard) {
-          await copyFromNotification(r.payload, seen: ClipboardSeen(() async => (await getApplicationDocumentsDirectory()).path));
-          return;
-        }
-        if (r.actionId == actionPcStop || r.actionId == actionPcExtend) {
-          if (await onPcAction?.call(r.actionId!) ?? false) return;
-          await handlePcAction(r.actionId!, notifications, profile: await loadProfile(), secrets: secrets);
-          return;
-        }
-        if (r.actionId == actionTgApprove || r.actionId == actionTgReject) {
-          final profile = await loadProfile();
-          final ok = await telegramDecideFromNotification(r.payload ?? '', r.actionId == actionTgApprove, profile: profile, secrets: secrets);
-          if (!ok) await _showTelegramDecisionFailed(notifications, profile);
-          return;
-        }
-        if (r.actionId == actionAllow || r.actionId == actionDeny) {
-          final profile = await loadProfile();
-          final ok = await decideFromNotification(r.payload ?? '', r.actionId == actionAllow, profile: profile, secrets: secrets);
-          if (!ok) await _showDecisionFailed(notifications, profile);
-          return;
-        }
-        final route = routeForPayload(r.payload);
-        if (route != null) onOpen?.call(route);
-      },
-      onDidReceiveBackgroundNotificationResponse: onNotificationActionBackground,
-    );
+    const darwin = DarwinInitializationSettings();
+    try {
+      await notifications.initialize(
+        settings: const InitializationSettings(
+          android: AndroidInitializationSettings('ic_notification'),
+          iOS: darwin,
+          macOS: darwin,
+          linux: LinuxInitializationSettings(defaultActionName: 'Open'),
+          windows: WindowsInitializationSettings(appName: 'Tiphys', appUserModelId: 'com.aurict.tiphys', guid: '4c1f5f0e-7d0b-4f3a-9a52-6b1d2f8e9c31'),
+        ),
+        onDidReceiveNotificationResponse: (r) async {
+          if (r.actionId == actionCopyClipboard) {
+            await copyFromNotification(r.payload, seen: ClipboardSeen(() async => (await getApplicationDocumentsDirectory()).path));
+            return;
+          }
+          if (r.actionId == actionPcStop || r.actionId == actionPcExtend) {
+            if (await onPcAction?.call(r.actionId!) ?? false) return;
+            await handlePcAction(r.actionId!, notifications, profile: await loadProfile(), secrets: secrets);
+            return;
+          }
+          if (r.actionId == actionTgApprove || r.actionId == actionTgReject) {
+            final profile = await loadProfile();
+            final ok = await telegramDecideFromNotification(r.payload ?? '', r.actionId == actionTgApprove, profile: profile, secrets: secrets);
+            if (!ok) await _showTelegramDecisionFailed(notifications, profile);
+            return;
+          }
+          if (r.actionId == actionAllow || r.actionId == actionDeny) {
+            final profile = await loadProfile();
+            final ok = await decideFromNotification(r.payload ?? '', r.actionId == actionAllow, profile: profile, secrets: secrets);
+            if (!ok) await _showDecisionFailed(notifications, profile);
+            return;
+          }
+          final route = routeForPayload(r.payload);
+          if (route != null) onOpen?.call(route);
+        },
+        onDidReceiveBackgroundNotificationResponse: onNotificationActionBackground,
+      );
+    } catch (e) {
+      // A desktop without a notification service (Linux without a D-Bus notification daemon): the app works without.
+      if (defaultTargetPlatform == TargetPlatform.android) rethrow;
+      debugPrint('notifications unavailable: $e');
+    }
+    if (!hasUnifiedPush) return;
     final registered = await UnifiedPush.initialize(
       onNewEndpoint: (e, _) => _saveEndpoint(e),
       onMessage: (m, _) => _onMessage(m),
@@ -822,12 +843,18 @@ class PushService {
 
   /// Route to navigate to if the app was opened by tapping a notification.
   Future<String?> launchRoute() async {
-    final d = await notifications.getNotificationAppLaunchDetails();
-    return d?.didNotificationLaunchApp == true ? routeForPayload(d!.notificationResponse?.payload) : null;
+    try {
+      final d = await notifications.getNotificationAppLaunchDetails();
+      return d?.didNotificationLaunchApp == true ? routeForPayload(d!.notificationResponse?.payload) : null;
+    } catch (_) {
+      // No notification service on this desktop (see init): nothing launched the app.
+      if (defaultTargetPlatform == TargetPlatform.android) rethrow;
+      return null;
+    }
   }
 
-  Future<List<String>> distributors() => UnifiedPush.getDistributors();
-  Future<String?> distributor() => UnifiedPush.getDistributor();
+  Future<List<String>> distributors() async => hasUnifiedPush ? UnifiedPush.getDistributors() : const [];
+  Future<String?> distributor() async => hasUnifiedPush ? UnifiedPush.getDistributor() : null;
 
   Future<bool> enable(String distributor) async {
     await notifications
@@ -841,9 +868,11 @@ class PushService {
   Future<void> disable() async {
     await UnifiedPush.unregister(pushInstance);
     await vault.delete(_endpointKey);
+    _registered.clear();
   }
 
   Future<Map<String, dynamic>?> endpoint() async {
+    if (!hasUnifiedPush) return null; // only UnifiedPush ever stores one
     final raw = await vault.read(_endpointKey);
     return raw == null ? null : Map<String, dynamic>.from(jsonDecode(raw) as Map);
   }
@@ -851,6 +880,7 @@ class PushService {
   Future<void> _saveEndpoint(PushEndpoint e) async {
     final j = {'url': e.url, 'pubKey': e.pubKeySet?.pubKey, 'auth': e.pubKeySet?.auth};
     await vault.write(_endpointKey, jsonEncode(j));
+    _registered.clear();
     await registerWithAgents();
   }
 
@@ -861,16 +891,37 @@ class PushService {
     final p = await loadProfile();
     final ok = <String>[];
     for (final h in p.hosts.where((h) => h.agent != null)) {
-      try {
-        final c = await AgentClient.forHost(h, secrets);
-        await c.put('/v1/push/endpoint', {'url': ep['url'], if (ep['pubKey'] != null) 'pubKey': ep['pubKey'], if (ep['auth'] != null) 'auth': ep['auth']});
-        c.close();
-        ok.add(h.id);
-      } catch (_) {
-        // If the agent is down right now, it is retried on the next launch.
-      }
+      // If the agent is down right now, it is retried on the next launch (or by the live notifications).
+      if (await registerHost(h, ep)) ok.add(h.id);
     }
     return ok;
+  }
+
+  /// Reports the endpoint to one host; true if it accepted it.
+  Future<bool> registerHost(Host h, [Map<String, dynamic>? ep]) async {
+    ep ??= await endpoint();
+    if (ep == null) return false;
+    try {
+      final c = await AgentClient.forHost(h, secrets);
+      try {
+        await c.put('/v1/push/endpoint', {'url': ep['url'], if (ep['pubKey'] != null) 'pubKey': ep['pubKey'], if (ep['auth'] != null) 'auth': ep['auth']});
+      } finally {
+        c.close();
+      }
+      _registered.add(h.id);
+      return true;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  /// Does push reach the phone for this host? Only with a UnifiedPush endpoint the host accepted (registered again
+  /// here if this run hasn't yet). Otherwise the live notifications poll it while the app is open.
+  Future<bool> covers(Host h) async {
+    if (!hasUnifiedPush) return false;
+    final ep = await endpoint();
+    if (ep == null) return false;
+    return _registered.contains(h.id) || await registerHost(h, ep);
   }
 
   Future<void> _cancelWaiting(String link) async {
@@ -895,6 +946,11 @@ class PushService {
     final params = Map<String, dynamic>.from((j['params'] as Map?) ?? {});
     final link = j['link'] as String?;
     final data = j['data'] is Map ? Map<String, dynamic>.from(j['data'] as Map) : null;
+    await showNotice(key: key, params: params, link: link, data: data);
+  }
+
+  /// Shows one notice (push message or an event from the live poll) with the user's filters, texts, channels and ids.
+  Future<void> showNotice({required String key, required Map<String, dynamic> params, String? link, Map<String, dynamic>? data}) async {
     if (key == 'claude.pcEnded') {
       // Control ended: the ongoing notification and stored token are removed in any case (the app may be closed).
       await clearPcHold(notifications, secrets, sessionId: data?['sessionId'] as String?);
@@ -934,6 +990,9 @@ class PushService {
                   ? jsonEncode({'link': link, 'issueId': data!['issueId'], 'feedId': data['feedId']})
                   : securityPayload(key, link, params) ?? incidentPayload(link, params) ?? configPayload(key, params, data) ?? restorePayload(key, params) ?? agyPayload(key, link, params) ?? link,
       notificationDetails: NotificationDetails(
+        iOS: DarwinNotificationDetails(presentSound: !noticeSilent(data)),
+        macOS: DarwinNotificationDetails(presentSound: !noticeSilent(data)),
+        linux: LinuxNotificationDetails(urgency: high ? LinuxNotificationUrgency.critical : LinuxNotificationUrgency.normal),
         android: AndroidNotificationDetails(
           high ? 'tiphys-urgent' : 'tiphys',
           high ? 'Tiphys · acil' : 'Tiphys',

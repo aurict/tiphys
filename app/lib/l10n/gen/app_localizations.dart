@@ -3551,7 +3551,7 @@ abstract class AppLocalizations {
   /// No description provided for @agentOutdatedHint.
   ///
   /// In en, this message translates to:
-  /// **'This app expects agent {version}. Update it on the PC with tools/deploy-agent.sh (remote) or by rebuilding the agent (local).'**
+  /// **'This app expects agent {version}. Update it with “Update” below if offered, or re-run the install command on that computer.'**
   String agentOutdatedHint(String version);
 
   /// No description provided for @agentUptime.
@@ -19477,6 +19477,870 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'The SSH destination of “{host}” cannot be used: {reason}. Use a direct destination (user@host) without ProxyCommand, ProxyJump, LocalCommand or KnownHostsCommand.'**
   String fixErrSshConfig(String host, String reason);
+
+  /// No description provided for @pairPaste.
+  ///
+  /// In en, this message translates to:
+  /// **'Paste'**
+  String get pairPaste;
+
+  /// No description provided for @pairPasteTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Paste pairing code'**
+  String get pairPasteTitle;
+
+  /// No description provided for @pairPasteHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Paste the text of the QR code, or the address and token that `tiphys-agent pair` prints below it.'**
+  String get pairPasteHint;
+
+  /// No description provided for @pairPasteLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Pairing code'**
+  String get pairPasteLabel;
+
+  /// No description provided for @pairPasteFromClipboard.
+  ///
+  /// In en, this message translates to:
+  /// **'Paste from clipboard'**
+  String get pairPasteFromClipboard;
+
+  /// No description provided for @pairPasteUse.
+  ///
+  /// In en, this message translates to:
+  /// **'Pair'**
+  String get pairPasteUse;
+
+  /// No description provided for @pairPasteInvalid.
+  ///
+  /// In en, this message translates to:
+  /// **'No Tiphys pairing code found. It needs the agent address (https://…) and a token starting with tph_.'**
+  String get pairPasteInvalid;
+
+  /// No description provided for @doctorTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Health check'**
+  String get doctorTitle;
+
+  /// No description provided for @doctorRowHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Checks Tailscale, the service, settings, disk and version'**
+  String get doctorRowHint;
+
+  /// No description provided for @doctorRunning.
+  ///
+  /// In en, this message translates to:
+  /// **'Checking the install…'**
+  String get doctorRunning;
+
+  /// No description provided for @doctorRerun.
+  ///
+  /// In en, this message translates to:
+  /// **'Run again'**
+  String get doctorRerun;
+
+  /// No description provided for @doctorAllGood.
+  ///
+  /// In en, this message translates to:
+  /// **'Everything looks good'**
+  String get doctorAllGood;
+
+  /// No description provided for @doctorSummary.
+  ///
+  /// In en, this message translates to:
+  /// **'{fails, plural, =0{No problems} =1{1 problem} other{{fails} problems}}, {warns, plural, =0{no warnings} =1{1 warning} other{{warns} warnings}}'**
+  String doctorSummary(int fails, int warns);
+
+  /// No description provided for @doctorAgentVersion.
+  ///
+  /// In en, this message translates to:
+  /// **'Agent {version}'**
+  String doctorAgentVersion(String version);
+
+  /// No description provided for @doctorProblems.
+  ///
+  /// In en, this message translates to:
+  /// **'Problems'**
+  String get doctorProblems;
+
+  /// No description provided for @doctorWarnings.
+  ///
+  /// In en, this message translates to:
+  /// **'Warnings'**
+  String get doctorWarnings;
+
+  /// No description provided for @doctorOk.
+  ///
+  /// In en, this message translates to:
+  /// **'OK'**
+  String get doctorOk;
+
+  /// No description provided for @doctorStatusFail.
+  ///
+  /// In en, this message translates to:
+  /// **'Problem'**
+  String get doctorStatusFail;
+
+  /// No description provided for @doctorStatusWarn.
+  ///
+  /// In en, this message translates to:
+  /// **'Warning'**
+  String get doctorStatusWarn;
+
+  /// No description provided for @doctorStatusOk.
+  ///
+  /// In en, this message translates to:
+  /// **'OK'**
+  String get doctorStatusOk;
+
+  /// No description provided for @doctorFixLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Suggested fix (run it on that computer)'**
+  String get doctorFixLabel;
+
+  /// No description provided for @doctorMissingTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'This agent has no health check yet'**
+  String get doctorMissingTitle;
+
+  /// No description provided for @doctorMissingHint.
+  ///
+  /// In en, this message translates to:
+  /// **'It is older than the app. Update the agent: re-run the install command on that computer, then try again.'**
+  String get doctorMissingHint;
+
+  /// No description provided for @doctorTailscaleOk.
+  ///
+  /// In en, this message translates to:
+  /// **'Tailscale is running as {name}.'**
+  String doctorTailscaleOk(String name);
+
+  /// No description provided for @doctorTailscaleMissing.
+  ///
+  /// In en, this message translates to:
+  /// **'Tailscale is not installed. Tiphys reaches this computer only through your tailnet.'**
+  String get doctorTailscaleMissing;
+
+  /// No description provided for @doctorTailscaleLoggedOut.
+  ///
+  /// In en, this message translates to:
+  /// **'Tailscale is installed but not logged in.'**
+  String get doctorTailscaleLoggedOut;
+
+  /// No description provided for @doctorTailscaleStopped.
+  ///
+  /// In en, this message translates to:
+  /// **'Tailscale is not running.'**
+  String get doctorTailscaleStopped;
+
+  /// No description provided for @doctorTailscaleServed.
+  ///
+  /// In en, this message translates to:
+  /// **'tailscale serve publishes the agent on HTTPS port {ports}.'**
+  String doctorTailscaleServed(String ports);
+
+  /// No description provided for @doctorTailscaleNotServed.
+  ///
+  /// In en, this message translates to:
+  /// **'tailscale serve does not publish the agent (port {port}) in your tailnet.'**
+  String doctorTailscaleNotServed(String port);
+
+  /// No description provided for @doctorTailscaleServeUnknown.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not read the tailscale serve status.'**
+  String get doctorTailscaleServeUnknown;
+
+  /// No description provided for @doctorAgentListening.
+  ///
+  /// In en, this message translates to:
+  /// **'The agent answers on {address}.'**
+  String doctorAgentListening(String address);
+
+  /// No description provided for @doctorAgentNotListening.
+  ///
+  /// In en, this message translates to:
+  /// **'The agent does not answer on {address}.'**
+  String doctorAgentNotListening(String address);
+
+  /// No description provided for @doctorConfigOk.
+  ///
+  /// In en, this message translates to:
+  /// **'The settings file {path} is private.'**
+  String doctorConfigOk(String path);
+
+  /// No description provided for @doctorConfigMissing.
+  ///
+  /// In en, this message translates to:
+  /// **'No settings file at {path}.'**
+  String doctorConfigMissing(String path);
+
+  /// No description provided for @doctorConfigPermissions.
+  ///
+  /// In en, this message translates to:
+  /// **'{path} has mode {mode}; it must be 600 because it holds credentials.'**
+  String doctorConfigPermissions(String path, String mode);
+
+  /// No description provided for @doctorConfigWrongOwner.
+  ///
+  /// In en, this message translates to:
+  /// **'{path} belongs to another user.'**
+  String doctorConfigWrongOwner(String path);
+
+  /// No description provided for @doctorTimeSynced.
+  ///
+  /// In en, this message translates to:
+  /// **'The clock is synchronized.'**
+  String get doctorTimeSynced;
+
+  /// No description provided for @doctorTimeNotSynced.
+  ///
+  /// In en, this message translates to:
+  /// **'The clock is not synchronized (certificates and schedules need the right time).'**
+  String get doctorTimeNotSynced;
+
+  /// No description provided for @doctorTimeUnchecked.
+  ///
+  /// In en, this message translates to:
+  /// **'Clock sync was not checked.'**
+  String get doctorTimeUnchecked;
+
+  /// No description provided for @doctorDiskOk.
+  ///
+  /// In en, this message translates to:
+  /// **'{mb} MB free disk space.'**
+  String doctorDiskOk(String mb);
+
+  /// No description provided for @doctorDiskLow.
+  ///
+  /// In en, this message translates to:
+  /// **'Low disk space: {mb} MB free.'**
+  String doctorDiskLow(String mb);
+
+  /// No description provided for @doctorDiskFull.
+  ///
+  /// In en, this message translates to:
+  /// **'Only {mb} MB free disk space.'**
+  String doctorDiskFull(String mb);
+
+  /// No description provided for @doctorDiskUnchecked.
+  ///
+  /// In en, this message translates to:
+  /// **'Disk space was not checked.'**
+  String get doctorDiskUnchecked;
+
+  /// No description provided for @doctorNodeOk.
+  ///
+  /// In en, this message translates to:
+  /// **'Node.js {version}.'**
+  String doctorNodeOk(String version);
+
+  /// No description provided for @doctorNodeOld.
+  ///
+  /// In en, this message translates to:
+  /// **'Node.js {version} works; 24 is recommended.'**
+  String doctorNodeOld(String version);
+
+  /// No description provided for @doctorNodeTooOld.
+  ///
+  /// In en, this message translates to:
+  /// **'Node.js {version} is too old (22 or newer is needed).'**
+  String doctorNodeTooOld(String version);
+
+  /// No description provided for @doctorFeatureToolsMissing.
+  ///
+  /// In en, this message translates to:
+  /// **'The “{feature}” feature is on but needs: {tools}.'**
+  String doctorFeatureToolsMissing(String feature, String tools);
+
+  /// No description provided for @doctorFeatureDockerDenied.
+  ///
+  /// In en, this message translates to:
+  /// **'The “docker” feature is on but {socket} is not accessible to this user.'**
+  String doctorFeatureDockerDenied(String socket);
+
+  /// No description provided for @doctorFeatureTranscribeMissing.
+  ///
+  /// In en, this message translates to:
+  /// **'The “transcribe” feature is on but {command} does not exist.'**
+  String doctorFeatureTranscribeMissing(String command);
+
+  /// No description provided for @doctorPushOk.
+  ///
+  /// In en, this message translates to:
+  /// **'Push notifications: {count} device(s) registered.'**
+  String doctorPushOk(String count);
+
+  /// No description provided for @doctorPushNotConfigured.
+  ///
+  /// In en, this message translates to:
+  /// **'No device is registered for push notifications (set up ntfy in the app).'**
+  String get doctorPushNotConfigured;
+
+  /// No description provided for @doctorVersionLatest.
+  ///
+  /// In en, this message translates to:
+  /// **'Version {current} is the latest.'**
+  String doctorVersionLatest(String current);
+
+  /// No description provided for @doctorVersionOutdated.
+  ///
+  /// In en, this message translates to:
+  /// **'Version {current}; {latest} is available.'**
+  String doctorVersionOutdated(String current, String latest);
+
+  /// No description provided for @doctorVersionUnchecked.
+  ///
+  /// In en, this message translates to:
+  /// **'Version {current}; the latest release could not be checked.'**
+  String doctorVersionUnchecked(String current);
+
+  /// No description provided for @agentFeatUpdate.
+  ///
+  /// In en, this message translates to:
+  /// **'Self-update'**
+  String get agentFeatUpdate;
+
+  /// No description provided for @agentNewerHint.
+  ///
+  /// In en, this message translates to:
+  /// **'This agent ({version}) is newer than this app expects ({expected}). Update the app if something does not work.'**
+  String agentNewerHint(String version, String expected);
+
+  /// No description provided for @updateAvailable.
+  ///
+  /// In en, this message translates to:
+  /// **'Update available · {version}'**
+  String updateAvailable(String version);
+
+  /// No description provided for @updateRowHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Installed {current}. Tap to update this agent.'**
+  String updateRowHint(String current);
+
+  /// No description provided for @updateRowManualHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Installed {current}. This install updates the way it was installed.'**
+  String updateRowManualHint(String current);
+
+  /// No description provided for @updateAction.
+  ///
+  /// In en, this message translates to:
+  /// **'Update'**
+  String get updateAction;
+
+  /// No description provided for @updateConfirm.
+  ///
+  /// In en, this message translates to:
+  /// **'Update the agent on {host} from {current} to {latest}? It downloads the signed release, checks it and restarts. Open sessions on that computer are interrupted.'**
+  String updateConfirm(String host, String current, String latest);
+
+  /// No description provided for @updateAuthTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Update the agent'**
+  String get updateAuthTitle;
+
+  /// No description provided for @updateTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Updating {host}'**
+  String updateTitle(String host);
+
+  /// No description provided for @updateApplying.
+  ///
+  /// In en, this message translates to:
+  /// **'Downloading and checking {version}…'**
+  String updateApplying(String version);
+
+  /// No description provided for @updateRestarting.
+  ///
+  /// In en, this message translates to:
+  /// **'The agent is restarting. Waiting for {version} to answer…'**
+  String updateRestarting(String version);
+
+  /// No description provided for @updateTimeout.
+  ///
+  /// In en, this message translates to:
+  /// **'The agent did not come back with {version} in time. If it failed to start, it switches back to the previous version by itself. Run the health check to see what is wrong.'**
+  String updateTimeout(String version);
+
+  /// No description provided for @updateDone.
+  ///
+  /// In en, this message translates to:
+  /// **'{host} now runs {version}'**
+  String updateDone(String host, String version);
+
+  /// No description provided for @updateManualTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Update to {version}'**
+  String updateManualTitle(String version);
+
+  /// No description provided for @updateManualBody.
+  ///
+  /// In en, this message translates to:
+  /// **'This agent was not installed with the one-command installer (it runs from a git checkout, a package or Docker), so it cannot update itself. Update it on that computer the way it was installed:'**
+  String get updateManualBody;
+
+  /// No description provided for @updateManualInstaller.
+  ///
+  /// In en, this message translates to:
+  /// **'Switch to the installer (recommended)'**
+  String get updateManualInstaller;
+
+  /// No description provided for @updateManualCheckout.
+  ///
+  /// In en, this message translates to:
+  /// **'Git checkout'**
+  String get updateManualCheckout;
+
+  /// No description provided for @updateManualPackages.
+  ///
+  /// In en, this message translates to:
+  /// **'Packages (.deb, .rpm, AUR, Homebrew): use the package manager. Docker: rebuild the image and recreate the container.'**
+  String get updateManualPackages;
+
+  /// No description provided for @updateErrDisabled.
+  ///
+  /// In en, this message translates to:
+  /// **'Self-update is off on this agent. Turn on “Self-update” in its agent settings first.'**
+  String get updateErrDisabled;
+
+  /// No description provided for @updateErrNotManaged.
+  ///
+  /// In en, this message translates to:
+  /// **'This install cannot update itself; update it the way it was installed.'**
+  String get updateErrNotManaged;
+
+  /// No description provided for @updateErrNotNewer.
+  ///
+  /// In en, this message translates to:
+  /// **'The agent already runs {current} or newer.'**
+  String updateErrNotNewer(String current);
+
+  /// No description provided for @updateErrPlatform.
+  ///
+  /// In en, this message translates to:
+  /// **'There is no release for this computer ({platform}, {arch}).'**
+  String updateErrPlatform(String platform, String arch);
+
+  /// No description provided for @updateErrNoKey.
+  ///
+  /// In en, this message translates to:
+  /// **'This agent build has no release key, so it cannot check releases and does not update itself.'**
+  String get updateErrNoKey;
+
+  /// No description provided for @updateErrBusy.
+  ///
+  /// In en, this message translates to:
+  /// **'An update is already running on this agent.'**
+  String get updateErrBusy;
+
+  /// No description provided for @updateErrUnreachable.
+  ///
+  /// In en, this message translates to:
+  /// **'The agent could not reach the release server. Try again later.'**
+  String get updateErrUnreachable;
+
+  /// No description provided for @updateErrBadRelease.
+  ///
+  /// In en, this message translates to:
+  /// **'The downloaded release failed its signature or checksum check. Nothing was changed.'**
+  String get updateErrBadRelease;
+
+  /// No description provided for @updateErrFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'The update failed ({code}).'**
+  String updateErrFailed(String code);
+
+  /// No description provided for @desktopBackendUnknown.
+  ///
+  /// In en, this message translates to:
+  /// **'this desktop'**
+  String get desktopBackendUnknown;
+
+  /// No description provided for @desktopCapWindows.
+  ///
+  /// In en, this message translates to:
+  /// **'window list'**
+  String get desktopCapWindows;
+
+  /// No description provided for @desktopCapThumbnails.
+  ///
+  /// In en, this message translates to:
+  /// **'window thumbnails'**
+  String get desktopCapThumbnails;
+
+  /// No description provided for @desktopCapWorkspaces.
+  ///
+  /// In en, this message translates to:
+  /// **'workspaces'**
+  String get desktopCapWorkspaces;
+
+  /// No description provided for @desktopCapPcTools.
+  ///
+  /// In en, this message translates to:
+  /// **'Claude using the PC'**
+  String get desktopCapPcTools;
+
+  /// No description provided for @desktopCapClipboardSync.
+  ///
+  /// In en, this message translates to:
+  /// **'clipboard sync'**
+  String get desktopCapClipboardSync;
+
+  /// No description provided for @desktopCapDpms.
+  ///
+  /// In en, this message translates to:
+  /// **'screen off/on'**
+  String get desktopCapDpms;
+
+  /// No description provided for @desktopCapLaunch.
+  ///
+  /// In en, this message translates to:
+  /// **'starting apps'**
+  String get desktopCapLaunch;
+
+  /// No description provided for @desktopCapsMissing.
+  ///
+  /// In en, this message translates to:
+  /// **'Not available on {backend}: {features}.'**
+  String desktopCapsMissing(String backend, String features);
+
+  /// No description provided for @desktopHelperDown.
+  ///
+  /// In en, this message translates to:
+  /// **'The desktop helper is not running'**
+  String get desktopHelperDown;
+
+  /// No description provided for @desktopErrUnsupported.
+  ///
+  /// In en, this message translates to:
+  /// **'This is not available on this computer’s desktop.'**
+  String get desktopErrUnsupported;
+
+  /// No description provided for @desktopErrHelperMissing.
+  ///
+  /// In en, this message translates to:
+  /// **'The desktop helper (tiphys-desktop) is not installed on this computer. Re-run the install command there.'**
+  String get desktopErrHelperMissing;
+
+  /// No description provided for @desktopErrHelperFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'The desktop helper failed. Try again; if it keeps failing, run the health check.'**
+  String get desktopErrHelperFailed;
+
+  /// No description provided for @desktopErrPermission.
+  ///
+  /// In en, this message translates to:
+  /// **'The computer refused the {permission} permission. Allow the Tiphys agent under System Settings › Privacy & Security › {permission}, then try again.'**
+  String desktopErrPermission(String permission);
+
+  /// No description provided for @desktopErrPermissionOther.
+  ///
+  /// In en, this message translates to:
+  /// **'The computer refused a permission the desktop helper needs: {message}'**
+  String desktopErrPermissionOther(String message);
+
+  /// No description provided for @desktopPermAccessibility.
+  ///
+  /// In en, this message translates to:
+  /// **'Accessibility'**
+  String get desktopPermAccessibility;
+
+  /// No description provided for @desktopPermScreenRecording.
+  ///
+  /// In en, this message translates to:
+  /// **'Screen Recording'**
+  String get desktopPermScreenRecording;
+
+  /// No description provided for @liveNotifyTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'While the app is open'**
+  String get liveNotifyTitle;
+
+  /// No description provided for @liveNotifyHint.
+  ///
+  /// In en, this message translates to:
+  /// **'For computers that ntfy does not reach, Tiphys checks for new events every 20 seconds while the app is open and shows them as notifications. Notifications while the app is closed need ntfy.'**
+  String get liveNotifyHint;
+
+  /// No description provided for @liveNotifyHintNoPush.
+  ///
+  /// In en, this message translates to:
+  /// **'On this device Tiphys checks your computers for new events every 20 seconds while the app is open and shows them as notifications. Notifications while the app is closed need ntfy (see the guide).'**
+  String get liveNotifyHintNoPush;
+
+  /// No description provided for @liveNotifyDocs.
+  ///
+  /// In en, this message translates to:
+  /// **'How notifications work'**
+  String get liveNotifyDocs;
+
+  /// No description provided for @onbSettingsRow.
+  ///
+  /// In en, this message translates to:
+  /// **'Set up a computer'**
+  String get onbSettingsRow;
+
+  /// No description provided for @onbSettingsRowHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Install the agent, pair, check it'**
+  String get onbSettingsRowHint;
+
+  /// No description provided for @onbStepOf.
+  ///
+  /// In en, this message translates to:
+  /// **'Step {step} of {total}'**
+  String onbStepOf(int step, int total);
+
+  /// No description provided for @onbSkip.
+  ///
+  /// In en, this message translates to:
+  /// **'Skip'**
+  String get onbSkip;
+
+  /// No description provided for @onbBack.
+  ///
+  /// In en, this message translates to:
+  /// **'Back'**
+  String get onbBack;
+
+  /// No description provided for @onbFinish.
+  ///
+  /// In en, this message translates to:
+  /// **'Finish'**
+  String get onbFinish;
+
+  /// No description provided for @onbWelcomeTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Your computers, from your phone'**
+  String get onbWelcomeTitle;
+
+  /// No description provided for @onbWelcomeBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Tiphys talks to a small agent on each computer you want to reach: run Claude Code, open a terminal, browse files, watch services and use the desktop. Nothing goes through a third-party cloud.'**
+  String get onbWelcomeBody;
+
+  /// No description provided for @onbTailscaleTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'You need Tailscale'**
+  String get onbTailscaleTitle;
+
+  /// No description provided for @onbTailscaleBody.
+  ///
+  /// In en, this message translates to:
+  /// **'The phone reaches your computers only inside your own Tailscale network. Install Tailscale on this device and on each computer, and log them into the same account.'**
+  String get onbTailscaleBody;
+
+  /// No description provided for @onbTailscaleInstall.
+  ///
+  /// In en, this message translates to:
+  /// **'Get Tailscale'**
+  String get onbTailscaleInstall;
+
+  /// No description provided for @onbTailscaleHave.
+  ///
+  /// In en, this message translates to:
+  /// **'I have Tailscale'**
+  String get onbTailscaleHave;
+
+  /// No description provided for @onbInstallTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Install the agent'**
+  String get onbInstallTitle;
+
+  /// No description provided for @onbInstallBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Run one command on the computer. It installs the signed agent for your user, turns on the safe features, publishes it in your tailnet and shows a QR code.'**
+  String get onbInstallBody;
+
+  /// No description provided for @onbInstallOs.
+  ///
+  /// In en, this message translates to:
+  /// **'The computer runs'**
+  String get onbInstallOs;
+
+  /// No description provided for @onbInstallDocker.
+  ///
+  /// In en, this message translates to:
+  /// **'Server with Docker'**
+  String get onbInstallDocker;
+
+  /// No description provided for @onbInstallRun.
+  ///
+  /// In en, this message translates to:
+  /// **'Run in a terminal'**
+  String get onbInstallRun;
+
+  /// No description provided for @onbInstallRunWindows.
+  ///
+  /// In en, this message translates to:
+  /// **'Run in PowerShell'**
+  String get onbInstallRunWindows;
+
+  /// No description provided for @onbInstallHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Tip: share it to the computer or copy it there. Running it again later updates the agent.'**
+  String get onbInstallHint;
+
+  /// No description provided for @onbInstallHintWindows.
+  ///
+  /// In en, this message translates to:
+  /// **'Open PowerShell as your normal user (not as administrator). Running it again later updates the agent.'**
+  String get onbInstallHintWindows;
+
+  /// No description provided for @onbInstallHintDocker.
+  ///
+  /// In en, this message translates to:
+  /// **'For servers: the image has no desktop or Claude features. Replace <tailnet> with your tailnet name.'**
+  String get onbInstallHintDocker;
+
+  /// No description provided for @onbInstallDockerDocs.
+  ///
+  /// In en, this message translates to:
+  /// **'Docker guide'**
+  String get onbInstallDockerDocs;
+
+  /// No description provided for @onbPairTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Pair this device'**
+  String get onbPairTitle;
+
+  /// No description provided for @onbPairBody.
+  ///
+  /// In en, this message translates to:
+  /// **'At the end, the installer shows a QR code. Scan it, or paste the address and token printed below it.'**
+  String get onbPairBody;
+
+  /// No description provided for @onbPairBodyPaste.
+  ///
+  /// In en, this message translates to:
+  /// **'At the end, the installer shows a QR code with the address and token below it. Copy that text and paste it here.'**
+  String get onbPairBodyPaste;
+
+  /// No description provided for @onbPaired.
+  ///
+  /// In en, this message translates to:
+  /// **'Paired with {name}'**
+  String onbPaired(String name);
+
+  /// No description provided for @onbPairAgain.
+  ///
+  /// In en, this message translates to:
+  /// **'Scan another code'**
+  String get onbPairAgain;
+
+  /// No description provided for @onbPairLater.
+  ///
+  /// In en, this message translates to:
+  /// **'No QR code? Run tiphys-agent pair on the computer. You can also skip this and add the computer later under Settings › Hosts.'**
+  String get onbPairLater;
+
+  /// No description provided for @onbHealthTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Check the install'**
+  String get onbHealthTitle;
+
+  /// No description provided for @onbHealthBody.
+  ///
+  /// In en, this message translates to:
+  /// **'The agent checks itself. Fix what is red (copy the suggested command and run it on the computer), then run the check again.'**
+  String get onbHealthBody;
+
+  /// No description provided for @onbFeaturesTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'What the phone can do'**
+  String get onbFeaturesTitle;
+
+  /// No description provided for @onbFeaturesBody.
+  ///
+  /// In en, this message translates to:
+  /// **'The installer turned on the safe features this computer supports. Features that can change things stay off until you turn them on.'**
+  String get onbFeaturesBody;
+
+  /// No description provided for @onbFeaturesOn.
+  ///
+  /// In en, this message translates to:
+  /// **'On now'**
+  String get onbFeaturesOn;
+
+  /// No description provided for @onbFeaturesNone.
+  ///
+  /// In en, this message translates to:
+  /// **'None yet.'**
+  String get onbFeaturesNone;
+
+  /// No description provided for @onbFeaturesRisky.
+  ///
+  /// In en, this message translates to:
+  /// **'Turn on only if you need them'**
+  String get onbFeaturesRisky;
+
+  /// No description provided for @onbFeaturesRiskyHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Turn these on in the agent settings. Anyone holding this unlocked phone could use them, so set an app lock (Settings › Security) first.'**
+  String get onbFeaturesRiskyHint;
+
+  /// No description provided for @onbRiskClaude.
+  ///
+  /// In en, this message translates to:
+  /// **'Runs Claude Code on the computer. Claude can read and change files and run commands in the folders you allow.'**
+  String get onbRiskClaude;
+
+  /// No description provided for @onbRiskControl.
+  ///
+  /// In en, this message translates to:
+  /// **'Lets the phone (and Claude) click, type and open apps on the desktop, in a short, visible session you unlock each time.'**
+  String get onbRiskControl;
+
+  /// No description provided for @onbRiskPower.
+  ///
+  /// In en, this message translates to:
+  /// **'Shut down, restart or put the computer to sleep from the phone.'**
+  String get onbRiskPower;
+
+  /// No description provided for @onbRiskConfigfiles.
+  ///
+  /// In en, this message translates to:
+  /// **'Shows and edits .env files and other secrets of your stacks (values stay hidden until you unlock).'**
+  String get onbRiskConfigfiles;
+
+  /// No description provided for @onbRiskSecurityFix.
+  ///
+  /// In en, this message translates to:
+  /// **'Lets Claude fix security findings on other machines over SSH, with backups and your approval.'**
+  String get onbRiskSecurityFix;
+
+  /// No description provided for @onbRiskUpdate.
+  ///
+  /// In en, this message translates to:
+  /// **'Installs new signed agent releases when you tap Update. The agent restarts.'**
+  String get onbRiskUpdate;
 }
 
 class _AppLocalizationsDelegate

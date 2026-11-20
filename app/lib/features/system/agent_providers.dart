@@ -15,6 +15,7 @@ import '../databases/db_texts.dart';
 import '../incidents/incident_texts.dart';
 import '../security/security_fix.dart' show fixErrorCodes, fixErrorText;
 import '../security/security_texts.dart';
+import 'agent_update.dart' show updateErrorText;
 
 /// Overridden in tests.
 final agentClientFactoryProvider = Provider<Future<AgentClient> Function(Host)>((ref) {
@@ -115,6 +116,11 @@ String agentErrorText(AppLocalizations l, Object e) {
     'agent.desktop.badAddress' => l.desktopBadAddress,
     'agent.desktop.hyprctlFailed' => l.desktopHyprctlFailed,
     'agent.desktop.appNotFound' => l.desktopAppsEmpty,
+    // Portable desktop backend (P1): helper missing, OS permission, capability the backend lacks.
+    'agent.desktop.unsupported' => l.desktopErrUnsupported,
+    'agent.desktop.permission' => desktopPermissionText(l, '${e.params['permission'] ?? ''}'),
+    'agent.desktop.helperMissing' => l.desktopErrHelperMissing,
+    'agent.desktop.helperFailed' => l.desktopErrHelperFailed,
     'agent.request.invalid' => l.agentRequestInvalid,
     'agent.config.passwordRequired' => l.agentPasswordRequired,
     'agent.control.disabled' => l.desktopControlOffHint,
@@ -178,9 +184,19 @@ String agentErrorText(AppLocalizations l, Object e) {
     // Config files and secrets (PLAN.md §13.3).
     final c when c.startsWith('agent.security.') || c.startsWith('agent.blackbox.') => securityErrorText(l, c, e.params),
     final c when c.startsWith('agent.agy.') => agyErrorText(l, c),
+    final c when c.startsWith('agent.update.') => updateErrorText(l, c, e.params),
     final c when c.startsWith('agent.db.') => dbErrorText(l, c, e.params),
     final c when c.startsWith('agent.configfiles.') => configErrorText(l, c, e.params),
     _ => '${l.commonError} (${e.code})',
   };
 }
 
+
+/// The OS permission the desktop helper was refused (its message names it, e.g. macOS "Accessibility permission is
+/// missing (System Settings → …)"): the known ones in the user's language, otherwise the helper's own words.
+String desktopPermissionText(AppLocalizations l, String message) {
+  final m = message.toLowerCase();
+  if (m.contains('accessibility')) return l.desktopErrPermission(l.desktopPermAccessibility);
+  if (m.contains('screen recording')) return l.desktopErrPermission(l.desktopPermScreenRecording);
+  return l.desktopErrPermissionOther(message.isEmpty ? '—' : message);
+}
