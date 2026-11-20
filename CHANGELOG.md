@@ -9,6 +9,8 @@ extension is `0.1.0`.
 
 ## [Unreleased]
 
+## [0.5.0] - 2026-11-21
+
 ### Added
 
 **Game mode** (see [docs/features/game-mode.md](docs/features/game-mode.md))

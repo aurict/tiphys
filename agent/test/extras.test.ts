@@ -226,7 +226,7 @@ describe("ajanın kendi sağlığı", () => {
   it("durum ucu sürüm, açık kalma süresi ve bellek bilgisi verir", async () => {
     const { app, auth } = await testApp();
     const s = (await app.inject({ url: "/v1/agent/status", headers: auth })).json();
-    expect(s).toMatchObject({ version: "0.4.0", unexpectedRestarts24h: 0, lastUnexpectedAt: null });
+    expect(s).toMatchObject({ version: "0.5.0", unexpectedRestarts24h: 0, lastUnexpectedAt: null });
     expect(s.memory.agentBytes).toBeGreaterThan(1024 * 1024);
     expect(s.uptimeSeconds).toBeGreaterThanOrEqual(0);
   });
