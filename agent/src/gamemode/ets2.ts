@@ -31,7 +31,7 @@ export const OFF = {
   sdkActive: 0, paused: 4, revision: 40, game: 52,
   timeAbs: 64, gears: 68, timeAbsDelivery: 88,
   restStop: 500, gearDashboard: 508,
-  fuelCapacity: 704, engineRpmMax: 740,
+  scale: 700, fuelCapacity: 704, engineRpmMax: 740,
   speed: 948, engineRpm: 952, cruiseSpeed: 988, fuel: 1000, fuelRange: 1008,
   wearEngine: 1036, wearTransmission: 1040, wearCabin: 1044, wearChassis: 1048, wearWheels: 1052,
   routeDistance: 1060, routeTime: 1064, speedLimit: 1068, jobCargoDamage: 1468,
@@ -47,6 +47,8 @@ export const READ_BYTES = 4400;
 const STR = 64;
 
 export type TruckState = "none" | "menu" | "paused" | "driving";
+/** Why there is no telemetry (state "none"): game not running, running without the plugin's shared memory, other layout. */
+export type NoneReason = "noGame" | "noPlugin" | "unsupported";
 
 export interface TruckMessage {
   type: "truck";
@@ -82,7 +84,8 @@ const round = (v: number, d = 2) => Math.round(v * 10 ** d) / 10 ** d;
 
 /** One shared-memory sample → the contract's truck message (+ event fields). `running`: the game process exists. */
 export function parseTelemetry(buf: Buffer | null, running: boolean, at = Date.now()): Sample {
-  if (!running || !buf || buf.length < READ_BYTES) return { telemetry: "none", msg: { type: "truck", state: "none", at } };
+  if (!running) return { telemetry: "none", msg: { type: "truck", state: "none", reason: "noGame", at } };
+  if (!buf || buf.length < READ_BYTES) return { telemetry: "none", msg: { type: "truck", state: "none", reason: "noPlugin", at } };
   const d = new DataView(buf.buffer, buf.byteOffset, buf.byteLength);
   const u8 = (o: number) => d.getUint8(o) !== 0;
   const u32 = (o: number) => d.getUint32(o, true);
@@ -93,7 +96,7 @@ export function parseTelemetry(buf: Buffer | null, running: boolean, at = Date.n
   const u64 = (o: number) => Number(d.getBigUint64(o, true));
   // The plugin clears sdkActive and the revision when the game shuts the SDK down.
   if (!u8(OFF.sdkActive)) return { telemetry: "none", msg: { type: "truck", state: "menu", at } };
-  if (u32(OFF.revision) !== LAYOUT_REVISION) return { telemetry: "unsupported", msg: { type: "truck", state: "none", at } };
+  if (u32(OFF.revision) !== LAYOUT_REVISION) return { telemetry: "unsupported", msg: { type: "truck", state: "none", reason: "unsupported", at } };
   const gameTime = u32(OFF.timeAbs);
   // Paused before a profile is loaded (no game time yet) = main menu.
   const state: TruckState = u8(OFF.paused) ? (gameTime === 0 ? "menu" : "paused") : "driving";
@@ -106,6 +109,8 @@ export function parseTelemetry(buf: Buffer | null, running: boolean, at = Date.n
   const navDistance = f32(OFF.routeDistance);
   const navTime = f32(OFF.routeTime);
   const restStop = i32(OFF.restStop);
+  // Time compression (game s per real s, 19 by default; ~3 on ferries/trains). Absent when the game reports none.
+  const timeScale = f32(OFF.scale);
   const msg: TruckMessage = {
     type: "truck",
     state,
@@ -132,6 +137,7 @@ export function parseTelemetry(buf: Buffer | null, running: boolean, at = Date.n
     z: round(f64(OFF.z)),
     heading: round(f64(OFF.heading), 4),
     gameTime,
+    ...(timeScale > 0 && timeScale < 1000 ? { timeScale: round(timeScale) } : {}),
     restMinutes: restStop,
     job: onJob
       ? { from: str(buf, OFF.citySrc), to: str(buf, OFF.cityDst), cargo: str(buf, OFF.cargo), income: u64(OFF.jobIncome), currency, deadlineGameTime: deadline === 0 || deadline === 0xffffffff ? null : deadline }

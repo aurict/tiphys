@@ -563,6 +563,7 @@ function telemetryBuf(p: Partial<Record<string, number | boolean | string>> = {}
   d.setUint32(OFF.timeAbsDelivery, 5000, true);
   d.setInt32(OFF.restStop, v.restStop as number, true);
   d.setInt32(OFF.gearDashboard, -1, true);
+  if (p.scale !== undefined) f32(OFF.scale, p.scale as number);
   f32(OFF.fuelCapacity, v.fuelCapacity as number);
   f32(OFF.engineRpmMax, 2500);
   f32(OFF.speed, v.speed as number);
@@ -612,16 +613,22 @@ describe("ETS2 telemetry", () => {
   });
 
   it("states and revision check", () => {
-    expect(parseTelemetry(null, false, 1)).toEqual({ telemetry: "none", msg: { type: "truck", state: "none", at: 1 } });
-    expect(parseTelemetry(null, true, 1).msg.state).toBe("none");
+    expect(parseTelemetry(null, false, 1)).toEqual({ telemetry: "none", msg: { type: "truck", state: "none", reason: "noGame", at: 1 } });
+    expect(parseTelemetry(null, true, 1).msg).toEqual({ type: "truck", state: "none", reason: "noPlugin", at: 1 });
     expect(parseTelemetry(telemetryBuf({ sdkActive: false }), true).msg.state).toBe("menu");
     expect(parseTelemetry(telemetryBuf({ paused: true }), true).msg.state).toBe("paused");
     expect(parseTelemetry(telemetryBuf({ paused: true, timeAbs: 0 }), true).msg.state).toBe("menu");
     const old = parseTelemetry(telemetryBuf({ revision: 11 }), true, 1);
-    expect(old).toEqual({ telemetry: "unsupported", msg: { type: "truck", state: "none", at: 1 } });
+    expect(old).toEqual({ telemetry: "unsupported", msg: { type: "truck", state: "none", reason: "unsupported", at: 1 } });
     expect(parseTelemetry(telemetryBuf({ game: 2 }), true).msg.job).toMatchObject({ currency: "USD" });
     expect(parseTelemetry(telemetryBuf({ onJob: false }), true).msg).toMatchObject({ job: null, cargoDamage: null });
     expect(parseTelemetry(Buffer.alloc(100), true).telemetry).toBe("none");
+  });
+
+  it("sends the game's time scale only when the layout has one", () => {
+    expect(parseTelemetry(telemetryBuf({ scale: 19 }), true).msg.timeScale).toBe(19);
+    expect(parseTelemetry(telemetryBuf({ scale: 3 }), true).msg.timeScale).toBe(3);
+    expect(parseTelemetry(telemetryBuf(), true).msg).not.toHaveProperty("timeScale");
   });
 
   it("derives events once per flag flip and threshold crossing", () => {
