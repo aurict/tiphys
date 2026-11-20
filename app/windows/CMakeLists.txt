@@ -31,6 +31,9 @@ set(CMAKE_CXX_FLAGS_PROFILE "${CMAKE_CXX_FLAGS_RELEASE}")
 
 # Use Unicode for all projects.
 add_definitions(-DUNICODE -D_UNICODE)
+# local_auth_windows still includes <experimental/coroutine>, which newer MSVC (Visual Studio 18) turns into a hard
+# error; the define keeps it a warning until the plugin moves to C++20 <coroutine>. Applies to plugin targets too.
+add_definitions(-D_SILENCE_EXPERIMENTAL_COROUTINE_DEPRECATION_WARNINGS)
 
 # Compilation settings that should be applied to most targets.
 #

@@ -2,14 +2,20 @@
 
 **Control your PC and servers from your phone, over your own Tailscale network.**
 
-Tiphys is a native Android app (Flutter) plus a small agent (Node.js/TypeScript) that runs on each Linux machine
-you want to reach, and an optional Firefox extension for the PC. The phone talks to your machines directly over
+Tiphys is a phone app (Flutter; Android, plus iOS and desktop builds) and a small agent (Node.js/TypeScript) that
+runs on each machine you want to reach: Linux, macOS or Windows. The phone talks to your machines directly over
 [Tailscale](https://tailscale.com). No third-party cloud sits in the path, and Google/Firebase is not used for
 notifications. You can run Claude Code sessions from the phone, open a terminal, browse files, review and push git
-changes, watch services and dashboards, and operate your Linux desktop: window panel, live screen, per-app remote
+changes, watch services and dashboards, and operate your desktop: window panel, live screen, per-app remote
 controls, Firefox tabs and an accessibility-based "mobile view" of desktop apps. Each machine has to pair the phone
 before its agent accepts requests. Features that can change the desktop are off by default and run only inside a
 short, visible control session.
+
+**Install in one line** on each machine, then scan the QR code it prints:
+
+```sh
+curl -fsSL https://raw.githubusercontent.com/aurict/tiphys/main/install.sh | sh
+```
 
 *Named after Tiphys, the helmsman of the Argo.* · Interface: English and Turkish.
 
@@ -63,10 +69,12 @@ More detail: [docs/architecture.md](docs/architecture.md).
 ## Requirements
 
 - A Tailscale tailnet with MagicDNS and HTTPS certificates enabled.
-- **Agent:** Linux with systemd (user services). The installer brings Node.js 24; from source you need Node.js 22
-  or newer. Release bundles also exist for macOS and Windows, where only the non-desktop features apply.
-  Desktop features need **Hyprland** (Wayland) plus `grim`, `wl-clipboard`, `ydotool`, `wtype`, and optionally
-  `wf-recorder`, `ffmpeg`, `playerctl`, `wpctl`, Sunshine, `python3-gi` and `gir1.2-atspi-2.0`.
+- **Agent:** Linux (systemd user services), macOS (launchd) or Windows. The installer brings its own Node.js 24;
+  from source you need Node.js 22 or newer. About 110 MB of memory with the server features on.
+  Desktop features: on **Hyprland** the agent drives the desktop itself (`grim`, `wl-clipboard`, `ydotool`, `wtype`,
+  optionally `wf-recorder`, `ffmpeg`, `playerctl`, `wpctl`, Sunshine, `python3-gi`, `gir1.2-atspi-2.0`). On other
+  desktops it starts the small native helper [`tiphys-desktop`](desktop-helper/README.md) (Rust, ~4 MB of memory,
+  only while desktop features are in use): Sway, X11, GNOME/KDE on Wayland, Windows and macOS.
   Claude features need a Claude Code login on that machine.
 - **App:** Android 8.0+ (API 26), arm64. Built with Flutter 3.47.9 / JDK 17. The same app also builds for
   **iOS** (15+) and as a **desktop app** for Linux, Windows and macOS; there UnifiedPush, the share menu and the
@@ -140,14 +148,27 @@ vulnerability, see [SECURITY.md](SECURITY.md).
 
 Tiphys is a personal project that is used daily, published as-is. Expect rough edges.
 
-- **Android only.** No iOS build.
-- **Desktop control requires Linux + Hyprland** (Wayland, classic or Lua config). Other desktops get the
-  non-desktop features only. The agent itself is Linux-only (systemd, `/proc`).
+What works where, and how well it is verified:
+
+| | Linux (Hyprland) | Linux (Sway, X11, GNOME/KDE) | macOS | Windows |
+|---|---|---|---|---|
+| Agent: system, services, processes, ports, Docker, power | daily use | as Linux | built and tested in CI | built and tested in CI |
+| Desktop: windows, live screen, input, clipboard | daily use | native helper, tested on X11 in CI | native helper, compiled in CI | native helper, compiled in CI |
+| Mobile view, Sunshine, Claude's "use the PC" tools | daily use | not yet | not yet | not yet |
+
+| App | Status |
+|---|---|
+| Android | daily use; signed APK in releases |
+| iOS | compiled in CI (no signing); notifications only while the app is open |
+| Linux / Windows / macOS desktop app | compiled in CI; notifications only while the app is open |
+
+- "Compiled/tested in CI" means GitHub's real macOS/Windows machines build it and run the unit tests; it has not been
+  tried on a real machine by the author. Reports are welcome.
 - **Single user.** All paired devices of one person are equally trusted. There are no roles or per-device
   permissions.
-- **Releases are new.** `tools/release.sh` produces signed agent bundles and an APK, but until the first release
-  is published (and the release key is generated) you build it yourself. There is no prebuilt XPI. The Firefox extension is not signed by
-  Mozilla, so installing it requires turning off signature checks (Firefox ESR, Developer Edition or Nightly only).
+- **Releases are new.** Until the first release is published, install from source. There is no prebuilt XPI. The
+  Firefox extension is not signed by Mozilla, so installing it requires turning off signature checks (Firefox ESR,
+  Developer Edition or Nightly only).
 - Several paths are verified only with fakes and golden tests, not on every real device/app combination. See the
   open notes in [CHANGELOG.md](CHANGELOG.md).
 - The key table for remote input assumes a US layout; some shortcuts may not match on other keyboard layouts.
