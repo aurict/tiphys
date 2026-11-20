@@ -48,6 +48,8 @@ String velourErrorText(AppLocalizations l, Object e) => switch (e) {
       AgentError(code: 'agent.velour.timeout') => l.velourTimeout,
       AgentError(code: 'agent.velour.notFound') => l.velourNotFound,
       AgentError(code: 'agent.velour.powerDisabled') => l.velourPowerDisabled,
+      // A Velour from before an op existed (e.g. Explore): it must be updated/restarted.
+      AgentError(code: 'agent.velour.badRequest', :final params) when '${params['message']}'.contains('unknown variant') => l.velourNeedsUpdate,
       AgentError(code: 'agent.velour.failed' || 'agent.velour.busy' || 'agent.velour.badRequest' || 'agent.velour.unsupportedVersion' || 'agent.velour.tooLarge') =>
         l.velourFailed,
       _ => agentErrorText(l, e),
@@ -191,6 +193,10 @@ class VPage {
     return VPage.of(header, out, more.continuation);
   }
 }
+
+/// No automatic retries: Riverpod's would keep a failing page (e.g. Explore on an older Velour) in "loading" instead of
+/// showing the error and its Retry button; the live state reconnects by itself.
+Duration? _noRetry(int retryCount, Object error) => null;
 
 /// Velour's sleep timer; `then` is the agent's PC action when it fires (none | screenOff | suspend).
 class VSleep {
@@ -425,16 +431,16 @@ class VelourLive extends AsyncNotifier<VState> {
   }
 }
 
-final velourStateProvider = AsyncNotifierProvider.autoDispose.family<VelourLive, VState, String>(VelourLive.new);
+final velourStateProvider = AsyncNotifierProvider.autoDispose.family<VelourLive, VState, String>(VelourLive.new, retry: _noRetry);
 
 /// The queue; refetched when the song, position or length changes.
-final velourQueueProvider = FutureProvider.autoDispose.family<VQueue, String>((ref, hostId) async {
+final velourQueueProvider = FutureProvider.autoDispose.family<VQueue, String>(retry: _noRetry, (ref, hostId) async {
   ref.watch(velourStateProvider(hostId).select((s) => s.value?.queueKey));
   return VQueue(await velourGet(ref, hostId, {'op': 'queue'}) as Map);
 });
 
 /// Lyrics of the current song (host, videoId).
-final velourLyricsProvider = FutureProvider.autoDispose.family<VLyrics, (String, String)>((ref, key) async {
+final velourLyricsProvider = FutureProvider.autoDispose.family<VLyrics, (String, String)>(retry: _noRetry, (ref, key) async {
   return VLyrics(await velourGet(ref, key.$1, {'op': 'lyrics'}) as Map);
 });
 
@@ -464,23 +470,23 @@ class VSource {
   int get hashCode => Object.hash(op, arg, params);
 }
 
-final velourPageProvider = FutureProvider.autoDispose.family<VPage, (String, VSource)>((ref, key) async {
+final velourPageProvider = FutureProvider.autoDispose.family<VPage, (String, VSource)>(retry: _noRetry, (ref, key) async {
   return VPage(await velourGet(ref, key.$1, key.$2.request) as Map);
 });
 
-final velourSuggestProvider = FutureProvider.autoDispose.family<List<String>, (String, String)>((ref, key) async {
+final velourSuggestProvider = FutureProvider.autoDispose.family<List<String>, (String, String)>(retry: _noRetry, (ref, key) async {
   final r = await velourGet(ref, key.$1, {'op': 'suggest', 'query': key.$2});
   return (r as List).map((e) => '$e').toList();
 });
 
 /// Your own playlists (for "Add to playlist").
-final velourPlaylistsProvider = FutureProvider.autoDispose.family<List<(String, String)>, String>((ref, hostId) async {
+final velourPlaylistsProvider = FutureProvider.autoDispose.family<List<(String, String)>, String>(retry: _noRetry, (ref, hostId) async {
   final r = await velourGet(ref, hostId, {'op': 'playlists'});
   return [for (final p in (r as List).cast<Map>()) ('${p['id']}', '${p['title']}')];
 });
 
 /// Equalizer presets and the current one (Velour `eq`).
-final velourEqProvider = FutureProvider.autoDispose.family<(String, List<String>), String>((ref, hostId) async {
+final velourEqProvider = FutureProvider.autoDispose.family<(String, List<String>), String>(retry: _noRetry, (ref, hostId) async {
   final r = await velourGet(ref, hostId, {'op': 'eq'}) as Map;
   return ('${r['preset']}', [for (final p in (r['presets'] as List? ?? const [])) '$p']);
 });
@@ -496,13 +502,13 @@ class AudioOutput {
 }
 
 /// The PC's audio outputs (PipeWire sinks).
-final pcOutputsProvider = FutureProvider.autoDispose.family<List<AudioOutput>, String>((ref, hostId) async {
+final pcOutputsProvider = FutureProvider.autoDispose.family<List<AudioOutput>, String>(retry: _noRetry, (ref, hostId) async {
   final r = await withAgent(ref, hostId, (c) => c.get('/v1/media/outputs'));
   return [for (final o in (r['outputs'] as List? ?? const []).cast<Map>()) AudioOutput(o)];
 });
 
 /// The PC's system volume (wpctl): (percent, muted).
-final pcVolumeProvider = FutureProvider.autoDispose.family<(int, bool), String>((ref, hostId) async {
+final pcVolumeProvider = FutureProvider.autoDispose.family<(int, bool), String>(retry: _noRetry, (ref, hostId) async {
   final r = await withAgent(ref, hostId, (c) => c.get('/v1/media/volume'));
   return ((r['percent'] as num).round(), r['muted'] == true);
 });

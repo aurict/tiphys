@@ -8,7 +8,6 @@
 // - On Android the phone's lock screen/notification and, while this screen is open, its volume buttons control Velour
 //   (velour_media.dart).
 import 'dart:async';
-import 'dart:ui' show ImageFilter;
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -190,17 +189,20 @@ class _HomeTab extends ConsumerWidget {
       (const VSource('liked'), l.velourLibLiked, LucideIcons.heart, const Color(0xFFFF375F)),
       (const VSource('history'), l.velourLibHistory, LucideIcons.history, const Color(0xFF0A84FF)),
     ];
+    final title = Padding(
+      padding: const EdgeInsets.fromLTRB(4, 4, 4, 12),
+      child: Text(greeting, style: Theme.of(context).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w800)),
+    );
+    // Velour unreachable: one card (the page would only fail the same way); the live state brings the page back.
+    if (state.hasError && !state.hasValue) {
+      return ListView(padding: _pad, children: [
+        title,
+        VelourErrorCard(error: state.error!, onRetry: () => ref.read(velourStateProvider(hostId).notifier).retry()),
+      ]);
+    }
     return VelourPageBody(hostId: hostId, source: const VSource.home(), leading: [
-      Padding(
-        padding: const EdgeInsets.fromLTRB(4, 4, 4, 12),
-        child: Text(greeting, style: Theme.of(context).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w800)),
-      ),
-      if (state.hasError && !state.hasValue)
-        Padding(
-          padding: const EdgeInsets.only(bottom: 12),
-          child: VelourErrorCard(error: state.error!, onRetry: () => ref.read(velourStateProvider(hostId).notifier).retry()),
-        )
-      else if (state.value?.track == null && state.hasValue)
+      title,
+      if (state.value?.track == null && state.hasValue)
         Padding(
           padding: const EdgeInsets.only(bottom: 12),
           child: VelourEmpty(
@@ -251,6 +253,7 @@ class VelourMiniPlayer extends ConsumerStatefulWidget {
 
 class _VelourMiniPlayerState extends ConsumerState<VelourMiniPlayer> {
   Timer? _tick;
+  String? _precached;
   double _dx = 0;
 
   @override
@@ -278,6 +281,11 @@ class _VelourMiniPlayerState extends ConsumerState<VelourMiniPlayer> {
     final pos = s.positionAt(ref.read(clockProvider)());
     final cover = track.thumbnail;
     final tone = cover == null ? null : ref.watch(velourCoverColorProvider(cover)).value;
+    // The full player's cover, decoded ahead: the open animation then flies a ready image instead of an empty one.
+    if (cover != null && cover != _precached) {
+      _precached = cover;
+      unawaited(precacheImage(NetworkImage(cover), context, onError: (_, _) {}));
+    }
     return SafeArea(
       top: false,
       bottom: false,
@@ -359,6 +367,15 @@ class _VelourMiniPlayerState extends ConsumerState<VelourMiniPlayer> {
 
 const _pad = EdgeInsets.fromLTRB(TiphysTokens.gutter, 12, TiphysTokens.gutter, 32);
 
+/// Pixel width to decode a cover shown [size] wide, rounded up to a few steps (fewer cache entries); null = full size.
+int? decodeWidth(BuildContext context, double size) {
+  final px = size * MediaQuery.devicePixelRatioOf(context);
+  for (final step in const [96, 192, 384]) {
+    if (px <= step) return step;
+  }
+  return null;
+}
+
 /// Cover from YouTube Music (http URL); a note icon on failure or without one.
 class VelourArt extends StatelessWidget {
   const VelourArt({super.key, required this.url, required this.size, this.radius = 10, this.round = false});
@@ -385,7 +402,17 @@ class VelourArt extends StatelessWidget {
         borderRadius: r,
         child: url == null
             ? placeholder
-            : Image.network(url!, width: size, height: size, fit: BoxFit.cover, gaplessPlayback: true, errorBuilder: (_, _, _) => placeholder),
+            : Image.network(
+                url!,
+                width: size,
+                height: size,
+                fit: BoxFit.cover,
+                gaplessPlayback: true,
+                // Decoded at the size it is shown (a 544 px cover for a 46 px row wastes memory and time); the big
+                // player cover keeps the full image.
+                cacheWidth: decodeWidth(context, size),
+                errorBuilder: (_, _, _) => placeholder,
+              ),
       ),
     );
   }

@@ -2070,7 +2070,7 @@
   "@velourOutputSet": {"placeholders": {"name": {"type": "String"}}},
   "velourOutputNone": "No audio outputs found",
   "velourEq": "Equalizer",
-  "velourNeedsUpdate": "Update Velour on the PC to use this",
+  "velourNeedsUpdate": "Update or restart Velour on the PC to use this",
   "velourSleep": "Sleep timer",
   "velourSleepShort": "Sleep",
   "velourSleepMinutes": "{minutes} min",

@@ -3269,7 +3269,8 @@ class AppLocalizationsEn extends AppLocalizations {
   String get velourEq => 'Equalizer';
 
   @override
-  String get velourNeedsUpdate => 'Update Velour on the PC to use this';
+  String get velourNeedsUpdate =>
+      'Update or restart Velour on the PC to use this';
 
   @override
   String get velourSleep => 'Sleep timer';

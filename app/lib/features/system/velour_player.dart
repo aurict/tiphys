@@ -14,11 +14,11 @@ void openVelourPlayer(BuildContext context, String hostId) {
   final still = MediaQuery.disableAnimationsOf(context);
   Navigator.of(context).push(PageRouteBuilder<void>(
     settings: const RouteSettings(name: velourPlayerRoute),
-    transitionDuration: still ? Duration.zero : const Duration(milliseconds: 340),
+    transitionDuration: still ? Duration.zero : const Duration(milliseconds: 380),
     reverseTransitionDuration: still ? Duration.zero : const Duration(milliseconds: 240),
     pageBuilder: (_, _, _) => VelourPlayerScreen(hostId: hostId),
     transitionsBuilder: (_, a, _, child) => SlideTransition(
-      position: Tween(begin: const Offset(0, 1), end: Offset.zero).animate(CurvedAnimation(parent: a, curve: Curves.easeOutCubic, reverseCurve: Curves.easeInCubic)),
+      position: Tween(begin: const Offset(0, 1), end: Offset.zero).animate(CurvedAnimation(parent: a, curve: Curves.fastEaseInToSlowEaseOut, reverseCurve: Curves.easeInCubic)),
       child: child,
     ),
   ));
@@ -34,26 +34,31 @@ class VelourPlayerScreen extends ConsumerStatefulWidget {
   ConsumerState<VelourPlayerScreen> createState() => _VelourPlayerScreenState();
 }
 
-class _VelourPlayerScreenState extends ConsumerState<VelourPlayerScreen> {
-  double? _seekDrag;
-  Timer? _tick;
+class _VelourPlayerScreenState extends ConsumerState<VelourPlayerScreen> with SingleTickerProviderStateMixin {
+  /// Swipe-down-to-close offset. A notifier, so dragging moves one transform instead of rebuilding the player.
+  final _dy = ValueNotifier<double>(0);
 
-  /// Swipe-down-to-close offset.
-  double _dy = 0;
-
-  @override
-  void initState() {
-    super.initState();
-    // Advance the position once a second while playing.
-    _tick = Timer.periodic(const Duration(seconds: 1), (_) {
-      if (mounted && ref.read(velourStateProvider(widget.hostId)).value?.playing == true) setState(() {});
-    });
-  }
+  /// Springs the page back when a drag doesn't close it.
+  late final AnimationController _back = AnimationController(vsync: this, duration: const Duration(milliseconds: 220))
+    ..addListener(() => _dy.value = _from * (1 - Curves.easeOutCubic.transform(_back.value)));
+  double _from = 0;
 
   @override
   void dispose() {
-    _tick?.cancel();
+    _back.dispose();
+    _dy.dispose();
     super.dispose();
+  }
+
+  void _dragEnd(DragEndDetails d) {
+    if (_dy.value > 140 || (d.primaryVelocity ?? 0) > 900) {
+      Navigator.of(context).maybePop();
+    } else if (MediaQuery.disableAnimationsOf(context)) {
+      _dy.value = 0;
+    } else {
+      _from = _dy.value;
+      _back.forward(from: 0);
+    }
   }
 
   Future<void> _act(Map<String, Object?> op, {VState Function(VState s, DateTime now)? optimistic, String? done}) =>
@@ -92,7 +97,7 @@ class _VelourPlayerScreenState extends ConsumerState<VelourPlayerScreen> {
         final wide = box.maxWidth > box.maxHeight && box.maxWidth > 560;
         final top = _TopBar(hostId: widget.hostId, track: track, hostName: host?.name);
         final info = _TrackInfo(track: track, onLike: () => _like(track));
-        final seek = _seekBar(context, s);
+        final seek = _SeekBar(hostId: widget.hostId, act: _act);
         final controls = _Controls(hostId: widget.hostId, state: s, act: _act);
         final extras = _PlayerExtras(hostId: widget.hostId, state: s);
         if (wide) {
@@ -137,30 +142,64 @@ class _VelourPlayerScreenState extends ConsumerState<VelourPlayerScreen> {
         value: SystemUiOverlayStyle.light,
         child: GestureDetector(
           // Swipe down anywhere outside the controls closes the player.
-          onVerticalDragUpdate: (d) => setState(() => _dy = (_dy + d.delta.dy).clamp(0, 400).toDouble()),
-          onVerticalDragEnd: (d) {
-            if (_dy > 140 || (d.primaryVelocity ?? 0) > 900) {
-              Navigator.of(context).maybePop();
-            } else {
-              setState(() => _dy = 0);
-            }
-          },
-          child: Transform.translate(
-            offset: Offset(0, _dy),
-            child: Scaffold(
-              backgroundColor: Colors.black,
-              body: Stack(fit: StackFit.expand, children: [
-                _Backdrop(cover: cover, tone: tone, animate: !still),
-                SafeArea(child: content),
-              ]),
+          onVerticalDragStart: (_) => _back.stop(),
+          onVerticalDragUpdate: (d) => _dy.value = (_dy.value + d.delta.dy).clamp(0, 400).toDouble(),
+          onVerticalDragEnd: _dragEnd,
+          child: ValueListenableBuilder<double>(
+            valueListenable: _dy,
+            builder: (_, dy, child) => Transform.translate(offset: Offset(0, dy), child: child),
+            // One layer for the whole page: moving it (drag, open/close slide) doesn't repaint what's inside.
+            child: RepaintBoundary(
+              child: Scaffold(
+                backgroundColor: Colors.black,
+                body: Stack(fit: StackFit.expand, children: [
+                  RepaintBoundary(child: _Backdrop(cover: cover, tone: tone, animate: !still)),
+                  SafeArea(child: content),
+                ]),
+              ),
             ),
           ),
         ),
       ),
     );
   }
+}
 
-  Widget _seekBar(BuildContext context, VState s) {
+/// Seek bar and times. Its own once-a-second tick, so only it redraws while the song plays.
+class _SeekBar extends ConsumerStatefulWidget {
+  const _SeekBar({required this.hostId, required this.act});
+  final String hostId;
+  final Future<void> Function(Map<String, Object?> op, {VState Function(VState s, DateTime now)? optimistic, String? done}) act;
+  @override
+  ConsumerState<_SeekBar> createState() => _SeekBarState();
+}
+
+class _SeekBarState extends ConsumerState<_SeekBar> {
+  double? _seekDrag;
+  Timer? _tick;
+
+  @override
+  void initState() {
+    super.initState();
+    _tick = Timer.periodic(const Duration(seconds: 1), (_) {
+      if (mounted && _seekDrag == null && ref.read(velourStateProvider(widget.hostId)).value?.playing == true) setState(() {});
+    });
+  }
+
+  @override
+  void dispose() {
+    _tick?.cancel();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final s = ref.watch(velourStateProvider(widget.hostId)).value;
+    if (s == null) return const SizedBox.shrink();
+    return RepaintBoundary(child: _bar(context, s));
+  }
+
+  Widget _bar(BuildContext context, VState s) {
     final l = AppLocalizations.of(context);
     final len = s.length;
     final pos = _seekDrag ?? s.positionAt(ref.read(clockProvider)());
@@ -182,7 +221,7 @@ class _VelourPlayerScreenState extends ConsumerState<VelourPlayerScreen> {
           semanticFormatterCallback: (v) => l.mediaPositionOf(mediaTime(v), mediaTime(len)),
           onChanged: len > 0 ? (v) => setState(() => _seekDrag = v) : null,
           onChangeEnd: (v) async {
-            await _act({'op': 'seek', 'seconds': v}, optimistic: (s, now) => s.copyWith(now, position: v));
+            await widget.act({'op': 'seek', 'seconds': v}, optimistic: (s, now) => s.copyWith(now, position: v));
             if (mounted) setState(() => _seekDrag = null);
           },
         ),
@@ -216,13 +255,16 @@ class _Backdrop extends StatelessWidget {
         ),
       ),
       if (cover != null)
+        // Decoded at 16 px and stretched: looks like a strong blur at almost no cost (no blur filter or opacity layer
+        // to recompute while the page slides).
         ExcludeSemantics(
-          child: Opacity(
-            opacity: 0.32,
-            child: ImageFiltered(
-              imageFilter: ImageFilter.blur(sigmaX: 50, sigmaY: 50, tileMode: TileMode.decal),
-              child: Image.network(cover!, fit: BoxFit.cover, gaplessPlayback: true, errorBuilder: (_, _, _) => const SizedBox.shrink()),
-            ),
+          child: Image(
+            image: ResizeImage(NetworkImage(cover!), width: 16, height: 16),
+            fit: BoxFit.cover,
+            filterQuality: FilterQuality.medium,
+            opacity: const AlwaysStoppedAnimation(0.38),
+            gaplessPlayback: true,
+            errorBuilder: (_, _, _) => const SizedBox.shrink(),
           ),
         ),
       // Keeps the lower half (text, controls) dark enough whatever the cover is.
@@ -329,7 +371,7 @@ class _CoverState extends State<_Cover> with SingleTickerProviderStateMixin {
                     borderRadius: BorderRadius.circular(18),
                     boxShadow: const [BoxShadow(color: Color(0x80000000), blurRadius: 40, offset: Offset(0, 18))],
                   ),
-                  child: Hero(tag: velourArtHero(widget.hostId), child: VelourArt(url: widget.track.thumbnail, size: size, radius: 18)),
+                  child: Hero(tag: velourArtHero(widget.hostId), child: RepaintBoundary(child: VelourArt(url: widget.track.thumbnail, size: size, radius: 18))),
                 ),
                 // Heart pop on double-tap.
                 IgnorePointer(

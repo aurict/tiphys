@@ -929,7 +929,7 @@
   "velourOutputSet": "Ses artık {name} üzerinden çalıyor",
   "velourOutputNone": "Ses çıkışı bulunamadı",
   "velourEq": "Ekolayzer",
-  "velourNeedsUpdate": "Bunun için PC'deki Velour'u güncelle",
+  "velourNeedsUpdate": "Bunun için PC'deki Velour'u güncelle ya da yeniden başlat",
   "velourSleep": "Uyku zamanlayıcısı",
   "velourSleepShort": "Uyku",
   "velourSleepMinutes": "{minutes} dk",

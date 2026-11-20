@@ -5675,7 +5675,7 @@ abstract class AppLocalizations {
   /// No description provided for @velourNeedsUpdate.
   ///
   /// In en, this message translates to:
-  /// **'Update Velour on the PC to use this'**
+  /// **'Update or restart Velour on the PC to use this'**
   String get velourNeedsUpdate;
 
   /// No description provided for @velourSleep.

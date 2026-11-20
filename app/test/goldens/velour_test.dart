@@ -337,12 +337,26 @@ void main() {
     await _finish(tester);
   });
 
+  testWidgets('velour: eski Velour Keşfet işlemini bilmiyorsa güncelleme/yeniden başlatma der', (tester) async {
+    FakeAgent.velour = {
+      ...sampleVelour(),
+      'explore': const AgentError('agent.velour.badRequest', {'message': 'unknown variant `explore`, expected one of `state`'}, 400),
+    };
+    await Harness().pump(tester, route: _route);
+    await _wait(tester);
+    await tester.tap(find.text('Keşfet'));
+    await _wait(tester);
+    expect(find.text("Bunun için PC'deki Velour'u güncelle ya da yeniden başlat"), findsOneWidget);
+    await _finish(tester);
+  });
+
   testWidgets('velour: kapalıysa nasıl açılacağını söyler', (tester) async {
     FakeAgent.velour = {'state': const AgentError('agent.velour.unavailable', {}, 503)};
     await Harness().pump(tester, route: _route);
     await _wait(tester);
     expect(find.textContaining('Remote control açık mı'), findsOneWidget);
     // Velour comes up: the stream's state replaces the error without a tap.
+    FakeAgent.velour = sampleVelour();
     FakeAgent.velourEvents.add(('state', jsonEncode(sampleVelour()['state'])));
     await _wait(tester);
     expect(find.textContaining('Remote control açık mı'), findsNothing);

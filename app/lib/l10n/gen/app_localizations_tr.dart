@@ -3239,7 +3239,8 @@ class AppLocalizationsTr extends AppLocalizations {
   String get velourEq => 'Ekolayzer';
 
   @override
-  String get velourNeedsUpdate => 'Bunun için PC\'deki Velour\'u güncelle';
+  String get velourNeedsUpdate =>
+      'Bunun için PC\'deki Velour\'u güncelle ya da yeniden başlat';
 
   @override
   String get velourSleep => 'Uyku zamanlayıcısı';
