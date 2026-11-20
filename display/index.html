@@ -1,0 +1,179 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="referrer" content="no-referrer">
+<title>Tiphys · Oyun Modu</title>
+<link rel="stylesheet" href="tokens.css">
+<link rel="stylesheet" href="app.css">
+<script type="module" src="main.js"></script>
+</head>
+<body data-scene="connecting" data-motion="normal">
+<canvas id="ambient" aria-hidden="true"></canvas>
+
+<main id="stage">
+  <!-- Shared top bar: app header pattern (overline date + large title) and a clock/status cluster on the right. -->
+  <header id="topbar">
+    <div class="hdr">
+      <div class="overline" id="hdr-date"></div>
+      <h1 class="title" id="hdr-title">Oyun Modu</h1>
+    </div>
+    <div class="hdr-right">
+      <div class="chip" id="hdr-game" hidden></div>
+      <div class="chip" id="hdr-source"><span class="dot"></span><span class="lbl">Kaynak</span></div>
+      <div class="hdr-clock" id="hdr-clock"></div>
+    </div>
+  </header>
+
+  <!-- ===================== Drive ===================== -->
+  <section class="scene" id="scene-drive" aria-label="Sürüş">
+    <article class="card hero map-card" id="map-card">
+      <div class="cam-strip" id="cam-strip">
+        <div class="cam-item cam-dest"><span class="ic-wrap" data-icon="flag"></span><div><div class="k">Hedef</div><div class="v" id="cam-dest">–</div></div></div>
+        <div class="cam-sep"></div>
+        <div class="cam-item"><div><div class="k">Kalan</div><div class="v"><span id="cam-dist">–</span><span class="u" id="cam-dist-u">km</span></div></div></div>
+        <div class="cam-sep"></div>
+        <div class="cam-item"><div><div class="k">Varış · oyun saati</div><div class="v" id="cam-eta">–</div></div></div>
+        <div class="cam-sep"></div>
+        <div class="cam-item"><div><div class="k">Gelir</div><div class="v ok" id="cam-income">–</div></div></div>
+      </div>
+      <div class="map-foot" id="map-foot">
+        <span class="ic-wrap" data-icon="box"></span><span id="map-cargo"></span>
+      </div>
+      <div class="map-empty" id="map-empty" hidden>
+        <div class="empty-ic" data-icon="truck"></div>
+        <div class="empty-t" id="map-empty-t">Euro Truck Simulator 2 çalışmıyor</div>
+        <div class="empty-s" id="map-empty-s">Oyunu başlatınca konum ve kokpit burada görünür. Telemetri gelmiyorsa SCS telemetri eklentisini Tiphys › Oyun Modu › Kurulum'dan kur.</div>
+      </div>
+    </article>
+
+    <div class="right-col">
+      <article class="card np-card" id="np-card">
+        <div class="np-top">
+          <div class="cover-box np-cover" id="np-cover"><img alt="" decoding="async"><div class="cover-none" data-icon="music"></div><div class="cover-glow"></div></div>
+          <div class="np-text">
+            <div class="np-label"><span class="live-dot"></span><span id="np-state">Şimdi çalıyor</span></div>
+            <div class="np-title clamp2" id="np-title"><span class="mq"></span></div>
+            <div class="np-artist clamp1" id="np-artist"><span class="mq"></span></div>
+          </div>
+        </div>
+        <div class="np-spec" id="np-spec"></div>
+        <div class="progress" id="np-progress"><div class="bar"><div class="fill"></div></div><div class="times"><span class="pos">0:00</span><span class="dur">0:00</span></div></div>
+        <div class="np-lyrics" id="np-lyrics"><div class="ly-line prev"></div><div class="ly-line cur"></div><div class="ly-line next"></div></div>
+        <div class="np-empty" id="np-empty" hidden><span data-icon="music" class="ic-wrap"></span><span>Velour'da çalan bir şey yok</span></div>
+      </article>
+
+      <div class="cockpit">
+        <article class="card tile t-speed" id="t-speed">
+          <svg class="ring" viewBox="0 0 120 120" aria-hidden="true">
+            <circle class="track" cx="60" cy="60" r="50"/>
+            <circle class="arc" cx="60" cy="60" r="50" pathLength="100"/>
+          </svg>
+          <div class="speed-center"><div class="speed-v" id="speed-v">0</div><div class="speed-u">km/sa</div></div>
+          <div class="limit" id="speed-limit" hidden><span>90</span></div>
+          <div class="tile-k">Hız</div>
+        </article>
+        <article class="card tile t-gear" id="t-gear">
+          <div class="tile-k">Vites</div>
+          <div class="gear-row">
+            <div class="gear-ring">
+              <svg class="ring" viewBox="0 0 74 74" aria-hidden="true">
+                <circle class="track" cx="37" cy="37" r="30" stroke-width="9"/>
+                <circle class="arc outer" cx="37" cy="37" r="30" stroke-width="9" pathLength="100"/>
+                <circle class="track" cx="37" cy="37" r="18" stroke-width="7"/>
+                <circle class="arc inner" cx="37" cy="37" r="18" stroke-width="7" pathLength="100"/>
+              </svg>
+              <div class="gear-v" id="gear-v">N</div>
+            </div>
+            <div class="legend">
+              <div><span class="sq c1"></span><span id="rpm-v">–</span></div>
+              <div class="sub">dev/dk</div>
+              <div><span class="sq c2"></span><span id="gear-of">–</span></div>
+            </div>
+          </div>
+        </article>
+        <article class="card tile t-fuel" id="t-fuel">
+          <div class="tile-k"><span class="ic-wrap" data-icon="fuel"></span>Yakıt</div>
+          <div class="fuel-big"><span id="fuel-range">–</span><span class="u">km</span></div>
+          <div class="fuel-sub" id="fuel-sub">menzil</div>
+          <div class="fuel-bar"><div class="fill" id="fuel-fill"></div></div>
+          <div class="fuel-l"><span id="fuel-l">–</span><span id="fuel-pct">–</span></div>
+        </article>
+        <article class="card tile t-status" id="t-status">
+          <div class="tile-k">Durum</div>
+          <div class="chips" id="chips"></div>
+        </article>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===================== Music ===================== -->
+  <section class="scene" id="scene-music" aria-label="Müzik">
+    <div class="mu-left">
+      <div class="mu-cover-wrap">
+        <canvas class="wave" id="mu-wave" aria-hidden="true"></canvas>
+        <div class="cover-box mu-cover" id="mu-cover"><img alt="" decoding="async"><div class="cover-none" data-icon="music"></div></div>
+      </div>
+    </div>
+    <div class="mu-right">
+      <div class="mu-head">
+        <div class="overline" id="mu-overline">ŞİMDİ ÇALIYOR</div>
+        <h2 class="mu-title clamp2" id="mu-title"><span class="mq"></span></h2>
+        <div class="mu-artist clamp1" id="mu-artist"><span class="mq"></span></div>
+        <div class="progress big" id="mu-progress"><div class="bar"><div class="fill"></div></div><div class="times"><span class="pos">0:00</span><span class="dur">0:00</span></div></div>
+      </div>
+      <div class="mu-lyrics" id="mu-lyrics"><div class="ly-track"></div></div>
+      <div class="mu-spec" id="mu-spec" hidden></div>
+      <div class="mu-next" id="mu-next">
+        <div class="overline">SIRADAKİ</div>
+        <div class="next-row" id="next-row"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===================== Idle ===================== -->
+  <section class="scene" id="scene-idle" aria-label="Bekleme">
+    <div class="idle-box">
+      <div class="overline" id="idle-date"></div>
+      <div class="idle-clock"><span id="idle-time">00:00</span><span class="idle-suffix" id="idle-suffix"></span></div>
+      <div class="idle-status">
+        <div class="chip big" id="idle-source"><span class="dot"></span><span class="lbl">Kaynak</span></div>
+        <div class="chip big" id="idle-music"><span class="ic-wrap" data-icon="music"></span><span class="lbl">Velour'da çalan bir şey yok</span></div>
+        <div class="chip big" id="idle-truck"><span class="ic-wrap" data-icon="truck"></span><span class="lbl">ETS2 kapalı</span></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===================== Connecting (skeleton) ===================== -->
+  <section class="scene" id="scene-connecting" aria-label="Bağlanıyor">
+    <div class="card hero sk sk-map"></div>
+    <div class="right-col">
+      <div class="card sk sk-np"></div>
+      <div class="cockpit"><div class="card sk"></div><div class="card sk"></div><div class="card sk"></div><div class="card sk"></div></div>
+    </div>
+  </section>
+</main>
+
+<!-- Source down / page connection lost -->
+<div id="problem" class="problem" hidden>
+  <div class="card problem-card">
+    <div class="problem-ic" data-icon="linkOff"></div>
+    <div class="problem-t" id="problem-t">Kaynağa ulaşılamıyor</div>
+    <div class="problem-s" id="problem-s"></div>
+    <div class="problem-retry"><svg viewBox="0 0 36 36" class="retry-ring" aria-hidden="true"><circle class="track" cx="18" cy="18" r="15"/><circle class="arc" cx="18" cy="18" r="15" pathLength="100"/></svg><span id="problem-retry">Yeniden deneniyor…</span></div>
+  </div>
+</div>
+
+<div id="pill" class="pill" role="status" aria-live="polite"><span class="pill-ic"></span><span class="pill-text"></span></div>
+
+<div id="esc-hold" class="esc-hold" aria-hidden="true">
+  <svg viewBox="0 0 80 80"><circle class="track" cx="40" cy="40" r="34"/><circle class="arc" cx="40" cy="40" r="34" pathLength="100"/></svg>
+  <div class="esc-ic" data-icon="power"></div>
+  <div class="esc-t">Kapatmak için basılı tut</div>
+</div>
+
+<div id="dim" aria-hidden="true"></div>
+<div id="perf" hidden></div>
+</body>
+</html>

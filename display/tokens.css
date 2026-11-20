@@ -1,0 +1,57 @@
+/* Design tokens for the Game mode display.
+   Source: app/lib/theme/tokens.dart (TiphysTokens.dark, "Porselen × Bento" dark/glass) and app/lib/theme/theme.dart.
+   Keep these in step with the app: the display must read as the same family. */
+
+@font-face { font-family: "PlusJakartaSans"; src: url("fonts/PlusJakartaSans-Regular.ttf") format("truetype"); font-weight: 400; font-display: block; }
+@font-face { font-family: "PlusJakartaSans"; src: url("fonts/PlusJakartaSans-Medium.ttf") format("truetype"); font-weight: 500; font-display: block; }
+@font-face { font-family: "PlusJakartaSans"; src: url("fonts/PlusJakartaSans-SemiBold.ttf") format("truetype"); font-weight: 600; font-display: block; }
+@font-face { font-family: "PlusJakartaSans"; src: url("fonts/PlusJakartaSans-Bold.ttf") format("truetype"); font-weight: 700; font-display: block; }
+@font-face { font-family: "PlusJakartaSans"; src: url("fonts/PlusJakartaSans-ExtraBold.ttf") format("truetype"); font-weight: 800; font-display: block; }
+@font-face { font-family: "JetBrainsMono"; src: url("fonts/JetBrainsMono-Regular.ttf") format("truetype"); font-weight: 400; font-display: block; }
+@font-face { font-family: "JetBrainsMono"; src: url("fonts/JetBrainsMono-Bold.ttf") format("truetype"); font-weight: 700; font-display: block; }
+
+:root {
+  /* TiphysTokens.dark */
+  --background: #000000;
+  --card: rgba(255, 255, 255, 0.06);          /* 0x0FFFFFFF */
+  --card-border: rgba(255, 255, 255, 0.12);   /* 0x1FFFFFFF */
+  --card-line: rgba(255, 255, 255, 0.07);     /* TCard top light line 0x12FFFFFF */
+  --text: #F5F5F7;
+  --text-secondary: #98989F;
+  --label: #AEAEB2;  /* display only: secondary text one step lighter (AA on cover-tinted glass, read from ~70 cm) */
+  --separator: #38383A;
+  --accent: #A5B4FC;
+  --on-accent: #111114;
+  --claude-tile: rgba(94, 92, 230, 0.30);     /* 0x4D5E5CE6 */
+  --claude-tile-border: rgba(165, 180, 252, 0.28); /* 0x47A5B4FC */
+  --claude-tile-subtext: #C7D2FE;
+  --ring-track: #2C2C2E;
+  --success: #30D158;
+  --warning: #FFB340;
+  --danger: #FF6961;
+  --chip: rgba(255, 255, 255, 0.08);          /* chipBackground 0x14FFFFFF */
+  --tab-icon: #8E8E93;
+  --muted-icon: #636366;
+
+  /* Default host colours (home_screen.dart _SystemTile, lightened 18 % toward white as hostColor() does in dark). */
+  --host-1: #A39DF1;   /* #8F88EE */
+  --host-2: #87D4B0;   /* #6CCB9F */
+  --host-3: #F4B89B;   /* #F2A985 */
+
+  /* TiphysTokens radii + gutter */
+  --radius-card: 24px;
+  --radius-hero: 26px;
+  --radius-list: 22px;
+  --radius-cover: 18px;
+  --gutter: 18px;
+
+  /* Glass: real backdrop blur on the display (spec E); motion=low lowers it. */
+  --glass-blur: 28px;
+
+  --font: "PlusJakartaSans", system-ui, sans-serif;
+  --mono: "JetBrainsMono", ui-monospace, monospace;
+
+  /* Cover tone (set from the cover's dominant colour at runtime). */
+  --tone: #A5B4FC;
+  --tone-rgb: 165, 180, 252;
+}
