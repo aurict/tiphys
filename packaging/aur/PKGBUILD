@@ -1,0 +1,46 @@
+# Draft AUR package (PLAN K3). tools/release.sh renders it into release/<version>/packaging/PKGBUILD with the
+# release's checksums (taken from the signed SHA256SUMS). Publishing needs an AUR account (see packaging/README.md).
+pkgname=tiphys-agent-bin
+pkgver=@VERSION@
+pkgrel=1
+pkgdesc="Tiphys agent: control this machine from the Tiphys Android app over Tailscale"
+arch=('x86_64' 'aarch64')
+url="https://github.com/aurict/tiphys"
+license=('MIT')
+provides=('tiphys-agent')
+conflicts=('tiphys-agent')
+optdepends=('tailscale: reach the agent from the phone'
+            'docker: docker feature'
+            'git: git feature')
+options=('!strip' '!debug')
+_rel="https://github.com/aurict/tiphys/releases/download/v${pkgver}"
+source_x86_64=("${_rel}/tiphys-agent-${pkgver}-linux-x64.tar.gz")
+source_aarch64=("${_rel}/tiphys-agent-${pkgver}-linux-arm64.tar.gz")
+sha256sums_x86_64=('@SHA_LINUX_X64@')
+sha256sums_aarch64=('@SHA_LINUX_ARM64@')
+
+package() {
+  local plat=linux-x64
+  [ "$CARCH" = aarch64 ] && plat=linux-arm64
+  install -d "$pkgdir/opt/tiphys-agent"
+  cp -a "$srcdir/tiphys-agent-${pkgver}-${plat}/." "$pkgdir/opt/tiphys-agent/"
+  install -Dm755 /dev/stdin "$pkgdir/usr/bin/tiphys-agent" <<'EOF'
+#!/bin/sh
+exec /opt/tiphys-agent/node/bin/node /opt/tiphys-agent/dist/cli.js "$@"
+EOF
+  install -Dm644 /dev/stdin "$pkgdir/usr/lib/systemd/user/tiphys-agent.service" <<'EOF'
+[Unit]
+Description=Tiphys agent
+After=network-online.target
+
+[Service]
+ExecStart=/opt/tiphys-agent/node/bin/node --max-semi-space-size=1 /opt/tiphys-agent/dist/cli.js serve
+Restart=on-failure
+RestartSec=5
+OOMPolicy=continue
+Environment=NODE_ENV=production
+
+[Install]
+WantedBy=default.target
+EOF
+}

@@ -1,0 +1,9 @@
+# Only what packaging/docker/Dockerfile copies.
+*
+!agent/package.json
+!agent/package-lock.json
+!agent/tsconfig.json
+!agent/tsconfig.build.json
+!agent/src
+!agent/helpers/audit.sh
+!packaging/docker/entrypoint.sh

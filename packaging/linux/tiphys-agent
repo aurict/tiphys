@@ -1,0 +1,3 @@
+#!/bin/sh
+# Package install (.deb/.rpm/AUR): the agent and its Node.js runtime live in /opt/tiphys-agent.
+exec /opt/tiphys-agent/node/bin/node /opt/tiphys-agent/dist/cli.js "$@"

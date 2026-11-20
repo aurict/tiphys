@@ -1,0 +1,31 @@
+# nfpm template for .deb / .rpm (PLAN K3). Rendered and built in CI (.github/workflows/release-check.yml) with the
+# goreleaser/nfpm container; placeholders: @VERSION@, @ARCH@ (amd64|arm64), @BUNDLE@ (an unpacked
+# tiphys-agent-<version>-linux-<x64|arm64> directory from tools/release.sh).
+# A package install is not "managed": the package manager updates it, the agent's self-update stays off.
+name: tiphys-agent
+arch: "@ARCH@"
+platform: linux
+version: "@VERSION@"
+section: admin
+priority: optional
+maintainer: "Tiphys maintainers <noreply@github.com>"
+description: |
+  Tiphys agent: lets the Tiphys Android app control this machine over your Tailscale network.
+  Ships its own Node.js runtime under /opt/tiphys-agent.
+vendor: Tiphys
+homepage: https://github.com/aurict/tiphys
+license: MIT
+contents:
+  - src: "@BUNDLE@"
+    dst: /opt/tiphys-agent
+    type: tree
+  - src: packaging/linux/tiphys-agent
+    dst: /usr/bin/tiphys-agent
+    file_info:
+      mode: 0755
+  - src: packaging/linux/tiphys-agent.service
+    dst: /usr/lib/systemd/user/tiphys-agent.service
+    file_info:
+      mode: 0644
+scripts:
+  postinstall: packaging/linux/postinstall.sh

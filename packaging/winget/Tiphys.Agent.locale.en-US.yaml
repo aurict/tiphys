@@ -1,0 +1,12 @@
+# Draft (see Tiphys.Agent.yaml).
+PackageIdentifier: Tiphys.Agent
+PackageVersion: "@VERSION@"
+PackageLocale: en-US
+Publisher: Tiphys
+PackageName: Tiphys Agent
+License: MIT
+LicenseUrl: https://github.com/aurict/tiphys/blob/main/LICENSE
+ShortDescription: Control this PC from the Tiphys Android app over Tailscale.
+PackageUrl: https://github.com/aurict/tiphys
+ManifestType: defaultLocale
+ManifestVersion: 1.6.0

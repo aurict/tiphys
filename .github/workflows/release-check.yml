@@ -1,0 +1,74 @@
+name: Release check
+
+# Proves that a release builds and installs (PLAN K1–K3), without any secret: the bundles are signed with a throwaway
+# key generated in the job (never the real release key, which stays on the release PC), installed with install.sh in
+# ubuntu:24.04 and debian:12 containers, packaged as .deb/.rpm with nfpm, and the server image is built.
+on:
+  pull_request:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-check-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  lint:
+    name: Shell scripts (shellcheck)
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7
+      - run: shellcheck -s sh install.sh packaging/docker/entrypoint.sh packaging/linux/tiphys-agent packaging/linux/postinstall.sh
+      - run: shellcheck tools/release.sh tools/release-keygen.sh tools/test-install.sh tools/pair.sh tools/deploy-agent.sh
+
+  bundles:
+    name: Bundles, install test, .deb/.rpm
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: agent/package-lock.json
+      - name: Throwaway signing key (written into the checkout only; never the real key)
+        run: HOME="$RUNNER_TEMP/home" tools/release-keygen.sh
+      - name: Build all bundles (signed with the throwaway key, no APK)
+        run: |
+          v=$(sed -n 's/^export const VERSION = "\(.*\)";/\1/p' agent/src/version.ts)
+          echo "VERSION=$v" >> "$GITHUB_ENV"
+          HOME="$RUNNER_TEMP/home" tools/release.sh "$v" --no-apk
+      - name: install.sh end to end (ubuntu:24.04, debian:12)
+        run: tools/test-install.sh "release/$VERSION" ubuntu:24.04 debian:12
+      - name: .deb and .rpm (nfpm)
+        run: |
+          for a in x64:amd64 arm64:arm64; do
+            p=${a%%:*} arch=${a##*:}
+            mkdir -p "$RUNNER_TEMP/b-$p"
+            tar -xzf "release/$VERSION/tiphys-agent-$VERSION-linux-$p.tar.gz" -C "$RUNNER_TEMP/b-$p"
+            sed -e "s/@VERSION@/$VERSION/" -e "s/@ARCH@/$arch/" -e "s#@BUNDLE@#$RUNNER_TEMP/b-$p/tiphys-agent-$VERSION-linux-$p#" packaging/nfpm.yaml > "$RUNNER_TEMP/nfpm-$p.yaml"
+            for fmt in deb rpm; do
+              docker run --rm -v "$PWD:$PWD" -v "$RUNNER_TEMP:$RUNNER_TEMP" -w "$PWD" goreleaser/nfpm package -f "$RUNNER_TEMP/nfpm-$p.yaml" -p "$fmt" -t "release/$VERSION/"
+            done
+          done
+          ls -la "release/$VERSION"
+          dpkg-deb -c release/$VERSION/*amd64.deb | grep -E 'opt/tiphys-agent/dist/cli.js|usr/bin/tiphys-agent|systemd/user/tiphys-agent.service'
+
+  docker:
+    name: Server image
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7
+      - run: docker build -f packaging/docker/Dockerfile -t tiphys-agent:check .
+      - name: Starts read-only as non-root and becomes healthy
+        run: |
+          docker run -d --name t --read-only --tmpfs /tmp -e TIPHYS_FEATURES=system tiphys-agent:check
+          for i in $(seq 1 30); do
+            s=$(docker inspect -f '{{.State.Health.Status}}' t); [ "$s" = healthy ] && break; sleep 2
+          done
+          docker exec t id -u | grep -qx 1000
+          docker inspect -f '{{.State.Health.Status}}' t | grep -qx healthy
+          docker rm -f t

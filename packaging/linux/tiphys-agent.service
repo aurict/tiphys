@@ -1,0 +1,14 @@
+[Unit]
+Description=Tiphys agent
+After=network-online.target
+
+[Service]
+ExecStart=/opt/tiphys-agent/node/bin/node --max-semi-space-size=1 /opt/tiphys-agent/dist/cli.js serve
+Restart=on-failure
+RestartSec=5
+# Claude sessions started from the phone may use a lot of memory; only the largest process is killed, not the agent.
+OOMPolicy=continue
+Environment=NODE_ENV=production
+
+[Install]
+WantedBy=default.target
