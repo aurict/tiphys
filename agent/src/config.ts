@@ -1,7 +1,8 @@
 // The agent's own settings: ~/.config/tiphys/agent.json (or TIPHYS_AGENT_CONFIG).
 // The file is written with mode 600, atomically (temp file + rename).
-import { mkdir, readFile, rename, writeFile, chmod } from "node:fs/promises";
-import { dirname, join } from "node:path";
+import { watch as fsWatch, type FSWatcher } from "node:fs";
+import { mkdir, readFile, rename, writeFile, chmod, stat } from "node:fs/promises";
+import { basename, dirname, join } from "node:path";
 import { homedir } from "node:os";
 import { z } from "zod";
 import { whenSchema } from "./claude/schedules.ts";
@@ -231,6 +232,8 @@ export const agentConfigSchema = z.object({
     agy: z.boolean().default(false),
     /** Claude "security" sessions fix security items on pinned targets over SSH (PLAN.md §16); needs "claude". */
     securityFix: z.boolean().default(false),
+    /** Self-update from signed GitHub releases (only installs made by install.sh; see update.ts). */
+    update: z.boolean().default(false),
   }),
   devices: z.array(deviceSchema).default([]),
   /** Scoped service tokens (tps_…): they open only routes that declare one of their scopes. */
@@ -535,8 +538,11 @@ export class ConfigStore {
   }
 
   static async load(path = defaultConfigPath()): Promise<ConfigStore> {
+    const st = await stat(path);
     const raw = await readFile(path, "utf8");
-    return new ConfigStore(path, agentConfigSchema.parse(JSON.parse(raw)));
+    const store = new ConfigStore(path, agentConfigSchema.parse(JSON.parse(raw)));
+    store.#seen = fileId(st);
+    return store;
   }
 
   static async loadOrCreate(path: string, name: string): Promise<ConfigStore> {
@@ -555,6 +561,8 @@ export class ConfigStore {
   }
 
   async update(fn: (c: AgentConfig) => AgentConfig): Promise<AgentConfig> {
+    // Another process (e.g. `tiphys-agent pair`) may have written the file: start from its version, don't overwrite it.
+    await this.reloadIfChanged().catch(() => false);
     const next = agentConfigSchema.parse(fn(structuredClone(this.#config)));
     this.#config = next;
     await this.save();
@@ -575,9 +583,66 @@ export class ConfigStore {
       await writeFile(tmp, JSON.stringify(this.#config, null, 2) + "\n", { mode: 0o600 });
       await chmod(tmp, 0o600);
       await rename(tmp, this.path);
+      this.#seen = fileId(await stat(this.path));
     };
-    const p = this.#saving.catch(() => {}).then(run);
+    this.#pending++;
+    const p = this.#saving.catch(() => {}).then(run).finally(() => this.#pending--);
     this.#saving = p.catch(() => {});
     return p;
   }
+
+  /** Identity of the file version this store last read or wrote (inode, size, mtime). */
+  #seen = "";
+  #pending = 0;
+
+  /**
+   * Re-reads the file if another process changed it since this store last read/wrote it (K4: a device paired with
+   * the CLI works without restarting the agent). An invalid file is ignored (the old settings stay) and reported
+   * with `false`. Skipped while this store has unsaved writes queued. Returns true when the settings were replaced.
+   */
+  async reloadIfChanged(): Promise<boolean> {
+    if (this.#pending > 0) return false;
+    let st;
+    try {
+      st = await stat(this.path);
+    } catch {
+      return false;
+    }
+    const id = fileId(st);
+    if (id === this.#seen) return false;
+    const raw = await readFile(this.path, "utf8");
+    const parsed = agentConfigSchema.safeParse((() => { try { return JSON.parse(raw); } catch { return null; } })());
+    if (!parsed.success || this.#pending > 0) return false;
+    this.#config = parsed.data;
+    this.#seen = id;
+    return true;
+  }
+
+  /**
+   * Watches the settings file for changes made by other processes (debounced). The directory is watched because
+   * writes replace the file (rename). Returns a function that stops watching.
+   */
+  watch(onReload?: (ok: boolean) => void, debounceMs = 250): () => void {
+    let timer: NodeJS.Timeout | undefined;
+    let w: FSWatcher | undefined;
+    const name = basename(this.path);
+    try {
+      w = fsWatch(dirname(this.path), { persistent: false }, (_ev, file) => {
+        if (file !== null && file !== name) return;
+        clearTimeout(timer);
+        timer = setTimeout(() => void this.reloadIfChanged().then((r) => r && onReload?.(true), () => onReload?.(false)), debounceMs);
+      });
+      w.on("error", () => {});
+    } catch {
+      // No watcher (e.g. unsupported file system): unknown tokens still trigger a re-read (server.ts).
+    }
+    return () => {
+      clearTimeout(timer);
+      w?.close();
+    };
+  }
+}
+
+function fileId(st: { ino: number; size: number; mtimeMs: number }): string {
+  return `${st.ino}:${st.size}:${st.mtimeMs}`;
 }

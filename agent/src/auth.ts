@@ -4,7 +4,7 @@
 import { createHash, randomBytes, timingSafeEqual } from "node:crypto";
 import type { FastifyRequest } from "fastify";
 import { AppError } from "./errors.ts";
-import type { AgentConfig, Device, ServiceToken } from "./config.ts";
+import type { AgentConfig, ConfigStore, Device, ServiceToken } from "./config.ts";
 
 export const TOKEN_PREFIX = "tph_";
 export const SERVICE_TOKEN_PREFIX = "tps_";
@@ -64,4 +64,23 @@ export function authenticate(config: AgentConfig, req: FastifyRequest, routeScop
   const device = findDevice(config, token);
   if (!device) throw new AppError("agent.auth.invalidToken", 401);
   return { device };
+}
+
+const lastReload = new WeakMap<ConfigStore, number>();
+
+/**
+ * authenticate() against the store; on an unknown token the settings file is re-read (at most once per second per
+ * store) in case another process just paired that device (`tiphys-agent pair`), then checked once more.
+ */
+export async function authenticateFresh(store: ConfigStore, req: FastifyRequest, routeScope?: string): Promise<Caller> {
+  try {
+    return authenticate(store.get(), req, routeScope);
+  } catch (e) {
+    if (!(e instanceof AppError) || e.code !== "agent.auth.invalidToken") throw e;
+    const now = Date.now();
+    if (now - (lastReload.get(store) ?? 0) < 1000) throw e;
+    lastReload.set(store, now);
+    if (!(await store.reloadIfChanged().catch(() => false))) throw e;
+    return authenticate(store.get(), req, routeScope);
+  }
 }
