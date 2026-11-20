@@ -64,7 +64,8 @@ grep -q "systemd user services are not available" /tmp/o || fail "service step n
 grep -q "Tailscale is not installed" /tmp/o || fail "missing Tailscale message"
 P=/home/t/.local/share/tiphys-agent
 [ "$(readlink $P/current)" = "versions/$VERSION" ] && [ -f $P/guard.sh ] && [ -x /home/t/.local/bin/tiphys-agent ] || fail "layout"
-pass "installed: current -> versions/$VERSION, guard.sh, ~/.local/bin/tiphys-agent"
+[ -f $P/current/display/index.html ] && [ -d $P/current/display/vendor ] && [ -d $P/current/display/fonts ] || fail "display/ (Game mode page) missing"
+pass "installed: current -> versions/$VERSION, guard.sh, ~/.local/bin/tiphys-agent, display/"
 [ "$(stat -c %a /home/t/.config/tiphys/agent.json)" = 600 ] || fail "config mode"
 as_t "grep -q '\"name\": \"box\"' .config/tiphys/agent.json" || fail "name"
 as_t "grep -q '\"power\": false' .config/tiphys/agent.json && grep -q '\"update\": true' .config/tiphys/agent.json" || fail "detected features (power off, update on for a managed install)"
