@@ -189,7 +189,7 @@ class _Main extends ConsumerWidget {
         _SettingsSection(hostId: host.id, settings: status.settings),
         _ConnectionsSection(host: host, status: status, source: source, onReconfigure: onReconfigure),
         if (source != null)
-          _SetupSection(source: source)
+          _SetupSection(source: source, mapPresent: status.mapPresent)
         else
           GroupedSection(
             title: l.gmSectionSetup,
@@ -617,8 +617,11 @@ class _ConnectionsSection extends StatelessWidget {
 // ───────────────────────────── setup (source PC) ─────────────────────────────
 
 class _SetupSection extends ConsumerStatefulWidget {
-  const _SetupSection({required this.source});
+  const _SetupSection({required this.source, required this.mapPresent});
   final Host source;
+
+  /// The map files live on the display host (GET /v1/gamemode), not on the source.
+  final bool mapPresent;
   @override
   ConsumerState<_SetupSection> createState() => _SetupSectionState();
 }
@@ -698,7 +701,7 @@ class _SetupSectionState extends ConsumerState<_SetupSection> {
             : null;
         return GroupedSection(
           title: l.gmSectionSetup,
-          footer: i.mapPresent ? null : l.gmMapMissingHint,
+          footer: widget.mapPresent ? null : l.gmMapMissingHint,
           children: [
             GroupedRow(
               title: l.gmPlugin,
@@ -731,9 +734,9 @@ class _SetupSectionState extends ConsumerState<_SetupSection> {
               trailing: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  StatusDot(color: i.mapPresent ? t.success : t.warning),
+                  StatusDot(color: widget.mapPresent ? t.success : t.warning),
                   const SizedBox(width: 6),
-                  Text(i.mapPresent ? l.gmMapPresent : l.gmMapMissing, style: TextStyle(fontSize: 13.5, color: t.textSecondary)),
+                  Text(widget.mapPresent ? l.gmMapPresent : l.gmMapMissing, style: TextStyle(fontSize: 13.5, color: t.textSecondary)),
                 ],
               ),
             ),

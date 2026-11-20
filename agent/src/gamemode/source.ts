@@ -341,7 +341,6 @@ export async function sourceStatus(io: SourceIo) {
     velour,
     audio,
     ets2: { gameDir, plugin: plugin.plugin, version: plugin.version, running: t.running, telemetry: parseTelemetry(t.buf, t.running).telemetry },
-    map: { present: false },
   };
 }
 

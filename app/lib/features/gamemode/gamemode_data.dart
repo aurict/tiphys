@@ -99,6 +99,7 @@ class GameStatus {
     this.sourceConfigured = false,
     this.sourceUrl,
     this.sourceState = 'off',
+    this.mapPresent = false,
     this.music,
     this.truck,
   });
@@ -115,6 +116,7 @@ class GameStatus {
       sourceConfigured: src['configured'] == true,
       sourceUrl: src['url'] as String?,
       sourceState: '${src['state'] ?? 'off'}',
+      mapPresent: (j['map'] as Map?)?['present'] == true,
       music: music is Map ? GameMusic(music) : null,
       truck: truck is Map ? GameTruck(truck) : null,
     );
@@ -128,6 +130,9 @@ class GameStatus {
 
   /// off | connecting | ok | down
   final String sourceState;
+
+  /// Map files (PMTiles) present on the display host.
+  final bool mapPresent;
   final GameMusic? music;
   final GameTruck? truck;
 
@@ -138,6 +143,7 @@ class GameStatus {
     sourceConfigured: sourceConfigured,
     sourceUrl: sourceUrl,
     sourceState: sourceState,
+    mapPresent: mapPresent,
     music: music,
     truck: truck,
   );
@@ -301,8 +307,7 @@ class GameSourceInfo {
       plugin = '${(j['ets2'] as Map?)?['plugin'] ?? 'missing'}',
       pluginVersion = (j['ets2'] as Map?)?['version'] as String?,
       ets2Running = (j['ets2'] as Map?)?['running'] == true,
-      telemetry = '${(j['ets2'] as Map?)?['telemetry'] ?? 'none'}',
-      mapPresent = (j['map'] as Map?)?['present'] == true;
+      telemetry = '${(j['ets2'] as Map?)?['telemetry'] ?? 'none'}';
   final bool velour;
   final bool audio;
   final String? gameDir;
@@ -314,7 +319,6 @@ class GameSourceInfo {
 
   /// ok | unsupported | none
   final String telemetry;
-  final bool mapPresent;
 }
 
 final gameSourceProvider = FutureProvider.autoDispose.family<GameSourceInfo, String>(retry: _noRetry, (ref, hostId) async {

@@ -1161,7 +1161,7 @@ started (display).
 
 | Method | Path | Auth | Description |
 | --- | --- | --- | --- |
-| GET | `/v1/gamemode` | device | `{running, startedAt\|null, settings, source: {configured, url\|null, state: off\|connecting\|ok\|down}, live: {music: {title, artist, playing}\|null, truck: {state, from\|null, to\|null, speedKmh\|null}\|null}}`. `live` is filled only while the mode runs (the upstream connection exists only then). The source token is never returned. |
+| GET | `/v1/gamemode` | device | `{running, startedAt\|null, settings, source: {configured, url\|null, state: off\|connecting\|ok\|down}, map: {present}, live: {music: {title, artist, playing}\|null, truck: {state, from\|null, to\|null, speedKmh\|null}\|null}}`. `live` is filled only while the mode runs (the upstream connection exists only then). The source token is never returned. |
 | PUT | `/v1/gamemode` | device | Strict `{settings?: Partial<settings>, source?: {url, token}\|null}` → same as GET. A partial `settings` changes only the fields sent; the open kiosk page gets a `settings` message at once. A new backlight value is applied at once while running. A new source reconnects the relay. |
 | POST | `/v1/gamemode/start` | device | Idempotent → same as GET. `409 agent.gamemode.noSource` when no source is set, `503 agent.gamemode.noDisplay` without a Hyprland session, `502 agent.gamemode.startFailed` when `systemd-run` fails (everything done so far is undone). |
 | POST | `/v1/gamemode/stop` | device | Idempotent → same as GET. |
@@ -1212,7 +1212,7 @@ verbatim; anything else is dropped. `truck` messages and frames are skipped for 
 | Method | Path | Auth | Description |
 | --- | --- | --- | --- |
 | WS | `/v1/gamemode/feed` | service (`gamemode`) or device | The feed (messages below). One shared producer for all subscribers, started by the first and stopped by the last (Velour long-poll ends, `pw-record` is killed). A new subscriber gets the latest `music`, `lyrics` and `truck` at once. Nothing is accepted from subscribers. |
-| GET | `/v1/gamemode/source` | device | `{velour: bool, audio: bool, ets2: {gameDir\|null, plugin: installed\|missing\|outdated, version\|null, running: bool, telemetry: ok\|unsupported\|none}, map: {present: false}}` |
+| GET | `/v1/gamemode/source` | device | `{velour: bool, audio: bool, ets2: {gameDir\|null, plugin: installed\|missing\|outdated, version\|null, running: bool, telemetry: ok\|unsupported\|none}}` |
 | POST | `/v1/gamemode/plugin` | device | Strict `{action: install\|remove}` → same as GET source. `404 agent.gamemode.noGame` without a Linux ETS2 in the Steam libraries, `502 agent.gamemode.pluginDownloadFailed`, `502 agent.gamemode.pluginHashMismatch`, `502 agent.gamemode.pluginBadArchive`. CLI: `tiphys-agent gamemode install-plugin\|remove-plugin`. |
 
 Producers: **music** long-polls Velour's `wait` and sends `music` when `rev` changes, `lyrics` on a track change, `next`

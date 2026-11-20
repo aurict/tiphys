@@ -145,7 +145,9 @@ async function tokenOf(runtime: string): Promise<string> {
 describe("gamemode display", () => {
   it("source token is never returned; settings validate", async () => {
     const t = await displayApp();
-    expect((await t.req("GET", "/v1/gamemode")).json()).toMatchObject({ running: false, startedAt: null, source: { configured: false, url: null, state: "off" }, live: { music: null, truck: null } });
+    expect((await t.req("GET", "/v1/gamemode")).json()).toMatchObject({ running: false, startedAt: null, source: { configured: false, url: null, state: "off" }, map: { present: false }, live: { music: null, truck: null } });
+    await writeFile(join(t.mapDir, "ets2.pmtiles"), "PMTiles");
+    expect((await t.req("GET", "/v1/gamemode")).json()).toMatchObject({ map: { present: true } });
     const put = await t.setSource();
     expect(put.statusCode).toBe(200);
     expect(put.body).not.toContain("tps_secretsecret");

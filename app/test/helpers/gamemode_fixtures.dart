@@ -32,8 +32,10 @@ class FakeGameState {
     'velour': true,
     'audio': true,
     'ets2': {'gameDir': '/games/ets2', 'plugin': 'missing', 'version': null, 'running': false, 'telemetry': 'none'},
-    'map': {'present': false},
   };
+
+  /// Map files on the display host (GET /v1/gamemode → map.present).
+  bool mapPresent = false;
 
   /// What the display agent was given as source (the token never comes back out).
   Map<String, dynamic>? storedSource;
@@ -62,6 +64,7 @@ class FakeGameState {
         'url': display && configured ? 'https://atlas.example.ts.net:7443' : null,
         'state': display && configured ? sourceState : 'off',
       },
+      'map': {'present': display && mapPresent},
       'live': {'music': display && running ? music : null, 'truck': display && running ? truck : null},
     };
   }

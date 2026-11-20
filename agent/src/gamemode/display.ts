@@ -228,6 +228,7 @@ export class GamemodeDisplay {
   readonly #o: { backoff: number[]; idleMs: number; watchMs: number; maxBuffered: number };
   readonly #log: (msg: string, err?: unknown) => void;
   readonly workDir: string;
+  readonly #mapFile: string;
   #chain: Promise<unknown> = Promise.resolve();
   #running: SavedState | null = null;
   #token: Buffer | null = null;
@@ -250,6 +251,7 @@ export class GamemodeDisplay {
     this.#log = log;
     this.#o = { backoff: o.backoff ?? [1, 2, 4, 8, 15, 30], idleMs: o.idleMs ?? 15_000, watchMs: o.watchMs ?? 5000, maxBuffered: o.maxBuffered ?? 256 * 1024 };
     this.workDir = join(io.runtimeDir, "tiphys-gamemode");
+    this.#mapFile = join(o.mapDir ?? defaultMapDir(), "ets2.pmtiles");
   }
 
   #serial<T>(fn: () => Promise<T>): Promise<T> {
@@ -272,6 +274,8 @@ export class GamemodeDisplay {
       startedAt: this.#running?.startedAt ?? null,
       settings: this.settings,
       source: { configured: src !== null, url: src?.url ?? null, state: this.#source.state },
+      // The map files live on this (display) host, next to the page that draws them.
+      map: { present: existsSync(this.#mapFile) },
       live: {
         music: m && !m.none ? { title: m.title ?? "", artist: m.artist ?? "", playing: m.playing === true } : null,
         truck: t ? { state: t.state, from: job?.from ?? null, to: job?.to ?? null, speedKmh: typeof t.speed === "number" ? Math.round(Math.abs(t.speed) * 3.6) : null } : null,

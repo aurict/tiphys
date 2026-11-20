@@ -207,6 +207,10 @@ void main() {
       await tester.scrollUntilVisible(find.text(_tr.gmPlugin), 200, scrollable: find.byType(Scrollable).first);
       expect(find.text(_tr.gmPluginMissing), findsOneWidget);
       expect(find.text(_tr.gmMapMissing), findsOneWidget);
+      FakeAgent.game.mapPresent = true;
+      await _open(tester);
+      await tester.scrollUntilVisible(find.text(_tr.gmPlugin), 200, scrollable: find.byType(Scrollable).first);
+      expect(find.text(_tr.gmMapPresent), findsOneWidget);
       await tester.tap(find.text(_tr.gmPluginInstall));
       await _load(tester);
       expect(FakeAgent.calls.where((c) => c.$2 == '/v1/gamemode/plugin').first.$3, {'action': 'install'});
