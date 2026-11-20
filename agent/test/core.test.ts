@@ -11,7 +11,7 @@ describe("kimlik doğrulama", () => {
     const { app } = await testApp();
     const res = await app.inject({ url: "/v1/health" });
     expect(res.statusCode).toBe(200);
-    expect(res.json()).toMatchObject({ name: "test", version: "0.3.0" });
+    expect(res.json()).toMatchObject({ name: "test", version: "0.4.0" });
   });
 
   it("token'sız isteği kodla reddeder", async () => {

@@ -32,7 +32,9 @@ PORT=7443
 
 # The release signing key (written by tools/release-keygen.sh). A placeholder means: no signed releases yet.
 # BEGIN TIPHYS UPDATE KEY
-PUBKEY='TIPHYS-PLACEHOLDER-PUBLIC-KEY'
+PUBKEY='-----BEGIN PUBLIC KEY-----
+MCowBQYDK2VwAyEARrrX7fMCJXSF0JVUQVoAmbhDLcCYSQo6UdBloCXJ9/A=
+-----END PUBLIC KEY-----'
 # END TIPHYS UPDATE KEY
 
 VERSION='' NAME='' NO_SERVICE='' NO_SERVE='' NO_PAIR='' UNINSTALL='' PURGE='' SKIP_SIG=''

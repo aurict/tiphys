@@ -9,6 +9,8 @@ extension is `0.1.0`.
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-11-20
+
 ### Added
 
 **App: setup, health, updates, more platforms**

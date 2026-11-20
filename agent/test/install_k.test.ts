@@ -1,7 +1,7 @@
 // Easy install (PLAN K4–K6, K8): config reload without restart, init feature semantics, detection, Tailscale URL,
 // doctor and signed self-update.
 import { execFile } from "node:child_process";
-import { generateKeyPairSync, createHash, sign } from "node:crypto";
+import { generateKeyPairSync, createHash, sign, createPublicKey } from "node:crypto";
 import { existsSync, readFileSync, readlinkSync } from "node:fs";
 import { chmod, mkdir, mkdtemp, readFile, realpath, symlink, writeFile } from "node:fs/promises";
 import { createServer, type Server } from "node:http";
@@ -304,7 +304,7 @@ describe("doctor (K6)", () => {
       const res = await app.inject({ url: "/v1/doctor", headers: auth });
       expect(res.statusCode).toBe(200);
       const body = res.json();
-      expect(body.version).toBe("0.3.0");
+      expect(body.version).toBe("0.4.0");
       for (const c of body.checks) expect(["ok", "warn", "fail"]).toContain(c.status);
     } finally {
       if (prev === undefined) delete process.env.TIPHYS_RELEASE_URL;
@@ -362,8 +362,11 @@ async function managedInstall() {
 }
 
 describe("self-update (K8)", () => {
-  it("the shipped key is the placeholder and verification refuses to run with it", () => {
-    expect(() => verifySums(Buffer.from("x"), Buffer.alloc(64), UPDATE_PUBLIC_KEY)).toThrow(/noKey/);
+  it("the shipped key is a real ed25519 public key; verification refuses a placeholder", () => {
+    expect(createPublicKey(UPDATE_PUBLIC_KEY).asymmetricKeyType).toBe("ed25519");
+    // A wrong signature with the real key is simply false; a placeholder refuses to run at all.
+    expect(verifySums(Buffer.from("x"), Buffer.alloc(64), UPDATE_PUBLIC_KEY)).toBe(false);
+    expect(() => verifySums(Buffer.from("x"), Buffer.alloc(64), "PLACEHOLDER")).toThrow(/noKey/);
   });
 
   it("this checkout (git) is not a managed install; an install.sh layout is", async () => {
@@ -408,7 +411,9 @@ describe("self-update (K8)", () => {
     const good = await fakeRelease("0.4.0");
     await expect(applyUpdate("0.5.0", opts(good))).rejects.toMatchObject({ code: "agent.update.missingAsset" });
     await expect(applyUpdate("0.3.0", opts(good))).rejects.toMatchObject({ code: "agent.update.notNewer" });
-    await expect(applyUpdate("0.4.0", { releases: good, root, current: "0.3.0" })).rejects.toMatchObject({ code: "agent.update.noKey" });
+    await expect(applyUpdate("0.4.0", { releases: good, publicKey: "PLACEHOLDER", root, current: "0.3.0" })).rejects.toMatchObject({ code: "agent.update.noKey" });
+    // The shipped key doesn't match the test release's key: refused as a bad signature.
+    await expect(applyUpdate("0.4.0", { releases: good, root, current: "0.3.0" })).rejects.toMatchObject({ code: "agent.update.badSignature" });
     await expect(applyUpdate("0.4.0", { releases: good, publicKey: PUB, root: null })).rejects.toMatchObject({ code: "agent.update.notManaged" });
     // Nothing changed.
     expect(readlinkSync(join(root, "current"))).toBe("versions/0.3.0");

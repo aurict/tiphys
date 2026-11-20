@@ -34,7 +34,11 @@ $RunKey = 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Run'
 
 # The release signing key (written by tools/release-keygen.sh). A placeholder means: no signed releases yet.
 # BEGIN TIPHYS UPDATE KEY
-$PubKey = 'TIPHYS-PLACEHOLDER-PUBLIC-KEY'
+$PubKey = @'
+-----BEGIN PUBLIC KEY-----
+MCowBQYDK2VwAyEARrrX7fMCJXSF0JVUQVoAmbhDLcCYSQo6UdBloCXJ9/A=
+-----END PUBLIC KEY-----
+'@
 # END TIPHYS UPDATE KEY
 
 function Step($m) { Write-Host "`n==> $m" }

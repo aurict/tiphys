@@ -1,6 +1,6 @@
 {
   "name": "tiphys-agent",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "private": true,
   "description": "Tiphys agent: the per-machine service the Tiphys phone app talks to (Claude Code, system, services, desktop control, monitoring).",
   "type": "module",

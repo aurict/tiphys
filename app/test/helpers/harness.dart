@@ -74,7 +74,7 @@ class NoBiometrics implements Biometrics {
 }
 
 class Harness {
-  Harness({Profile? profile, Map<String, String>? secrets, this.homeData = sampleHomeData, this.pin, this.extra = const [], this.agent, this.biometrics, this.agentFeatures = defaultAgentFeatures, this.clock, this.onboarded = true, this.agentVersion = '0.3.0', this.health})
+  Harness({Profile? profile, Map<String, String>? secrets, this.homeData = sampleHomeData, this.pin, this.extra = const [], this.agent, this.biometrics, this.agentFeatures = defaultAgentFeatures, this.clock, this.onboarded = true, this.agentVersion = '0.4.0', this.health})
       : profile = profile ?? exampleProfile(),
         secrets = MemorySecretStore(secrets ?? {'ssh-phone': 'x', 'agent-argo': 'x', 'grafana-atlas': 'x'});
   final Profile profile;
@@ -225,14 +225,14 @@ class FakeAgent extends AgentClient {
   static Object updateApply = {'ok': true, 'version': '0.4.0', 'restarting': true};
 
   /// Version in GET /v1/agent/status.
-  static String statusVersion = '0.3.0';
+  static String statusVersion = '0.4.0';
 
   static void resetSetup() {
     capabilities = null;
     doctor = null;
     update = null;
     updateApply = {'ok': true, 'version': '0.4.0', 'restarting': true};
-    statusVersion = '0.3.0';
+    statusVersion = '0.4.0';
   }
 
   static dynamic _orNotFound(Object? v) {
@@ -1368,7 +1368,7 @@ class FakePcNotifications implements PcNotifications {
 
 /// GET /v1/doctor (agent's format): one failure with a fix, two warnings, the rest OK.
 Map<String, dynamic> sampleDoctor() => {
-      'version': '0.3.0',
+      'version': '0.4.0',
       'checks': [
         {'id': 'tailscale', 'status': 'ok', 'code': 'doctor.tailscale.ok', 'params': {'dnsName': 'argo.my-tailnet.ts.net'}},
         {'id': 'tailscale.serve', 'status': 'fail', 'code': 'doctor.tailscale.notServed', 'params': {'port': 7443}, 'fix': 'sudo tailscale serve --bg --https=7443 http://127.0.0.1:7443'},
@@ -1378,7 +1378,7 @@ Map<String, dynamic> sampleDoctor() => {
         {'id': 'disk', 'status': 'warn', 'code': 'doctor.disk.low', 'params': {'freeMb': 1480, 'totalMb': 240000}},
         {'id': 'node', 'status': 'ok', 'code': 'doctor.node.ok', 'params': {'node': '24.11.0'}},
         {'id': 'push', 'status': 'warn', 'code': 'doctor.push.notConfigured', 'params': {}},
-        {'id': 'version', 'status': 'ok', 'code': 'doctor.version.latest', 'params': {'current': '0.3.0', 'latest': '0.3.0'}},
+        {'id': 'version', 'status': 'ok', 'code': 'doctor.version.latest', 'params': {'current': '0.4.0', 'latest': '0.4.0'}},
       ],
     };
 
