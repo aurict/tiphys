@@ -68,7 +68,13 @@ More detail: [docs/architecture.md](docs/architecture.md).
   Desktop features need **Hyprland** (Wayland) plus `grim`, `wl-clipboard`, `ydotool`, `wtype`, and optionally
   `wf-recorder`, `ffmpeg`, `playerctl`, `wpctl`, Sunshine, `python3-gi` and `gir1.2-atspi-2.0`.
   Claude features need a Claude Code login on that machine.
-- **App:** Android 8.0+ (API 26), arm64. Built with Flutter 3.47.9 / JDK 17.
+- **App:** Android 8.0+ (API 26), arm64. Built with Flutter 3.47.9 / JDK 17. The same app also builds for
+  **iOS** (15+) and as a **desktop app** for Linux, Windows and macOS; there UnifiedPush, the share menu and the
+  Android-only native extras (H.264 decoder, Moonlight launch, screenshot blocking) are absent, notifications work
+  only while the app is open, and pairing can paste the code instead of scanning it. CI compiles them
+  (`flutter build ios --no-codesign`, `macos`, `windows`, `linux`); they are not signed or published. The Linux
+  desktop build needs `libgtk-3-dev`, `libsecret-1-dev` and `libjsoncpp-dev`, and a Secret Service keyring at run
+  time.
 - **Optional:** your own ntfy server and the ntfy Android app for push; Firefox 140 ESR (or Developer Edition /
   Nightly) for the Firefox bridge; Grafana, Dozzle, Uptime Kuma, Homepage, Obsidian with LiveSync.
 

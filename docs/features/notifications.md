@@ -195,9 +195,42 @@ The event log is always on; there is no feature flag.
 
 See also [Security](../security.md) and [Troubleshooting](../troubleshooting.md).
 
+## Notifications without ntfy
+
+Push needs UnifiedPush, which exists only on Android. Without it (no ntfy app on the phone, on iOS, and in the
+desktop app) Tiphys still shows notifications **while the app is open**: every 20 seconds it asks each agent for new
+events (`GET /v1/events?since=…`, the same event log as **System › Events**) and shows each new one as a local
+notification, with the same texts, filters (**Settings › Notifications**), channels and replacement rules as a push.
+
+- Only hosts that push does not reach are polled: when the phone has a UnifiedPush endpoint that a host accepted,
+  that host is skipped, so nothing is shown twice.
+- The first look at a host only notes where its log stands; older events are not replayed. Events the app reported
+  itself (work done over SSH) are not shown. At most 10 notifications per host and round.
+- Polling stops when the app goes to the background. **Notifications while the app is closed need ntfy.**
+- Foreground notifications have no action buttons (Allow/Deny, Copy, Send); tapping one opens the related screen.
+  Approvals are answered in the app.
+
+**Settings › Notifications › While the app is open** explains this and links here.
+
+### iOS
+
+iOS has no UnifiedPush, so today the iOS app gets only the foreground notifications above and registers no push
+endpoint with the agents.
+
+The planned option for notifications while the app is closed is your ntfy server plus the ntfy iOS app's way of
+waking a phone: ntfy forwards to Apple's push service (APNs) through the `ntfy.sh` relay (or your server's
+`upstream-base-url`) only a "poll request" with the message id, never the message; the phone then fetches the
+message from your server. Combined with the WebPush encryption the agents already use (RFC 8291; the agent encrypts
+whenever the endpoint has a public key), the relay sees only "new message" pings and the content stays end-to-end
+encrypted. This needs an iOS notification service extension in Tiphys that holds the keys and decrypts; it is not
+built yet. Don't register a keyless endpoint as a workaround: the agent would then send plain JSON through ntfy.
+
 ## Limitations
 
-- Android only; requires a UnifiedPush distributor (tested with ntfy).
+- Notifications while the app is closed: Android only; requires a UnifiedPush distributor (tested with ntfy). Other
+  platforms get notifications only while the app is open (see above).
+- The desktop app on Linux needs a notification daemon (D-Bus) to show them; without one the app works without
+  notifications.
 - The ntfy token cannot be set from the app.
 - Filtering happens on the phone: disabled notifications are still sent and logged by the agent.
 - Encrypted pushes are sent with a 24-hour WebPush TTL; how long ntfy holds messages for an offline phone also

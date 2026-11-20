@@ -11,6 +11,30 @@ extension is `0.1.0`.
 
 ### Added
 
+**App: setup, health, updates, more platforms**
+
+- Setup wizard on first launch without a host (and *Settings › Set up a computer*): Tailscale requirement, the
+  one-command install per OS (Linux, macOS, Windows, Docker server; copy/share), pairing by QR scan or pasted code,
+  the agent's health check, and which features are on with the risky ones explained. Skippable; never shown again
+  once a host exists.
+- Health check screen (System › Agent › Health check, `GET /v1/doctor`): problems, warnings and OK grouped, copyable
+  fix commands, run again; agents without the route are asked to update.
+- Agent update from the phone: "Update available x.y.z" when `GET /v1/update` reports one. Managed installs update
+  after confirmation and the app lock (`POST /v1/update/apply`), then the app waits for the new version on
+  `/v1/health` (timeout links to the health check); other installs get the manual steps. A gentle banner when the
+  agent is older or newer than the app expects. The agent settings show the `update` feature on agents that have it.
+- Notifications without ntfy: while the app is open, hosts that push does not reach are polled every 20 s for new
+  events and shown as local notifications through the push code (same texts, filters, ids); no duplicates for hosts
+  push covers.
+- Desktop backends: the app reads `GET /v1/desktop/capabilities` (older agents: Hyprland, everything) and hides what
+  the backend lacks (thumbnails, workspaces, window actions, live screen, H.264, mobile view, Sunshine, Claude's PC
+  tools, clipboard sync, screen off/on) with a "Not available on <backend>" note; friendly texts for
+  `agent.desktop.unsupported`, `.permission` (names the macOS permission), `.helperMissing`, `.helperFailed`.
+- Pairing by pasting the QR text or the "address + token" lines `tiphys-agent pair` prints (all platforms).
+- iOS and desktop (Linux, Windows, macOS) targets of the app. Android-only plugins are skipped at run time on other
+  platforms; desktop windows have a 360×560 minimum size and store their data in the app support folder. CI jobs
+  build them.
+
 **Easy install**
 
 - One-command install: `install.sh` (Linux, macOS) and `install.ps1` (Windows). Downloads the release bundle for the

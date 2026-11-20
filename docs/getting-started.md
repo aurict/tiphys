@@ -100,6 +100,13 @@ the debug key. On a desktop you are using, wrap the build in `tools/limited.sh`.
 
 ## 4. Pair the phone
 
+**Setup wizard:** on first launch without a host, the app opens a wizard that walks through all of this: the
+Tailscale requirement, the install command for the computer's OS (copy or share it), scanning the installer's QR
+code (or pasting its text: the address and `tph_` token printed below the QR), the agent's health check with
+copyable fixes, and which features are on and what the risky ones would allow. It can be skipped at every step and
+is also under *Settings › Set up a computer*. Desktop builds (and iOS) can always paste the code instead of
+scanning.
+
 The installer already showed a QR code. Another phone, or a checkout install:
 
 ```sh
