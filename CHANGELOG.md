@@ -9,6 +9,32 @@ extension is `0.1.0`.
 
 ## [Unreleased]
 
+### Added
+
+**Game mode** (see [docs/features/game-mode.md](docs/features/game-mode.md))
+
+- A laptop next to the PC becomes an ambient second screen while you play ETS2: the Velour song (cover colours,
+  output-audio spectrum, synced lyrics, the next two songs), the ETS2 cockpit, a live map and notices for fines,
+  tolls, ferries, deliveries, low fuel and rest stops. Drive, Music and Idle scenes (auto or pinned), brightness,
+  animation intensity and dimming settings.
+- Agent feature `gamemode` (Linux, risky: `init --detect` never turns it on). Display side: `GET`/`PUT
+  /v1/gamemode`, `POST /v1/gamemode/start|stop`; a Firefox kiosk in one transient `systemd-run --user` unit with
+  `systemd-inhibit`, temporary Hyprland window rules and the backlight via `brightnessctl`, all undone on stop
+  (phone, Esc held 1 s on the laptop, Firefox closed, agent restart). Source side: `WS /v1/gamemode/feed` for a new
+  `gamemode` service-token scope (Velour, `pw-record` spectrum, ETS2 telemetry from the plugin's shared memory,
+  Flatpak Steam included), running only while subscribed.
+- ETS2 telemetry plugin installer (truckermudgeon/scs-sdk-plugin v1.12.1, pinned SHA-256): from the app,
+  `POST /v1/gamemode/plugin` or `tiphys-agent gamemode install-plugin|remove-plugin`; doctor checks for both sides.
+- App: Game mode screen, home card and a setup wizard that creates the source token and hands it to the display
+  agent (never stored on the phone).
+- Map: the page renders PMTiles you build once from your own game files with truckermudgeon/maps (a separate GPL-3
+  tool, not part of Tiphys) and copy to `~/.local/share/tiphys/gamemode/map/`; without them a built-in radar.
+- Privacy: no drive history, telemetry or music is stored; the event log gets only started/stopped; the page's
+  display token is memory-only and dies on stop.
+- Packaging: release bundles (`tools/release.sh`, so `install.sh`, `install.ps1` and the packages) and
+  `tools/deploy-agent.sh` ship the `display/` kiosk page (with `vendor/` and `fonts/`) next to `dist/`;
+  `tools/test-install.sh` checks it is installed.
+
 ## [0.4.0] - 2026-11-20
 
 ### Added

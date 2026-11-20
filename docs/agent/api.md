@@ -1229,8 +1229,12 @@ ETS2: [truckermudgeon/scs-sdk-plugin](https://github.com/truckermudgeon/scs-sdk-
 `<game>/bin/linux_x64/plugins/`. The game directory comes from Steam's `libraryfolders.vdf` (native, `~/.steam`,
 Flatpak and Snap Steam). The plugin's shared memory `/SCSTelemetry` (layout revision 12) is read from
 `/dev/shm/SCSTelemetry`, or for Flatpak Steam from `/proc/<eurotrucks2 pid>/root/dev/shm/SCSTelemetry`. Another
-revision → `telemetry: "unsupported"` and only `state: "none"` truck messages. States: no game process → `none`; SDK
-inactive or paused before a profile is loaded → `menu`; paused → `paused`; else `driving`.
+revision → `telemetry: "unsupported"` and only `state: "none"` truck messages. States: no game process → `none`
+(`reason: "noGame"`); game running without the shared memory (plugin missing or not loaded) → `none` (`reason:
+"noPlugin"`); another layout revision → `none` (`reason: "unsupported"`); SDK inactive or paused before a profile is
+loaded → `menu`; paused → `paused`; else `driving`. `timeScale` is the game's time compression from the telemetry
+(game seconds per real second; 19 on roads, lower on ferries and trains), left out when the game reports none (the
+page then assumes 19).
 
 Messages (JSON text, `type` first, SI units unless named; binary frames: byte 0 = `0x01`, bytes 1–24 = bands 0–255):
 
@@ -1242,8 +1246,9 @@ Messages (JSON text, `type` first, SI units unless named; binary frames: byte 0 
 {type:"lyrics", artId|null, title, kind:"synced"|"plain"|"none", lines:[{t, text}]}
 {type:"truck", state:"none"|"menu"|"paused"|"driving", at, speed, speedLimit|null, rpm, rpmMax, gear, gears, fuel, fuelCap,
   fuelRange, cruise, parkingBrake, lowBeam, highBeam, beacon, blinkerL, blinkerR, wear, cargoDamage|null, x, z, heading,
-  gameTime, restMinutes|null, job:{from, to, cargo, income, currency, deadlineGameTime|null}|null, nav:{distance, time}|null}
-  // state "none" → only {type, state, at}
+  gameTime, timeScale?, restMinutes|null, job:{from, to, cargo, income, currency, deadlineGameTime|null}|null,
+  nav:{distance, time}|null}
+  // state "none" → only {type, state, reason, at}, reason: "noGame"|"noPlugin"|"unsupported"
 {type:"event", kind:"fine"|"ferry"|"train"|"toll"|"delivered"|"cancelled"|"fuelLow"|"rest", amount?, currency?, detail?}
 ```
 
