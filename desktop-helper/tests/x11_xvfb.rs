@@ -36,8 +36,9 @@ fn start_xvfb() -> Option<Xvfb> {
         return None;
     }
     let base = 140 + std::process::id() % 300;
-    let n = (base..base + 200)
-        .find(|n| !Path::new(&format!("/tmp/.X11-unix/X{n}")).exists() && !Path::new(&format!("/tmp/.X{n}-lock")).exists())?;
+    let n = (base..base + 200).find(|n| {
+        !Path::new(&format!("/tmp/.X11-unix/X{n}")).exists() && !Path::new(&format!("/tmp/.X{n}-lock")).exists()
+    })?;
     let display = format!(":{n}");
     let child = Command::new("Xvfb")
         .args([&display, "-screen", "0", "1280x800x24", "-nolisten", "tcp", "-noreset"])
@@ -59,13 +60,22 @@ fn atom(c: &RustConnection, name: &str) -> u32 {
     c.intern_atom(false, name.as_bytes()).unwrap().reply().unwrap().atom
 }
 
-fn make_window(c: &RustConnection, root: u32, x: i16, y: i16, w: u16, h: u16, color: u32, title: &str, class: &[u8]) -> u32 {
+/// A mapped window at (x, y, w, h) with a solid background, a title and a WM_CLASS.
+fn make_window(
+    c: &RustConnection,
+    root: u32,
+    (x, y, w, h): (i16, i16, u16, u16),
+    color: u32,
+    title: &str,
+    class: &[u8],
+) -> u32 {
     let win = c.generate_id().unwrap();
     let aux = CreateWindowAux::new().background_pixel(color).event_mask(
         EventMask::KEY_PRESS | EventMask::KEY_RELEASE | EventMask::BUTTON_PRESS | EventMask::BUTTON_RELEASE,
     );
     c.create_window(0, win, root, x, y, w, h, 0, WindowClass::INPUT_OUTPUT, 0, &aux).unwrap();
-    c.change_property8(PropMode::REPLACE, win, atom(c, "_NET_WM_NAME"), atom(c, "UTF8_STRING"), title.as_bytes()).unwrap();
+    c.change_property8(PropMode::REPLACE, win, atom(c, "_NET_WM_NAME"), atom(c, "UTF8_STRING"), title.as_bytes())
+        .unwrap();
     c.change_property8(PropMode::REPLACE, win, AtomEnum::WM_CLASS, AtomEnum::STRING, class).unwrap();
     c.change_property32(PropMode::REPLACE, win, atom(c, "_NET_WM_PID"), AtomEnum::CARDINAL, &[4242]).unwrap();
     c.change_property32(PropMode::REPLACE, win, atom(c, "_NET_WM_DESKTOP"), AtomEnum::CARDINAL, &[0]).unwrap();
@@ -131,16 +141,21 @@ fn x11_backend_in_xvfb() {
     let root = c.setup().roots[screen].root;
 
     // Two client windows and the EWMH root properties a window manager would publish.
-    let w1 = make_window(&c, root, 0, 0, 200, 100, 0xff0000, "Alpha", b"alpha\0Alpha\0");
-    let w2 = make_window(&c, root, 300, 200, 400, 300, 0x00ff00, "Beta ğ", b"beta\0Beta\0");
+    let w1 = make_window(&c, root, (0, 0, 200, 100), 0xff0000, "Alpha", b"alpha\0Alpha\0");
+    let w2 = make_window(&c, root, (300, 200, 400, 300), 0x00ff00, "Beta ğ", b"beta\0Beta\0");
     let supported: Vec<u32> =
-        ["_NET_ACTIVE_WINDOW", "_NET_CLOSE_WINDOW", "_NET_NUMBER_OF_DESKTOPS", "_NET_CLIENT_LIST"].iter().map(|a| atom(&c, a)).collect();
+        ["_NET_ACTIVE_WINDOW", "_NET_CLOSE_WINDOW", "_NET_NUMBER_OF_DESKTOPS", "_NET_CLIENT_LIST"]
+            .iter()
+            .map(|a| atom(&c, a))
+            .collect();
     c.change_property32(PropMode::REPLACE, root, atom(&c, "_NET_SUPPORTED"), AtomEnum::ATOM, &supported).unwrap();
     c.change_property32(PropMode::REPLACE, root, atom(&c, "_NET_CLIENT_LIST"), AtomEnum::WINDOW, &[w1, w2]).unwrap();
     c.change_property32(PropMode::REPLACE, root, atom(&c, "_NET_ACTIVE_WINDOW"), AtomEnum::WINDOW, &[w2]).unwrap();
-    c.change_property32(PropMode::REPLACE, root, atom(&c, "_NET_NUMBER_OF_DESKTOPS"), AtomEnum::CARDINAL, &[2]).unwrap();
+    c.change_property32(PropMode::REPLACE, root, atom(&c, "_NET_NUMBER_OF_DESKTOPS"), AtomEnum::CARDINAL, &[2])
+        .unwrap();
     c.change_property32(PropMode::REPLACE, root, atom(&c, "_NET_CURRENT_DESKTOP"), AtomEnum::CARDINAL, &[0]).unwrap();
-    c.change_property8(PropMode::REPLACE, root, atom(&c, "_NET_DESKTOP_NAMES"), atom(&c, "UTF8_STRING"), b"one\0two\0").unwrap();
+    c.change_property8(PropMode::REPLACE, root, atom(&c, "_NET_DESKTOP_NAMES"), atom(&c, "UTF8_STRING"), b"one\0two\0")
+        .unwrap();
     c.set_input_focus(InputFocus::PARENT, w2, x11rb::CURRENT_TIME).unwrap();
     // Become the "window manager": client messages to the root come to us.
     c.change_window_attributes(root, &ChangeWindowAttributesAux::new().event_mask(EventMask::SUBSTRUCTURE_REDIRECT))
@@ -153,7 +168,19 @@ fn x11_backend_in_xvfb() {
     let env = [("DISPLAY", xvfb.display.as_str()), ("TIPHYS_DESKTOP_BACKEND", "x11")];
     let mut h = Helper::start(&env);
     assert_eq!(h.hello["backend"], json!("x11"));
-    for cap in ["windows", "windowActions", "workspaces", "monitors", "screenshot", "stream", "input", "text", "apps", "launch", "clipboard"] {
+    for cap in [
+        "windows",
+        "windowActions",
+        "workspaces",
+        "monitors",
+        "screenshot",
+        "stream",
+        "input",
+        "text",
+        "apps",
+        "launch",
+        "clipboard",
+    ] {
         assert!(h.has(cap), "capability {cap} in {:?}", h.capabilities());
     }
     if let Some(kib) = h.rss_kib() {
@@ -172,7 +199,10 @@ fn x11_backend_in_xvfb() {
     assert_eq!(wins[0]["pid"], json!(4242));
     assert_eq!(wins[0]["focused"], json!(true));
     assert_eq!(wins[0]["workspace"], json!("0"));
-    assert_eq!((wins[0]["x"].clone(), wins[0]["y"].clone(), wins[0]["w"].clone(), wins[0]["h"].clone()), (json!(300), json!(200), json!(400), json!(300)));
+    assert_eq!(
+        (wins[0]["x"].clone(), wins[0]["y"].clone(), wins[0]["w"].clone(), wins[0]["h"].clone()),
+        (json!(300), json!(200), json!(400), json!(300))
+    );
     assert_eq!(wins[1]["id"], json!(id1));
     assert_eq!(h.ok(json!({"op": "focused"}))["id"], json!(id2));
 
@@ -184,7 +214,10 @@ fn x11_backend_in_xvfb() {
 
     // workspaces
     let ws = h.ok(json!({"op": "workspaces"}));
-    assert_eq!(ws, json!([{"id": "0", "name": "one", "focused": true, "monitor": null}, {"id": "1", "name": "two", "focused": false, "monitor": null}]));
+    assert_eq!(
+        ws,
+        json!([{"id": "0", "name": "one", "focused": true, "monitor": null}, {"id": "1", "name": "two", "focused": false, "monitor": null}])
+    );
 
     // window and workspace actions arrive as EWMH client messages
     h.ok(json!({"op": "window", "window": id1, "action": "focus"}));
@@ -228,13 +261,20 @@ fn x11_backend_in_xvfb() {
     h.ok(json!({"op": "button", "button": "right", "down": false}));
     h.ok(json!({"op": "scroll", "dy": 2, "dx": -1}));
     let evs = events(&c, Duration::from_millis(300));
-    let presses: Vec<u8> = evs.iter().filter_map(|e| if let Event::ButtonPress(b) = e { (b.event == w2).then_some(b.detail) } else { None }).collect();
+    let presses: Vec<u8> = evs
+        .iter()
+        .filter_map(|e| if let Event::ButtonPress(b) = e { (b.event == w2).then_some(b.detail) } else { None })
+        .collect();
     let releases = evs.iter().filter(|e| matches!(e, Event::ButtonRelease(_))).count();
     assert_eq!(presses, vec![1, 1, 3, 5, 5, 6], "{evs:?}");
     assert_eq!(releases, 6);
 
     // keys and text go to the focused window
-    let map = c.get_keyboard_mapping(c.setup().min_keycode, c.setup().max_keycode - c.setup().min_keycode + 1).unwrap().reply().unwrap();
+    let map = c
+        .get_keyboard_mapping(c.setup().min_keycode, c.setup().max_keycode - c.setup().min_keycode + 1)
+        .unwrap()
+        .reply()
+        .unwrap();
     let per = map.keysyms_per_keycode as usize;
     let sym_of = |code: u8, shift: bool| map.keysyms[(code - c.setup().min_keycode) as usize * per + shift as usize];
     let is_mod = |s: u32| (0xffe1..=0xffee).contains(&s);
@@ -258,7 +298,11 @@ fn x11_backend_in_xvfb() {
     h.ok(json!({"op": "text", "text": "ğ"}));
     let evs = events(&c, Duration::from_millis(300));
     assert_eq!(evs.iter().filter(|e| matches!(e, Event::KeyPress(_))).count(), 1, "{evs:?}");
-    let after = c.get_keyboard_mapping(c.setup().min_keycode, c.setup().max_keycode - c.setup().min_keycode + 1).unwrap().reply().unwrap();
+    let after = c
+        .get_keyboard_mapping(c.setup().min_keycode, c.setup().max_keycode - c.setup().min_keycode + 1)
+        .unwrap()
+        .reply()
+        .unwrap();
     assert_eq!(after.keysyms, map.keysyms, "keymap restored");
     assert_eq!(h.err(json!({"op": "key", "keys": ["a"]})), "badRequest");
 
@@ -319,7 +363,8 @@ fn x11_backend_in_xvfb() {
         assert_eq!((info.width, info.height), (100, 50));
         assert!(px.len() >= 3);
     }
-    let code = Command::new(BIN).args(["stream", "--monitor", "nope"]).envs(env).stdin(Stdio::null()).status().unwrap().code();
+    let code =
+        Command::new(BIN).args(["stream", "--monitor", "nope"]).envs(env).stdin(Stdio::null()).status().unwrap().code();
     assert_eq!(code, Some(4));
 
     assert_eq!(h.close().code(), Some(0));

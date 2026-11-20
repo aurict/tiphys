@@ -88,7 +88,11 @@ impl Sway {
     }
 
     fn known_window(&self, id: u64) -> Res<u64> {
-        if self.tree_windows()?.iter().any(|w| w.id == window_id(id)) { Ok(id) } else { Err(Error::not_found("no such window")) }
+        if self.tree_windows()?.iter().any(|w| w.id == window_id(id)) {
+            Ok(id)
+        } else {
+            Err(Error::not_found("no such window"))
+        }
     }
 
     fn need_wtype(&self) -> Res<()> {
@@ -148,7 +152,8 @@ pub fn parse_tree(root: &Value) -> Vec<Window> {
             });
             return;
         }
-        let order: Vec<u64> = node["focus"].as_array().map(|f| f.iter().filter_map(Value::as_u64).collect()).unwrap_or_default();
+        let order: Vec<u64> =
+            node["focus"].as_array().map(|f| f.iter().filter_map(Value::as_u64).collect()).unwrap_or_default();
         let mut sorted = children;
         sorted.sort_by_key(|c| {
             let id = c["id"].as_u64().unwrap_or(0);
@@ -171,7 +176,16 @@ pub fn parse_outputs(v: &Value) -> Vec<Monitor> {
         .map(|o| {
             let (x, y, w, h) = rect_of(o);
             let name = o["name"].as_str().unwrap_or("").to_string();
-            Monitor { id: name.clone(), name, x, y, w, h, scale: o["scale"].as_f64().unwrap_or(1.0), primary: o["focused"].as_bool().unwrap_or(false) }
+            Monitor {
+                id: name.clone(),
+                name,
+                x,
+                y,
+                w,
+                h,
+                scale: o["scale"].as_f64().unwrap_or(1.0),
+                primary: o["focused"].as_bool().unwrap_or(false),
+            }
         })
         .collect()
 }
@@ -397,7 +411,16 @@ mod tests {
         ]);
         assert_eq!(
             parse_outputs(&outs),
-            vec![Monitor { id: "DP-1".into(), name: "DP-1".into(), x: 0, y: 0, w: 2560, h: 1440, scale: 1.5, primary: true }]
+            vec![Monitor {
+                id: "DP-1".into(),
+                name: "DP-1".into(),
+                x: 0,
+                y: 0,
+                w: 2560,
+                h: 1440,
+                scale: 1.5,
+                primary: true
+            }]
         );
         let wss = json!([{"num": 1, "name": "1: web", "focused": true, "output": "DP-1"}]);
         assert_eq!(

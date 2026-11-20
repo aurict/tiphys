@@ -15,6 +15,7 @@ use crate::protocol::{
 pub mod linux;
 #[cfg(target_os = "macos")]
 pub mod macos;
+pub mod macos_parse;
 pub mod none;
 #[cfg(all(target_os = "linux", feature = "portal"))]
 pub mod portal;
@@ -178,7 +179,8 @@ pub fn target_rect(b: &dyn Backend, t: &Target) -> Res<Rect> {
     }
 }
 
-/// Monitor whose rectangle holds the point (or the nearest one's id when none does).
+/// Monitor whose rectangle holds the point.
+#[allow(dead_code)] // x11 only
 pub fn monitor_at(monitors: &[Monitor], x: f64, y: f64) -> Option<String> {
     monitors.iter().find(|m| m.rect().contains(x, y)).map(|m| m.id.clone())
 }
@@ -255,7 +257,16 @@ mod tests {
                 vec![]
             }
             fn monitors(&self) -> Res<Vec<Monitor>> {
-                let m = |id: &str, x, primary| Monitor { id: id.into(), name: id.into(), x, y: 0, w: 100, h: 50, scale: 1.0, primary };
+                let m = |id: &str, x, primary| Monitor {
+                    id: id.into(),
+                    name: id.into(),
+                    x,
+                    y: 0,
+                    w: 100,
+                    h: 50,
+                    scale: 1.0,
+                    primary,
+                };
                 Ok(vec![m("A", 0, false), m("B", 100, true)])
             }
         }

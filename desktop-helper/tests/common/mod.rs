@@ -127,7 +127,9 @@ impl Helper {
     /// Resident memory of the helper in KiB (Linux).
     pub fn rss_kib(&self) -> Option<u64> {
         let s = std::fs::read_to_string(format!("/proc/{}/status", self.child.id())).ok()?;
-        s.lines().find_map(|l| l.strip_prefix("VmRSS:")).and_then(|v| v.trim().trim_end_matches(" kB").trim().parse().ok())
+        s.lines()
+            .find_map(|l| l.strip_prefix("VmRSS:"))
+            .and_then(|v| v.trim().trim_end_matches(" kB").trim().parse().ok())
     }
 
     /// Closes stdin and waits for the exit status.

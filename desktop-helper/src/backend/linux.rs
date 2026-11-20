@@ -4,7 +4,7 @@
 #![allow(dead_code)] // not every backend uses every piece
 
 use crate::protocol::{Error, Output, Res, Volume};
-use crate::util::{run, run_ok, which, RUN_TIMEOUT};
+use crate::util::{RUN_TIMEOUT, run, run_ok, which};
 
 const SINK: &str = "@DEFAULT_AUDIO_SINK@";
 

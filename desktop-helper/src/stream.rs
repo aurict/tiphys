@@ -36,7 +36,11 @@ pub fn parse_args(args: &[String]) -> Result<Opts, String> {
             "--monitor" => monitor = Some(val()?).filter(|m| !m.is_empty() && m.len() <= 512),
             "--region" => {
                 let v = val()?;
-                let p: Vec<i32> = v.split(',').map(|s| s.trim().parse::<i32>()).collect::<Result<_, _>>().map_err(|_| "bad --region")?;
+                let p: Vec<i32> = v
+                    .split(',')
+                    .map(|s| s.trim().parse::<i32>())
+                    .collect::<Result<_, _>>()
+                    .map_err(|_| "bad --region")?;
                 match p[..] {
                     [x, y, w, h] if w > 0 && h > 0 => region = Some(Rect { x, y, w, h }),
                     _ => return Err("--region is x,y,w,h with a positive size".into()),

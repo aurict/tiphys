@@ -169,10 +169,10 @@ impl Key {
     /// Windows virtual-key code and whether it needs KEYEVENTF_EXTENDEDKEY.
     pub fn vk(self) -> (u16, bool) {
         match self {
-            Key::Ctrl => (0xa2, false), // VK_LCONTROL
+            Key::Ctrl => (0xa2, false),  // VK_LCONTROL
             Key::Shift => (0xa0, false), // VK_LSHIFT
-            Key::Alt => (0xa4, false),  // VK_LMENU
-            Key::Super => (0x5b, true), // VK_LWIN
+            Key::Alt => (0xa4, false),   // VK_LMENU
+            Key::Super => (0x5b, true),  // VK_LWIN
             Key::Enter => (0x0d, false),
             Key::Escape => (0x1b, false),
             Key::Tab => (0x09, false),
@@ -263,9 +263,32 @@ mod tests {
     use super::*;
 
     const ALL: [&str; 26] = [
-        "ctrl", "shift", "alt", "super", "enter", "escape", "tab", "backspace", "delete", "insert", "home", "end",
-        "pageup", "pagedown", "up", "down", "left", "right", "space", "printscreen", "volumeup", "volumedown", "mute",
-        "playpause", "next", "previous",
+        "ctrl",
+        "shift",
+        "alt",
+        "super",
+        "enter",
+        "escape",
+        "tab",
+        "backspace",
+        "delete",
+        "insert",
+        "home",
+        "end",
+        "pageup",
+        "pagedown",
+        "up",
+        "down",
+        "left",
+        "right",
+        "space",
+        "printscreen",
+        "volumeup",
+        "volumedown",
+        "mute",
+        "playpause",
+        "next",
+        "previous",
     ];
 
     #[test]

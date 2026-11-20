@@ -156,8 +156,10 @@ impl Portal {
         let sc = proxy(&self.conn, DEST, PATH, SC)?;
         let session_token = self.token();
         let created = self.request(|t| {
-            let opts: HashMap<&str, Value> =
-                HashMap::from([("handle_token", Value::from(t)), ("session_handle_token", Value::from(session_token.as_str()))]);
+            let opts: HashMap<&str, Value> = HashMap::from([
+                ("handle_token", Value::from(t)),
+                ("session_handle_token", Value::from(session_token.as_str())),
+            ]);
             rd.call_method("CreateSession", &(opts,)).map(|_| ())
         })?;
         let handle: String = created
@@ -165,9 +167,11 @@ impl Portal {
             .and_then(|v| String::try_from(v.clone()).ok())
             .ok_or_else(|| dbus_err("no session handle"))?;
         let handle = OwnedObjectPath::try_from(handle).map_err(dbus_err)?;
-        let restore = Self::restore_token_path().and_then(|p| std::fs::read_to_string(p).ok()).filter(|t| !t.trim().is_empty());
+        let restore =
+            Self::restore_token_path().and_then(|p| std::fs::read_to_string(p).ok()).filter(|t| !t.trim().is_empty());
         self.request(|t| {
-            let mut opts: HashMap<&str, Value> = HashMap::from([("handle_token", Value::from(t)), ("types", Value::from(3u32))]);
+            let mut opts: HashMap<&str, Value> =
+                HashMap::from([("handle_token", Value::from(t)), ("types", Value::from(3u32))]);
             if self.rd_version.unwrap_or(1) >= 2 {
                 opts.insert("persist_mode", Value::from(2u32));
                 if let Some(r) = &restore {
@@ -179,8 +183,11 @@ impl Portal {
         // Monitor streams give absolute pointer coordinates; without them only relative motion would work.
         let with_streams = self
             .request(|t| {
-                let opts: HashMap<&str, Value> =
-                    HashMap::from([("handle_token", Value::from(t)), ("types", Value::from(1u32)), ("multiple", Value::from(true))]);
+                let opts: HashMap<&str, Value> = HashMap::from([
+                    ("handle_token", Value::from(t)),
+                    ("types", Value::from(1u32)),
+                    ("multiple", Value::from(true)),
+                ]);
                 sc.call_method("SelectSources", &(&handle, opts)).map(|_| ())
             })
             .is_ok();
@@ -191,7 +198,8 @@ impl Portal {
         if let Some(t) = started.get("restore_token").and_then(|v| String::try_from(v.clone()).ok()) {
             Self::save_restore_token(&t);
         }
-        let streams = if with_streams { started.get("streams").map(parse_streams).unwrap_or_default() } else { Vec::new() };
+        let streams =
+            if with_streams { started.get("streams").map(parse_streams).unwrap_or_default() } else { Vec::new() };
         Ok(Session { handle, streams })
     }
 
@@ -225,10 +233,12 @@ impl Portal {
         }
         let shot = proxy(&self.conn, DEST, PATH, SHOT)?;
         let res = self.request(|t| {
-            let opts: HashMap<&str, Value> = HashMap::from([("handle_token", Value::from(t)), ("interactive", Value::from(false))]);
+            let opts: HashMap<&str, Value> =
+                HashMap::from([("handle_token", Value::from(t)), ("interactive", Value::from(false))]);
             shot.call_method("Screenshot", &("", opts)).map(|_| ())
         })?;
-        let uri: String = res.get("uri").and_then(|v| String::try_from(v.clone()).ok()).ok_or_else(|| dbus_err("no uri"))?;
+        let uri: String =
+            res.get("uri").and_then(|v| String::try_from(v.clone()).ok()).ok_or_else(|| dbus_err("no uri"))?;
         let path = file_uri_path(&uri).ok_or_else(|| dbus_err("unexpected screenshot uri"))?;
         let bytes = std::fs::read(&path).map_err(|e| Error::failed(format!("screenshot file: {e}")));
         // The file was made for this request only; don't let a stream fill the Pictures folder.
@@ -419,11 +429,12 @@ impl Backend for Portal {
 
     fn capture(&self, r: Rect) -> Res<Frame> {
         let shot = self.screenshot_png()?;
-        let desk = self
-            .monitors()
-            .ok()
-            .and_then(|m| Rect::union(m.iter().map(Monitor::rect)))
-            .unwrap_or(Rect { x: 0, y: 0, w: shot.width as i32, h: shot.height as i32 });
+        let desk = self.monitors().ok().and_then(|m| Rect::union(m.iter().map(Monitor::rect))).unwrap_or(Rect {
+            x: 0,
+            y: 0,
+            w: shot.width as i32,
+            h: shot.height as i32,
+        });
         crop(&shot, desk, r)
     }
 
@@ -432,7 +443,8 @@ impl Backend for Portal {
             let Some((node, r)) = s.streams.iter().find(|(_, r)| r.contains(x, y)).or(s.streams.first()) else {
                 return Err(zbus::Error::Failure("no monitor stream for absolute pointer motion".into()));
             };
-            let (lx, ly) = ((x - r.x as f64).clamp(0.0, r.w as f64 - 1.0), (y - r.y as f64).clamp(0.0, r.h as f64 - 1.0));
+            let (lx, ly) =
+                ((x - r.x as f64).clamp(0.0, r.w as f64 - 1.0), (y - r.y as f64).clamp(0.0, r.h as f64 - 1.0));
             rd.call_method("NotifyPointerMotionAbsolute", &(&s.handle, empty(), *node, lx, ly)).map(|_| ())
         })
     }
@@ -443,7 +455,9 @@ impl Backend for Portal {
             Button::Right => BTN_RIGHT,
             Button::Middle => BTN_MIDDLE,
         };
-        self.with_session(|rd, s| rd.call_method("NotifyPointerButton", &(&s.handle, empty(), b, down as u32)).map(|_| ()))
+        self.with_session(|rd, s| {
+            rd.call_method("NotifyPointerButton", &(&s.handle, empty(), b, down as u32)).map(|_| ())
+        })
     }
 
     fn scroll(&self, dx: i32, dy: i32) -> Res<()> {

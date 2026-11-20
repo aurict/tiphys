@@ -3,10 +3,10 @@
 use crate::protocol::{Error, Res};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[allow(dead_code)] // each backend produces one or two of these
 pub enum PixelFormat {
     /// 4 bytes B, G, R, X/A (X11 ZPixmap on little-endian, GDI, CoreGraphics).
     Bgrx,
-    #[allow(dead_code)] // portal (PNG) only
     Rgba,
     Rgb,
 }
@@ -32,7 +32,11 @@ pub struct Frame {
 
 impl Frame {
     pub fn new(width: u32, height: u32, stride: usize, format: PixelFormat, data: Vec<u8>) -> Res<Self> {
-        if width == 0 || height == 0 || stride < width as usize * format.bytes() || data.len() < stride * height as usize {
+        if width == 0
+            || height == 0
+            || stride < width as usize * format.bytes()
+            || data.len() < stride * height as usize
+        {
             return Err(Error::failed("captured image has an unexpected size"));
         }
         Ok(Self { width, height, stride, format, data })
@@ -296,13 +300,14 @@ mod tests {
         let mut buf = vec![0; r.output_buffer_size().unwrap()];
         r.next_frame(&mut buf).unwrap();
         assert_eq!(buf, rgb.data);
-        #[cfg(feature = "portal")]
+        #[cfg(all(target_os = "linux", feature = "portal"))]
         {
             let back = decode_png(&bytes).unwrap();
             assert_eq!(to_rgb(&back, None), rgb);
         }
     }
 
+    #[cfg(target_os = "linux")]
     #[test]
     fn ppm() {
         let mut bytes = b"P6\n# grim\n2 1\n255\n".to_vec();

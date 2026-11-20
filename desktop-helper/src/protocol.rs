@@ -164,6 +164,7 @@ impl Rect {
         let y1 = (self.y + self.h).min(o.y + o.h);
         (x1 > x0 && y1 > y0).then_some(Rect { x: x0, y: y0, w: x1 - x0, h: y1 - y0 })
     }
+    #[allow(dead_code)] // x11 and portal only
     pub fn contains(&self, x: f64, y: f64) -> bool {
         x >= self.x as f64 && y >= self.y as f64 && x < (self.x + self.w) as f64 && y < (self.y + self.h) as f64
     }
@@ -231,10 +232,18 @@ pub enum ImageFormat {
 enum RawOp {
     Windows,
     // Target ids are named after their kind: a field `id` would collide with the request id.
-    Window { window: String, action: WindowAction },
+    Window {
+        window: String,
+        action: WindowAction,
+    },
     Workspaces,
-    Workspace { workspace: String },
-    MoveToWorkspace { window: String, workspace: String },
+    Workspace {
+        workspace: String,
+    },
+    MoveToWorkspace {
+        window: String,
+        workspace: String,
+    },
     Monitors,
     Screenshot {
         monitor: Option<String>,
@@ -244,24 +253,60 @@ enum RawOp {
         format: ImageFormat,
         quality: Option<u8>,
     },
-    Pointer { x: f64, y: f64 },
-    Click { button: Button, x: Option<f64>, y: Option<f64>, #[serde(default)] double: bool },
-    Button { button: Button, down: bool },
-    Scroll { #[serde(default)] dx: i32, #[serde(default)] dy: i32 },
-    Key { keys: Vec<String> },
-    Text { text: String },
-    Apps { lang: Option<String> },
-    Launch { app: String },
-    Dpms { on: bool },
+    Pointer {
+        x: f64,
+        y: f64,
+    },
+    Click {
+        button: Button,
+        x: Option<f64>,
+        y: Option<f64>,
+        #[serde(default)]
+        double: bool,
+    },
+    Button {
+        button: Button,
+        down: bool,
+    },
+    Scroll {
+        #[serde(default)]
+        dx: i32,
+        #[serde(default)]
+        dy: i32,
+    },
+    Key {
+        keys: Vec<String>,
+    },
+    Text {
+        text: String,
+    },
+    Apps {
+        lang: Option<String>,
+    },
+    Launch {
+        app: String,
+    },
+    Dpms {
+        on: bool,
+    },
     ClipboardGet,
-    ClipboardSet { text: String },
+    ClipboardSet {
+        text: String,
+    },
     Volume,
-    SetVolume { percent: Option<u32>, muted: Option<bool> },
+    SetVolume {
+        percent: Option<u32>,
+        muted: Option<bool>,
+    },
     Outputs,
-    SetOutput { output: String },
+    SetOutput {
+        output: String,
+    },
     Focused,
     Ping,
-    Subscribe { events: Vec<String> },
+    Subscribe {
+        events: Vec<String>,
+    },
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -307,7 +352,12 @@ impl Request {
     pub fn is_input(&self) -> bool {
         matches!(
             self,
-            Self::Pointer { .. } | Self::Click { .. } | Self::Button { .. } | Self::Scroll { .. } | Self::Key { .. } | Self::Text { .. }
+            Self::Pointer { .. }
+                | Self::Click { .. }
+                | Self::Button { .. }
+                | Self::Scroll { .. }
+                | Self::Key { .. }
+                | Self::Text { .. }
         )
     }
 }
@@ -415,7 +465,8 @@ fn validate(raw: RawOp) -> Res<Request> {
         RawOp::Apps { lang } => {
             let lang = lang.filter(|l| !l.is_empty());
             if let Some(l) = &lang
-                && (l.len() > 35 || !l.bytes().all(|b| b.is_ascii_alphanumeric() || b == b'_' || b == b'-' || b == b'@'))
+                && (l.len() > 35
+                    || !l.bytes().all(|b| b.is_ascii_alphanumeric() || b == b'_' || b == b'-' || b == b'@'))
             {
                 return Err(Error::bad("bad lang"));
             }
@@ -585,9 +636,15 @@ mod tests {
         let p = parse_line(r#"{"id":1,"op":"window","id":"0xa","action":"close"}"#);
         assert_eq!((p.id, p.request.unwrap_err().code), (Value::Null, Code::BadRequest));
         assert_eq!(req(r#"{"id":1,"op":"window","action":"close"}"#).unwrap_err().code, Code::BadRequest);
-        assert_eq!(req(r#"{"id":1,"op":"window","window":"0xa","action":"explode"}"#).unwrap_err().code, Code::BadRequest);
+        assert_eq!(
+            req(r#"{"id":1,"op":"window","window":"0xa","action":"explode"}"#).unwrap_err().code,
+            Code::BadRequest
+        );
         assert_eq!(req(r#"{"id":1,"op":"workspace","workspace":"2"}"#), Ok(Request::Workspace { id: "2".into() }));
-        assert_eq!(req(r#"{"id":1,"op":"launch","app":"firefox.desktop"}"#), Ok(Request::Launch { id: "firefox.desktop".into() }));
+        assert_eq!(
+            req(r#"{"id":1,"op":"launch","app":"firefox.desktop"}"#),
+            Ok(Request::Launch { id: "firefox.desktop".into() })
+        );
         assert_eq!(req(r#"{"id":1,"op":"set-output","output":"5"}"#), Ok(Request::SetOutput { id: "5".into() }));
         assert_eq!(req(r#"{"id":1,"op":"subscribe","events":["focus"]}"#), Ok(Request::SubscribeFocus));
         assert!(req(r#"{"id":1,"op":"subscribe","events":["title"]}"#).is_err());
@@ -672,11 +729,17 @@ mod tests {
 
     #[test]
     fn volume() {
-        assert_eq!(req(r#"{"id":1,"op":"set-volume","percent":150}"#), Ok(Request::SetVolume { percent: Some(150), muted: None }));
+        assert_eq!(
+            req(r#"{"id":1,"op":"set-volume","percent":150}"#),
+            Ok(Request::SetVolume { percent: Some(150), muted: None })
+        );
         assert!(req(r#"{"id":1,"op":"set-volume","percent":151}"#).is_err());
         assert!(req(r#"{"id":1,"op":"set-volume","percent":-1}"#).is_err());
         assert!(req(r#"{"id":1,"op":"set-volume"}"#).is_err());
-        assert_eq!(req(r#"{"id":1,"op":"set-volume","muted":true}"#), Ok(Request::SetVolume { percent: None, muted: Some(true) }));
+        assert_eq!(
+            req(r#"{"id":1,"op":"set-volume","muted":true}"#),
+            Ok(Request::SetVolume { percent: None, muted: Some(true) })
+        );
     }
 
     #[test]

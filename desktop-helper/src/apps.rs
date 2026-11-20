@@ -212,7 +212,12 @@ fn desktop_files(dirs: &[PathBuf]) -> Vec<(String, PathBuf)> {
 
 #[cfg(all(unix, not(target_os = "macos")))]
 fn current_desktops() -> Vec<String> {
-    std::env::var("XDG_CURRENT_DESKTOP").unwrap_or_default().split(':').filter(|s| !s.is_empty()).map(String::from).collect()
+    std::env::var("XDG_CURRENT_DESKTOP")
+        .unwrap_or_default()
+        .split(':')
+        .filter(|s| !s.is_empty())
+        .map(String::from)
+        .collect()
 }
 
 #[cfg(all(unix, not(target_os = "macos")))]
@@ -248,7 +253,8 @@ fn launch_impl(id: &str) -> Res<()> {
 
 #[cfg(all(unix, not(target_os = "macos")))]
 fn launch_in(dirs: &[PathBuf], id: &str, desktops: &[String]) -> Res<()> {
-    let (_, path) = desktop_files(dirs).into_iter().find(|(i, _)| i == id).ok_or_else(|| Error::not_found("no such app"))?;
+    let (_, path) =
+        desktop_files(dirs).into_iter().find(|(i, _)| i == id).ok_or_else(|| Error::not_found("no such app"))?;
     let e = read_entry(&path, None, desktops).ok_or_else(|| Error::not_found("no such app"))?;
     let argv = split_exec(&e.exec).ok_or_else(|| Error::failed("the app's Exec line can't be parsed"))?;
     crate::util::spawn_detached(argv[0].as_ref(), &argv[1..])
@@ -303,7 +309,10 @@ fn scan(_lang: Option<&str>) -> Vec<App> {
 
 #[cfg(windows)]
 fn launch_impl(id: &str) -> Res<()> {
-    let p = start_menu_links().into_iter().find(|p| p.to_string_lossy() == id).ok_or_else(|| Error::not_found("no such app"))?;
+    let p = start_menu_links()
+        .into_iter()
+        .find(|p| p.to_string_lossy() == id)
+        .ok_or_else(|| Error::not_found("no such app"))?;
     crate::backend::windows::shell_open(&p)
 }
 
@@ -406,7 +415,10 @@ mod tests {
         let v = |s: &str| split_exec(s).map(|a| a.into_iter().collect::<Vec<_>>());
         assert_eq!(v("firefox %u"), Some(vec!["firefox".into()]));
         assert_eq!(v("env FOO=1 app --x=%f"), Some(vec!["env".into(), "FOO=1".into(), "app".into(), "--x=".into()]));
-        assert_eq!(v(r#""/opt/My App/bin" --name "a \"b\"" 100%%"#), Some(vec!["/opt/My App/bin".into(), "--name".into(), "a \"b\"".into(), "100%".into()]));
+        assert_eq!(
+            v(r#""/opt/My App/bin" --name "a \"b\"" 100%%"#),
+            Some(vec!["/opt/My App/bin".into(), "--name".into(), "a \"b\"".into(), "100%".into()])
+        );
         assert_eq!(v(r#""unterminated"#), None);
         assert_eq!(v("   "), None);
         assert_eq!(v(r#""""#), Some(vec![String::new()]));
@@ -440,10 +452,14 @@ mod tests {
         fs::create_dir_all(&system).unwrap();
         fs::write(user.join("sub/t.desktop"), FIREFOX).unwrap();
         fs::write(system.join("sub-t.desktop"), FIREFOX.replace("Name=Firefox", "Name=Shadowed")).unwrap();
-        fs::write(system.join("hidden.desktop"), FIREFOX.replace("Type=Application", "Type=Application\nHidden=true")).unwrap();
+        fs::write(system.join("hidden.desktop"), FIREFOX.replace("Type=Application", "Type=Application\nHidden=true"))
+            .unwrap();
         let dirs = [user, system];
         let list = scan_dirs(&dirs, None, &[]);
-        assert_eq!(list, vec![App { id: "sub-t.desktop".into(), name: "Firefox".into(), icon: Some("firefox".into()) }]);
+        assert_eq!(
+            list,
+            vec![App { id: "sub-t.desktop".into(), name: "Firefox".into(), icon: Some("firefox".into()) }]
+        );
         assert_eq!(launch_in(&dirs, "nope.desktop", &[]).unwrap_err().code, crate::protocol::Code::NotFound);
         assert_eq!(launch_in(&dirs, "hidden.desktop", &[]).unwrap_err().code, crate::protocol::Code::NotFound);
         fs::remove_dir_all(&tmp).unwrap();

@@ -194,7 +194,8 @@ impl X11 {
         let g = self.conn.get_geometry(w).map_err(xerr)?.reply().map_err(xerr)?;
         let t = self.conn.translate_coordinates(w, self.root, 0, 0).map_err(xerr)?.reply().map_err(xerr)?;
         let state = self.prop32(w, self.atoms._NET_WM_STATE, AtomEnum::ATOM).unwrap_or_default();
-        let desktop = self.prop32(w, self.atoms._NET_WM_DESKTOP, AtomEnum::CARDINAL).unwrap_or_default().first().copied();
+        let desktop =
+            self.prop32(w, self.atoms._NET_WM_DESKTOP, AtomEnum::CARDINAL).unwrap_or_default().first().copied();
         let (x, y, ww, hh) = (t.dst_x as i32, t.dst_y as i32, g.width as i32, g.height as i32);
         Ok(Window {
             id: window_id(w as u64),
@@ -317,7 +318,10 @@ impl Backend for X11 {
     fn capabilities(&self) -> Vec<&'static str> {
         let mut c = vec![CAP_WINDOWS, CAP_WINDOW_ACTIONS];
         if self.supports_ewmh(self.atoms._NET_NUMBER_OF_DESKTOPS)
-            || !self.prop32(self.root, self.atoms._NET_NUMBER_OF_DESKTOPS, AtomEnum::CARDINAL).unwrap_or_default().is_empty()
+            || !self
+                .prop32(self.root, self.atoms._NET_NUMBER_OF_DESKTOPS, AtomEnum::CARDINAL)
+                .unwrap_or_default()
+                .is_empty()
         {
             c.push(CAP_WORKSPACES);
         }
@@ -385,9 +389,11 @@ impl Backend for X11 {
             }
             WindowAction::Minimize => self.wm_message(w, a.WM_CHANGE_STATE, [ICONIC_STATE, 0, 0, 0, 0]),
             // _NET_WM_STATE: action 2 = toggle, source 2.
-            WindowAction::Maximize => {
-                self.wm_message(w, a._NET_WM_STATE, [2, a._NET_WM_STATE_MAXIMIZED_VERT, a._NET_WM_STATE_MAXIMIZED_HORZ, 2, 0])
-            }
+            WindowAction::Maximize => self.wm_message(
+                w,
+                a._NET_WM_STATE,
+                [2, a._NET_WM_STATE_MAXIMIZED_VERT, a._NET_WM_STATE_MAXIMIZED_HORZ, 2, 0],
+            ),
             WindowAction::Fullscreen => self.wm_message(w, a._NET_WM_STATE, [2, a._NET_WM_STATE_FULLSCREEN, 0, 2, 0]),
             WindowAction::Float => Err(Error::unsupported("X11 window managers have no common floating toggle")),
         }
@@ -528,7 +534,9 @@ impl Backend for X11 {
         let map = self.keymap()?;
         let codes = keys
             .iter()
-            .map(|k| map.find(k.keysym()).map(|(c, _)| c).ok_or_else(|| Error::unsupported("the keymap has no such key")))
+            .map(|k| {
+                map.find(k.keysym()).map(|(c, _)| c).ok_or_else(|| Error::unsupported("the keymap has no such key"))
+            })
             .collect::<Res<Vec<u8>>>()?;
         for &c in &codes {
             self.fake(KEY_PRESS, c, 0, 0)?;
@@ -619,7 +627,11 @@ impl Backend for X11 {
 
 impl X11 {
     fn workspace_index(&self, id: &str) -> Res<u32> {
-        let n = self.prop32(self.root, self.atoms._NET_NUMBER_OF_DESKTOPS, AtomEnum::CARDINAL)?.first().copied().unwrap_or(0);
+        let n = self
+            .prop32(self.root, self.atoms._NET_NUMBER_OF_DESKTOPS, AtomEnum::CARDINAL)?
+            .first()
+            .copied()
+            .unwrap_or(0);
         id.parse::<u32>().ok().filter(|&i| i < n).ok_or_else(|| Error::not_found("no such workspace"))
     }
 }
