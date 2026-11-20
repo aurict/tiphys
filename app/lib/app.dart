@@ -156,7 +156,7 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(path: '/system/logs', builder: (c, s) => LogSearchScreen(initialPattern: s.uri.queryParameters['q'])),
       GoRoute(path: '/vault', builder: (c, s) => const VaultScreen()),
       GoRoute(path: '/system/media', builder: (c, s) => MediaScreen(hostId: s.uri.queryParameters['host'] ?? '')),
-      GoRoute(path: '/system/velour', builder: (c, s) => VelourScreen(hostId: s.uri.queryParameters['host'] ?? '')),
+      GoRoute(path: '/system/velour', builder: (c, s) => VelourScreen(hostId: s.uri.queryParameters['host'] ?? '', openPlayer: s.uri.queryParameters['player'] == '1')),
       GoRoute(path: '/system/desktop', builder: (c, s) => DesktopScreen(hostId: s.uri.queryParameters['host'] ?? '')),
       GoRoute(
         path: '/system/desktop/live',

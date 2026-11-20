@@ -1,54 +1,269 @@
-// System › Media › Velour: full remote for the Velour YouTube Music player on the PC.
-// Tabs: Now playing (controls, like, volume, lyrics), Up next (jump / swipe to remove / drag to reorder / clear),
-// Search (suggestions, results) and Library (playlists, albums, artists, liked, history). Albums, playlists and artists
-// open as their own page with Play / Shuffle / Radio. A mini player stays at the bottom outside "Now playing".
-// State is polled every 2 s while visible; the position advances locally in between.
+// System › Media › Velour: the Velour YouTube Music player on the PC, as a music app on the phone.
+// - Shell: Home · Explore · Search · Library at the bottom, a mini player above them (tap or swipe up = full player,
+//   swipe sideways = next/previous) and the PC panel in the app bar.
+// - Full player (velour_player.dart): cover-coloured backdrop, swipe/double-tap cover, controls, and a panel with
+//   Up next · Lyrics · PC. The PC panel (velour_pc.dart): Velour and system volume, audio output, equalizer, sleep timer,
+//   screen off, show Velour on the PC, phone controls.
+// - State is live (velour_data.dart); command answers carry the new state, taps change the screen at once (optimistic).
+// - On Android the phone's lock screen/notification and, while this screen is open, its volume buttons control Velour
+//   (velour_media.dart).
 import 'dart:async';
+import 'dart:ui' show ImageFilter;
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
+import '../../core/agent/agent_client.dart';
 import '../../l10n/gen/app_localizations.dart';
 import '../../state/providers.dart';
+import '../../theme/theme.dart';
 import '../../theme/tokens.dart';
 import '../../widgets/forms.dart';
 import '../../widgets/surfaces.dart';
+import '../desktop/desktop_data.dart';
+import 'agent_providers.dart';
 import 'media.dart' show mediaTime;
+import 'velour_color.dart';
 import 'velour_data.dart';
+import 'velour_media.dart';
 
-/// Sends a command, shows `done` (or the error), then refreshes the state — again shortly after, because the player
-/// reports pause/position changes a moment later. `ref` may belong to a sheet that closes meanwhile, so the refresh
-/// goes through the container of `context` (the screen).
-Future<bool> velourAct(WidgetRef ref, BuildContext context, String hostId, Map<String, Object?> op, {String? done}) async {
+part 'velour_player.dart';
+part 'velour_pc.dart';
+
+/// Sends a command and applies the state it answers with. [optimistic] changes the screen before the answer (the
+/// next pushed state replaces it; on an error the state is fetched again). Shows `done` or the error.
+Future<bool> velourAct(
+  WidgetRef ref,
+  BuildContext context,
+  String hostId,
+  Map<String, Object?> op, {
+  String? done,
+  VState Function(VState s, DateTime now)? optimistic,
+}) async {
   final l = AppLocalizations.of(context);
-  final container = ProviderScope.containerOf(context, listen: false);
-  var ok = true;
+  // `ref` may belong to a sheet that closes meanwhile: the notifier comes from the screen's container.
+  final live = ProviderScope.containerOf(context, listen: false).read(velourStateProvider(hostId).notifier);
+  if (optimistic != null) live.patch(optimistic);
+  unawaited(HapticFeedback.selectionClick());
   try {
-    await velourCall(ref, hostId, op);
+    live.apply(await velourCall(ref, hostId, op));
     if (done != null && context.mounted) toast(context, done);
+    return true;
   } catch (e) {
-    ok = false;
+    if (optimistic != null) live.retry();
     if (context.mounted) toast(context, velourErrorText(l, e));
+    return false;
   }
-  container.invalidate(velourStateProvider(hostId));
-  unawaited(Future<void>.delayed(const Duration(milliseconds: 450), () => container.invalidate(velourStateProvider(hostId))));
-  return ok;
 }
 
+/// Hero tag of the cover (mini player ↔ full player).
+String velourArtHero(String hostId) => 'velour-art-$hostId';
+
 class VelourScreen extends ConsumerStatefulWidget {
-  const VelourScreen({super.key, required this.hostId});
+  const VelourScreen({super.key, required this.hostId, this.openPlayer = false});
   final String hostId;
+
+  /// Opens the full player once something is playing (coming from "Open Velour remote").
+  final bool openPlayer;
   @override
   ConsumerState<VelourScreen> createState() => _VelourScreenState();
 }
 
-class _VelourScreenState extends ConsumerState<VelourScreen> with SingleTickerProviderStateMixin {
-  late final TabController _tabs = TabController(length: 4, vsync: this)..addListener(() => setState(() {}));
+class _VelourScreenState extends ConsumerState<VelourScreen> {
+  int _tab = 0;
+
+  /// Tabs built so far (the others don't load until they are first opened).
+  final _visited = <int>{0};
+  bool _playerOpened = false;
+  late final VelourMedia _media = ref.read(velourMediaProvider.notifier);
+  StreamSubscription<int>? _volumeKeys;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _media.screenOpened(widget.hostId, AppLocalizations.of(context));
+    });
+    _volumeKeys = _media.volumeKeys.listen((v) {
+      if (mounted) toast(context, AppLocalizations.of(context).velourVolumeToast(v));
+    });
+  }
 
   @override
   void dispose() {
-    _tabs.dispose();
+    unawaited(_volumeKeys?.cancel());
+    _media.screenClosed(widget.hostId);
+    super.dispose();
+  }
+
+  void _select(int i) => setState(() {
+        _tab = i;
+        _visited.add(i);
+      });
+
+  @override
+  Widget build(BuildContext context) {
+    final l = AppLocalizations.of(context);
+    final t = context.tokens;
+    final host = ref.watch(profileProvider).host(widget.hostId);
+    if (widget.openPlayer && !_playerOpened && ref.watch(velourStateProvider(widget.hostId)).value?.track != null) {
+      _playerOpened = true;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) openVelourPlayer(context, widget.hostId);
+      });
+    }
+    final tabs = [
+      (LucideIcons.house, l.velourTabHome),
+      (LucideIcons.compass, l.velourTabExplore),
+      (LucideIcons.search, l.velourTabSearch),
+      (LucideIcons.libraryBig, l.velourTabLibrary),
+    ];
+    Widget body(int i) => !_visited.contains(i)
+        ? const SizedBox.shrink()
+        : switch (i) {
+            0 => _HomeTab(hostId: widget.hostId, onSearch: () => _select(2)),
+            1 => VelourPageBody(hostId: widget.hostId, source: const VSource.explore()),
+            2 => _SearchTab(hostId: widget.hostId),
+            _ => _LibraryTab(hostId: widget.hostId),
+          };
+    return Scaffold(
+      // Opaque: the mini player's translucent dark-theme card needs the theme ground behind it.
+      backgroundColor: t.background,
+      appBar: AppBar(
+        backgroundColor: t.isDark ? const Color(0xCC000000) : t.background,
+        title: Text(host == null ? l.velourTitle : '${l.velourTitle} · ${host.name}'),
+        leading: IconButton(
+          tooltip: MaterialLocalizations.of(context).backButtonTooltip,
+          icon: const Icon(LucideIcons.chevronLeft),
+          onPressed: () => Navigator.of(context).maybePop(),
+        ),
+        actions: [
+          IconButton(
+            tooltip: l.velourPcTitle,
+            icon: const Icon(LucideIcons.monitorSpeaker),
+            onPressed: () => showVelourPanel(context, widget.hostId, VelourPanelTab.pc),
+          ),
+        ],
+      ),
+      body: AmbientBackground(child: IndexedStack(index: _tab, children: [for (var i = 0; i < tabs.length; i++) body(i)])),
+      bottomNavigationBar: Column(mainAxisSize: MainAxisSize.min, children: [
+        VelourMiniPlayer(hostId: widget.hostId, onTap: () => openVelourPlayer(context, widget.hostId)),
+        NavigationBar(
+          selectedIndex: _tab,
+          onDestinationSelected: _select,
+          height: 66,
+          backgroundColor: t.isDark ? const Color(0xF20B0B0F) : t.card,
+          indicatorColor: t.accent.withValues(alpha: t.isDark ? 0.35 : 0.14),
+          labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
+          destinations: [
+            for (final (icon, label) in tabs) NavigationDestination(icon: Icon(icon), label: label),
+          ],
+        ),
+      ]),
+    );
+  }
+}
+
+// =====================================================================
+// home
+
+class _HomeTab extends ConsumerWidget {
+  const _HomeTab({required this.hostId, required this.onSearch});
+  final String hostId;
+  final VoidCallback onSearch;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final l = AppLocalizations.of(context);
+    final t = context.tokens;
+    final hour = ref.watch(clockProvider)().hour;
+    final greeting = switch (hour) {
+      >= 5 && < 12 => l.velourGreetingMorning,
+      >= 12 && < 18 => l.velourGreetingDay,
+      >= 18 && < 23 => l.velourGreetingEvening,
+      _ => l.velourGreetingNight,
+    };
+    final state = ref.watch(velourStateProvider(hostId));
+    final quick = [
+      (const VSource('liked'), l.velourLibLiked, LucideIcons.heart, const Color(0xFFFF375F)),
+      (const VSource('history'), l.velourLibHistory, LucideIcons.history, const Color(0xFF0A84FF)),
+    ];
+    return VelourPageBody(hostId: hostId, source: const VSource.home(), leading: [
+      Padding(
+        padding: const EdgeInsets.fromLTRB(4, 4, 4, 12),
+        child: Text(greeting, style: Theme.of(context).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w800)),
+      ),
+      if (state.hasError && !state.hasValue)
+        Padding(
+          padding: const EdgeInsets.only(bottom: 12),
+          child: VelourErrorCard(error: state.error!, onRetry: () => ref.read(velourStateProvider(hostId).notifier).retry()),
+        )
+      else if (state.value?.track == null && state.hasValue)
+        Padding(
+          padding: const EdgeInsets.only(bottom: 12),
+          child: VelourEmpty(
+            icon: LucideIcons.music,
+            text: l.velourNothingPlaying,
+            hint: l.velourNothingHint,
+            action: TextButton(onPressed: onSearch, child: Text(l.velourTabSearch)),
+          ),
+        ),
+      Row(children: [
+        for (final (i, (src, label, icon, color)) in quick.indexed) ...[
+          if (i > 0) const SizedBox(width: 10),
+          Expanded(
+            child: TCard(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+              radius: 16,
+              onTap: () => openVelourPage(context, hostId, src, label),
+              semanticLabel: label,
+              child: Row(children: [
+                Container(
+                  width: 34,
+                  height: 34,
+                  decoration: BoxDecoration(color: color, borderRadius: BorderRadius.circular(10)),
+                  child: Icon(icon, size: 18, color: Colors.white),
+                ),
+                const SizedBox(width: 10),
+                Expanded(child: Text(label, maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontWeight: FontWeight.w700, color: t.text))),
+              ]),
+            ),
+          ),
+        ],
+      ]),
+      const SizedBox(height: 4),
+    ]);
+  }
+}
+
+// =====================================================================
+// mini player
+
+class VelourMiniPlayer extends ConsumerStatefulWidget {
+  const VelourMiniPlayer({super.key, required this.hostId, required this.onTap});
+  final String hostId;
+  final VoidCallback onTap;
+  @override
+  ConsumerState<VelourMiniPlayer> createState() => _VelourMiniPlayerState();
+}
+
+class _VelourMiniPlayerState extends ConsumerState<VelourMiniPlayer> {
+  Timer? _tick;
+  double _dx = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _tick = Timer.periodic(const Duration(seconds: 1), (_) {
+      if (mounted && ref.read(velourStateProvider(widget.hostId)).value?.playing == true) setState(() {});
+    });
+  }
+
+  @override
+  void dispose() {
+    _tick?.cancel();
     super.dispose();
   }
 
@@ -56,47 +271,86 @@ class _VelourScreenState extends ConsumerState<VelourScreen> with SingleTickerPr
   Widget build(BuildContext context) {
     final l = AppLocalizations.of(context);
     final t = context.tokens;
-    final host = ref.watch(profileProvider).host(widget.hostId);
-    return Scaffold(
-      // Opaque: the mini player's translucent dark-theme card needs the theme ground behind it.
-      backgroundColor: t.background,
-      body: AmbientBackground(
-        child: NestedScrollView(
-          headerSliverBuilder: (context, _) => [
-            SliverAppBar(
-              pinned: true,
-              backgroundColor: t.isDark ? const Color(0xCC000000) : t.background,
-              title: Text(host == null ? l.velourTitle : '${l.velourTitle} · ${host.name}'),
-              leading: IconButton(
-                tooltip: MaterialLocalizations.of(context).backButtonTooltip,
-                icon: const Icon(LucideIcons.chevronLeft),
-                onPressed: () => Navigator.of(context).maybePop(),
-              ),
-              bottom: TabBar(
-                controller: _tabs,
-                isScrollable: true,
-                tabAlignment: TabAlignment.start,
-                dividerColor: Colors.transparent,
-                labelStyle: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14.5),
-                tabs: [
-                  Tab(text: l.velourTabNowPlaying),
-                  Tab(text: l.velourTabQueue),
-                  Tab(text: l.velourTabSearch),
-                  Tab(text: l.velourTabLibrary),
-                ],
-              ),
+    final s = ref.watch(velourStateProvider(widget.hostId)).value;
+    final track = s?.track;
+    if (s == null || track == null) return const SizedBox.shrink();
+    final len = s.length;
+    final pos = s.positionAt(ref.read(clockProvider)());
+    final cover = track.thumbnail;
+    final tone = cover == null ? null : ref.watch(velourCoverColorProvider(cover)).value;
+    return SafeArea(
+      top: false,
+      bottom: false,
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(10, 6, 10, 6),
+        child: GestureDetector(
+          // Sideways: next/previous song; up: the full player.
+          onHorizontalDragUpdate: (d) => setState(() => _dx += d.delta.dx),
+          onHorizontalDragEnd: (d) {
+            final v = d.primaryVelocity ?? 0;
+            if (_dx < -60 || v < -500) velourAct(ref, context, widget.hostId, {'op': 'next'});
+            if (_dx > 60 || v > 500) velourAct(ref, context, widget.hostId, {'op': 'prev'});
+            setState(() => _dx = 0);
+          },
+          onVerticalDragEnd: (d) {
+            if ((d.primaryVelocity ?? 0) < -300) widget.onTap();
+          },
+          child: Transform.translate(
+            offset: Offset(_dx.clamp(-80, 80).toDouble(), 0),
+            child: TCard(
+              padding: EdgeInsets.zero,
+              radius: 18,
+              color: tone == null ? null : Color.alphaBlend(playerTone(tone).withValues(alpha: t.isDark ? 0.55 : 0.12), t.card),
+              onTap: widget.onTap,
+              semanticLabel: '${l.velourOpenPlayer}: ${track.title}, ${track.artistLine}',
+              child: Column(mainAxisSize: MainAxisSize.min, children: [
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(8, 8, 4, 6),
+                  child: Row(children: [
+                    Hero(tag: velourArtHero(widget.hostId), child: VelourArt(url: cover, size: 44, radius: 10)),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
+                        Text(track.title, style: TextStyle(fontWeight: FontWeight.w700, fontSize: 14.5, color: t.text), maxLines: 1, overflow: TextOverflow.ellipsis),
+                        Text(track.artistLine, style: TextStyle(color: t.textSecondary, fontSize: 12.5), maxLines: 1, overflow: TextOverflow.ellipsis),
+                      ]),
+                    ),
+                    IconButton(
+                      tooltip: track.liked ? l.velourUnlike : l.velourLike,
+                      icon: Icon(LucideIcons.heart, color: track.liked ? const Color(0xFFFF375F) : t.textSecondary, fill: track.liked ? 1 : 0),
+                      onPressed: () => _like(track),
+                    ),
+                    IconButton(
+                      tooltip: s.playing ? l.mediaPause : l.mediaPlay,
+                      icon: Icon(s.playing ? LucideIcons.pause : LucideIcons.play, color: t.text),
+                      onPressed: () => velourAct(ref, context, widget.hostId, {'op': 'toggle'}, optimistic: (s, now) => s.copyWith(now, playing: !s.playing)),
+                    ),
+                  ]),
+                ),
+                if (len > 0)
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(14, 0, 14, 6),
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(2),
+                      child: LinearProgressIndicator(
+                        value: (pos / len).clamp(0, 1).toDouble(),
+                        minHeight: 2.5,
+                        color: t.text,
+                        backgroundColor: t.text.withValues(alpha: 0.12),
+                      ),
+                    ),
+                  ),
+              ]),
             ),
-          ],
-          body: TabBarView(controller: _tabs, children: [
-            _NowPlayingTab(hostId: widget.hostId, onSearch: () => _tabs.animateTo(2)),
-            _QueueTab(hostId: widget.hostId),
-            _SearchTab(hostId: widget.hostId),
-            _LibraryTab(hostId: widget.hostId),
-          ]),
+          ),
         ),
       ),
-      bottomNavigationBar: _tabs.index == 0 ? null : VelourMiniPlayer(hostId: widget.hostId, onTap: () => _tabs.animateTo(0)),
     );
+  }
+
+  void _like(VTrack track) {
+    final like = track.liked ? 'indifferent' : 'like';
+    velourAct(ref, context, widget.hostId, {'op': 'rate', 'videoId': track.videoId, 'like': like}, optimistic: (s, now) => s.copyWith(now, like: like));
   }
 }
 
@@ -138,8 +392,8 @@ class VelourArt extends StatelessWidget {
 }
 
 /// Error card; "Velour unreachable" explains how to turn the socket on.
-class _ErrorCard extends StatelessWidget {
-  const _ErrorCard({required this.error, required this.onRetry});
+class VelourErrorCard extends StatelessWidget {
+  const VelourErrorCard({super.key, required this.error, required this.onRetry});
   final Object error;
   final VoidCallback onRetry;
 
@@ -158,8 +412,8 @@ class _ErrorCard extends StatelessWidget {
   }
 }
 
-class _Empty extends StatelessWidget {
-  const _Empty({required this.icon, required this.text, this.hint, this.action});
+class VelourEmpty extends StatelessWidget {
+  const VelourEmpty({super.key, required this.icon, required this.text, this.hint, this.action});
   final IconData icon;
   final String text;
   final String? hint;
@@ -187,12 +441,79 @@ class _Empty extends StatelessWidget {
   }
 }
 
-const _loading = Padding(padding: EdgeInsets.all(40), child: Center(child: CircularProgressIndicator()));
+const _loading = VelourSkeleton();
+
+/// Placeholder rows while a list loads (gently pulsing; still with reduced motion).
+class VelourSkeleton extends StatefulWidget {
+  const VelourSkeleton({super.key, this.rows = 6});
+  final int rows;
+  @override
+  State<VelourSkeleton> createState() => _VelourSkeletonState();
+}
+
+class _VelourSkeletonState extends State<VelourSkeleton> with SingleTickerProviderStateMixin {
+  late final AnimationController _c = AnimationController(vsync: this, duration: const Duration(milliseconds: 900));
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (MediaQuery.disableAnimationsOf(context)) {
+      _c.stop();
+    } else if (!_c.isAnimating) {
+      _c.repeat(reverse: true);
+    }
+  }
+
+  @override
+  void dispose() {
+    _c.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final l = AppLocalizations.of(context);
+    final base = context.tokens.text.withValues(alpha: 0.08);
+    Widget box(double w, double h, [double r = 6]) => Container(width: w, height: h, decoration: BoxDecoration(color: base, borderRadius: BorderRadius.circular(r)));
+    return Semantics(
+      label: l.commonLoading,
+      child: ExcludeSemantics(
+        child: FadeTransition(
+          opacity: Tween(begin: 0.45, end: 1.0).animate(_c),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 8),
+            child: Column(children: [
+              for (var i = 0; i < widget.rows; i++)
+                Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 7, horizontal: 4),
+                  child: Row(children: [
+                    box(46, 46, 8),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                        FractionallySizedBox(widthFactor: 0.4 + (i * 37 % 40) / 100, child: box(double.infinity, 13)),
+                        const SizedBox(height: 7),
+                        FractionallySizedBox(widthFactor: 0.3 + (i * 23 % 30) / 100, child: box(double.infinity, 11)),
+                      ]),
+                    ),
+                  ]),
+                ),
+            ]),
+          ),
+        ),
+      ),
+    );
+  }
+}
 
 /// One song row: cover, title, artists · length; tap plays, the ⋮ button opens the song menu.
 class VelourTrackTile extends StatelessWidget {
-  const VelourTrackTile({super.key, required this.hostId, required this.track, this.onTap, this.current = false, this.index, this.trailing});
+  const VelourTrackTile({super.key, required this.hostId, required this.track, this.onTap, this.current = false, this.index, this.trailing, this.playlistId, this.onRemoved});
   final String hostId;
+
+  /// The playlist this row is shown in (offers "Remove from this playlist" for your own lists).
+  final String? playlistId;
+  final VoidCallback? onRemoved;
   final VTrack track;
   final VoidCallback? onTap;
   final bool current;
@@ -238,7 +559,7 @@ class VelourTrackTile extends StatelessWidget {
                   IconButton(
                     tooltip: l.velourMore,
                     icon: Icon(LucideIcons.ellipsisVertical, color: t.textSecondary),
-                    onPressed: () => showVelourTrackMenu(context, hostId, track),
+                    onPressed: () => showVelourTrackMenu(context, hostId, track, playlistId: playlistId, onRemoved: onRemoved),
                   ),
             ]),
           ),
@@ -248,8 +569,8 @@ class VelourTrackTile extends StatelessWidget {
   }
 }
 
-/// Song menu: play next, add to queue, radio, add to playlist, like, go to artist/album.
-Future<void> showVelourTrackMenu(BuildContext context, String hostId, VTrack track) {
+/// Song menu: play next, add to queue, radio, add to playlist, like/dislike, remove from the playlist, go to artist/album.
+Future<void> showVelourTrackMenu(BuildContext context, String hostId, VTrack track, {String? playlistId, VoidCallback? onRemoved}) {
   return showModalBottomSheet<void>(
     context: context,
     showDragHandle: true,
@@ -300,6 +621,25 @@ Future<void> showVelourTrackMenu(BuildContext context, String hostId, VTrack tra
           title: Text(track.liked ? l.velourUnlike : l.velourLike),
           onTap: () => run({'op': 'rate', 'videoId': track.videoId, 'like': track.liked ? 'indifferent' : 'like'}, track.liked ? l.velourUnliked : l.velourLiked),
         ),
+        if (track.like != 'dislike')
+          ListTile(
+            leading: const Icon(LucideIcons.thumbsDown),
+            title: Text(l.velourDislike),
+            onTap: () => run({'op': 'rate', 'videoId': track.videoId, 'like': 'dislike'}, l.velourDisliked),
+          ),
+        // Only rows of your own playlists carry a setVideoId.
+        if (playlistId != null && track.json['setVideoId'] is String)
+          ListTile(
+            leading: const Icon(LucideIcons.listMinus),
+            title: Text(l.velourRemoveFromPlaylist),
+            onTap: () async {
+              nav.pop();
+              final ok = await velourAct(ref, context, hostId,
+                  {'op': 'remove-from-playlist', 'playlistId': playlistId, 'videoId': track.videoId, 'setVideoId': track.json['setVideoId']},
+                  done: l.velourRemovedFromPlaylist);
+              if (ok) onRemoved?.call();
+            },
+          ),
         if (artist != null)
           ListTile(
             leading: const Icon(LucideIcons.micVocal),
@@ -374,538 +714,62 @@ Future<void> showVelourPlaylistPicker(BuildContext context, String hostId, List<
   );
 }
 
-Future<String?> _askName(BuildContext context, String title) {
-  final l = AppLocalizations.of(context);
-  final c = TextEditingController();
-  return showDialog<String>(
-    context: context,
-    builder: (d) {
-      void submit() {
-        final v = c.text.trim();
-        if (v.isNotEmpty) Navigator.of(d).pop(v);
-      }
+Future<String?> _askName(BuildContext context, String title) =>
+    showDialog<String>(context: context, builder: (_) => _NameDialog(title: title));
 
-      return AlertDialog(
-        title: Text(title),
-        content: TextField(
-          controller: c,
-          autofocus: true,
-          maxLength: 150,
-          textInputAction: TextInputAction.done,
-          decoration: InputDecoration(labelText: l.velourPlaylistName),
-          onSubmitted: (_) => submit(),
-        ),
-        actions: [
-          TextButton(onPressed: () => Navigator.of(d).pop(), child: Text(l.commonCancel)),
-          FilledButton(onPressed: submit, child: Text(l.commonCreate)),
-        ],
-      );
-    },
-  ).whenComplete(c.dispose);
+/// Owns its text controller, so it lives until the dialog's closing animation is over.
+class _NameDialog extends StatefulWidget {
+  const _NameDialog({required this.title});
+  final String title;
+  @override
+  State<_NameDialog> createState() => _NameDialogState();
+}
+
+class _NameDialogState extends State<_NameDialog> {
+  final _c = TextEditingController();
+
+  @override
+  void dispose() {
+    _c.dispose();
+    super.dispose();
+  }
+
+  void _submit() {
+    final v = _c.text.trim();
+    if (v.isNotEmpty) Navigator.of(context).pop(v);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final l = AppLocalizations.of(context);
+    return AlertDialog(
+      title: Text(widget.title),
+      content: TextField(
+        controller: _c,
+        autofocus: true,
+        maxLength: 150,
+        textInputAction: TextInputAction.done,
+        decoration: InputDecoration(labelText: l.velourPlaylistName),
+        onSubmitted: (_) => _submit(),
+      ),
+      actions: [
+        TextButton(onPressed: () => Navigator.of(context).pop(), child: Text(l.commonCancel)),
+        FilledButton(onPressed: _submit, child: Text(l.commonCreate)),
+      ],
+    );
+  }
 }
 
 /// Route name of pages opened from the Velour screen (the mini player pops back through them).
 const _pageRoute = 'velour-page';
 
 void openVelourPage(BuildContext context, String hostId, VSource source, String title) {
+  // From the full player: back to the browsing screens first.
+  Navigator.of(context).popUntil((r) => r.settings.name != velourPlayerRoute);
   Navigator.of(context).push(MaterialPageRoute<void>(
     settings: const RouteSettings(name: _pageRoute),
     builder: (_) => VelourPageScreen(hostId: hostId, source: source, title: title),
   ));
-}
-
-// =====================================================================
-// mini player
-
-class VelourMiniPlayer extends ConsumerWidget {
-  const VelourMiniPlayer({super.key, required this.hostId, required this.onTap});
-  final String hostId;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final l = AppLocalizations.of(context);
-    final t = context.tokens;
-    final s = ref.watch(velourStateProvider(hostId)).value;
-    final track = s?.track;
-    if (s == null || track == null) return const SizedBox.shrink();
-    final len = s.length;
-    final pos = s.positionAt(ref.read(clockProvider)());
-    return SafeArea(
-      top: false,
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(10, 0, 10, 8),
-        child: TCard(
-          padding: EdgeInsets.zero,
-          onTap: onTap,
-          semanticLabel: '${l.velourTabNowPlaying}: ${track.title}',
-          child: Column(mainAxisSize: MainAxisSize.min, children: [
-            if (len > 0)
-              ClipRRect(
-                borderRadius: const BorderRadius.vertical(top: Radius.circular(TiphysTokens.radiusCard)),
-                child: LinearProgressIndicator(value: (pos / len).clamp(0, 1).toDouble(), minHeight: 2.5, backgroundColor: Colors.transparent),
-              ),
-            Padding(
-              padding: const EdgeInsets.fromLTRB(10, 8, 4, 8),
-              child: Row(children: [
-                VelourArt(url: track.thumbnail, size: 40, radius: 8),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
-                    Text(track.title, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14), maxLines: 1, overflow: TextOverflow.ellipsis),
-                    Text(track.artistLine, style: TextStyle(color: t.textSecondary, fontSize: 12.5), maxLines: 1, overflow: TextOverflow.ellipsis),
-                  ]),
-                ),
-                IconButton(
-                  tooltip: s.playing ? l.mediaPause : l.mediaPlay,
-                  icon: Icon(s.playing ? LucideIcons.pause : LucideIcons.play),
-                  onPressed: () => velourAct(ref, context, hostId, {'op': 'toggle'}),
-                ),
-                IconButton(tooltip: l.mediaNext, icon: const Icon(LucideIcons.skipForward), onPressed: () => velourAct(ref, context, hostId, {'op': 'next'})),
-              ]),
-            ),
-          ]),
-        ),
-      ),
-    );
-  }
-}
-
-// =====================================================================
-// now playing
-
-class _NowPlayingTab extends ConsumerStatefulWidget {
-  const _NowPlayingTab({required this.hostId, required this.onSearch});
-  final String hostId;
-  final VoidCallback onSearch;
-  @override
-  ConsumerState<_NowPlayingTab> createState() => _NowPlayingTabState();
-}
-
-class _NowPlayingTabState extends ConsumerState<_NowPlayingTab> {
-  double? _seekDrag;
-  double? _volDrag;
-  Timer? _tick;
-
-  @override
-  void initState() {
-    super.initState();
-    // Advance the position bar once a second while playing.
-    _tick = Timer.periodic(const Duration(seconds: 1), (_) {
-      if (mounted && ref.read(velourStateProvider(widget.hostId)).value?.playing == true) setState(() {});
-    });
-  }
-
-  @override
-  void dispose() {
-    _tick?.cancel();
-    super.dispose();
-  }
-
-  Future<void> _act(Map<String, Object?> op) => velourAct(ref, context, widget.hostId, op);
-
-  @override
-  Widget build(BuildContext context) {
-    final l = AppLocalizations.of(context);
-    final state = ref.watch(velourStateProvider(widget.hostId));
-    return ListView(padding: _pad, children: [
-      ...state.when(
-        skipLoadingOnRefresh: true,
-        skipLoadingOnReload: true,
-        loading: () => [_loading],
-        error: (e, _) => [_ErrorCard(error: e, onRetry: () => ref.invalidate(velourStateProvider(widget.hostId)))],
-        data: (s) => s.track == null
-            ? [
-                _Empty(
-                  icon: LucideIcons.music,
-                  text: l.velourNothingPlaying,
-                  hint: l.velourNothingHint,
-                  action: TextButton(onPressed: widget.onSearch, child: Text(l.velourTabSearch)),
-                ),
-              ]
-            : _player(context, s),
-      ),
-    ]);
-  }
-
-  List<Widget> _player(BuildContext context, VState s) {
-    final l = AppLocalizations.of(context);
-    final t = context.tokens;
-    final tt = Theme.of(context).textTheme;
-    final track = s.track!;
-    final len = s.length;
-    final pos = _seekDrag ?? s.positionAt(ref.read(clockProvider)());
-    final sub = [track.artistLine, ?track.album?.name].where((x) => x.isNotEmpty).join(' · ');
-    final (repeatIcon, repeatLabel, nextRepeat) = switch (s.repeat) {
-      'all' => (LucideIcons.repeat, l.velourRepeatAll, 'one'),
-      'one' => (LucideIcons.repeat1, l.velourRepeatOne, 'off'),
-      _ => (LucideIcons.repeat, l.velourRepeatOff, 'all'),
-    };
-    final vol = _volDrag ?? s.volume;
-    return [
-      TCard(
-        radius: TiphysTokens.radiusHero,
-        padding: const EdgeInsets.fromLTRB(18, 20, 18, 12),
-        child: Column(children: [
-          LayoutBuilder(builder: (c, box) => VelourArt(url: track.thumbnail, size: box.maxWidth.clamp(120, 280).toDouble(), radius: 20)),
-          const SizedBox(height: 16),
-          Text(track.title, style: tt.titleLarge, textAlign: TextAlign.center, maxLines: 2, overflow: TextOverflow.ellipsis),
-          if (sub.isNotEmpty) ...[
-            const SizedBox(height: 3),
-            Text(sub, style: tt.bodyMedium?.copyWith(color: t.textSecondary), textAlign: TextAlign.center, maxLines: 2, overflow: TextOverflow.ellipsis),
-          ],
-          if (len > 0) ...[
-            const SizedBox(height: 8),
-            Slider(
-              value: pos.clamp(0, len).toDouble(),
-              max: len,
-              semanticFormatterCallback: (v) => l.mediaPositionOf(mediaTime(v), mediaTime(len)),
-              onChanged: (v) => setState(() => _seekDrag = v),
-              onChangeEnd: (v) async {
-                await _act({'op': 'seek', 'seconds': v});
-                if (mounted) setState(() => _seekDrag = null);
-              },
-            ),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 22),
-              child: Row(children: [
-                Text(mediaTime(pos), style: tt.labelSmall?.copyWith(color: t.textSecondary)),
-                const Spacer(),
-                Text(mediaTime(len), style: tt.labelSmall?.copyWith(color: t.textSecondary)),
-              ]),
-            ),
-          ],
-          const SizedBox(height: 6),
-          Row(mainAxisAlignment: MainAxisAlignment.spaceEvenly, children: [
-            IconButton(
-              tooltip: l.velourShuffle,
-              isSelected: s.shuffle,
-              color: s.shuffle ? t.accent : t.textSecondary,
-              icon: const Icon(LucideIcons.shuffle),
-              onPressed: () => _act({'op': 'shuffle', 'on': !s.shuffle}),
-            ),
-            IconButton(tooltip: l.mediaPrevious, iconSize: 28, icon: const Icon(LucideIcons.skipBack), onPressed: () => _act({'op': 'prev'})),
-            Semantics(
-              button: true,
-              label: s.playing ? l.mediaPause : l.mediaPlay,
-              child: Material(
-                color: t.isDark ? t.tabActive : const Color(0xFF111114),
-                shape: const CircleBorder(),
-                child: InkWell(
-                  customBorder: const CircleBorder(),
-                  onTap: () => _act({'op': 'toggle'}),
-                  child: SizedBox(
-                    width: 64,
-                    height: 64,
-                    child: s.loading
-                        ? Padding(padding: const EdgeInsets.all(20), child: CircularProgressIndicator(strokeWidth: 2.5, color: t.isDark ? Colors.black : Colors.white))
-                        : Icon(s.playing ? LucideIcons.pause : LucideIcons.play, size: 28, color: t.isDark ? Colors.black : Colors.white),
-                  ),
-                ),
-              ),
-            ),
-            IconButton(tooltip: l.mediaNext, iconSize: 28, icon: const Icon(LucideIcons.skipForward), onPressed: () => _act({'op': 'next'})),
-            IconButton(
-              tooltip: repeatLabel,
-              isSelected: s.repeat != 'off',
-              color: s.repeat != 'off' ? t.accent : t.textSecondary,
-              icon: Icon(repeatIcon),
-              onPressed: () => _act({'op': 'repeat', 'mode': nextRepeat}),
-            ),
-          ]),
-        ]),
-      ),
-      const SizedBox(height: 12),
-      Row(children: [
-        Expanded(
-          child: TCard(
-            padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 14),
-            onTap: () => _act({'op': 'rate', 'videoId': track.videoId, 'like': track.liked ? 'indifferent' : 'like'}),
-            semanticLabel: track.liked ? l.velourUnlike : l.velourLike,
-            child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-              Icon(LucideIcons.heart, color: track.liked ? t.danger : t.text),
-              const SizedBox(width: 8),
-              Flexible(child: Text(track.liked ? l.velourLiked : l.velourLike, maxLines: 1, overflow: TextOverflow.ellipsis)),
-            ]),
-          ),
-        ),
-        const SizedBox(width: 12),
-        Expanded(
-          child: TCard(
-            padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 14),
-            onTap: () => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => VelourLyricsScreen(hostId: widget.hostId))),
-            semanticLabel: l.velourLyrics,
-            child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-              const Icon(LucideIcons.micVocal),
-              const SizedBox(width: 8),
-              Flexible(child: Text(l.velourLyrics, maxLines: 1, overflow: TextOverflow.ellipsis)),
-            ]),
-          ),
-        ),
-      ]),
-      const SizedBox(height: 12),
-      TCard(
-        padding: const EdgeInsets.fromLTRB(6, 6, 16, 6),
-        child: Row(children: [
-          IconButton(
-            tooltip: s.muted ? l.mediaUnmute : l.mediaMute,
-            icon: Icon(s.muted ? LucideIcons.volumeX : (vol < 40 ? LucideIcons.volume1 : LucideIcons.volume2), color: s.muted ? t.danger : t.text),
-            onPressed: () => _act({'op': 'mute', 'on': !s.muted}),
-          ),
-          Expanded(
-            child: Slider(
-              value: vol.clamp(0, 100).toDouble(),
-              max: 100,
-              divisions: 20,
-              label: '%${vol.round()}',
-              semanticFormatterCallback: (v) => '${l.mediaVolume} %${v.round()}',
-              onChanged: (v) => setState(() => _volDrag = v),
-              onChangeEnd: (v) async {
-                await _act({'op': 'volume', 'percent': v.roundToDouble()});
-                if (mounted) setState(() => _volDrag = null);
-              },
-            ),
-          ),
-          SizedBox(
-            width: 44,
-            child: Text(s.muted ? l.mediaMuted : '%${vol.round()}',
-                textAlign: TextAlign.end, style: TextStyle(color: t.textSecondary, fontWeight: FontWeight.w600, fontSize: 13)),
-          ),
-        ]),
-      ),
-    ];
-  }
-}
-
-// =====================================================================
-// lyrics
-
-class VelourLyricsScreen extends ConsumerStatefulWidget {
-  const VelourLyricsScreen({super.key, required this.hostId});
-  final String hostId;
-  @override
-  ConsumerState<VelourLyricsScreen> createState() => _VelourLyricsScreenState();
-}
-
-class _VelourLyricsScreenState extends ConsumerState<VelourLyricsScreen> {
-  final _keys = <int, GlobalKey>{};
-  int? _shown;
-  Timer? _tick;
-
-  @override
-  void initState() {
-    super.initState();
-    // Synced lines move with the song: redraw four times a second while playing.
-    _tick = Timer.periodic(const Duration(milliseconds: 250), (_) {
-      if (mounted && ref.read(velourStateProvider(widget.hostId)).value?.playing == true) setState(() {});
-    });
-  }
-
-  @override
-  void dispose() {
-    _tick?.cancel();
-    super.dispose();
-  }
-
-  void _follow(int? line) {
-    if (line == null || line == _shown) return;
-    _shown = line;
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      final c = _keys[line]?.currentContext;
-      if (c != null && c.mounted) Scrollable.ensureVisible(c, alignment: 0.4, duration: const Duration(milliseconds: 300), curve: Curves.easeOutCubic);
-    });
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final l = AppLocalizations.of(context);
-    final t = context.tokens;
-    final s = ref.watch(velourStateProvider(widget.hostId)).value;
-    final track = s?.track;
-    final lyrics = track == null ? null : ref.watch(velourLyricsProvider((widget.hostId, track.videoId)));
-    final children = <Widget>[
-      if (track != null)
-        Padding(
-          padding: const EdgeInsets.only(bottom: 18),
-          child: Row(children: [
-            VelourArt(url: track.thumbnail, size: 52, radius: 10),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Text(track.title, style: Theme.of(context).textTheme.titleMedium, maxLines: 1, overflow: TextOverflow.ellipsis),
-                Text(track.artistLine, style: TextStyle(color: t.textSecondary, fontSize: 13), maxLines: 1, overflow: TextOverflow.ellipsis),
-              ]),
-            ),
-          ]),
-        ),
-      if (track == null)
-        _Empty(icon: LucideIcons.music, text: l.velourNothingPlaying)
-      else
-        ...lyrics!.when(
-          loading: () => [_loading],
-          error: (e, _) => [_ErrorCard(error: e, onRetry: () => ref.invalidate(velourLyricsProvider((widget.hostId, track.videoId))))],
-          data: (ly) {
-            if (ly.kind == 'synced' && ly.lines.isNotEmpty) {
-              final active = ly.activeLine(s!.positionAt(ref.read(clockProvider)()));
-              _follow(active);
-              return [
-                for (var i = 0; i < ly.lines.length; i++)
-                  InkWell(
-                    key: _keys.putIfAbsent(i, GlobalKey.new),
-                    borderRadius: BorderRadius.circular(10),
-                    // Tap a line to jump there.
-                    onTap: () => velourAct(ref, context, widget.hostId, {'op': 'seek', 'seconds': ly.lines[i].$1}),
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 7, horizontal: 4),
-                      child: AnimatedDefaultTextStyle(
-                        duration: const Duration(milliseconds: 200),
-                        // Based on the theme's style so the app font is kept (this replaces the inherited style).
-                        style: Theme.of(context).textTheme.titleLarge!.copyWith(
-                          fontSize: 22,
-                          height: 1.3,
-                          fontWeight: FontWeight.w800,
-                          color: i == active ? t.text : t.textSecondary.withValues(alpha: i < (active ?? -1) ? 0.55 : 0.8),
-                        ),
-                        // An instrumental gap gets a note icon (♪ isn't in the app font).
-                        child: ly.lines[i].$2.isEmpty
-                            ? Align(alignment: Alignment.centerLeft, child: Icon(LucideIcons.music, size: 20, color: t.textSecondary))
-                            : Text(ly.lines[i].$2),
-                      ),
-                    ),
-                  ),
-                if (ly.source != null) _source(context, ly.source!),
-              ];
-            }
-            if (ly.kind == 'plain' && (ly.text ?? '').trim().isNotEmpty) {
-              return [
-                SelectableText(ly.text!, style: const TextStyle(fontSize: 17, height: 1.5)),
-                if (ly.source != null) _source(context, ly.source!),
-              ];
-            }
-            return [_Empty(icon: LucideIcons.micVocal, text: l.velourLyricsNone)];
-          },
-        ),
-    ];
-    return SettingsPage(title: l.velourLyrics, children: children);
-  }
-
-  Widget _source(BuildContext context, String source) => Padding(
-        padding: const EdgeInsets.only(top: 18),
-        child: Text(AppLocalizations.of(context).velourLyricsSource(source), style: Theme.of(context).textTheme.bodySmall),
-      );
-}
-
-// =====================================================================
-// queue
-
-class _QueueTab extends ConsumerStatefulWidget {
-  const _QueueTab({required this.hostId});
-  final String hostId;
-  @override
-  ConsumerState<_QueueTab> createState() => _QueueTabState();
-}
-
-class _QueueTabState extends ConsumerState<_QueueTab> {
-  /// Shown order while a reorder/removal is on its way (so the row doesn't jump back).
-  List<VTrack>? _pending;
-
-  Future<void> _change(Map<String, Object?> op, List<VTrack> optimistic, {String? done}) async {
-    setState(() => _pending = optimistic);
-    await velourAct(ref, context, widget.hostId, op, done: done);
-    if (!mounted) return;
-    ref.invalidate(velourQueueProvider(widget.hostId));
-    setState(() => _pending = null);
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final l = AppLocalizations.of(context);
-    final t = context.tokens;
-    final q = ref.watch(velourQueueProvider(widget.hostId));
-    return q.when(
-      skipLoadingOnRefresh: true,
-      skipLoadingOnReload: true,
-      loading: () => _loading,
-      error: (e, _) => ListView(padding: _pad, children: [_ErrorCard(error: e, onRetry: () => ref.invalidate(velourQueueProvider(widget.hostId)))]),
-      data: (queue) {
-        final tracks = _pending ?? queue.tracks;
-        if (tracks.isEmpty) return ListView(padding: _pad, children: [_Empty(icon: LucideIcons.listMusic, text: l.velourQueueEmpty)]);
-        return Column(children: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(TiphysTokens.gutter + 4, 10, TiphysTokens.gutter - 4, 0),
-            child: Row(children: [
-              Expanded(
-                child: Text(
-                  [l.velourQueueCount(tracks.length), if (queue.radio) l.velourQueueRadio].join(' · '),
-                  style: TextStyle(color: t.textSecondary, fontSize: 13, fontWeight: FontWeight.w600),
-                ),
-              ),
-              TextButton.icon(
-                icon: const Icon(LucideIcons.listX, size: 18),
-                label: Text(l.velourQueueClear),
-                onPressed: tracks.length < 2
-                    ? null
-                    : () async {
-                        if (!await confirmDialog(context, message: l.velourQueueClearConfirm, confirmLabel: l.velourQueueClear, destructive: true)) return;
-                        if (!context.mounted) return;
-                        final keep = [if (queue.index != null && queue.index! < tracks.length) tracks[queue.index!]];
-                        await _change({'op': 'clear'}, keep);
-                      },
-              ),
-            ]),
-          ),
-          Expanded(
-            child: ReorderableListView.builder(
-              padding: const EdgeInsets.fromLTRB(TiphysTokens.gutter - 8, 4, TiphysTokens.gutter - 8, 32),
-              buildDefaultDragHandles: false,
-              itemCount: tracks.length,
-              onReorderItem: (from, to) {
-                if (to == from) return;
-                final next = [...tracks];
-                next.insert(to, next.removeAt(from));
-                _change({'op': 'move', 'from': from, 'to': to}, next);
-              },
-              itemBuilder: (context, i) {
-                final tr = tracks[i];
-                final current = _pending == null && i == queue.index;
-                return Dismissible(
-                  key: ValueKey('q$i-${tr.videoId}'),
-                  direction: current ? DismissDirection.none : DismissDirection.endToStart,
-                  background: Container(
-                    alignment: Alignment.centerRight,
-                    padding: const EdgeInsets.only(right: 20),
-                    decoration: BoxDecoration(color: t.danger, borderRadius: BorderRadius.circular(12)),
-                    child: Icon(LucideIcons.trash2, color: Colors.white, semanticLabel: l.velourRemove),
-                  ),
-                  onDismissed: (_) => _change({'op': 'remove', 'index': i}, [...tracks]..removeAt(i), done: l.velourRemoved),
-                  child: VelourTrackTile(
-                    hostId: widget.hostId,
-                    track: tr,
-                    current: current,
-                    onTap: () => velourAct(ref, context, widget.hostId, {'op': 'jump', 'index': i}),
-                    trailing: Row(mainAxisSize: MainAxisSize.min, children: [
-                      IconButton(
-                        tooltip: l.velourMore,
-                        icon: Icon(LucideIcons.ellipsisVertical, color: t.textSecondary),
-                        onPressed: () => showVelourTrackMenu(context, widget.hostId, tr),
-                      ),
-                      ReorderableDragStartListener(
-                        index: i,
-                        child: Semantics(
-                          label: l.velourReorder,
-                          child: Padding(padding: const EdgeInsets.all(12), child: Icon(LucideIcons.gripVertical, color: t.textSecondary)),
-                        ),
-                      ),
-                    ]),
-                  ),
-                );
-              },
-            ),
-          ),
-        ]);
-      },
-    );
-  }
 }
 
 // =====================================================================
@@ -964,14 +828,23 @@ class _VelourPageBodyState extends ConsumerState<VelourPageBody> {
         ...value.when(
           skipLoadingOnRefresh: true,
           loading: () => [_loading],
-          error: (e, _) => [_ErrorCard(error: e, onRetry: () => ref.invalidate(velourPageProvider(key)))],
+          error: (e, _) => [VelourErrorCard(error: e, onRetry: () => ref.invalidate(velourPageProvider(key)))],
           data: (fetched) {
             final page = _more ?? fetched;
             return [
               if (widget.showHeader && page.header != null) _PageHeader(hostId: widget.hostId, page: page),
-              if (page.isEmpty) _Empty(icon: LucideIcons.searchX, text: widget.source.op == 'search' ? l.commonNothingFound : l.commonEmpty),
+              if (page.isEmpty) VelourEmpty(icon: LucideIcons.searchX, text: widget.source.op == 'search' ? l.commonNothingFound : l.commonEmpty),
               for (final s in page.sections)
-                if (s.items.isNotEmpty) _Section(hostId: widget.hostId, section: s),
+                if (s.items.isNotEmpty)
+                  _Section(
+                    hostId: widget.hostId,
+                    section: s,
+                    playlistId: widget.showHeader ? page.header?.playlistId : null,
+                    onRemoved: () {
+                      _more = null;
+                      ref.invalidate(velourPageProvider(key));
+                    },
+                  ),
               if (page.continuation != null)
                 Padding(
                   padding: const EdgeInsets.only(top: 14),
@@ -990,9 +863,11 @@ class _VelourPageBodyState extends ConsumerState<VelourPageBody> {
 }
 
 class _Section extends ConsumerWidget {
-  const _Section({required this.hostId, required this.section});
+  const _Section({required this.hostId, required this.section, this.playlistId, this.onRemoved});
   final String hostId;
   final VSection section;
+  final String? playlistId;
+  final VoidCallback? onRemoved;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -1009,6 +884,8 @@ class _Section extends ConsumerWidget {
           rows.add(VelourTrackTile(
             hostId: hostId,
             track: tr,
+            playlistId: playlistId,
+            onRemoved: onRemoved,
             onTap: () => velourAct(ref, context, hostId, {'op': 'play', 'tracks': [for (final x in tracks) x.json], 'start': at}),
           ));
         } else {
@@ -1171,6 +1048,12 @@ class _PageHeader extends ConsumerWidget {
               label: Text(l.velourRadio),
               onPressed: () => velourAct(ref, context, hostId, {'op': 'play-target', 'target': radio.json}),
             ),
+          if (h.playlistId != null && !h.round)
+            OutlinedButton.icon(
+              icon: const Icon(LucideIcons.libraryBig, size: 18),
+              label: Text(l.velourSaveToLibrary),
+              onPressed: () => velourAct(ref, context, hostId, {'op': 'save-to-library', 'playlistId': h.playlistId, 'save': true}, done: l.velourSavedToLibrary),
+            ),
         ]),
       ]),
     );
@@ -1199,7 +1082,7 @@ class VelourPageScreen extends StatelessWidget {
         ),
       ),
       body: AmbientBackground(child: VelourPageBody(hostId: hostId, source: source, showHeader: true)),
-      bottomNavigationBar: VelourMiniPlayer(hostId: hostId, onTap: () => Navigator.of(context).popUntil((r) => r.settings.name != _pageRoute)),
+      bottomNavigationBar: SafeArea(top: false, child: VelourMiniPlayer(hostId: hostId, onTap: () => openVelourPlayer(context, hostId))),
     );
   }
 }
@@ -1309,7 +1192,7 @@ class _SearchTabState extends ConsumerState<_SearchTab> with AutomaticKeepAliveC
       return ListView(padding: _pad, children: [
         box,
         const SizedBox(height: 8),
-        _Empty(icon: LucideIcons.search, text: l.velourSearchStart, hint: l.velourSearchStartHint),
+        VelourEmpty(icon: LucideIcons.search, text: l.velourSearchStart, hint: l.velourSearchStartHint),
       ]);
     }
     return VelourPageBody(hostId: widget.hostId, source: VSource.search(_query!), leading: [box]);

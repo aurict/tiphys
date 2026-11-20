@@ -3220,6 +3220,175 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String get velourTabHome => 'Home';
+
+  @override
+  String get velourTabExplore => 'Explore';
+
+  @override
+  String velourPlayingOn(String host) {
+    return 'Playing on $host';
+  }
+
+  @override
+  String get velourClosePlayer => 'Close player';
+
+  @override
+  String get velourOpenPlayer => 'Open player';
+
+  @override
+  String get velourDislike => 'Dislike';
+
+  @override
+  String get velourDisliked => 'Marked as disliked';
+
+  @override
+  String get velourPc => 'PC';
+
+  @override
+  String get velourPcTitle => 'PC controls';
+
+  @override
+  String get velourVolumeVelour => 'Velour volume';
+
+  @override
+  String get velourVolumeSystem => 'PC volume';
+
+  @override
+  String get velourOutput => 'Audio output';
+
+  @override
+  String velourOutputSet(String name) {
+    return 'Sound now plays on $name';
+  }
+
+  @override
+  String get velourOutputNone => 'No audio outputs found';
+
+  @override
+  String get velourEq => 'Equalizer';
+
+  @override
+  String get velourNeedsUpdate => 'Update Velour on the PC to use this';
+
+  @override
+  String get velourSleep => 'Sleep timer';
+
+  @override
+  String get velourSleepShort => 'Sleep';
+
+  @override
+  String velourSleepMinutes(int minutes) {
+    return '$minutes min';
+  }
+
+  @override
+  String get velourSleepEndOfTrack => 'End of song';
+
+  @override
+  String get velourSleepOff => 'Turn off';
+
+  @override
+  String velourSleepActiveAt(String time) {
+    return 'Pauses at $time';
+  }
+
+  @override
+  String get velourSleepActiveTrack => 'Pauses when this song ends';
+
+  @override
+  String get velourSleepThen => 'Then';
+
+  @override
+  String get velourSleepThenNone => 'Nothing';
+
+  @override
+  String get velourSleepThenScreen => 'Screen off';
+
+  @override
+  String get velourSleepThenSuspend => 'Sleep PC';
+
+  @override
+  String get velourSleepSet => 'Sleep timer set';
+
+  @override
+  String get velourSleepCancelled => 'Sleep timer off';
+
+  @override
+  String get velourSleepSuspendConfirm =>
+      'When the timer ends, the PC goes to sleep. Continue?';
+
+  @override
+  String get velourScreenOff => 'Turn the screen off';
+
+  @override
+  String get velourScreenOffHint => 'Music keeps playing';
+
+  @override
+  String get velourScreenOffDone => 'Screen is off';
+
+  @override
+  String get velourShowOnPc => 'Show Velour on the PC';
+
+  @override
+  String get velourShowOnPcDone => 'Velour is in front';
+
+  @override
+  String get velourPhoneControls => 'Controls on the phone';
+
+  @override
+  String get velourPhoneControlsHint =>
+      'Lock screen and notification controls; volume buttons while the remote is open';
+
+  @override
+  String get velourSaveQueue => 'Save as playlist';
+
+  @override
+  String velourSavedQueue(String title) {
+    return 'Saved as “$title”';
+  }
+
+  @override
+  String get velourSaveToLibrary => 'Save to library';
+
+  @override
+  String get velourSavedToLibrary => 'Saved to library';
+
+  @override
+  String get velourRemoveFromPlaylist => 'Remove from this playlist';
+
+  @override
+  String get velourRemovedFromPlaylist => 'Removed from the playlist';
+
+  @override
+  String get velourGreetingMorning => 'Good morning';
+
+  @override
+  String get velourGreetingDay => 'Good afternoon';
+
+  @override
+  String get velourGreetingEvening => 'Good evening';
+
+  @override
+  String get velourGreetingNight => 'Good night';
+
+  @override
+  String get velourPowerDisabled =>
+      'Putting the PC to sleep needs the agent\'s power feature';
+
+  @override
+  String velourVolumeToast(int percent) {
+    return 'Velour volume $percent%';
+  }
+
+  @override
+  String get velourNotifChannel => 'Velour on the PC';
+
+  @override
+  String get velourSwipeHint =>
+      'Swipe the cover for the next or previous song, double-tap to like';
+
+  @override
   String get homeCardsNowPlaying => 'Now playing';
 
   @override

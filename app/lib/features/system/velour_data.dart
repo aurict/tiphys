@@ -1,17 +1,24 @@
 // Velour (YouTube Music desktop player) remote: data side. Everything goes through the agent's POST /v1/velour {op, …},
 // which forwards to Velour's local control socket (protocol: velour docs/remote-control.md).
 // Tracks keep the JSON they came with, so "play / queue / play next" send Velour exactly what it gave us.
+// Live state: GET /v1/velour/events (SSE) pushes a new state each time Velour's `rev` changes; command answers carry the
+// new state too and are applied at once. An older agent without the stream (route not found) is polled every 2 s.
+import 'dart:async';
+import 'dart:convert';
+
 import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/agent/agent_client.dart';
-import '../../core/util/refresh.dart';
 import '../../l10n/gen/app_localizations.dart';
 import '../../state/providers.dart';
 import 'agent_providers.dart';
 
 /// Ops that call YouTube Music: they can take longer than the client's default timeout.
-const _slowOps = {'lyrics', 'search', 'suggest', 'page', 'more', 'home', 'library', 'liked', 'history', 'rate', 'add-to-playlist', 'create-playlist'};
+const _slowOps = {
+  'lyrics', 'search', 'suggest', 'page', 'more', 'home', 'library', 'liked', 'history', 'rate', 'add-to-playlist', 'create-playlist',
+  'explore', 'save-queue', 'save-to-library', 'remove-from-playlist',
+};
 
 Duration _timeoutFor(String op) => Duration(seconds: _slowOps.contains(op) ? 40 : 10);
 
@@ -40,6 +47,7 @@ String velourErrorText(AppLocalizations l, Object e) => switch (e) {
       AgentError(code: 'agent.velour.notSignedIn') => l.velourNotSignedIn,
       AgentError(code: 'agent.velour.timeout') => l.velourTimeout,
       AgentError(code: 'agent.velour.notFound') => l.velourNotFound,
+      AgentError(code: 'agent.velour.powerDisabled') => l.velourPowerDisabled,
       AgentError(code: 'agent.velour.failed' || 'agent.velour.busy' || 'agent.velour.badRequest' || 'agent.velour.unsupportedVersion' || 'agent.velour.tooLarge') =>
         l.velourFailed,
       _ => agentErrorText(l, e),
@@ -146,8 +154,10 @@ class VHeader {
         thumbnail = j['thumbnail'] as String?,
         play = j['play'] == null ? null : VTarget(j['play'] as Map),
         radio = j['radio'] == null ? null : VTarget(j['radio'] as Map),
+        playlistId = j['playlistId'] as String?,
         round = j['round'] == true;
   final String title;
+  final String? playlistId;
   final String subtitle;
   final String secondSubtitle;
   final String? thumbnail;
@@ -182,6 +192,17 @@ class VPage {
   }
 }
 
+/// Velour's sleep timer; `then` is the agent's PC action when it fires (none | screenOff | suspend).
+class VSleep {
+  VSleep(Map j)
+      : endsAt = j['endsAt'] is num ? DateTime.fromMillisecondsSinceEpoch(((j['endsAt'] as num) * 1000).round()) : null,
+        endOfTrack = j['endOfTrack'] == true,
+        then = '${j['then'] ?? 'none'}';
+  final DateTime? endsAt;
+  final bool endOfTrack;
+  final String then;
+}
+
 class VState {
   VState(Map j, this.fetchedAt)
       : track = j['track'] == null ? null : VTrack(j['track'] as Map),
@@ -195,7 +216,15 @@ class VState {
         muted = j['muted'] == true,
         shuffle = j['shuffle'] == true,
         repeat = '${j['repeat'] ?? 'off'}',
-        signedIn = j['signedIn'] == true;
+        signedIn = j['signedIn'] == true,
+        rev = (j['rev'] as num?)?.toInt(),
+        queueRev = (j['queueRev'] as num?)?.toInt(),
+        sleep = j['sleep'] is Map ? VSleep(j['sleep'] as Map) : null,
+        eq = j['eq'] as String?,
+        json = j.cast<String, dynamic>();
+
+  /// The state as received; [copyWith] edits a copy of it (optimistic updates).
+  final Map<String, dynamic> json;
   final VTrack? track;
   final int? index;
   final int queueLength;
@@ -212,6 +241,14 @@ class VState {
   final bool signedIn;
   final DateTime fetchedAt;
 
+  /// Changes with every remote-visible change (null: an older Velour).
+  final int? rev;
+  final int? queueRev;
+  final VSleep? sleep;
+
+  /// Equalizer preset (null: an older Velour).
+  final String? eq;
+
   /// Length: mpv's, else the listed one.
   double get length => duration > 0 ? duration : (track?.duration ?? 0).toDouble();
 
@@ -223,7 +260,19 @@ class VState {
   }
 
   /// Changes when the queue's content or position may have changed.
-  String get queueKey => '${track?.videoId}|$index|$queueLength|$shuffle';
+  String get queueKey => queueRev != null ? 'r$queueRev|$index' : '${track?.videoId}|$index|$queueLength|$shuffle';
+
+  /// A changed copy (same `rev`): position carried forward to [now] so the bar doesn't jump.
+  VState copyWith(DateTime now, {bool? playing, String? like, bool? shuffle, String? repeat, double? volume, bool? muted, double? position}) {
+    final j = {...json, 'position': position ?? positionAt(now)};
+    if (playing != null) j['playing'] = playing;
+    if (shuffle != null) j['shuffle'] = shuffle;
+    if (repeat != null) j['repeat'] = repeat;
+    if (volume != null) j['volume'] = volume;
+    if (muted != null) j['muted'] = muted;
+    if (like != null && j['track'] is Map) j['track'] = {...(j['track'] as Map), 'like': like};
+    return VState(j, now);
+  }
 }
 
 class VQueue {
@@ -265,13 +314,118 @@ class VLyrics {
   }
 }
 
-/// Now playing; polled every 2 s while visible.
-final velourStateProvider = FutureProvider.autoDispose.family<VState, String>((ref, hostId) async {
-  autoRefresh(ref, const Duration(seconds: 2));
-  final now = ref.read(clockProvider);
-  final j = await velourGet(ref, hostId, {'op': 'state'});
-  return VState(j as Map, now());
-});
+/// Now playing, live (see the top of the file). `apply` takes a newer state (command answers), `patch` an optimistic
+/// change that the next pushed state replaces.
+class VelourLive extends AsyncNotifier<VState> {
+  VelourLive(this.hostId);
+  final String hostId;
+  StreamSubscription<(String, String)>? _sub;
+  AgentClient? _client;
+  Timer? _timer;
+  bool _polling = false;
+  bool _closed = false;
+
+  @override
+  Future<VState> build() async {
+    _closed = false;
+    ref.onDispose(() {
+      _closed = true;
+      _disconnect();
+    });
+    // The stream starts either way: if Velour is off now, its next state replaces the error when it comes up.
+    unawaited(Future.microtask(_connect));
+    return VState(await velourGet(ref, hostId, {'op': 'state'}) as Map, ref.read(clockProvider)());
+  }
+
+  void _disconnect() {
+    _timer?.cancel();
+    _timer = null;
+    unawaited(_sub?.cancel());
+    _sub = null;
+    _client?.close();
+    _client = null;
+  }
+
+  void _later(Duration d, void Function() f) {
+    _timer?.cancel();
+    _timer = Timer(d, () {
+      if (!_closed) f();
+    });
+  }
+
+  Future<void> _connect() async {
+    if (_closed || _polling) return;
+    _disconnect();
+    final host = ref.read(profileProvider).host(hostId);
+    if (host == null) return;
+    try {
+      final c = await ref.read(agentClientFactoryProvider)(host);
+      if (_closed) return c.close();
+      _client = c;
+      _sub = c.sse('/v1/velour/events').listen(
+        (e) {
+          final (event, data) = e;
+          if (event == 'state') {
+            _set(VState(jsonDecode(data) as Map, ref.read(clockProvider)()));
+          } else if (event == 'error') {
+            final code = '${(jsonDecode(data) as Map)['code']}';
+            state = AsyncError(AgentError(code), StackTrace.current);
+          }
+        },
+        onError: (Object e) {
+          // An agent without the stream: plain polling.
+          if (e is AgentError && (e.code == 'agent.route.notFound' || e.status == 404)) {
+            _polling = true;
+            _poll();
+          } else {
+            _later(const Duration(seconds: 3), _connect);
+          }
+        },
+        onDone: () => _later(const Duration(seconds: 1), _connect),
+        cancelOnError: true,
+      );
+    } catch (_) {
+      _later(const Duration(seconds: 3), _connect);
+    }
+  }
+
+  Future<void> _poll() async {
+    try {
+      _set(VState(await velourGet(ref, hostId, {'op': 'state'}) as Map, ref.read(clockProvider)()));
+    } catch (e, st) {
+      if (!_closed) state = AsyncError(e, st);
+    }
+    _later(const Duration(seconds: 2), _poll);
+  }
+
+  void _set(VState s) {
+    if (_closed) return;
+    final cur = state.value;
+    // An answer that crossed a newer pushed state is dropped.
+    if (cur?.rev != null && s.rev != null && s.rev! < cur!.rev!) return;
+    state = AsyncData(s);
+  }
+
+  /// A state from a command's answer.
+  void apply(Object? result) {
+    if (result is Map && result.containsKey('playing') && result.containsKey('track')) _set(VState(result, ref.read(clockProvider)()));
+    // Without the stream, ask again shortly: the player reports pause/position a moment later.
+    if (_polling) _later(const Duration(milliseconds: 450), _poll);
+  }
+
+  void patch(VState Function(VState s, DateTime now) change) {
+    final cur = state.value;
+    if (cur != null && !_closed) state = AsyncData(change(cur, ref.read(clockProvider)()));
+  }
+
+  /// Again right away (after an error).
+  void retry() {
+    _polling = false;
+    ref.invalidateSelf();
+  }
+}
+
+final velourStateProvider = AsyncNotifierProvider.autoDispose.family<VelourLive, VState, String>(VelourLive.new);
 
 /// The queue; refetched when the song, position or length changes.
 final velourQueueProvider = FutureProvider.autoDispose.family<VQueue, String>((ref, hostId) async {
@@ -291,6 +445,8 @@ class VSource {
   const VSource.search(String q) : this('search', q);
   const VSource.page(String id, [String? params]) : this('page', id, params);
   const VSource.library(String tab) : this('library', tab);
+  const VSource.home() : this('home');
+  const VSource.explore() : this('explore');
   final String op;
   final String? arg;
   final String? params;
@@ -321,4 +477,32 @@ final velourSuggestProvider = FutureProvider.autoDispose.family<List<String>, (S
 final velourPlaylistsProvider = FutureProvider.autoDispose.family<List<(String, String)>, String>((ref, hostId) async {
   final r = await velourGet(ref, hostId, {'op': 'playlists'});
   return [for (final p in (r as List).cast<Map>()) ('${p['id']}', '${p['title']}')];
+});
+
+/// Equalizer presets and the current one (Velour `eq`).
+final velourEqProvider = FutureProvider.autoDispose.family<(String, List<String>), String>((ref, hostId) async {
+  final r = await velourGet(ref, hostId, {'op': 'eq'}) as Map;
+  return ('${r['preset']}', [for (final p in (r['presets'] as List? ?? const [])) '$p']);
+});
+
+class AudioOutput {
+  AudioOutput(Map j)
+      : id = (j['id'] as num).toInt(),
+        name = '${j['name'] ?? ''}',
+        isDefault = j['default'] == true;
+  final int id;
+  final String name;
+  final bool isDefault;
+}
+
+/// The PC's audio outputs (PipeWire sinks).
+final pcOutputsProvider = FutureProvider.autoDispose.family<List<AudioOutput>, String>((ref, hostId) async {
+  final r = await withAgent(ref, hostId, (c) => c.get('/v1/media/outputs'));
+  return [for (final o in (r['outputs'] as List? ?? const []).cast<Map>()) AudioOutput(o)];
+});
+
+/// The PC's system volume (wpctl): (percent, muted).
+final pcVolumeProvider = FutureProvider.autoDispose.family<(int, bool), String>((ref, hostId) async {
+  final r = await withAgent(ref, hostId, (c) => c.get('/v1/media/volume'));
+  return ((r['percent'] as num).round(), r['muted'] == true);
 });

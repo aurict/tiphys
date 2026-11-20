@@ -222,6 +222,21 @@ class TiphysNativePlugin :
                 decoders.remove(call.argument<Number>("id")?.toLong() ?: -1L)?.release()
                 result.success(null)
             }
+            "velourMediaUpdate" -> {
+                VelourMedia.channel = channel
+                @Suppress("UNCHECKED_CAST")
+                VelourMedia.update(context, (call.arguments as? Map<String, Any?>) ?: emptyMap())
+                result.success(null)
+            }
+            "velourMediaStop" -> {
+                VelourMedia.stop(context)
+                result.success(null)
+            }
+            "setVolumeKeyCapture" -> {
+                VelourMedia.channel = channel
+                VelourMedia.captureVolumeKeys = call.argument<Boolean>("on") == true
+                result.success(null)
+            }
             else -> result.notImplemented()
         }
     }

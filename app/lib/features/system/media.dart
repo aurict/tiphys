@@ -243,7 +243,7 @@ class _MediaScreenState extends ConsumerState<MediaScreen> {
                   subtitle: l.velourOpenHint,
                   icon: LucideIcons.listMusic,
                   iconBackground: const Color(0xFFFF375F),
-                  onTap: () => context.push('/system/velour?host=${Uri.encodeQueryComponent(widget.hostId)}'),
+                  onTap: () => context.push('/system/velour?host=${Uri.encodeQueryComponent(widget.hostId)}&player=1'),
                 ),
               ]),
             ],

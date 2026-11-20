@@ -52,4 +52,32 @@ class TiphysNative {
       Map<String, Object?>.from(await _channel.invokeMethod<Map>('h264Stats', {'id': id}) ?? const {});
 
   static Future<void> h264Dispose(int id) => _channel.invokeMethod<void>('h264Dispose', {'id': id});
+
+  // ---- Velour (PC music player) on the lock screen / notification, volume buttons ----
+
+  /// Shows or updates the media notification and session: title, artist, album, art (https URL), durationMs,
+  /// positionMs, playing, host, channelName, labels {prev, play, pause, next}.
+  static Future<void> velourMediaUpdate(Map<String, Object?> m) => _channel.invokeMethod<void>('velourMediaUpdate', m);
+
+  static Future<void> velourMediaStop() => _channel.invokeMethod<void>('velourMediaStop');
+
+  /// While on, the volume buttons don't change the phone's volume: each press calls [onVolumeKey].
+  static Future<void> setVolumeKeyCapture(bool on) => _channel.invokeMethod<void>('setVolumeKeyCapture', {'on': on});
+
+  /// Media buttons: action play | pause | next | prev | stop | seek (with ms).
+  static void Function(String action, int? ms)? onVelourMedia;
+  static void Function(bool up)? onVolumeKey;
+
+  /// Installs the handler for calls from Android (once; the callbacks above can change any time).
+  static void listen() => _channel.setMethodCallHandler((call) async {
+        final a = (call.arguments as Map?) ?? const {};
+        switch (call.method) {
+          case 'velourMedia':
+            onVelourMedia?.call('${a['action']}', (a['ms'] as num?)?.toInt());
+          case 'volumeKey':
+            onVolumeKey?.call(a['up'] == true);
+        }
+        return null;
+      });
 }
+

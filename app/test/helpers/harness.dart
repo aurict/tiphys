@@ -237,6 +237,12 @@ class FakeAgent extends AgentClient {
 
   /// SSE `GET /v1/desktop/ui/events` events and subscriber count.
   static StreamController<(String, String)> uiEvents = StreamController.broadcast();
+
+  /// Velour live state: each SSE subscriber first gets velour['state'], then whatever tests add here.
+  static StreamController<(String, String)> velourEvents = StreamController.broadcast();
+
+  /// GET /v1/media/outputs (PUT /v1/media/output moves the default).
+  static List<Map<String, Object?>> outputs = sampleOutputs();
   static int uiSubscribers = 0;
 
   /// Incident room (GET/POST /v1/incidents*): incidents per host id and the knobs of the action routes.
@@ -309,6 +315,19 @@ class FakeAgent extends AgentClient {
   @override
   Stream<(String, String)> sse(String path, {Map<String, String>? headers, Duration idle = const Duration(seconds: 70)}) {
     calls.add(('SSE', path, null));
+    if (path == '/v1/velour/events') {
+      late final StreamSubscription<(String, String)> vs;
+      late final StreamController<(String, String)> v;
+      v = StreamController<(String, String)>(
+        onListen: () {
+          final st = velour['state'];
+          v.add(st is AgentError ? ('error', jsonEncode({'code': st.code})) : ('state', jsonEncode(st)));
+          vs = velourEvents.stream.listen(v.add, onError: v.addError, onDone: v.close);
+        },
+        onCancel: () => unawaited(vs.cancel()),
+      );
+      return v.stream;
+    }
     if (headers?['X-Tiphys-Control'] != 'tpc_fake') return Stream.error(const AgentError('agent.control.sessionRequired', {}, 403));
     late final StreamSubscription<(String, String)> sub;
     if (path.startsWith('/v1/desktop/ui/events')) {
@@ -750,6 +769,25 @@ class FakeAgent extends AgentClient {
     }
     if (path == '/v1/desktop/clipboard') return method == 'PUT' ? {'ok': true} : {'text': 'ssh user@100.64.0.2'};
     if (method == 'POST' && path == '/v1/desktop/open') return {'ok': true};
+    if (method == 'POST' && path == '/v1/velour/sleep') {
+      final b = body as Map;
+      if (b['then'] == 'screenOff' && headers?['X-Tiphys-Control'] != 'tpc_fake') throw const AgentError('agent.control.sessionRequired', {}, 403);
+      final cancel = b['minutes'] == null && b['endOfTrack'] != true;
+      return {
+        'result': {
+          ...velour['state'] as Map,
+          'sleep': cancel
+              ? null
+              : {'endsAt': b['minutes'] == null ? null : DateTime(2026, 11, 14, 14, 5).add(Duration(minutes: b['minutes'] as int)).millisecondsSinceEpoch / 1000, 'endOfTrack': b['endOfTrack'] == true, 'then': b['then']},
+        },
+      };
+    }
+    if (method == 'POST' && path == '/v1/velour/show') return {'ok': true};
+    if (path == '/v1/media/outputs') return {'outputs': outputs};
+    if (method == 'PUT' && path == '/v1/media/output') {
+      outputs = [for (final o in outputs) {...o, 'default': o['id'] == (body as Map)['id']}];
+      return {'outputs': outputs};
+    }
     if (method == 'POST' && path == '/v1/velour') {
       final r = velour.containsKey((body as Map)['op']) ? velour[body['op']] : velour['state'];
       if (r is AgentError) throw r;
@@ -986,6 +1024,12 @@ Map<String, dynamic> sampleMedia() => {
       'volume': {'percent': 60, 'muted': false},
     };
 
+/// PC audio outputs (agent GET /v1/media/outputs).
+List<Map<String, Object?>> sampleOutputs() => [
+      {'id': 57, 'name': 'Built-in Audio Analog Stereo', 'default': true},
+      {'id': 81, 'name': 'WH-1000XM4', 'default': false},
+    ];
+
 /// Velour sample (agent POST /v1/velour results, in Velour's wire format): a Turkish song playing, a 4-song queue,
 /// search results, the library, an album page and synced lyrics. No thumbnails (no network in tests).
 Map<String, Object?> sampleVelour() {
@@ -1007,6 +1051,31 @@ Map<String, Object?> sampleVelour() {
     'state': {
       'track': queue[1], 'index': 1, 'queueLength': 4, 'playing': true, 'loading': false, 'position': 61.5, 'duration': 245.0,
       'volume': 70.0, 'muted': false, 'shuffle': false, 'repeat': 'all', 'signedIn': true,
+      'rev': 7, 'queueRev': 1234, 'sleep': null, 'slept': 0, 'eq': 'Flat',
+    },
+    'eq': {'preset': 'Flat', 'presets': ['Flat', 'Bass boost', 'Treble boost', 'Vocal', 'Loudness', 'Acoustic']},
+    'home': {
+      'header': null, 'continuation': null,
+      'sections': [
+        {
+          'title': 'Quick picks', 'layout': 'list', 'more': null,
+          'items': [for (final t in queue.skip(2)) {'kind': 'track', ...t}],
+        },
+        {
+          'title': 'Mixed for you', 'layout': 'carousel', 'more': null,
+          'items': [
+            card('My Supermix', 'Sezen Aksu, Tarkan, Erol Evgin', {'kind': 'watch', 'videoId': null, 'playlistId': 'RDTMAK5uy', 'params': null}),
+            card('Türkçe Pop', 'Playlist • YouTube Music', browse('VLRDCLAK5uy', 'playlist')),
+          ],
+        },
+      ],
+    },
+    'explore': {
+      'header': null, 'continuation': null,
+      'sections': [
+        {'title': 'New albums & singles', 'layout': 'carousel', 'more': null, 'items': [card('Deliveren', 'Album • Sezen Aksu', browse('MPREb', 'album'))]},
+        {'title': 'Moods & genres', 'layout': 'grid', 'more': null, 'items': [card('Chill', '', browse('FEmusic_moods_and_genres_category', 'other'))]},
+      ],
     },
     'queue': {'index': 1, 'tracks': queue, 'radio': true},
     'lyrics': {

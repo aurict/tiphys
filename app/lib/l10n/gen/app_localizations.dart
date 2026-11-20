@@ -5582,6 +5582,312 @@ abstract class AppLocalizations {
   /// **'Created “{title}”'**
   String velourCreatedPlaylist(String title);
 
+  /// No description provided for @velourTabHome.
+  ///
+  /// In en, this message translates to:
+  /// **'Home'**
+  String get velourTabHome;
+
+  /// No description provided for @velourTabExplore.
+  ///
+  /// In en, this message translates to:
+  /// **'Explore'**
+  String get velourTabExplore;
+
+  /// No description provided for @velourPlayingOn.
+  ///
+  /// In en, this message translates to:
+  /// **'Playing on {host}'**
+  String velourPlayingOn(String host);
+
+  /// No description provided for @velourClosePlayer.
+  ///
+  /// In en, this message translates to:
+  /// **'Close player'**
+  String get velourClosePlayer;
+
+  /// No description provided for @velourOpenPlayer.
+  ///
+  /// In en, this message translates to:
+  /// **'Open player'**
+  String get velourOpenPlayer;
+
+  /// No description provided for @velourDislike.
+  ///
+  /// In en, this message translates to:
+  /// **'Dislike'**
+  String get velourDislike;
+
+  /// No description provided for @velourDisliked.
+  ///
+  /// In en, this message translates to:
+  /// **'Marked as disliked'**
+  String get velourDisliked;
+
+  /// No description provided for @velourPc.
+  ///
+  /// In en, this message translates to:
+  /// **'PC'**
+  String get velourPc;
+
+  /// No description provided for @velourPcTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'PC controls'**
+  String get velourPcTitle;
+
+  /// No description provided for @velourVolumeVelour.
+  ///
+  /// In en, this message translates to:
+  /// **'Velour volume'**
+  String get velourVolumeVelour;
+
+  /// No description provided for @velourVolumeSystem.
+  ///
+  /// In en, this message translates to:
+  /// **'PC volume'**
+  String get velourVolumeSystem;
+
+  /// No description provided for @velourOutput.
+  ///
+  /// In en, this message translates to:
+  /// **'Audio output'**
+  String get velourOutput;
+
+  /// No description provided for @velourOutputSet.
+  ///
+  /// In en, this message translates to:
+  /// **'Sound now plays on {name}'**
+  String velourOutputSet(String name);
+
+  /// No description provided for @velourOutputNone.
+  ///
+  /// In en, this message translates to:
+  /// **'No audio outputs found'**
+  String get velourOutputNone;
+
+  /// No description provided for @velourEq.
+  ///
+  /// In en, this message translates to:
+  /// **'Equalizer'**
+  String get velourEq;
+
+  /// No description provided for @velourNeedsUpdate.
+  ///
+  /// In en, this message translates to:
+  /// **'Update Velour on the PC to use this'**
+  String get velourNeedsUpdate;
+
+  /// No description provided for @velourSleep.
+  ///
+  /// In en, this message translates to:
+  /// **'Sleep timer'**
+  String get velourSleep;
+
+  /// No description provided for @velourSleepShort.
+  ///
+  /// In en, this message translates to:
+  /// **'Sleep'**
+  String get velourSleepShort;
+
+  /// No description provided for @velourSleepMinutes.
+  ///
+  /// In en, this message translates to:
+  /// **'{minutes} min'**
+  String velourSleepMinutes(int minutes);
+
+  /// No description provided for @velourSleepEndOfTrack.
+  ///
+  /// In en, this message translates to:
+  /// **'End of song'**
+  String get velourSleepEndOfTrack;
+
+  /// No description provided for @velourSleepOff.
+  ///
+  /// In en, this message translates to:
+  /// **'Turn off'**
+  String get velourSleepOff;
+
+  /// No description provided for @velourSleepActiveAt.
+  ///
+  /// In en, this message translates to:
+  /// **'Pauses at {time}'**
+  String velourSleepActiveAt(String time);
+
+  /// No description provided for @velourSleepActiveTrack.
+  ///
+  /// In en, this message translates to:
+  /// **'Pauses when this song ends'**
+  String get velourSleepActiveTrack;
+
+  /// No description provided for @velourSleepThen.
+  ///
+  /// In en, this message translates to:
+  /// **'Then'**
+  String get velourSleepThen;
+
+  /// No description provided for @velourSleepThenNone.
+  ///
+  /// In en, this message translates to:
+  /// **'Nothing'**
+  String get velourSleepThenNone;
+
+  /// No description provided for @velourSleepThenScreen.
+  ///
+  /// In en, this message translates to:
+  /// **'Screen off'**
+  String get velourSleepThenScreen;
+
+  /// No description provided for @velourSleepThenSuspend.
+  ///
+  /// In en, this message translates to:
+  /// **'Sleep PC'**
+  String get velourSleepThenSuspend;
+
+  /// No description provided for @velourSleepSet.
+  ///
+  /// In en, this message translates to:
+  /// **'Sleep timer set'**
+  String get velourSleepSet;
+
+  /// No description provided for @velourSleepCancelled.
+  ///
+  /// In en, this message translates to:
+  /// **'Sleep timer off'**
+  String get velourSleepCancelled;
+
+  /// No description provided for @velourSleepSuspendConfirm.
+  ///
+  /// In en, this message translates to:
+  /// **'When the timer ends, the PC goes to sleep. Continue?'**
+  String get velourSleepSuspendConfirm;
+
+  /// No description provided for @velourScreenOff.
+  ///
+  /// In en, this message translates to:
+  /// **'Turn the screen off'**
+  String get velourScreenOff;
+
+  /// No description provided for @velourScreenOffHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Music keeps playing'**
+  String get velourScreenOffHint;
+
+  /// No description provided for @velourScreenOffDone.
+  ///
+  /// In en, this message translates to:
+  /// **'Screen is off'**
+  String get velourScreenOffDone;
+
+  /// No description provided for @velourShowOnPc.
+  ///
+  /// In en, this message translates to:
+  /// **'Show Velour on the PC'**
+  String get velourShowOnPc;
+
+  /// No description provided for @velourShowOnPcDone.
+  ///
+  /// In en, this message translates to:
+  /// **'Velour is in front'**
+  String get velourShowOnPcDone;
+
+  /// No description provided for @velourPhoneControls.
+  ///
+  /// In en, this message translates to:
+  /// **'Controls on the phone'**
+  String get velourPhoneControls;
+
+  /// No description provided for @velourPhoneControlsHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Lock screen and notification controls; volume buttons while the remote is open'**
+  String get velourPhoneControlsHint;
+
+  /// No description provided for @velourSaveQueue.
+  ///
+  /// In en, this message translates to:
+  /// **'Save as playlist'**
+  String get velourSaveQueue;
+
+  /// No description provided for @velourSavedQueue.
+  ///
+  /// In en, this message translates to:
+  /// **'Saved as “{title}”'**
+  String velourSavedQueue(String title);
+
+  /// No description provided for @velourSaveToLibrary.
+  ///
+  /// In en, this message translates to:
+  /// **'Save to library'**
+  String get velourSaveToLibrary;
+
+  /// No description provided for @velourSavedToLibrary.
+  ///
+  /// In en, this message translates to:
+  /// **'Saved to library'**
+  String get velourSavedToLibrary;
+
+  /// No description provided for @velourRemoveFromPlaylist.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove from this playlist'**
+  String get velourRemoveFromPlaylist;
+
+  /// No description provided for @velourRemovedFromPlaylist.
+  ///
+  /// In en, this message translates to:
+  /// **'Removed from the playlist'**
+  String get velourRemovedFromPlaylist;
+
+  /// No description provided for @velourGreetingMorning.
+  ///
+  /// In en, this message translates to:
+  /// **'Good morning'**
+  String get velourGreetingMorning;
+
+  /// No description provided for @velourGreetingDay.
+  ///
+  /// In en, this message translates to:
+  /// **'Good afternoon'**
+  String get velourGreetingDay;
+
+  /// No description provided for @velourGreetingEvening.
+  ///
+  /// In en, this message translates to:
+  /// **'Good evening'**
+  String get velourGreetingEvening;
+
+  /// No description provided for @velourGreetingNight.
+  ///
+  /// In en, this message translates to:
+  /// **'Good night'**
+  String get velourGreetingNight;
+
+  /// No description provided for @velourPowerDisabled.
+  ///
+  /// In en, this message translates to:
+  /// **'Putting the PC to sleep needs the agent\'s power feature'**
+  String get velourPowerDisabled;
+
+  /// No description provided for @velourVolumeToast.
+  ///
+  /// In en, this message translates to:
+  /// **'Velour volume {percent}%'**
+  String velourVolumeToast(int percent);
+
+  /// No description provided for @velourNotifChannel.
+  ///
+  /// In en, this message translates to:
+  /// **'Velour on the PC'**
+  String get velourNotifChannel;
+
+  /// No description provided for @velourSwipeHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Swipe the cover for the next or previous song, double-tap to like'**
+  String get velourSwipeHint;
+
   /// No description provided for @homeCardsNowPlaying.
   ///
   /// In en, this message translates to:

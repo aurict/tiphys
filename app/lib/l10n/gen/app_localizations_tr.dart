@@ -3190,6 +3190,175 @@ class AppLocalizationsTr extends AppLocalizations {
   }
 
   @override
+  String get velourTabHome => 'Ana sayfa';
+
+  @override
+  String get velourTabExplore => 'Keşfet';
+
+  @override
+  String velourPlayingOn(String host) {
+    return '$host üzerinde çalıyor';
+  }
+
+  @override
+  String get velourClosePlayer => 'Oynatıcıyı kapat';
+
+  @override
+  String get velourOpenPlayer => 'Oynatıcıyı aç';
+
+  @override
+  String get velourDislike => 'Beğenmedim';
+
+  @override
+  String get velourDisliked => 'Beğenmedim olarak işaretlendi';
+
+  @override
+  String get velourPc => 'PC';
+
+  @override
+  String get velourPcTitle => 'PC kontrolleri';
+
+  @override
+  String get velourVolumeVelour => 'Velour sesi';
+
+  @override
+  String get velourVolumeSystem => 'PC sesi';
+
+  @override
+  String get velourOutput => 'Ses çıkışı';
+
+  @override
+  String velourOutputSet(String name) {
+    return 'Ses artık $name üzerinden çalıyor';
+  }
+
+  @override
+  String get velourOutputNone => 'Ses çıkışı bulunamadı';
+
+  @override
+  String get velourEq => 'Ekolayzer';
+
+  @override
+  String get velourNeedsUpdate => 'Bunun için PC\'deki Velour\'u güncelle';
+
+  @override
+  String get velourSleep => 'Uyku zamanlayıcısı';
+
+  @override
+  String get velourSleepShort => 'Uyku';
+
+  @override
+  String velourSleepMinutes(int minutes) {
+    return '$minutes dk';
+  }
+
+  @override
+  String get velourSleepEndOfTrack => 'Şarkı bitince';
+
+  @override
+  String get velourSleepOff => 'Kapat';
+
+  @override
+  String velourSleepActiveAt(String time) {
+    return 'Duraklama saati: $time';
+  }
+
+  @override
+  String get velourSleepActiveTrack => 'Bu şarkı bitince duraklar';
+
+  @override
+  String get velourSleepThen => 'Sonra';
+
+  @override
+  String get velourSleepThenNone => 'Hiçbir şey';
+
+  @override
+  String get velourSleepThenScreen => 'Ekranı kapat';
+
+  @override
+  String get velourSleepThenSuspend => 'PC\'yi uyut';
+
+  @override
+  String get velourSleepSet => 'Uyku zamanlayıcısı kuruldu';
+
+  @override
+  String get velourSleepCancelled => 'Uyku zamanlayıcısı kapatıldı';
+
+  @override
+  String get velourSleepSuspendConfirm =>
+      'Zamanlayıcı bitince PC uyku moduna geçecek. Devam edilsin mi?';
+
+  @override
+  String get velourScreenOff => 'Ekranı kapat';
+
+  @override
+  String get velourScreenOffHint => 'Müzik çalmaya devam eder';
+
+  @override
+  String get velourScreenOffDone => 'Ekran kapatıldı';
+
+  @override
+  String get velourShowOnPc => 'Velour\'u PC\'de öne getir';
+
+  @override
+  String get velourShowOnPcDone => 'Velour öne getirildi';
+
+  @override
+  String get velourPhoneControls => 'Telefonda kontroller';
+
+  @override
+  String get velourPhoneControlsHint =>
+      'Kilit ekranı ve bildirimde kontroller; kumanda açıkken ses tuşları';
+
+  @override
+  String get velourSaveQueue => 'Liste olarak kaydet';
+
+  @override
+  String velourSavedQueue(String title) {
+    return '“$title” olarak kaydedildi';
+  }
+
+  @override
+  String get velourSaveToLibrary => 'Kütüphaneye kaydet';
+
+  @override
+  String get velourSavedToLibrary => 'Kütüphaneye kaydedildi';
+
+  @override
+  String get velourRemoveFromPlaylist => 'Bu listeden kaldır';
+
+  @override
+  String get velourRemovedFromPlaylist => 'Listeden kaldırıldı';
+
+  @override
+  String get velourGreetingMorning => 'Günaydın';
+
+  @override
+  String get velourGreetingDay => 'İyi günler';
+
+  @override
+  String get velourGreetingEvening => 'İyi akşamlar';
+
+  @override
+  String get velourGreetingNight => 'İyi geceler';
+
+  @override
+  String get velourPowerDisabled =>
+      'PC\'yi uyutmak için ajanda power özelliği açık olmalı';
+
+  @override
+  String velourVolumeToast(int percent) {
+    return 'Velour sesi %$percent';
+  }
+
+  @override
+  String get velourNotifChannel => 'PC\'deki Velour';
+
+  @override
+  String get velourSwipeHint =>
+      'Sonraki ya da önceki şarkı için kapağı kaydır, beğenmek için iki kez dokun';
+
+  @override
   String get homeCardsNowPlaying => 'Şimdi çalıyor';
 
   @override
