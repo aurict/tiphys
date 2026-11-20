@@ -1,6 +1,7 @@
-// The agent's own settings: ~/.config/tiphys/agent.json (or TIPHYS_AGENT_CONFIG).
-// The file is written with mode 600, atomically (temp file + rename).
-import { watch as fsWatch, type FSWatcher } from "node:fs";
+// The agent's own settings: ~/.config/tiphys/agent.json (Windows: %APPDATA%\Tiphys\agent.json; or TIPHYS_AGENT_CONFIG).
+// The file is written with mode 600, atomically (temp file + rename). Windows ignores the mode bits: the file is
+// protected by the user profile's default ACL only (no extra ACL is set).
+import { existsSync, watch as fsWatch, type FSWatcher } from "node:fs";
 import { mkdir, readFile, rename, writeFile, chmod, stat } from "node:fs/promises";
 import { basename, dirname, join } from "node:path";
 import { homedir } from "node:os";
@@ -528,12 +529,21 @@ export type Device = z.infer<typeof deviceSchema>;
 export type ServiceToken = z.infer<typeof serviceTokenSchema>;
 export type ServiceScope = (typeof SERVICE_SCOPES)[number];
 
-export function defaultConfigPath(): string {
-  return process.env.TIPHYS_AGENT_CONFIG ?? join(homedir(), ".config", "tiphys", "agent.json");
+/**
+ * Linux and macOS: ~/.config/tiphys/agent.json. Windows: %APPDATA%\Tiphys\agent.json, unless an older install already
+ * has %USERPROFILE%\.config\tiphys\agent.json (kept so its paired devices stay).
+ */
+export function defaultConfigPath(platform: NodeJS.Platform = process.platform, env: NodeJS.ProcessEnv = process.env, exists = existsSync): string {
+  if (env.TIPHYS_AGENT_CONFIG) return env.TIPHYS_AGENT_CONFIG;
+  const unix = join(homedir(), ".config", "tiphys", "agent.json");
+  if (platform !== "win32" || !env.APPDATA || exists(unix)) return unix;
+  return join(env.APPDATA, "Tiphys", "agent.json");
 }
 
 export function expandHome(p: string): string {
-  return p === "~" ? homedir() : p.startsWith("~/") ? join(homedir(), p.slice(2)) : p;
+  if (p === "~") return homedir();
+  if (p.startsWith("~/") || (process.platform === "win32" && p.startsWith("~\\"))) return join(homedir(), p.slice(2));
+  return p;
 }
 
 export function defaultConfig(name: string): AgentConfig {

@@ -282,7 +282,7 @@ else
   <key>RunAtLoad</key><true/>
   <key>KeepAlive</key><true/>
   <key>ThrottleInterval</key><integer>5</integer>
-  <key>EnvironmentVariables</key><dict><key>NODE_ENV</key><string>production</string></dict>
+  <key>EnvironmentVariables</key><dict><key>NODE_ENV</key><string>production</string><key>PATH</key><string>/opt/homebrew/bin:/usr/local/bin:$HOME/.docker/bin:/usr/bin:/bin:/usr/sbin:/sbin</string></dict>
   <key>StandardOutPath</key><string>$HOME/Library/Logs/tiphys-agent.log</string>
   <key>StandardErrorPath</key><string>$HOME/Library/Logs/tiphys-agent.log</string>
 </dict>
