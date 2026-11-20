@@ -10,6 +10,7 @@ Source of truth: `agent/src/server.ts` (registration), `agent/src/routes/*.ts`, 
 - [Authentication](#authentication)
 - [Control sessions](#control-sessions)
 - [Errors](#errors)
+- [Platforms](#platforms)
 - [Endpoints](#endpoints)
   - [Always available](#always-available)
   - [system](#system) · [services](#services) · [docker](#docker) · [power](#power) · [wake](#wake) · [ports](#ports) · [transcribe](#transcribe) · [git](#git) · [homepage](#homepage)
@@ -86,6 +87,9 @@ Every error has the same envelope. The agent sends codes, never sentences; the a
 - Validation errors: `400 agent.request.invalid`, `params.issues = [{path, message}]`.
 - Unknown route: `404 agent.route.notFound`, `params.url`.
 - Unhandled error: `500 agent.internal` (details are logged on the agent only).
+- Not possible on this operating system: `501 agent.feature.unsupported`, `params: {feature, platform}`. `feature` is a
+  feature or a part of one (`services.logs`, `processes.signal.INT`, …); `platform` is Node's name (`linux`,
+  `darwin`, `win32`). `GET /v1/health` lists them as `unsupported` (see [Platforms](#platforms)).
 
 | Code | HTTP | Meaning |
 | --- | --- | --- |
@@ -224,8 +228,11 @@ Every error has the same envelope. The agent sends codes, never sentences; the a
 | `agent.config.passwordRequired` | 400 | Secret needed because the URL changed (`params.field`) |
 | `agent.device.notFound` | 404 | Unknown device id |
 | `agent.devices.confirmRequired` | 400 | `revoke-all` without `confirm: true` |
+| `agent.feature.unsupported` | 501 | Not possible on this OS (`params.feature`, `params.platform`), see [Platforms](#platforms) |
 | `agent.processes.confirmRequired` / `.self` / `.notFound` / `.permissionDenied` | 400 / 400 / 404 / 403 | Process signal errors |
-| `agent.services.actionFailed` / `.permissionDenied` | 502 / 403 | `systemctl` failed / polkit denied |
+| `agent.processes.signalFailed` | 502 | Windows: `taskkill` could not close the process (`TERM` on a process without a window; use `KILL`). `pid`, `signal`, `stderr` |
+| `agent.services.actionFailed` / `.permissionDenied` | 502 / 403 | `systemctl` / `launchctl` / the Windows service manager failed / permission denied (polkit; root for macOS system jobs; an administrator for most Windows services) |
+| `agent.services.notFound` / `.logsUnavailable` | 404 / 404 | macOS logs: no such launchd job / the job has no `StandardOutPath`/`StandardErrorPath` (`params.unit`) |
 | `agent.power.confirmRequired` | 400 | Missing confirmation |
 | `agent.wake.target.notFound` | 404 | Unknown wake target |
 | `agent.ports.reserved` / `.notListening` / `.alreadyPublic` / `.shareFailed` | 400 / 404 / 409 / 502 | Port sharing |
@@ -316,6 +323,22 @@ Every error has the same envelope. The agent sends codes, never sentences; the a
 | `agent.agy.permissionNotFound` | 404 | Unknown or already answered permission request |
 | `agent.agy.unknownMode` / `agent.agy.unknownModel` | 400 | Not one of the session's `modes` / `models` (`params.modeId` / `params.model`) |
 
+## Platforms
+
+Linux is the reference platform. The server features (`system`, `services`, `docker`, `power`, `ports`, `git`,
+`homepage`, `transcribe`, `wake`) also run on macOS and Windows with the same request and response shapes; the
+macOS/Windows code is in `src/platform/` and loads only there. What an OS can't do is listed in
+`src/platform/support.ts`, returned by `GET /v1/health` as `unsupported` and answered with
+`501 agent.feature.unsupported {feature, platform}`:
+
+| Platform | `unsupported` |
+| --- | --- |
+| Linux, macOS | `[]` |
+| Windows | `services.user`, `services.logs`, `processes.signal.INT`, `processes.signal.HUP`, `desktop.velour`, `desktop.firefoxBridge` (Unix sockets) |
+
+`tiphys-agent init --detect` and `doctor` never turn on or recommend a whole feature that is listed. The per-feature
+overview is in [System › Platforms](../features/system.md#platforms).
+
 ## Endpoints
 
 Shapes are summarized. The zod schemas in the linked source files are authoritative.
@@ -324,7 +347,7 @@ Shapes are summarized. The zod schemas in the linked source files are authoritat
 
 | Method | Path | Auth | Description |
 | --- | --- | --- | --- |
-| GET | `/v1/health` | **none** | `{name, version, features}`. Also used by `watch`. |
+| GET | `/v1/health` | **none** | `{name, version, features, unsupported}`. `unsupported`: features or parts of features this OS can't do (empty on Linux and macOS), see [Platforms](#platforms). Also used by `watch`. |
 | GET | `/v1/agent/status` | token | `{version, startedAt, uptimeSeconds, memory: {agentBytes, childrenBytes}, unexpectedRestarts24h, lastUnexpectedAt}` |
 | GET | `/v1/config` | token | Redacted config (see [configuration.md](configuration.md#editing-from-the-app)) |
 | PATCH | `/v1/config` | token | Strict partial update → `{config, restartRequired}` |
@@ -359,7 +382,7 @@ and take at most a few seconds (Tailscale CLI 5 s, release check 5 s, own health
 | `time` | `doctor.time.synced`, `.notSynced` (`timedatectl`), `.unchecked` |
 | `disk` | `doctor.disk.ok`, `.low` (< 2 GB or < 5 %), `.full` (< 512 MB), `.unchecked` — `freeMb`, `totalMb` |
 | `node` | `doctor.node.ok`, `.old` (< 24), `.tooOld` (< 22) — `node` |
-| `feature.<name>` | only for problems: `doctor.feature.toolsMissing` (`feature`, `tools`; e.g. `desktop` without `hyprctl` or the desktop helper, `git`, `claude`, `services`), `.dockerDenied` (`socket`), `.transcribeMissing` (`command`) |
+| `feature.<name>` | only for problems: `doctor.feature.toolsMissing` (`feature`, `tools`; e.g. `desktop` without `hyprctl` or the desktop helper, `git`, `claude`, `services`), `.dockerDenied` (`socket`), `.dockerUnreachable` (macOS/Windows: Docker Desktop's daemon does not answer `docker version`), `.unsupported` (`feature`, `platform`: turned on but listed as unsupported on this OS), `.transcribeMissing` (`command`) |
 | `push` | `doctor.push.ok` (`endpoints`), `.notConfigured` (warn) |
 | `version` | `doctor.version.latest`, `.outdated` (`current`, `latest`, `managed`), `.unchecked` |
 
@@ -387,7 +410,11 @@ Feature `system` (`routes/system.ts`, `routes/processes.ts`).
 | --- | --- | --- |
 | GET | `/v1/system` | `{hostname, os, kernel, uptimeSeconds, cpu, memory, disks[], gpus[]}`, cached for 2 s |
 | GET | `/v1/processes?sort=cpu\|mem&limit=1..500` | `{total, processes: [{pid, ppid, user, cpuPercent, memPercent, rssBytes, elapsedSeconds, name, command}]}` |
-| POST | `/v1/processes/:pid/signal` | `{signal: TERM\|KILL\|INT\|HUP, confirm: true}`. PID must be ≥ 2 and not the agent itself. |
+| POST | `/v1/processes/:pid/signal` | `{signal: TERM\|KILL\|INT\|HUP, confirm: true}`. PID must be ≥ 2 and not the agent itself. Windows: `TERM` = `taskkill /PID` (asks the window to close), `KILL` = `taskkill /PID /F`, `INT`/`HUP` → 501. |
+
+The same shapes on every OS. macOS: `vm_stat`, `sysctl vm.swapusage`, `df -k` + `mount`, `ps -axo`; Windows: CIM via
+PowerShell (`Win32_OperatingSystem`, `Win32_LogicalDisk`, `Win32_Process` + per-process CPU counters). There,
+`cpu.temperatureC` is `null`, the CPU load is measured with `os.cpus()`, and Windows processes have `user: ""`.
 
 ### services
 
@@ -398,6 +425,15 @@ Feature `services` (`routes/services.ts`). `:scope` is `user` or `system`.
 | GET | `/v1/services/:scope` | `{scope, units: [{unit, load, active, sub, description}]}`, `.service` units only |
 | POST | `/v1/services/:scope/:unit/:action` | `action`: `start`, `stop` or `restart` |
 | GET | `/v1/services/:scope/:unit/logs?lines=1..2000` | `{unit, entries: [{timeUs, priority, message}]}` from `journalctl` |
+
+- **macOS:** launchd jobs. `user` = the GUI session's agents (`launchctl list`), `system` = system daemons
+  (`launchctl print system`); `unit` is the job label. `active` is `active` (has a PID), `failed` (last exit code > 0)
+  or `inactive`; `description` is empty. start = `launchctl kickstart`, restart = `kickstart -k`, stop =
+  `launchctl kill SIGTERM` (a `KeepAlive` job starts again). System jobs need root (`403 permissionDenied`). Logs
+  are the last lines of the job's `StandardOutPath`/`StandardErrorPath` files (`timeUs: 0`, no timestamps).
+- **Windows:** `system` = Windows services (`Get-Service`; `unit` = service name, `description` = display name,
+  `load: disabled` for disabled services), actions via `Start-Service`/`Stop-Service`/`Restart-Service`. `user` and
+  `logs` answer `501 agent.feature.unsupported`. Service names outside `A–Z a–z 0–9 @ . _ : -` can't be controlled.
 
 ### docker
 
@@ -413,7 +449,7 @@ Compose operations are done by the app over SSH, not through this API. See [Syst
 
 ### power
 
-Feature `power`. `POST /v1/power/:action` with `{confirm: true}`, where `action` is `reboot`, `poweroff` or `suspend`. Responds `{ok, action}` first; `systemctl` runs 1.5 s after the response has been sent.
+Feature `power`. `POST /v1/power/:action` with `{confirm: true}`, where `action` is `reboot`, `poweroff` or `suspend`. Responds `{ok, action}` first; the command runs 1.5 s after the response has been sent: `systemctl --no-ask-password <action>` (Linux); `pmset sleepnow` / `osascript -e 'tell application "System Events" to restart|shut down'` (macOS); `rundll32.exe powrprof.dll,SetSuspendState 0,1,0` / `shutdown.exe /r|/s /t 0` (Windows).
 
 ### wake
 
@@ -425,7 +461,7 @@ Feature `ports` (`routes/ports.ts`).
 
 | Method | Path | Description |
 | --- | --- | --- |
-| GET | `/v1/ports` | `{host, ports: [{port, address, process, pid, localOnly, shared, url, reserved}]}` |
+| GET | `/v1/ports` | `{host, ports: [{port, address, process, pid, localOnly, shared, url, reserved}]}`. Linux `ss -ltnpH`; macOS `netstat -an -p tcp` + `lsof -nP -iTCP -sTCP:LISTEN` (processes of the agent's own user only); Windows `Get-NetTCPConnection -State Listen`. |
 | POST | `/v1/ports/:port/share` | Localhost-only port → `tailscale serve --bg --https=PORT`. Returns `{ok, url}`. |
 | DELETE | `/v1/ports/:port/share` | Removes the share |
 

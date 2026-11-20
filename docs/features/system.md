@@ -24,15 +24,40 @@ These are always on: the audit log, the event log and agent health.
 
 API reference for all routes: [../agent/api.md](../agent/api.md).
 
+## Platforms
+
+The agent is developed on Linux; the server features below also run on macOS and Windows, with the same API. What an
+OS can't do answers `501 agent.feature.unsupported` and is listed as `unsupported` in `GET /v1/health`.
+
+| Feature | Linux | macOS | Windows |
+|---|---|---|---|
+| System info | `systeminformation`; CPU temperature; NVIDIA GPUs | `vm_stat`, `sysctl`, `df`, `mount`; no temperature | CIM (PowerShell); no temperature; NVIDIA GPUs |
+| Processes | `ps`; `TERM`/`KILL`/`INT`/`HUP` | `ps`; all four signals | CIM, no user column; `TERM` = `taskkill` (fails for processes without a window), `KILL` = `taskkill /F`; `INT`/`HUP` unsupported |
+| Ports | `ss` | `netstat` + `lsof` (process names only for the agent's own user) | `Get-NetTCPConnection` |
+| Port sharing | `tailscale serve` | `tailscale serve` | `tailscale serve` |
+| Services | systemd, user + system | launchd: user agents + system daemons (actions on daemons need root) | Windows services (`system` scope only; most need an administrator) |
+| Service logs | `journalctl` | the job's `StandardOutPath`/`StandardErrorPath` file, no timestamps | unsupported |
+| Docker | `docker` CLI | Docker Desktop (must be running) | Docker Desktop (must be running) |
+| Power | `systemctl` | `pmset sleepnow`; restart/shut down through System Events | `shutdown.exe`; sleep via `SetSuspendState` (hibernates if hibernation is on) |
+| Wake-on-LAN relay, git, Homepage, transcription | yes | yes | yes (the transcription command must be an executable, not a shell script) |
+| Velour, Firefox bridge (`desktop`) | yes | socket only, untested | unsupported (Unix sockets) |
+
+Everything else (Claude, desktop control, security center, incidents, backups, databases, …) is developed and tested
+on Linux only. The desktop on macOS and Windows goes through the native helper, see
+[desktop-control.md](desktop-control.md).
+
+CI runs the platform tests, a build and a start-up smoke test (`/v1/health`, `/v1/system` with a paired token) on
+macOS and Windows; the full test suite runs on Linux.
+
 ## System info
 
-Shows CPU load, core count and temperature, memory and swap, disks, OS, kernel and uptime. For NVIDIA GPUs it also shows name, temperature, utilisation and VRAM, using `nvidia-smi`; without it the GPU list is empty. The data comes from the `systeminformation` library and is cached for 2 s.
+Shows CPU load, core count and temperature, memory and swap, disks, OS, kernel and uptime. For NVIDIA GPUs it also shows name, temperature, utilisation and VRAM, using `nvidia-smi`; without it the GPU list is empty. On Linux the data comes from the `systeminformation` library (macOS and Windows: see [Platforms](#platforms)) and is cached for 2 s.
 
 - **Requires:** `system`.
 
 ## Services
 
-Lists systemd `.service` units in the **user** or **system** scope. You can start, stop and restart a unit, and view its last journal lines (default 200).
+Lists systemd `.service` units in the **user** or **system** scope (launchd jobs on macOS, Windows services on Windows, see [Platforms](#platforms)). You can start, stop and restart a unit, and view its last journal lines (default 200).
 
 - **Requires:** `services`, plus `systemctl` and `journalctl`.
 - **Limitation:** commands run as the agent's user with `--no-ask-password`. Changing system units needs polkit or sudo rules that allow it. Otherwise you get a "permission denied" error.
@@ -83,7 +108,7 @@ Under **Tools › Ports**: lists listening TCP ports with their process (`ss -lt
 The **Power** section offers **Sleep**, **Restart** and **Shut down**.
 
 - Each action asks for confirmation in the app, and the API requires `{"confirm": true}`.
-- The agent runs `systemctl --no-ask-password <suspend|reboot|poweroff>` 1.5 s after it answers.
+- The agent runs `systemctl --no-ask-password <suspend|reboot|poweroff>` 1.5 s after it answers (macOS and Windows: see [Platforms](#platforms)).
 - **Requires:** `power`, and permission for the agent's user to run these actions (polkit normally allows this for a local active session).
 
 ## Wake-on-LAN
