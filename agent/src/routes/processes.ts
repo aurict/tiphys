@@ -49,6 +49,12 @@ const signalBody = z.object({ signal: z.enum(["TERM", "KILL", "INT", "HUP"]).def
 export function processRoutes(app: FastifyInstance, _ctx: Ctx) {
   app.get("/v1/processes", async (req) => {
     const q = query.parse(req.query);
+    if (process.platform === "darwin" || process.platform === "win32") {
+      const { platformImpl } = await import("../platform/support.ts");
+      const all = await (await platformImpl()).listProcesses();
+      all.sort(q.sort === "cpu" ? (a, b) => b.cpuPercent - a.cpuPercent : (a, b) => b.rssBytes - a.rssBytes);
+      return { total: all.length, processes: all.slice(0, q.limit) };
+    }
     const { stdout } = await run("ps", [
       "-eo",
       "pid=,ppid=,user=,pcpu=,pmem=,rss=,etimes=,comm=,args=",
@@ -63,6 +69,14 @@ export function processRoutes(app: FastifyInstance, _ctx: Ctx) {
     const parsed = signalBody.safeParse(req.body);
     if (!parsed.success) throw new AppError("agent.processes.confirmRequired", 400);
     if (pid === process.pid) throw new AppError("agent.processes.self", 400, { pid });
+    if (process.platform === "win32") {
+      // Windows has no signals: TERM = taskkill (asks to close), KILL = forced; INT/HUP are reported unsupported.
+      const { unsupported } = await import("../platform/support.ts");
+      const sig = parsed.data.signal;
+      if (sig !== "TERM" && sig !== "KILL") throw unsupported(`processes.signal.${sig}`); // listed in support.ts
+      await (await import("../platform/win32.ts")).signalProcess(pid, sig);
+      return { ok: true };
+    }
     try {
       process.kill(pid, `SIG${parsed.data.signal}` as NodeJS.Signals);
     } catch (e) {

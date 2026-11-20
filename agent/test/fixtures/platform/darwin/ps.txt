@@ -1,0 +1,5 @@
+    1     0 root               0.0  0.1  13856 12-03:14:09 /sbin/launchd
+  412     1 _windowserver      9.4  1.2 201744 12-03:13:52 /System/Library/PrivateFrameworks/SkyLight.framework/Resources/WindowServer -daemon
+  733     1 alice             38.7  4.6 772560    02:41:07 /Applications/Google Chrome.app/Contents/MacOS/Google Chrome
+  901   733 alice              2.1  1.3 216032    02:40:59 /Applications/Google Chrome.app/Contents/Frameworks/Google Chrome Framework.framework/Versions/131.0.6778.86/Helpers/Google Chrome Helper (Renderer).app/Contents/MacOS/Google Chrome Helper (Renderer) --type=renderer --lang=en-US
+ 5120     1 alice              0.4  0.6  98304       05:12 node /Users/alice/.local/share/tiphys/current/dist/cli.js serve

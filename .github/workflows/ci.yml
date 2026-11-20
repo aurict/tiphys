@@ -41,6 +41,37 @@ jobs:
         run: node test/load_check.mjs
       - name: Memory of an agent with only "system" on (budget; ~111 MB measured on the dev PC)
         run: MAX_MB=160 NODE_OPTIONS=--max-semi-space-size=1 ../tools/measure-agent.sh system
+      - name: Smoke test (serve with a temp config, pair, /v1/health, /v1/system)
+        run: node test/smoke.mjs
+
+  agent-platforms:
+    # P3: the server features on macOS and Windows. The full suite assumes Linux (systemd, Unix sockets, shell
+    # helpers); here run the platform tests: parsers with recorded outputs plus the native implementations.
+    name: Agent (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [macos-latest, windows-latest]
+    defaults:
+      run:
+        working-directory: agent
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: agent/package-lock.json
+      - run: npm ci
+      - run: npx tsc --noEmit -p .
+      - name: Platform tests (parsers everywhere, native implementation of this OS)
+        run: npx vitest run platform_
+      - run: npm run build
+      - name: Feature modules load only when their feature is on
+        run: node test/load_check.mjs
+      - name: Smoke test (serve with a temp config, pair, /v1/health, /v1/system)
+        run: node test/smoke.mjs
 
   atspi-helper:
     name: AT-SPI helper (Python)

@@ -14,7 +14,8 @@ import { FrameDecoder, encodeFrame } from "./firefox_frame.ts";
 
 export function defaultSocketPath(env: NodeJS.ProcessEnv = process.env): string {
   if (env.TIPHYS_FIREFOX_SOCKET) return env.TIPHYS_FIREFOX_SOCKET;
-  const runtime = env.XDG_RUNTIME_DIR || `/run/user/${process.getuid?.() ?? 1000}`;
+  // macOS has no XDG_RUNTIME_DIR: the per-user TMPDIR (0700, /var/folders/…) the browser's helper sees too.
+  const runtime = env.XDG_RUNTIME_DIR || (process.platform === "darwin" && env.TMPDIR ? env.TMPDIR : `/run/user/${process.getuid?.() ?? 1000}`);
   return join(runtime, "tiphys", "firefox.sock");
 }
 

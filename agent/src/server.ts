@@ -15,6 +15,7 @@ import type { ControlSessions } from "./control.ts";
 import type { Hyprctl } from "./hyprctl.ts";
 import type { DesktopApp } from "./desktop_apps.ts";
 import { serviceTokenRoutes, touchServiceToken } from "./service_tokens.ts";
+import { unsupportedOn } from "./platform/support.ts";
 import type { ResearchService } from "./research/jobs.ts";
 import type { AnalysisQueue } from "./analysis/jobs.ts";
 
@@ -131,9 +132,11 @@ export async function buildApp(ctx: Ctx, opts: { logger?: boolean; logStream?: {
     }
   });
 
+  const unsupported = unsupportedOn();
   app.get("/v1/health", async () => {
     const c = ctx.store.get();
-    return { name: c.name, version: VERSION, features: c.features };
+    // unsupported: features or feature parts this OS can't do (platform/support.ts); their routes answer 501.
+    return { name: c.name, version: VERSION, features: c.features, unsupported };
   });
 
   auditRoutes(app, ctx);

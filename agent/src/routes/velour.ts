@@ -20,6 +20,7 @@ import { z } from "zod";
 import { RateLimit, requireControl } from "../control.ts";
 import { AppError } from "../errors.ts";
 import { run } from "../exec.ts";
+import { unsupportedRoutes } from "../platform/support.ts";
 import type { Ctx } from "../server.ts";
 import { sseWriter } from "./browser.ts";
 
@@ -207,6 +208,8 @@ export interface VelourOpts {
 }
 
 export function velourRoutes(app: FastifyInstance, ctx: Ctx, opts: VelourOpts = {}) {
+  // Unix socket only (Windows named pipes are not implemented).
+  if (process.platform === "win32") return unsupportedRoutes(app, "/v1/velour", "desktop.velour");
   const path = opts.socketPath ?? velourSocketPath();
   const limit = opts.limit ?? new RateLimit(10, 5000);
   const guard = (req: FastifyRequest) => {

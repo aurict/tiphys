@@ -33,8 +33,25 @@ extension is `0.1.0`.
 - `tiphys-agent pair` finds its address from Tailscale when `--url` is missing, and a paired device works without
   restarting the agent (it re-reads `agent.json` changed by another process).
 
+**macOS and Windows agent**
+
+- The server features run on macOS and Windows with the same API: system info (`vm_stat`/`sysctl`/`df`; CIM via
+  PowerShell), processes and signals (`ps`; CIM + `taskkill`), listening ports (`netstat` + `lsof`;
+  `Get-NetTCPConnection`) with Tailscale sharing, services (launchd jobs; Windows services), power (`pmset` and
+  System Events; `shutdown.exe`), Docker Desktop. Linux behaviour is unchanged. See `docs/features/system.md#platforms`.
+- `GET /v1/health` returns `unsupported`: what this OS can't do (Windows: per-user services, service logs,
+  `INT`/`HUP` signals, Velour and the Firefox bridge). Those routes answer `501 agent.feature.unsupported`
+  `{feature, platform}`. `init --detect` and `doctor` are platform aware (launchd / Windows services, Docker Desktop
+  daemon check `doctor.feature.dockerUnreachable`, `doctor.feature.unsupported`).
+- CI runs the platform tests, the build, the module load check and a start-up smoke test (`serve`, `pair`,
+  `/v1/health`, `/v1/system`) on macOS and Windows; parser tests with recorded command outputs run on every OS.
+
 ### Changed
 
+- Windows: the agent's settings move to `%APPDATA%\Tiphys\agent.json`; an existing
+  `%USERPROFILE%\.config\tiphys\agent.json` (earlier `install.ps1`) keeps being used. macOS keeps `~/.config/tiphys`.
+- The launchd agent written by `install.sh` (and the Homebrew service) gets a `PATH` with Homebrew and Docker
+  Desktop, so `docker` and other tools are found.
 - **`init --features` now adds** to the current list instead of turning every unlisted feature off. Use
   `--set-features` for an exact list and `--disable` to turn features off. `tools/deploy-agent.sh` adds features on
   re-deploys (`TIPHYS_EXACT_FEATURES=1` for the old behaviour).

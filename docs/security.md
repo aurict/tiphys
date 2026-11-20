@@ -114,8 +114,12 @@ rely on the package manager's own checks plus the checksums copied from the sign
 - Every endpoint except `GET /v1/health` requires `Authorization: Bearer <token>`. As a fallback for clients that
   cannot set headers on WebSockets, `?token=` is accepted. The Tiphys app always uses the header. Query strings can
   end up in request logs, so avoid the fallback.
-- `/v1/health` is unauthenticated and reveals the agent name, version and feature flags to anyone who can reach the
-  port, meaning tailnet members.
+- `/v1/health` is unauthenticated and reveals the agent name, version, feature flags and the list of unsupported
+  feature parts (which hints at the operating system) to anyone who can reach the port, meaning tailnet members.
+- **Windows:** the `0600`/`0700` modes the agent sets on `agent.json` and its state files have no effect there. The
+  files in `%APPDATA%\Tiphys` are protected only by the user profile's default ACL (your account, administrators,
+  SYSTEM); the agent sets no ACL of its own. Anyone who is an administrator on that PC can read the token hashes and
+  any secrets in `agent.json`.
 - **Revocation:** `tiphys-agent revoke <id>` or *Agent settings › Paired devices › Revoke*. *Lock everything*
   (`POST /v1/devices/revoke-all` with `{"confirm": true}`) revokes all devices, including the phone sending the
   request. Push endpoints of revoked devices are removed too. Run `tiphys-agent pair` again to get back in.

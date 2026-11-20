@@ -1,0 +1,40 @@
+system = {
+	type = system
+	handle = 0
+	active count = 712
+	service count = 389
+	active service count = 145
+	maximum allowed shutdown time = 65 s
+	service stats = 0
+	creator = launchd[1]
+	creator euid = 0
+	auxiliary bootstrapper = com.apple.xpc.smd (complete)
+	security context = {
+		uid unset
+		asid = 0
+	}
+
+	bringup time = 117 ms
+	death port = 0x0
+
+	subdomains = {
+		pid/123
+	}
+
+	services = {
+		       0      -     com.apple.storekitagent
+		     380      -     com.apple.metadata.mds
+		       0     -9     com.apple.backupd-auto
+		       0      1     org.example.failing
+	}
+
+	unmanaged processes = {
+		com.apple.xpc.launchd.unmanaged.loginwindow.156 = {
+			active count = 1
+			dynamic endpoints = {
+			}
+			pid-local endpoints = {
+			}
+		}
+	}
+}

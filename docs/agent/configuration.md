@@ -8,11 +8,17 @@ For first-time setup see [Getting started](../getting-started.md). The HTTP API 
 
 | Source | Path |
 | --- | --- |
-| Default | `~/.config/tiphys/agent.json` |
+| Default (Linux, macOS) | `~/.config/tiphys/agent.json` |
+| Default (Windows) | `%APPDATA%\Tiphys\agent.json`; an older install's `%USERPROFILE%\.config\tiphys\agent.json` is kept and used if it exists |
 | Environment | `TIPHYS_AGENT_CONFIG=/path/to/agent.json` |
 | CLI flag | `tiphys-agent <command> --config /path/to/agent.json` (overrides both) |
 
-The file is always written atomically (temp file and rename) with mode `0600`. Its directory is created with mode `0700`. The agent writes its state files to the same directory (see [Files on disk](#files-on-disk)).
+macOS deliberately uses `~/.config/tiphys` too (not `~/Library/Application Support`): the same path as Linux in docs,
+scripts and the installer.
+
+The file is always written atomically (temp file and rename) with mode `0600`. Its directory is created with mode `0700`.
+On Windows the mode bits have no effect: the file is protected only by the default ACL of your user profile
+(`%APPDATA%` is readable by your account, administrators and SYSTEM). The agent sets no extra ACL. The agent writes its state files to the same directory (see [Files on disk](#files-on-disk)).
 
 The file is validated with a zod schema (`agent/src/config.ts`) when it loads. If a field is invalid, the agent refuses to start. Missing optional sections get their defaults.
 

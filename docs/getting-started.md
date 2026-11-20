@@ -40,6 +40,19 @@ tiphys-agent init --features claude,control
 systemctl --user restart tiphys-agent
 ```
 
+On macOS restart it with `launchctl kickstart -k gui/$(id -u)/com.tiphys.agent`; on Windows sign out and in, or see
+`tiphys-agent doctor` for the command.
+
+**macOS and Windows:** the server features (system info, processes, ports, services, Docker, power, git, Wake-on-LAN
+relay) work there too; see [System › Platforms](features/system.md#platforms) for what differs. Notes:
+
+- Settings live in `~/.config/tiphys/agent.json` on macOS and in `%APPDATA%\Tiphys\agent.json` on Windows.
+- Docker means Docker Desktop: it must be running (`doctor` reports `dockerUnreachable` otherwise).
+- macOS: the first **Restart**/**Shut down** from the phone makes macOS ask once whether the agent may control
+  "System Events" (System Settings › Privacy & Security › Automation).
+- Windows: most services need an administrator to start or stop, and **Sleep** hibernates instead when hibernation
+  is turned on (`powercfg /h off` to get real sleep).
+
 ### From a git checkout
 
 Needs Linux with systemd and Node.js 22 or newer (desktop features also need Hyprland and the

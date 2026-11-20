@@ -7,6 +7,12 @@ import type { Ctx } from "../server.ts";
 const containerId = z.string().regex(/^[A-Za-z0-9][A-Za-z0-9_.-]{0,127}$/);
 const action = z.enum(["start", "stop", "restart"]);
 
+/** "docker" on Linux; on macOS/Windows also Docker Desktop's own copy when it is not on the agent's PATH. */
+async function docker(): Promise<string> {
+  if (process.platform !== "darwin" && process.platform !== "win32") return "docker";
+  return (await import("../platform/common.ts")).dockerBin();
+}
+
 export function parseJsonLines<T>(out: string): T[] {
   return out
     .split("\n")
@@ -17,9 +23,10 @@ export function parseJsonLines<T>(out: string): T[] {
 
 export function dockerRoutes(app: FastifyInstance, _ctx: Ctx) {
   app.get("/v1/docker/containers", async () => {
+    const bin = await docker();
     const [ps, stats] = await Promise.all([
-      run("docker", ["ps", "-a", "--no-trunc", "--format", "{{json .}}"]),
-      run("docker", ["stats", "--no-stream", "--format", "{{json .}}"], { timeoutMs: 30000, allowFail: true }),
+      run(bin, ["ps", "-a", "--no-trunc", "--format", "{{json .}}"]),
+      run(bin, ["stats", "--no-stream", "--format", "{{json .}}"], { timeoutMs: 30000, allowFail: true }),
     ]);
     const statById = new Map(
       parseJsonLines<Record<string, string>>(stats.stdout).map((s) => [s.Name ?? "", s] as const),
@@ -43,14 +50,14 @@ export function dockerRoutes(app: FastifyInstance, _ctx: Ctx) {
 
   app.post("/v1/docker/containers/:id/:action", async (req) => {
     const p = req.params as Record<string, string>;
-    await run("docker", [action.parse(p.action), containerId.parse(p.id)], { timeoutMs: 90000 });
+    await run(await docker(), [action.parse(p.action), containerId.parse(p.id)], { timeoutMs: 90000 });
     return { ok: true };
   });
 
   app.get("/v1/docker/containers/:id/logs", async (req) => {
     const id = containerId.parse((req.params as Record<string, string>).id);
     const tail = z.coerce.number().int().min(1).max(5000).default(300).parse((req.query as Record<string, unknown>).tail);
-    const res = await run("docker", ["logs", "--tail", String(tail), "--timestamps", id], { timeoutMs: 30000 });
+    const res = await run(await docker(), ["logs", "--tail", String(tail), "--timestamps", id], { timeoutMs: 30000 });
     // docker logs emits stdout and stderr on separate streams; the two are merged by timestamp.
     const lines = [
       ...res.stdout.split("\n").map((l) => ({ stream: "stdout", l })),

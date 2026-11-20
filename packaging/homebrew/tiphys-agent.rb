@@ -28,7 +28,8 @@ class TiphysAgent < Formula
   service do
     run [opt_libexec/"node/bin/node", "--max-semi-space-size=1", opt_libexec/"dist/cli.js", "serve"]
     keep_alive true
-    environment_variables NODE_ENV: "production"
+    # launchd's default PATH lacks Homebrew's bin (docker, tailscale and other tools the features call).
+    environment_variables NODE_ENV: "production", PATH: std_service_path_env
     log_path var/"log/tiphys-agent.log"
     error_log_path var/"log/tiphys-agent.log"
   end

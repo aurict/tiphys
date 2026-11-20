@@ -26,7 +26,9 @@ $ProgressPreference = 'SilentlyContinue'
 
 $Releases = if ($env:TIPHYS_RELEASE_URL) { $env:TIPHYS_RELEASE_URL.TrimEnd('/') } else { 'https://github.com/aurict/tiphys/releases' }
 $Root = if ($env:TIPHYS_PREFIX) { $env:TIPHYS_PREFIX } else { Join-Path $env:LOCALAPPDATA 'Tiphys\agent' }
-$ConfigDir = Join-Path $env:USERPROFILE '.config\tiphys'
+# Same rule as the agent (config.ts defaultConfigPath): %APPDATA%\Tiphys, or the older ~\.config\tiphys if it exists.
+$LegacyConfigDir = Join-Path $env:USERPROFILE '.config\tiphys'
+$ConfigDir = if (Test-Path (Join-Path $LegacyConfigDir 'agent.json')) { $LegacyConfigDir } else { Join-Path $env:APPDATA 'Tiphys' }
 $Port = 7443
 $RunKey = 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Run'
 

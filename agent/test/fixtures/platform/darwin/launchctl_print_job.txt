@@ -1,0 +1,39 @@
+gui/501/com.tiphys.agent = {
+	active count = 1
+	path = /Users/alice/Library/LaunchAgents/com.tiphys.agent.plist
+	type = LaunchAgent
+	state = running
+
+	program = /bin/sh
+	arguments = {
+		/bin/sh
+		-c
+		/bin/sh "$0/guard.sh" "$0"; exec "$0/current/node/bin/node" --max-semi-space-size=1 "$0/current/dist/cli.js" serve
+		/Users/alice/.local/share/tiphys
+	}
+
+	stdout path = /Users/alice/Library/Logs/tiphys-agent.log
+	stderr path = /Users/alice/Library/Logs/tiphys-agent.log
+	inherited environment = {
+		SSH_AUTH_SOCK => /private/tmp/com.apple.launchd.x/Listeners
+	}
+
+	default environment = {
+		PATH => /usr/bin:/bin:/usr/sbin:/sbin
+	}
+
+	domain = gui/501 [100004]
+	asid = 100004
+	minimum runtime = 5
+	exit timeout = 5
+	runs = 1
+	pid = 5120
+	immediate reason = speculative
+	forks = 3
+	execs = 1
+	initialized = 1
+	trampolined = 1
+	started suspended = 0
+	proxy started suspended = 0
+	last exit code = (never exited)
+}

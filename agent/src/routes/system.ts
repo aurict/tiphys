@@ -4,12 +4,23 @@ import type { FastifyInstance } from "fastify";
 import { run } from "../exec.ts";
 import type { Ctx } from "../server.ts";
 
-interface Gpu {
+export interface Gpu {
   name: string;
   temperatureC: number | null;
   utilizationPercent: number | null;
   memoryUsedMiB: number | null;
   memoryTotalMiB: number | null;
+}
+
+export interface SystemSnapshot {
+  hostname: string;
+  os: string;
+  kernel: string;
+  uptimeSeconds: number;
+  cpu: { loadPercent: number; cores: number; temperatureC: number | null };
+  memory: { totalBytes: number; usedBytes: number; swapTotalBytes: number; swapUsedBytes: number };
+  disks: Array<{ mount: string; fs: string; totalBytes: number; usedBytes: number }>;
+  gpus: Gpu[];
 }
 
 async function nvidiaGpus(): Promise<Gpu[]> {
@@ -37,6 +48,13 @@ let cache: { at: number; value: unknown } | null = null;
 
 export async function systemSnapshot() {
   if (cache && Date.now() - cache.at < 2000) return cache.value;
+  // macOS and Windows: own implementations (sysctl/vm_stat/df, CIM); Linux below as before.
+  if (process.platform === "darwin" || process.platform === "win32") {
+    const { platformImpl } = await import("../platform/support.ts");
+    const value = await (await platformImpl()).systemSnapshot(nvidiaGpus);
+    cache = { at: Date.now(), value };
+    return value;
+  }
   const [load, mem, fs, temp, time, os, gpus] = await Promise.all([
     si.currentLoad(),
     si.mem(),
