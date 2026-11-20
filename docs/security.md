@@ -130,6 +130,28 @@ strings are escaped or validated before they reach `hyprctl eval`. Key input goe
 - The indicator is visual only. Someone not looking at the PC will not notice it.
 - Live-screen frames and mobile-view snapshots are not stored, but window thumbnails and the window list need only
   pairing, not a control session.
+- On the native helper backend (desktops other than Hyprland) there is **no PC indicator**: the session is still
+  required, time-limited, single-holder and rate-limited exactly as above, but only the phone shows that it is open.
+
+## Native desktop helper
+
+On desktops other than Hyprland (`desktop.backend`), desktop endpoints go through `tiphys-desktop` (see
+[Desktop control](features/desktop-control.md#other-desktops-native-helper)). The agent keeps every guarantee above:
+the control feature, session and rate limits are checked in the agent before anything reaches the helper; window ids
+are validated (`^0x[0-9a-f]{1,16}$`), workspaces are numbers 1–100 mapped to the helper's own ids, and only apps from
+the helper's list can be launched.
+
+- **Process:** runs as the agent's user, started by the agent with an argument array (no shell), only while a desktop
+  feature is in use (stops after 60 s idle and when the agent stops; it also exits when its stdin closes, so it dies
+  with a crashed agent). It talks only over stdin/stdout; it opens no network port.
+- **Binary:** `desktop.helperPath` can only be set in the config file, not through `PATCH /v1/config`, so a paired phone
+  can't point the agent at another program. Otherwise the repository build or `PATH` is used.
+- **Logging:** typed text, clipboard text and window titles are never logged by the agent; the helper's stderr is
+  logged only as its last line on a crash and, by protocol, never carries such content.
+- **OS permissions:** on macOS the user grants Accessibility and Screen Recording to the helper once; on GNOME/KDE
+  Wayland the xdg-desktop-portal asks on the PC before the first input or capture. These grants belong to the helper
+  binary and stay after Tiphys stops; revoke them in the OS settings if you remove Tiphys.
+- The helper enforces the same limits again (text length, 60 input requests per second, capture sizes).
 
 ## Claude PC sessions
 

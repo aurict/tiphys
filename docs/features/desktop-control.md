@@ -1,6 +1,7 @@
 # Desktop control
 
-Control the PC's Hyprland desktop from the phone:
+Control the PC's desktop from the phone (Hyprland natively; Sway, X11, GNOME/KDE, Windows and macOS through the
+[native helper](#other-desktops-native-helper)):
 
 - the **desktop panel** (windows, workspaces, apps),
 - the **live screen** (see the screen and use it by touch),
@@ -185,9 +186,43 @@ Setup:
 Status (installed, running, ports 47984/47989/47990/48010, capture, encoder, paired and pending clients) only needs
 `desktop`. Start, stop and pair need `control` plus a session, and are limited to 6 per minute.
 
+## Other desktops (native helper)
+
+On desktops other than Hyprland the agent talks to a small native helper, `tiphys-desktop` (Rust, in
+`desktop-helper/`; protocol in `desktop-helper/PROTOCOL.md`). It supports Sway, X11, GNOME/KDE on Wayland (through
+xdg-desktop-portal), Windows and macOS. The phone uses the same screens; `GET /v1/desktop/capabilities` tells it what
+this PC can do, and it hides the rest.
+
+**Choosing the backend** (`desktop.backend` in the agent config, read at startup): `auto` (the default) uses Hyprland
+when it finds a running Hyprland, otherwise the helper when it finds the binary (`desktop.helperPath`, else
+`desktop-helper/target/release/tiphys-desktop` next to the agent, else `tiphys-desktop` on `PATH`), otherwise Hyprland
+as before. Build the helper with `cargo build --release` in `desktop-helper/`. Nothing changes on Hyprland.
+
+The helper starts only when a desktop endpoint is used, and stops after 60 s without requests (an open live screen
+keeps it running), so it costs no memory while idle. If it crashes, the next request restarts it (with a growing
+delay if it keeps crashing).
+
+| | Hyprland | Helper |
+|---|---|---|
+| Window list, actions, workspaces | ✓ | ✓ where the platform exposes them (`portal` may lack windows); `pin` not available, `minimize`/`maximize` added |
+| Thumbnails | WebP/PNG, visible workspace only | JPEG, not for minimized windows |
+| Apps, icons, launch | `.desktop` + `gtk-launch` | the helper's list (Linux `.desktop`, Windows Start menu, macOS `/Applications`); icons on Linux only |
+| DPMS, screenshot | ✓ | if the platform allows (macOS needs permission) |
+| Live screen | MJPEG or H.264 (NVENC), grim fallback | MJPEG only, no cursor position in `hello` |
+| Live input | `ydotool`, `wtype` | the helper (XTest, `SendInput`, `CGEvent`, wlr virtual input, portal); `KPPlus`/`KPMinus` not available |
+| Clipboard | `wl-clipboard` + sync to the phone | `wl-clipboard` + sync on Wayland; elsewhere the helper, without sync |
+| Control indicator on the PC | border + notification | none: the phone's *Control on* bar is the only sign |
+| Mobile view (AT-SPI), Sunshine, Claude's PC tools, raising Firefox on tab switch | ✓ | not available (`agent.desktop.unsupported` / `agent.claude.pcUnavailable`) |
+| Media, Velour, open on PC, Firefox bridge | ✓ | ✓ (media and open on PC use the Linux tools: `playerctl`, `wpctl`, `xdg-open`) |
+
+**Permissions.** On macOS the helper needs *Accessibility* (input, window actions) and *Screen Recording* (screenshots,
+live screen); a missing one answers `agent.desktop.permission` with its name. On GNOME/KDE Wayland the portal asks
+once on the PC before the first input or screen capture.
+
 ## Limitations
 
-- Only Hyprland on Wayland. Other desktops show *Hyprland is not running*; the app list still works.
+- On Hyprland and, through the native helper, on other desktops (see above). Without either the panel shows
+  *Hyprland is not running*; the app list still works.
 - Thumbnails, Claude's focus and the mobile view only cover windows on a **visible** workspace, because Hyprland
   doesn't render other workspaces.
 - H.264 needs NVENC (NVIDIA) on the PC. Otherwise you get JPEG.

@@ -253,7 +253,11 @@ Each check has one of four states: `ok`, `stale`, `failed` or `missing`. When th
 
 | Field | Default | Meaning |
 | --- | --- | --- |
-| `clipboardSync` | `true` | When the PC clipboard changes, send its text to the phone as a silent, end-to-end encrypted `clipboard.pc` notification. Only text up to 3000 bytes is sent. Password-manager content is skipped, and the notification is sent only to endpoints that have WebPush keys. The agent rereads this setting on every check, so changes need no restart. |
+| `clipboardSync` | `true` | When the PC clipboard changes, send its text to the phone as a silent, end-to-end encrypted `clipboard.pc` notification. Only text up to 3000 bytes is sent. Password-manager content is skipped, and the notification is sent only to endpoints that have WebPush keys. The agent rereads this setting on every check, so changes need no restart. Needs `wl-paste` on a Wayland session (not available through the helper). |
+| `backend` | absent (= `"auto"`) | `"auto"`, `"hyprland"` or `"helper"`. `auto` uses Hyprland when a Hyprland instance is found (a socket under `$XDG_RUNTIME_DIR/hypr`), otherwise the native helper `tiphys-desktop` when its binary is found, otherwise Hyprland (whose endpoints then answer `agent.desktop.noHyprland`, as before). `helper` forces the helper even on Hyprland (useful for testing). Read once at startup: restart after changing it. Config file only; `PATCH /v1/config` can't set it. |
+| `helperPath` | absent | Absolute path of the `tiphys-desktop` binary. Absent: `desktop-helper/target/release/tiphys-desktop` next to the agent (the repository build), then `tiphys-desktop` on `PATH`. Only an executable regular file counts; a configured path that isn't one is not replaced by the others. Config file only. |
+
+The two new fields are omitted (not filled with defaults) so `GET /v1/config` stays as before; `PATCH {desktop: {clipboardSync}}` keeps them.
 
 ### transcribe
 

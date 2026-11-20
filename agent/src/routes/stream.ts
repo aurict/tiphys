@@ -294,8 +294,22 @@ interface Proc {
   exited: Promise<void>;
 }
 
-/** A single live stream: source process(es), frame sending, stats. */
-class LiveStream {
+/**
+ * `tiphys-desktop stream` arguments (desktop-helper/PROTOCOL.md): [t.args] holds `--monitor ID [--region x,y,w,h]`; the
+ * helper scales to the output width and uses the same MJPEG quantizer scale.
+ */
+export function helperStreamArgs(t: StreamTarget, out: { w: number; h: number }, p: StreamParams): string[] {
+  return ["stream", ...t.args, "--fps", String(p.fps), "--max-width", String(out.w), "--quality", String(qscale(p.q))];
+}
+
+/** `tiphys-desktop stream` exit codes → error codes for the client. */
+const HELPER_STREAM_EXIT: Record<number, string> = { 3: "agent.desktop.permission", 4: "agent.desktop.monitorNotFound", 5: "agent.desktop.unsupported" };
+
+/**
+ * A single live stream: source process(es), frame sending, stats. Sources: wf-recorder (Hyprland; grim fallback) or,
+ * with [helper] set, `tiphys-desktop stream` (other desktops; MJPEG only, no fallback).
+ */
+export class LiveStream {
   readonly socket: WebSocket;
   readonly io: StreamIo;
   readonly opts: Required<Pick<StreamOpts, "maxBuffered" | "killGraceMs" | "grimMaxFps" | "statsMs" | "h264StartMs" | "h264FlushMs">> & { now: () => number };
@@ -303,7 +317,9 @@ class LiveStream {
   target: StreamTarget;
   params: StreamParams;
   out: { w: number; h: number };
-  source: "wf-recorder" | "grim" = "wf-recorder";
+  source: "wf-recorder" | "grim" | "helper" = "wf-recorder";
+  /** Helper binary (helper source). */
+  readonly helper: string | null;
   #proc: Proc | null = null;
   #grim: { stop: boolean; done: Promise<void> } | null = null;
   #seq = 0;
@@ -323,7 +339,9 @@ class LiveStream {
   #flushTimer: NodeJS.Timeout | null = null;
   #startTimer: NodeJS.Timeout | null = null;
 
-  constructor(socket: WebSocket, io: StreamIo, target: StreamTarget, params: StreamParams, opts: LiveStream["opts"], log: LiveStream["log"]) {
+  constructor(socket: WebSocket, io: StreamIo, target: StreamTarget, params: StreamParams, opts: LiveStream["opts"], log: LiveStream["log"], helper: string | null = null) {
+    this.helper = helper;
+    if (helper) this.source = "helper";
     this.socket = socket;
     this.io = io;
     this.target = target;
@@ -348,6 +366,7 @@ class LiveStream {
       this.send({ type: "stats", codec: this.params.codec, ...this.#stats });
       this.#stats = { sent: 0, skipped: 0, dropped: 0, bytes: 0, waited: 0 };
     }, this.opts.statsMs);
+    if (this.source === "helper") return this.#startHelper();
     if (this.source === "wf-recorder" && (await this.io.has("wf-recorder"))) return this.#startRecorder();
     this.#fallback();
   }
@@ -369,7 +388,16 @@ class LiveStream {
     this.#lastHash = "";
     this.hello(cursor);
     if (this.source === "grim") this.#startGrim();
+    else if (this.source === "helper") this.#startHelper();
     else await this.#startRecorder(); // the next restart must not run before the process is set up (orphan process)
+  }
+
+  /** Applies the source's limits to a requested quality change (codec, fps). */
+  limit(next: StreamParams) {
+    // No H.264 in the grim fallback or from the helper.
+    if (this.source === "grim") Object.assign(next, { codec: "mjpeg", fps: Math.min(next.fps, this.opts.grimMaxFps) });
+    else if (this.source === "helper") Object.assign(next, { codec: "mjpeg", fps: Math.min(next.fps, MJPEG_MAX_FPS) });
+    else if (next.codec === "mjpeg") next.fps = Math.min(next.fps, MJPEG_MAX_FPS);
   }
 
   #emit(jpeg: Buffer) {
@@ -516,15 +544,58 @@ class LiveStream {
         this.log(`wf-recorder kare veremedi, grim'e geçiliyor: ${err.trim().split("\n").at(-1) ?? ""}`);
         return this.#fallback();
       }
-      // Unexpected exit (e.g. monitor turned off): restarts at most 3 times per minute.
-      const t = this.opts.now();
-      this.#restarts = [...this.#restarts.filter((x) => t - x < 60_000), t];
-      if (this.#restarts.length > 3) {
-        this.send({ type: "error", code: "agent.desktop.streamFailed" });
+      this.#restartLater(() => this.#startRecorder());
+    });
+  }
+
+  /** Unexpected exit (e.g. monitor turned off): restarts at most 3 times per minute. */
+  #restartLater(start: () => Promise<void> | void) {
+    const t = this.opts.now();
+    this.#restarts = [...this.#restarts.filter((x) => t - x < 60_000), t];
+    if (this.#restarts.length > 3) {
+      this.send({ type: "error", code: "agent.desktop.streamFailed" });
+      this.socket.close(4502, "capture failed");
+      return;
+    }
+    this.#restartTimer = setTimeout(() => void start(), 1000);
+  }
+
+  /** `tiphys-desktop stream`: MJPEG on stdout like wf-recorder; no fallback (exit code → error for the client). */
+  #startHelper() {
+    if (this.#stopped || this.#proc) return;
+    const child = this.io.spawn(this.helper!, helperStreamArgs(this.target, this.out, this.params), process.env);
+    const splitter = new JpegSplitter();
+    this.#framesThisRun = 0;
+    let err = "";
+    let code: number | null = null;
+    let spawnFailed = false;
+    const exited = new Promise<void>((resolve) => {
+      child.on("exit", (c) => {
+        code = c;
+        resolve();
+      });
+      child.on("error", () => {
+        spawnFailed = true;
+        resolve();
+      });
+    });
+    const proc: Proc = { child, exited };
+    this.#proc = proc;
+    child.stdout?.on("data", (b: Buffer) => {
+      if (this.#proc !== proc) return;
+      for (const f of splitter.push(b)) this.#emit(f);
+    });
+    child.stderr?.on("data", (b: Buffer) => (err = (err + b.toString("utf8")).slice(-600)));
+    void exited.then(() => {
+      if (this.#proc !== proc || this.#stopped) return; // stopped on purpose
+      this.#proc = null;
+      if (spawnFailed || this.#framesThisRun === 0) {
+        this.log(`masaüstü yardımcısı kare veremedi (kod ${code}): ${err.trim().split("\n").at(-1) ?? ""}`);
+        this.send({ type: "error", code: spawnFailed ? "agent.desktop.helperMissing" : (HELPER_STREAM_EXIT[code ?? -1] ?? "agent.desktop.streamFailed") });
         this.socket.close(4502, "capture failed");
         return;
       }
-      this.#restartTimer = setTimeout(() => void this.#startRecorder(), 1000);
+      this.#restartLater(() => this.#startHelper());
     });
   }
 
@@ -643,7 +714,7 @@ class InputQueue {
   }
 }
 
-const streamQuery = z.object({
+export const streamQuery = z.object({
   fps: z.coerce.number().int().min(1).max(30).default(12),
   scale: z.coerce.number().min(0.25).max(1).default(0.6),
   q: z.coerce.number().int().min(10).max(95).default(70),
@@ -652,6 +723,20 @@ const streamQuery = z.object({
   codec: z.enum(["mjpeg", "h264"]).default("mjpeg"),
   kbps: z.coerce.number().int().min(100).max(20_000).default(2000),
 });
+export type StreamQuery = z.infer<typeof streamQuery>;
+
+/** The live screen's desktop backend: Hyprland (streamRoutes below) or the native helper (desktop_portable.ts). */
+export interface ScreenSource {
+  /** Resolves the query's target and creates the stream (nothing runs yet); AppError if that's impossible. */
+  open(q: StreamQuery, socket: WebSocket, opts: LiveStream["opts"], log: LiveStream["log"]): Promise<LiveStream>;
+  /** Cursor position in the stream's image (for hello); null if unknown. */
+  cursorIn(stream: LiveStream): Promise<[number, number] | null>;
+  runInput(stream: LiveStream, e: InputEvent): Promise<void>;
+  /** Focused window changes (sent as {type:"focus", …}); returns the unsubscribe function. */
+  subscribeFocus(fn: (f: object) => void): () => void;
+  /** Agent shutdown, after the streams closed. */
+  stop(): void | Promise<void>;
+}
 
 /**
  * WS /v1/desktop/stream: no upgrade without the "desktop" + "control" features and a valid control session
@@ -660,6 +745,57 @@ const streamQuery = z.object({
 export function streamRoutes(app: FastifyInstance, ctx: Ctx, io: StreamIo = realStreamIo, opts: StreamOpts = {}) {
   const control = ctx.control;
   if (!control) throw new Error("streamRoutes: önce hyprRoutes (kontrol oturumu) kaydedilmeli");
+  // Focused window: shared among open streams (no socket/timer while there are no subscribers).
+  const focus = opts.focus ?? new FocusWatcher({ exec: io.exec, hyprEnv: io.hyprEnv, connect: io.connect }, { apps: () => ctx.desktopApps?.() ?? Promise.resolve([]), log: (m) => app.log.warn(m) });
+
+  async function hyprJson(env: NodeJS.ProcessEnv, what: string): Promise<unknown> {
+    const r = await io.exec("hyprctl", ["-j", what], { env, timeoutMs: 5000, allowFail: true });
+    try {
+      return JSON.parse(r.stdout);
+    } catch {
+      throw new AppError("agent.desktop.hyprctlFailed", 502);
+    }
+  }
+
+  const hyprctl = ctx.hyprctl ?? new Hyprctl(io.exec, io.hyprEnv);
+
+  screenRoute(app, ctx, control, opts, {
+    async open(q, socket, streamOpts, log) {
+      const env = await io.hyprEnv();
+      const [c, m] = await Promise.all([q.window ? hyprJson(env, "clients") : Promise.resolve([]), hyprJson(env, "monitors")]);
+      const monitors = parseMonitors(m).map((x, i) => ({ ...x, transform: Number(((m as Array<{ transform?: unknown }>)[i] ?? {}).transform) || 0 }));
+      let window: HyprWindow | undefined;
+      if (q.window) {
+        window = parseClients(c).find((w) => w.address === q.window);
+        if (!window) throw new AppError("agent.desktop.windowNotFound", 404);
+        if (!isVisible(window, monitors)) throw new AppError("agent.desktop.windowNotVisible", 409);
+      }
+      const target = targetFor(monitors, { monitor: q.monitor, window });
+      const fps = q.codec === "mjpeg" ? Math.min(q.fps, MJPEG_MAX_FPS) : q.fps;
+      return new LiveStream(socket, io, target, { fps, scale: q.scale, q: q.q, codec: q.codec, kbps: q.kbps }, streamOpts, log);
+    },
+    async cursorIn(stream) {
+      try {
+        const j = (await hyprJson(await io.hyprEnv(), "cursorpos")) as { x?: unknown; y?: unknown };
+        if (typeof j.x !== "number" || typeof j.y !== "number") return null;
+        return unmapPoint(j.x, j.y, stream.out, stream.target.region);
+      } catch {
+        return null;
+      }
+    },
+    // Input: code shared with Claude's PC tools (desktop_input.ts). Image pixel → global coordinate; if the client
+    // also sends the frame size (while quality is changing), conversion uses that size.
+    runInput: (stream, e) => runInputShared(io, hyprctl, e, (x, y, w, h) => mapPoint(x, y, w && h ? { w, h } : stream.out, stream.target.region)),
+    subscribeFocus: (fn) => focus.subscribe(fn),
+    stop: () => focus.stop(),
+  });
+}
+
+/**
+ * The live screen WebSocket over a [source] (shared by the Hyprland and helper backends): session checks, one stream
+ * per device, input queue and limits, quality changes, cleanup.
+ */
+export function screenRoute(app: FastifyInstance, ctx: Ctx, control: ControlSessions, opts: StreamOpts, source: ScreenSource) {
   const now = opts.now ?? Date.now;
   const log = (msg: string, err?: unknown) => app.log.warn({ err }, msg);
   // 60 input events per second (security rule); enough in practice since cursor moves are coalesced.
@@ -674,39 +810,14 @@ export function streamRoutes(app: FastifyInstance, ctx: Ctx, io: StreamIo = real
     now,
   };
   const live = new Map<string, { stream: LiveStream; close: (code: number, reason: string) => Promise<void> }>();
-  // Focused window: shared among open streams (no socket/timer while there are no subscribers).
-  const focus = opts.focus ?? new FocusWatcher({ exec: io.exec, hyprEnv: io.hyprEnv, connect: io.connect }, { apps: () => ctx.desktopApps?.() ?? Promise.resolve([]), log: (m) => app.log.warn(m) });
 
   app.addHook("onClose", async () => {
     await Promise.all([...live.values()].map((s) => s.close(1001, "agent shutdown")));
-    focus.stop();
+    await source.stop();
   });
 
-  async function hyprJson(env: NodeJS.ProcessEnv, what: string): Promise<unknown> {
-    const r = await io.exec("hyprctl", ["-j", what], { env, timeoutMs: 5000, allowFail: true });
-    try {
-      return JSON.parse(r.stdout);
-    } catch {
-      throw new AppError("agent.desktop.hyprctlFailed", 502);
-    }
-  }
-
-  async function cursorIn(stream: LiveStream): Promise<[number, number] | null> {
-    try {
-      const j = (await hyprJson(await io.hyprEnv(), "cursorpos")) as { x?: unknown; y?: unknown };
-      if (typeof j.x !== "number" || typeof j.y !== "number") return null;
-      return unmapPoint(j.x, j.y, stream.out, stream.target.region);
-    } catch {
-      return null;
-    }
-  }
-
-  const hyprctl = ctx.hyprctl ?? new Hyprctl(io.exec, io.hyprEnv);
-
-  // Input: code shared with Claude's PC tools (desktop_input.ts). Image pixel → global coordinate; if the client
-  // also sends the frame size (while quality is changing), conversion uses that size.
-  const runInput = (stream: LiveStream, e: InputEvent) =>
-    runInputShared(io, hyprctl, e, (x, y, w, h) => mapPoint(x, y, w && h ? { w, h } : stream.out, stream.target.region));
+  const cursorIn = (stream: LiveStream) => source.cursorIn(stream);
+  const runInput = (stream: LiveStream, e: InputEvent) => source.runInput(stream, e);
 
   app.get(
     "/v1/desktop/stream",
@@ -782,9 +893,7 @@ export function streamRoutes(app: FastifyInstance, ctx: Ctx, io: StreamIo = real
           if (!p.success) return stream.send({ type: "error", code: "agent.request.invalid" });
           const cur = stream.params;
           const next = { fps: p.data.fps ?? cur.fps, scale: p.data.scale ?? cur.scale, q: p.data.q ?? cur.q, kbps: p.data.kbps ?? cur.kbps, codec: p.data.codec ?? cur.codec };
-          // No H.264 in the grim fallback.
-          if (stream.source === "grim") Object.assign(next, { codec: "mjpeg", fps: Math.min(next.fps, streamOpts.grimMaxFps) });
-          else if (next.codec === "mjpeg") next.fps = Math.min(next.fps, MJPEG_MAX_FPS);
+          stream.limit(next);
           if (next.fps === cur.fps && next.scale === cur.scale && next.q === cur.q && next.kbps === cur.kbps && next.codec === cur.codec) return;
           const t = now();
           qualityAt = qualityAt.filter((x) => t - x < 10_000);
@@ -829,19 +938,8 @@ export function streamRoutes(app: FastifyInstance, ctx: Ctx, io: StreamIo = real
 
       void (async () => {
         try {
-          const env = await io.hyprEnv();
-          const [c, m] = await Promise.all([q.window ? hyprJson(env, "clients") : Promise.resolve([]), hyprJson(env, "monitors")]);
-          const monitors = parseMonitors(m).map((x, i) => ({ ...x, transform: Number(((m as Array<{ transform?: unknown }>)[i] ?? {}).transform) || 0 }));
-          let window: HyprWindow | undefined;
-          if (q.window) {
-            window = parseClients(c).find((w) => w.address === q.window);
-            if (!window) throw new AppError("agent.desktop.windowNotFound", 404);
-            if (!isVisible(window, monitors)) throw new AppError("agent.desktop.windowNotVisible", 409);
-          }
-          const target = targetFor(monitors, { monitor: q.monitor, window });
+          const s = await source.open(q, socket, streamOpts, log);
           if (closed) return;
-          const fps = q.codec === "mjpeg" ? Math.min(q.fps, MJPEG_MAX_FPS) : q.fps;
-          const s = new LiveStream(socket, io, target, { fps, scale: q.scale, q: q.q, codec: q.codec, kbps: q.kbps }, streamOpts, log);
           // One stream per session: the old one (e.g. left open after a network drop) closes.
           const old = live.get(device);
           live.set(device, { stream: s, close });
@@ -849,7 +947,7 @@ export function streamRoutes(app: FastifyInstance, ctx: Ctx, io: StreamIo = real
           if (old) await old.close(4409, "replaced");
           if (closed) return void (await s.stop());
           s.hello(await cursorIn(s));
-          if (!closed) offFocus = focus.subscribe((f) => s.send({ type: "focus", ...f }));
+          if (!closed) offFocus = source.subscribeFocus((f) => s.send({ type: "focus", ...f }));
           await s.start();
           for (const d of pending.splice(0)) void onMessage(d);
         } catch (e) {

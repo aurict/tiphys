@@ -242,6 +242,10 @@ Every error has the same envelope. The agent sends codes, never sentences; the a
 | `agent.desktop.badUrl` | 400 | Only http(s), max 4096 characters, no spaces or control characters |
 | `agent.desktop.badKey` / `.badText` / `.inputFailed` | 400 / 400 / 502 | Input rejected or `ydotool`/`wtype` failed |
 | `agent.desktop.streamFailed` | - | Live screen capture failed (WebSocket message only) |
+| `agent.desktop.unsupported` | 501 | Not available on this desktop backend (helper capability missing, or a Hyprland-only feature such as the mobile view or Sunshine). `params.capability` / `.op` / `.action` say which |
+| `agent.desktop.permission` | 403 | The OS refused a permission the helper needs (`params.permission`, e.g. macOS Accessibility or Screen Recording) |
+| `agent.desktop.helperFailed` | 502 | The desktop helper failed, timed out or crashed (`params.op`, `params.reason?`) |
+| `agent.desktop.helperMissing` | 500 | Helper backend selected but no `tiphys-desktop` binary was found |
 | `agent.media.noPlayer` / `.noArt` / `.failed` / `.volumeFailed` | 404 / 404 / 502 / 502 | Media control |
 | `agent.sunshine.notInstalled` | 404 | Sunshine not found |
 | `agent.sunshine.noCredentials` / `.setupRequired` / `.unauthorized` / `.forbidden` / `.noPendingPairing` | 409 | Sunshine state or credential problems |
@@ -402,7 +406,24 @@ Feature `homepage` (`routes/homepage.ts`).
 
 ### desktop
 
-Feature `desktop`. These endpoints target a Wayland session; window management requires Hyprland. Endpoints marked **C** also need the `control` feature and an `X-Tiphys-Control` token.
+Feature `desktop`. Endpoints marked **C** also need the `control` feature and an `X-Tiphys-Control` token.
+
+The agent picks a desktop backend at startup (`desktop.backend`, see [configuration](configuration.md#desktop)): on
+Hyprland it drives the desktop itself (the tools named below); on other desktops (Sway, X11, GNOME/KDE, Windows,
+macOS) the same endpoints go through the native helper `tiphys-desktop` (`routes/desktop_portable.ts`, protocol in
+`desktop-helper/PROTOCOL.md`). Whatever the helper can't do on that platform answers `501 agent.desktop.unsupported`.
+
+| Method | Path | Description |
+| --- | --- | --- |
+| GET | `/v1/desktop/capabilities` | `{backend: "hyprland" \| "helper", capabilities: [...], platform?, version?, error?}`. Capabilities: `windows`, `windowActions`, `workspaces`, `monitors`, `thumbnails`, `screenshot`, `stream`, `input`, `text`, `apps`, `launch`, `dpms`, `clipboard`, `clipboardSync`; Hyprland adds `h264`, `mobileView`, `sunshine`, `pcTools`, `browserFocus`. On the helper backend `platform` is the helper's (`sway`, `x11`, `portal`, `windows`, `macos`, `none`); the call starts the helper if needed. If it can't start, `capabilities` is empty (or only the Wayland clipboard ones) and `error` holds the code. The app hides what isn't listed. |
+
+On the helper backend: `GET /v1/desktop/windows` has `hyprland: false, backend: "helper"`, helper workspace names get
+Hyprland-style numbers (a numeric name keeps its number, the others get the next free one), `pinned` is always false,
+`minimize`/`maximize` are extra window actions and `pin` answers 501; thumbnails are JPEG; app ids are the helper's
+(e.g. `firefox.desktop`; apps have no `genericName`/`categories`); the live screen is MJPEG only (`codec=h264` gives
+MJPEG, `hello.source` is `helper`, `hello.cursor` null). The clipboard uses `wl-paste`/`wl-copy` (with sync) on a
+Wayland session that has them, otherwise the helper (GET/PUT only, no sync). The control session has no border
+indicator on the PC. Mobile view and Sunshine answer 501, Claude's PC tools `agent.claude.pcUnavailable`.
 
 #### Clipboard, screenshot, open
 
@@ -1048,7 +1069,7 @@ Overview of the keys above, all sent by the monitoring server's agent (or whiche
 | `monitor` | focused monitor | name | Monitor to capture |
 | `window` | - | `0x…` address | Capture a single visible window (clipped to its monitor) |
 
-Capture runs `wf-recorder` (wlr-screencopy). If it is missing or produces no frames, the agent falls back to a `grim` loop (at most 4 fps, MJPEG only) and sends a notice. Only one stream per device can be open; a new one closes the old one with code `4409`.
+Capture runs `wf-recorder` (wlr-screencopy). If it is missing or produces no frames, the agent falls back to a `grim` loop (at most 4 fps, MJPEG only) and sends a notice. On the helper backend capture is `tiphys-desktop stream` (MJPEG, at most 20 fps, no fallback; exit codes map to `agent.desktop.permission`, `.monitorNotFound`, `.unsupported`) and input goes through the helper (same key allow-list; `KPPlus`/`KPMinus` aren't available there). Only one stream per device can be open; a new one closes the old one with code `4409`.
 
 **Binary frames (server → client)**: a 16-byte big-endian header followed by the payload.
 
