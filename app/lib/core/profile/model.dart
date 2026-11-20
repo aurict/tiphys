@@ -32,7 +32,7 @@ enum LanguagePref { system, tr, en }
 /// Default home screen cards; "Recent events" (events) and "Now playing" (nowPlaying) are optional,
 /// enabled from Settings › Home screen.
 const defaultHomeCards = ['infra', 'claude', 'system', 'grafana', 'dozzle', 'quickAccess'];
-const allHomeCards = [...defaultHomeCards, 'events', 'nowPlaying', 'security'];
+const allHomeCards = [...defaultHomeCards, 'events', 'nowPlaying', 'security', 'gameMode'];
 const allTabs = ['home', 'claude', 'terminal', 'files', 'system'];
 
 /// Home screen layout: cards (default bento), shortcut grid, focus (large status card + shortcut list).

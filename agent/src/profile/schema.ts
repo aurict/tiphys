@@ -11,7 +11,7 @@ const color = z.string().regex(/^#[0-9A-Fa-f]{6}$/);
 const url = z.string().regex(/^https?:\/\/\S+$/);
 const path = z.string().min(1).max(1024);
 
-export const homeCard = z.enum(["infra", "claude", "system", "grafana", "dozzle", "quickAccess", "events", "nowPlaying", "security"]);
+export const homeCard = z.enum(["infra", "claude", "system", "grafana", "dozzle", "quickAccess", "events", "nowPlaying", "security", "gameMode"]);
 export const tab = z.enum(["home", "claude", "terminal", "files", "system"]);
 // Home screen shortcuts; the default set is the rows of the old "Hızlı erişim" card.
 export const shortcut = z.enum([

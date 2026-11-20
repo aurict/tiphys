@@ -229,6 +229,7 @@ class HomeCardsScreen extends ConsumerWidget {
         'events' => l.homeCardsEvents,
         'nowPlaying' => l.homeCardsNowPlaying,
         'security' => l.homeCardsSecurity,
+        'gameMode' => l.homeCardsGameMode,
         _ => l.homeCardsQuickAccess,
       };
 

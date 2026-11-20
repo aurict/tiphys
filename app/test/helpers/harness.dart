@@ -38,6 +38,7 @@ import 'png.dart';
 import 'agy_fixtures.dart';
 import 'config_fixtures.dart';
 import 'db_fixtures.dart';
+import 'gamemode_fixtures.dart';
 import 'incident_fixtures.dart';
 import 'security_fixtures.dart';
 import 'security_more_fixtures.dart';
@@ -304,6 +305,11 @@ class FakeAgent extends AgentClient {
   /// Security center S-2…S-5 (scanners, traps, outside view, attacks, black box, lost phone).
   static FakeSecurityMoreState securityMore = FakeSecurityMoreState();
 
+  /// Game mode (GET/PUT/POST /v1/gamemode*, service tokens); tests change it, call [resetGame] at the start.
+  static FakeGameState game = FakeGameState();
+
+  static void resetGame() => game = FakeGameState();
+
   /// Database console (GET/POST /v1/db/*).
   static FakeDbState db = FakeDbState();
 
@@ -449,6 +455,7 @@ class FakeAgent extends AgentClient {
     }
     calls.add((method, path, method == 'GET' && query != null ? query : body));
     if (path.startsWith('/v1/agy/')) return agy.route(method, path, body, query);
+    if (path.startsWith('/v1/gamemode') || path.startsWith('/v1/service-tokens')) return game.route(hostId, method, path, body);
     if (path == '/v1/fs/dirs') {
       return {
         'path': '/home/user',

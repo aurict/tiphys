@@ -14,6 +14,7 @@ import '../../theme/tokens.dart';
 import '../../widgets/floating_tab_bar.dart';
 import '../../widgets/painters.dart';
 import '../../widgets/surfaces.dart';
+import '../gamemode/gamemode_card.dart';
 import '../incidents/incidents_data.dart' show incidentHostsProvider;
 import '../incidents/incidents_screen.dart' show HomeIncidentsCard;
 import '../security/security_home_card.dart' show SecurityHomeCard;
@@ -90,6 +91,7 @@ class HomeScreen extends ConsumerWidget {
           'events' => const HomeEventsCard(),
           'nowPlaying' => const NowPlayingCard(),
           'security' => const SecurityHomeCard(),
+          'gameMode' => const GameModeHomeCard(),
           _ => const SizedBox.shrink(),
         },
     ];
