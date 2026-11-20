@@ -194,7 +194,8 @@ export async function buildApp(ctx: Ctx, opts: { logger?: boolean; logStream?: {
 /** Hyprland detection and helper lookup used by the "auto" backend (both cheap: a directory listing, a few stats). */
 async function defaultBackendDeps(): Promise<import("./desktop_backend.ts").BackendDeps> {
   const [{ hyprEnv }, { findHelper }] = await Promise.all([import("./routes/hypr.ts"), import("./desktop_backend.ts")]);
-  return { hyprland: hyprEnv, findHelper: (p) => findHelper(p) };
+  const { realHyprIo } = await import("./routes/hypr.ts");
+  return { hyprland: hyprEnv, hyprlandInstalled: () => realHyprIo.has("hyprctl"), findHelper: (p) => findHelper(p) };
 }
 
 /**

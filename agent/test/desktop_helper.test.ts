@@ -109,7 +109,11 @@ describe("HelperClient", () => {
 });
 
 describe("backend seçimi", () => {
-  const deps = (hypr: boolean, helper: string | null) => ({ hyprland: async () => (hypr ? {} : Promise.reject(new AppError("agent.desktop.noHyprland", 503))), findHelper: async () => helper });
+  const deps = (hypr: boolean, helper: string | null, installed = false) => ({
+    hyprland: async () => (hypr ? {} : Promise.reject(new AppError("agent.desktop.noHyprland", 503))),
+    hyprlandInstalled: async () => installed,
+    findHelper: async () => helper,
+  });
 
   it("auto: Hyprland if found, else the helper, else Hyprland; explicit choices", async () => {
     expect(await selectBackend({}, deps(true, "/h"))).toEqual({ backend: "hyprland", helperPath: null });
@@ -117,6 +121,11 @@ describe("backend seçimi", () => {
     expect(await selectBackend({}, deps(false, null))).toEqual({ backend: "hyprland", helperPath: null });
     expect(await selectBackend({ backend: "hyprland" }, deps(false, "/h"))).toEqual({ backend: "hyprland", helperPath: null });
     expect(await selectBackend({ backend: "helper" }, deps(true, null))).toEqual({ backend: "helper", helperPath: null });
+  });
+
+  it("auto: Hyprland installed but not running yet (agent started at boot before login) stays on Hyprland", async () => {
+    expect(await selectBackend({}, deps(false, "/h", true))).toEqual({ backend: "hyprland", helperPath: null });
+    expect(await selectBackend({ backend: "helper" }, deps(false, "/h", true))).toEqual({ backend: "helper", helperPath: "/h" });
   });
 
   it("helper lookup: configured path, bundled build, PATH; only executable files", async () => {
