@@ -3,13 +3,45 @@
 All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
-Tiphys has no binary releases. Versions below refer to the **agent version** reported by `GET /v1/health`
+Binary releases (signed agent bundles and the APK) are made with `tools/release.sh`. Versions below refer to the **agent version** reported by `GET /v1/health`
 (`agent/src/version.ts`), which the app checks. The app is `1.0.0+1` in `app/pubspec.yaml` and the Firefox
 extension is `0.1.0`.
 
 ## [Unreleased]
 
 ### Added
+
+**Easy install**
+
+- One-command install: `install.sh` (Linux, macOS) and `install.ps1` (Windows). Downloads the release bundle for the
+  OS/CPU (agent + Node.js 24), verifies the ed25519 signature of `SHA256SUMS` (key embedded in the installer,
+  checked with `openssl`; refuses otherwise unless `--insecure-skip-signature`) and the SHA-256, installs to
+  `versions/<v>` with a `current` link, sets up a user service (systemd user unit, launchd agent, Windows logon
+  entry), runs `init --detect`, `tailscale serve` and pairing. Re-running updates; `--uninstall [--purge]`.
+- Signed releases: `tools/release.sh <version> [--publish]` builds per-platform bundles (linux-x64/arm64,
+  darwin-arm64/x64, win-x64) with the matching Claude Agent SDK package and the checksum-verified Node.js runtime,
+  the signed APK, `SHA256SUMS` + `SHA256SUMS.sig`; `tools/release-keygen.sh` creates the release key once.
+  CI (`release-check.yml`) builds the bundles with a throwaway key and runs the installer in ubuntu:24.04 and
+  debian:12.
+- Packaging: nfpm `.deb`/`.rpm`, AUR, Homebrew and winget drafts, and a server Docker image (non-root, read-only
+  root file system, health check). See `packaging/README.md`.
+- `tiphys-agent doctor` and `GET /v1/doctor`: coded checks (Tailscale, `tailscale serve`, service, config
+  permissions, clock, disk, Node.js, tools for enabled features, push, latest release) with suggested fixes.
+- Self-update (`update` feature, installs from `install.sh` only): `GET /v1/update`, `POST /v1/update/apply`.
+  Signed releases only, no downgrades, automatic rollback when the new version fails to start.
+- `tiphys-agent init --detect`: turns on the safe features the machine supports, lists risky ones as suggestions.
+- `tiphys-agent pair` finds its address from Tailscale when `--url` is missing, and a paired device works without
+  restarting the agent (it re-reads `agent.json` changed by another process).
+
+### Changed
+
+- **`init --features` now adds** to the current list instead of turning every unlisted feature off. Use
+  `--set-features` for an exact list and `--disable` to turn features off. `tools/deploy-agent.sh` adds features on
+  re-deploys (`TIPHYS_EXACT_FEATURES=1` for the old behaviour).
+- `tools/pair.sh` no longer restarts the agent; the address argument is optional.
+
+**Earlier in this release**
+
 
 - Velour remote as a music app: Home (mixes, quick picks), Explore, Search and Library tabs with a mini player; a
   full-screen player in the cover's colour with swipe and double-tap gestures, karaoke lyrics, up next and a PC panel

@@ -98,6 +98,19 @@ Every error has the same envelope. The agent sends codes, never sentences; the a
 | `agent.auth.scopeDenied` | 403 | Service token used on a route outside its scopes |
 | `agent.serviceToken.notFound` | 404 | Unknown service token id |
 | `agent.preview.invalid` | 409 | Preview token missing, expired, already used, or for another device/operation/input |
+| `agent.update.disabled` | 403 | `POST /v1/update/apply` while the `update` feature is off |
+| `agent.update.notManaged` | 409 | Not an `install.sh` install (git checkout, package, Docker): update it the way it was installed |
+| `agent.update.confirmRequired` | 400 | Body is not `{version: "x.y.z", confirm: true}` |
+| `agent.update.badVersion` | 400 | `version` is not `x.y.z` (`params.version`) |
+| `agent.update.notNewer` | 409 | `version` is not newer than the running one (`params.current`, `params.version`); downgrades are refused |
+| `agent.update.unsupportedPlatform` | 409 | No release bundle for this OS/CPU (`params.platform`, `params.arch`) |
+| `agent.update.noKey` | 503 | This build has no release signing key (placeholder in `update_key.ts`); self-update is impossible |
+| `agent.update.busy` | 409 | Another update is being applied |
+| `agent.update.unreachable` | 502 | Release server not reachable or answered with an error (`params.status`) |
+| `agent.update.missingAsset` | 502 | `SHA256SUMS`, its signature, or this platform's bundle is missing in the release (`params.file`) |
+| `agent.update.badSignature` | 502 | `SHA256SUMS.sig` is not a valid signature of the release key; nothing was changed |
+| `agent.update.badChecksum` | 502 | The bundle's SHA-256 differs from `SHA256SUMS`; nothing was changed |
+| `agent.update.badBundle` | 502 | The bundle is not the requested version or is incomplete (`params.reason`: `content`, `tooLarge`) |
 | `agent.incident.notFound` / `agent.incident.action.notFound` | 404 | Unknown incident / action candidate |
 | `agent.incident.badState` | 409 | Lifecycle change not allowed from the current status (`params.status`) |
 | `agent.incident.confirmRequired` | 400 | Action execute without `confirm: true` |
@@ -322,6 +335,45 @@ Shapes are summarized. The zod schemas in the linked source files are authoritat
 | GET | `/v1/events?since=ISO&limit=1..500` | token | `{events: [{id, at, key, params, link, source, device?}]}`, newest first |
 | POST | `/v1/events` | token | Strict `{key, params?, link?}` → `{event}`. Used by the app to log actions it performs over SSH (`source: "app"`). `key` looks like `area.name`; at most 16 params, string values up to 500 characters; `link` must be a `tiphys://` URL. |
 | GET | `/v1/audit?limit=1..1000` | token | `{entries: [{at, device, method, path, status}]}`, newest first |
+| GET | `/v1/doctor` | device | Health checks of the install (`doctor.ts`, same as `tiphys-agent doctor --json`), see [doctor](#doctor) |
+| GET | `/v1/update` | device | `{current, latest, available, managed, notesUrl, error?}`, see [self-update](#self-update) |
+| POST | `/v1/update/apply` | device | Feature `update`. `{version, confirm: true}` → `{ok, version, restarting: true}`, then the agent exits and its service manager starts the new version |
+
+#### Doctor
+
+`GET /v1/doctor` → `{version, checks: [{id, status, code, params, fix?}]}`. `status` is `ok`, `warn` or `fail`;
+`code` is translated by the app; `fix` is a shell command **suggestion** for the user (the agent never runs it).
+The report holds paths, ports, versions, feature and tool names, never tokens or passwords. Checks run in parallel
+and take at most a few seconds (Tailscale CLI 5 s, release check 5 s, own health 2 s).
+
+| `id` | Codes |
+| --- | --- |
+| `tailscale` | `doctor.tailscale.ok` (`dnsName`), `.missing`, `.loggedOut`, `.stopped` (`state`) |
+| `tailscale.serve` | `doctor.tailscale.served` (`port`, `httpsPorts`), `.notServed` (`port`; fix: `sudo tailscale serve --bg --https=7443 http://127.0.0.1:7443`), `.serveUnknown` |
+| `agent` | `doctor.agent.listening` / `.notListening` (`host`, `port`) |
+| `config` | `doctor.config.ok`, `.missing`, `.permissions` (`mode`; must be 600), `.wrongOwner` (`uid`) — all with `path` |
+| `time` | `doctor.time.synced`, `.notSynced` (`timedatectl`), `.unchecked` |
+| `disk` | `doctor.disk.ok`, `.low` (< 2 GB or < 5 %), `.full` (< 512 MB), `.unchecked` — `freeMb`, `totalMb` |
+| `node` | `doctor.node.ok`, `.old` (< 24), `.tooOld` (< 22) — `node` |
+| `feature.<name>` | only for problems: `doctor.feature.toolsMissing` (`feature`, `tools`; e.g. `desktop` without `hyprctl` or the desktop helper, `git`, `claude`, `services`), `.dockerDenied` (`socket`), `.transcribeMissing` (`command`) |
+| `push` | `doctor.push.ok` (`endpoints`), `.notConfigured` (warn) |
+| `version` | `doctor.version.latest`, `.outdated` (`current`, `latest`, `managed`), `.unchecked` |
+
+#### Self-update
+
+`GET /v1/update` asks the release server for the newest version (`<releases>/latest/download/VERSION`, 5 s
+timeout, cached for an hour, 5 minutes after a failure). `managed` is true only when the agent runs from an
+`install.sh` layout (`…/tiphys-agent/versions/<v>` with `current` pointing at it); a git checkout, a package
+or the Docker image reports `false` and never updates itself. `notesUrl` links to the GitHub release page.
+
+`POST /v1/update/apply` (device token, feature `update`, `managed`) downloads `SHA256SUMS`, `SHA256SUMS.sig` and
+this platform's bundle from the **fixed** release location (GitHub, or `TIPHYS_RELEASE_URL` from the agent's own
+environment; never from the request), checks the ed25519 signature with the public key built into the agent and the
+bundle's SHA-256, checks that the bundle is the requested version, unpacks it to `versions/<version>`, switches
+`current` atomically and writes `update-pending`. It answers, then exits; `Restart=always` (systemd), `KeepAlive`
+(launchd) or the Windows loop starts the new version. The new version removes `update-pending` after 15 s of
+uptime; if it fails to start three times, the guard that runs before each start switches `current` back. Event
+`agent.updated` (`host`, `version`). See [Security › Releases and updates](../security.md#releases-installer-and-self-update).
 
 ### system
 

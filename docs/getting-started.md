@@ -19,6 +19,29 @@ Details: [setup guide › Prerequisites](setup-guide.md#2-prerequisites).
 
 ## 2. Agent on the PC
 
+### The easy way: one command
+
+```sh
+curl -fsSL https://raw.githubusercontent.com/aurict/tiphys/main/install.sh | sh
+```
+
+Windows (PowerShell): `irm https://raw.githubusercontent.com/aurict/tiphys/main/install.ps1 | iex`
+
+It downloads the newest signed release (with its own Node.js), checks its signature, installs it for your user,
+starts it as a service, turns on the features this machine supports (risky ones such as `claude`, `control` and
+`power` stay off and are listed as suggestions), publishes it in your tailnet with `tailscale serve` and shows the
+pairing QR code (step 4). If anything looks wrong later: `tiphys-agent doctor`. Re-run the command to update.
+Options and details: [setup guide › One-command install](setup-guide.md#one-command-install-recommended).
+
+Turn on more features when you need them, then restart the agent:
+
+```sh
+tiphys-agent init --features claude,control
+systemctl --user restart tiphys-agent
+```
+
+### From a git checkout
+
 Needs Linux with systemd and Node.js 22 or newer (desktop features also need Hyprland and the
 [desktop tools](setup-guide.md#desktop-tools-pc-only-for-desktop-and-control)).
 
@@ -26,10 +49,11 @@ Needs Linux with systemd and Node.js 22 or newer (desktop features also need Hyp
 git clone https://github.com/aurict/tiphys.git ~/tiphys
 cd ~/tiphys/agent
 npm ci && npm run build
-node dist/cli.js init --name argo --features system,services,docker,power,git,claude
+node dist/cli.js init --name argo --detect --features git,claude
 ```
 
-`--features` is an exact list: everything not listed is turned off.
+`--detect` turns on the safe features this machine supports; `--features` adds to the list (`--set-features` is an
+exact list that turns everything else off).
 
 Create `~/.config/systemd/user/tiphys-agent.service` (adjust the paths to your checkout and to `command -v node`):
 
@@ -58,7 +82,8 @@ curl -s https://argo.my-tailnet.ts.net:7443/v1/health
 ```
 
 Details: [setup guide › Agent on the PC](setup-guide.md#3-agent-on-the-pc). Servers:
-[setup guide › Agent on a server](setup-guide.md#4-agent-on-a-server) (`tools/deploy-agent.sh`).
+[setup guide › Agent on a server](setup-guide.md#4-agent-on-a-server) (`tools/deploy-agent.sh`, or the installer;
+Docker: [packaging/README.md](../packaging/README.md)).
 
 ## 3. Build the app
 
@@ -75,12 +100,14 @@ the debug key. On a desktop you are using, wrap the build in `tools/limited.sh`.
 
 ## 4. Pair the phone
 
+The installer already showed a QR code. Another phone, or a checkout install:
+
 ```sh
-tools/pair.sh local https://argo.my-tailnet.ts.net:7443 Phone
+tiphys-agent pair --name Phone        # or, from a checkout: tools/pair.sh local
 ```
 
-In the app, add the host under *Settings › Hosts* and use *Pair with QR code*. If you run `node dist/cli.js pair`
-yourself, always pass `--url` and restart the agent afterwards. Details:
+The address is taken from Tailscale (pass `--url https://argo.my-tailnet.ts.net:7443` to override). No restart is
+needed. In the app, add the host under *Settings › Hosts* and use *Pair with QR code*. Details:
 [setup guide › Pair the phone](setup-guide.md#7-pair-the-phone).
 
 ## 5. First run

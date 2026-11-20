@@ -63,7 +63,8 @@ More detail: [docs/architecture.md](docs/architecture.md).
 ## Requirements
 
 - A Tailscale tailnet with MagicDNS and HTTPS certificates enabled.
-- **Agent:** Linux with systemd (user services) and Node.js 22 or newer (developed and tested on Node.js 24).
+- **Agent:** Linux with systemd (user services). The installer brings Node.js 24; from source you need Node.js 22
+  or newer. Release bundles also exist for macOS and Windows, where only the non-desktop features apply.
   Desktop features need **Hyprland** (Wayland) plus `grim`, `wl-clipboard`, `ydotool`, `wtype`, and optionally
   `wf-recorder`, `ffmpeg`, `playerctl`, `wpctl`, Sunshine, `python3-gi` and `gir1.2-atspi-2.0`.
   Claude features need a Claude Code login on that machine.
@@ -71,13 +72,27 @@ More detail: [docs/architecture.md](docs/architecture.md).
 - **Optional:** your own ntfy server and the ntfy Android app for push; Firefox 140 ESR (or Developer Edition /
   Nightly) for the Firefox bridge; Grafana, Dozzle, Uptime Kuma, Homepage, Obsidian with LiveSync.
 
-## Quick start
+## Install
 
-1. Build and start the agent on your PC, then expose it with `tailscale serve`.
-2. Build the APK and install it on your phone.
-3. Run `tools/pair.sh` and scan the QR code in *Settings › Hosts › (host) › Pair with QR code*.
+On each machine you want to reach (Linux or macOS; Tailscale installed and logged in):
 
-Short version: **[docs/getting-started.md](docs/getting-started.md)**. Everything else (servers, systemd, signing,
+```sh
+curl -fsSL https://raw.githubusercontent.com/aurict/tiphys/main/install.sh | sh
+```
+
+Windows: `irm https://raw.githubusercontent.com/aurict/tiphys/main/install.ps1 | iex`
+
+The installer verifies the release signature, installs the agent with its own Node.js as a user service, enables
+the safe features it detects, runs `tailscale serve` and prints a QR code. Scan it in the app under
+*Settings › Hosts › (host) › Pair with QR code*. `tiphys-agent doctor` checks the install. Packages (`.deb`, `.rpm`,
+AUR, Homebrew) and a server Docker image: [packaging/README.md](packaging/README.md).
+
+The app: build the APK and install it on your phone (or use the APK attached to a release).
+
+From source instead (development, Firefox extension): build the agent, expose it with `tailscale serve`, then
+`tools/pair.sh local`.
+
+Step by step: **[docs/getting-started.md](docs/getting-started.md)**. Everything else (servers, systemd, signing,
 every feature flag and setting, push, upgrades, backups, security checklist): **[docs/setup-guide.md](docs/setup-guide.md)**.
 
 ## Security at a glance
@@ -124,7 +139,8 @@ Tiphys is a personal project that is used daily, published as-is. Expect rough e
   non-desktop features only. The agent itself is Linux-only (systemd, `/proc`).
 - **Single user.** All paired devices of one person are equally trusted. There are no roles or per-device
   permissions.
-- **Build it yourself.** There are no prebuilt APK or XPI releases. The Firefox extension is not signed by
+- **Releases are new.** `tools/release.sh` produces signed agent bundles and an APK, but until the first release
+  is published (and the release key is generated) you build it yourself. There is no prebuilt XPI. The Firefox extension is not signed by
   Mozilla, so installing it requires turning off signature checks (Firefox ESR, Developer Edition or Nightly only).
 - Several paths are verified only with fakes and golden tests, not on every real device/app combination. See the
   open notes in [CHANGELOG.md](CHANGELOG.md).
