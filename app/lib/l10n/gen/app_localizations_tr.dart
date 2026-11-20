@@ -11652,6 +11652,14 @@ class AppLocalizationsTr extends AppLocalizations {
   }
 
   @override
+  String get doctorGamemodePluginMissing =>
+      'Oyun Modu: ETS2 telemetri eklentisi kurulu değil.';
+
+  @override
+  String get doctorGamemodePluginOutdated =>
+      'Oyun Modu: ETS2 telemetri eklentisi eski sürüm.';
+
+  @override
   String doctorPushOk(String count) {
     return 'Anlık bildirimler: $count cihaz kayıtlı.';
   }
@@ -12228,6 +12236,30 @@ class AppLocalizationsTr extends AppLocalizations {
   @override
   String get gmErrNoDisplay =>
       'Ekran PC’sinde grafik oturumu yok (Hyprland çalışmıyor).';
+
+  @override
+  String get gmErrStartFailed => 'Ortam ekranı, ekran PC’sinde başlatılamadı.';
+
+  @override
+  String get gmErrNoArt => 'Bu parçanın kapak görseli yok.';
+
+  @override
+  String get gmErrPluginDownloadFailed =>
+      'ETS2 eklentisi indirilemedi. Kaynak PC’nin internet bağlantısını kontrol edin.';
+
+  @override
+  String get gmErrPluginHashMismatch =>
+      'İndirilen ETS2 eklentisi doğrulamadan geçemedi; kurulmadı.';
+
+  @override
+  String get gmErrPluginBadArchive =>
+      'İndirilen ETS2 eklenti arşivi bozuk; kurulmadı.';
+
+  @override
+  String get gmEventStarted => 'Oyun Modu açıldı';
+
+  @override
+  String get gmEventStopped => 'Oyun Modu kapandı';
 
   @override
   String get gmFeatureOffTitle => 'Oyun Modu bu hostta kapalı';

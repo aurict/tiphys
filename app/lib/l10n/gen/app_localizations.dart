@@ -19772,6 +19772,18 @@ abstract class AppLocalizations {
   /// **'The “transcribe” feature is on but {command} does not exist.'**
   String doctorFeatureTranscribeMissing(String command);
 
+  /// No description provided for @doctorGamemodePluginMissing.
+  ///
+  /// In en, this message translates to:
+  /// **'Game mode: the ETS2 telemetry plugin is not installed.'**
+  String get doctorGamemodePluginMissing;
+
+  /// No description provided for @doctorGamemodePluginOutdated.
+  ///
+  /// In en, this message translates to:
+  /// **'Game mode: the ETS2 telemetry plugin is outdated.'**
+  String get doctorGamemodePluginOutdated;
+
   /// No description provided for @doctorPushOk.
   ///
   /// In en, this message translates to:
@@ -20737,6 +20749,48 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'The display PC has no graphical session (Hyprland is not running).'**
   String get gmErrNoDisplay;
+
+  /// No description provided for @gmErrStartFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'The ambient display could not be started on the display PC.'**
+  String get gmErrStartFailed;
+
+  /// No description provided for @gmErrNoArt.
+  ///
+  /// In en, this message translates to:
+  /// **'This track has no cover art.'**
+  String get gmErrNoArt;
+
+  /// No description provided for @gmErrPluginDownloadFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'The ETS2 plugin could not be downloaded. Check the source PC’s internet connection.'**
+  String get gmErrPluginDownloadFailed;
+
+  /// No description provided for @gmErrPluginHashMismatch.
+  ///
+  /// In en, this message translates to:
+  /// **'The downloaded ETS2 plugin failed verification; it was not installed.'**
+  String get gmErrPluginHashMismatch;
+
+  /// No description provided for @gmErrPluginBadArchive.
+  ///
+  /// In en, this message translates to:
+  /// **'The downloaded ETS2 plugin archive is broken; it was not installed.'**
+  String get gmErrPluginBadArchive;
+
+  /// No description provided for @gmEventStarted.
+  ///
+  /// In en, this message translates to:
+  /// **'Game mode started'**
+  String get gmEventStarted;
+
+  /// No description provided for @gmEventStopped.
+  ///
+  /// In en, this message translates to:
+  /// **'Game mode stopped'**
+  String get gmEventStopped;
 
   /// No description provided for @gmFeatureOffTitle.
   ///

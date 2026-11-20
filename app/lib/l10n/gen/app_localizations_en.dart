@@ -11895,6 +11895,14 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String get doctorGamemodePluginMissing =>
+      'Game mode: the ETS2 telemetry plugin is not installed.';
+
+  @override
+  String get doctorGamemodePluginOutdated =>
+      'Game mode: the ETS2 telemetry plugin is outdated.';
+
+  @override
   String doctorPushOk(String count) {
     return 'Push notifications: $count device(s) registered.';
   }
@@ -12471,6 +12479,31 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get gmErrNoDisplay =>
       'The display PC has no graphical session (Hyprland is not running).';
+
+  @override
+  String get gmErrStartFailed =>
+      'The ambient display could not be started on the display PC.';
+
+  @override
+  String get gmErrNoArt => 'This track has no cover art.';
+
+  @override
+  String get gmErrPluginDownloadFailed =>
+      'The ETS2 plugin could not be downloaded. Check the source PC’s internet connection.';
+
+  @override
+  String get gmErrPluginHashMismatch =>
+      'The downloaded ETS2 plugin failed verification; it was not installed.';
+
+  @override
+  String get gmErrPluginBadArchive =>
+      'The downloaded ETS2 plugin archive is broken; it was not installed.';
+
+  @override
+  String get gmEventStarted => 'Game mode started';
+
+  @override
+  String get gmEventStopped => 'Game mode stopped';
 
   @override
   String get gmFeatureOffTitle => 'Game mode is off on this host';

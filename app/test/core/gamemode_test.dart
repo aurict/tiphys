@@ -3,7 +3,13 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:tiphys/core/agent/agent_client.dart';
+import 'package:tiphys/core/push/push_service.dart';
 import 'package:tiphys/features/gamemode/gamemode_data.dart';
+import 'package:tiphys/features/system/agent_providers.dart';
+import 'package:tiphys/features/system/doctor.dart';
+import 'package:tiphys/features/system/events.dart';
+import 'package:tiphys/l10n/gen/app_localizations_en.dart';
+import 'package:tiphys/l10n/gen/app_localizations_tr.dart';
 import 'package:tiphys/state/providers.dart';
 
 import '../helpers/gamemode_fixtures.dart';
@@ -149,5 +155,24 @@ void main() {
     c.listen(gameModeTargetProvider, (_, _) {});
     final t = await c.read(gameModeTargetProvider.future);
     expect(t!.configured, isFalse);
+  });
+
+  test('ajan kodları (hata, olay, doctor) iki dilde metne çevrilir', () {
+    final tr = AppLocalizationsTr(), en = AppLocalizationsEn();
+    for (final code in [
+      'noSource', 'noDisplay', 'startFailed', 'noGame', 'noArt', 'pluginDownloadFailed', 'pluginHashMismatch', 'pluginBadArchive', //
+    ]) {
+      for (final l in [tr, en]) {
+        expect(agentErrorText(l, AgentError('agent.gamemode.$code')), isNot(contains('agent.gamemode')), reason: code);
+      }
+    }
+    expect(agentErrorText(tr, const AgentError('agent.gamemode.pluginHashMismatch')), 'İndirilen ETS2 eklentisi doğrulamadan geçemedi; kurulmadı.');
+    expect(noticeText(tr, 'gamemode.started', {'device': 'Redmi'}), ('Oyun Modu açıldı', 'Redmi'));
+    expect(noticeText(en, 'gamemode.stopped', {}), ('Game mode stopped', ''));
+    expect(eventType('gamemode.started'), 'system');
+    DoctorCheck check(String status) =>
+        DoctorCheck(id: 'feature.gamemode.ets2', status: DoctorStatus.warn, code: 'doctor.gamemode.pluginMissing', params: {'status': status});
+    expect(doctorText(tr, check('missing')), 'Oyun Modu: ETS2 telemetri eklentisi kurulu değil.');
+    expect(doctorText(en, check('outdated')), 'Game mode: the ETS2 telemetry plugin is outdated.');
   });
 }

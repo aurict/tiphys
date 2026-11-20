@@ -87,6 +87,7 @@ String doctorText(AppLocalizations l, DoctorCheck c) {
     'doctor.feature.toolsMissing' => l.doctorFeatureToolsMissing(s('feature'), list('tools')),
     'doctor.feature.dockerDenied' => l.doctorFeatureDockerDenied(s('socket')),
     'doctor.feature.transcribeMissing' => l.doctorFeatureTranscribeMissing(s('command')),
+    'doctor.gamemode.pluginMissing' => s('status') == 'outdated' ? l.doctorGamemodePluginOutdated : l.doctorGamemodePluginMissing,
     'doctor.push.ok' => l.doctorPushOk(s('endpoints')),
     'doctor.push.notConfigured' => l.doctorPushNotConfigured,
     'doctor.version.latest' => l.doctorVersionLatest(s('current')),
