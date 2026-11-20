@@ -265,14 +265,14 @@ async function main() {
   }
 }
 
-/** GET /v1/agent/status on the local listen address with the new token (a few tries: the watcher is debounced). */
+/** GET /v1/devices on the local listen address with the new token (a few tries: the watcher is debounced). */
 async function agentKnowsToken(c: import("./config.ts").AgentConfig, token: string): Promise<boolean> {
   const host = c.listen.host === "0.0.0.0" || c.listen.host === "::" ? "127.0.0.1" : c.listen.host.includes(":") ? `[${c.listen.host}]` : c.listen.host;
   const headers: Record<string, string> = { authorization: `Bearer ${token}` };
   if (c.requireTailscaleLogin) headers["tailscale-user-login"] = c.requireTailscaleLogin;
   for (let i = 0; i < 3; i++) {
     try {
-      const r = await fetch(`http://${host}:${c.listen.port}/v1/agent/status`, { headers, signal: AbortSignal.timeout(2000) });
+      const r = await fetch(`http://${host}:${c.listen.port}/v1/devices`, { headers, signal: AbortSignal.timeout(2000) });
       if (r.ok) return true;
       if (r.status !== 401) return false;
     } catch {
