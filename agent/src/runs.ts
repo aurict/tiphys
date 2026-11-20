@@ -60,8 +60,9 @@ export class RunLog {
 }
 
 /** Total memory of this process and all its children (Claude sessions, commands), in bytes. */
-export async function treeRss(rootPid = process.pid): Promise<{ selfBytes: number; childrenBytes: number }> {
-  const ps = await run("ps", ["-eo", "pid=,ppid=,rss="], { allowFail: true });
+export async function treeRss(rootPid = process.pid, exec: typeof run = run): Promise<{ selfBytes: number; childrenBytes: number }> {
+  // Without `ps` (e.g. a minimal container image): this process only, no children.
+  const ps = await exec("ps", ["-eo", "pid=,ppid=,rss="], { allowFail: true }).catch(() => ({ stdout: "" }));
   const kids = new Map<number, number[]>();
   const rss = new Map<number, number>();
   for (const line of ps.stdout.split("\n")) {
