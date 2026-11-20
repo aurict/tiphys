@@ -423,6 +423,23 @@ Feature `desktop`. These endpoints target a Wayland session; window management r
 | POST | `/v1/media/:action` | `play-pause`, `play`, `pause`, `next`, `previous`, `seek` or `position`. Body `{player?, seconds?}`. Returns the new state. |
 | GET / PUT | `/v1/media/volume` | `{percent: 0..150, muted}` |
 | GET | `/v1/media/art?player=` | Local (`file://`) cover art, at most 5 MB. Strict query: no path parameter is accepted. |
+| GET | `/v1/media/outputs` | Audio outputs (PipeWire sinks from `pw-dump`): `{outputs: [{id, name, default}]}` |
+| PUT | `/v1/media/output` | `{id}`: makes that output the default (`wpctl set-default`); only an id from the list. Returns the new list. |
+
+#### Velour
+
+`routes/velour.ts`. Forwards to the [Velour](https://github.com/mikailustuner/velour) player's local control socket
+(protocol 1, see Velour's `docs/remote-control.md`). Velour errors come back as `agent.velour.<code>`; no socket is
+`agent.velour.unavailable` (503).
+
+| Method | Path | C | Description |
+| --- | --- | --- | --- |
+| POST | `/v1/velour` | | `{op, …}`: one validated operation (state, queue, lyrics, controls, queue edits, play, search, pages, library, likes, playlists, `wait`, `explore`, `eq`/`set-eq`, `sleep`, `show`, `save-queue`, `save-to-library`, `remove-from-playlist`). Returns `{result}`. |
+| GET | `/v1/velour/events` | | SSE: `state` each time Velour's `rev` changes (long-polls `wait`; an older Velour is polled every 2 s), `error {code}` while Velour is unreachable (retried every 3 s), a ping every 15 s. |
+| POST | `/v1/velour/sleep` | ✓¹ | `{minutes? 1..720 \| endOfTrack?, then: none\|screenOff\|suspend, confirm?}`: Velour's sleep timer plus what the PC does when it fires; no length cancels. `screenOff` needs a control session, `suspend` the `power` feature (`agent.velour.powerDisabled`) and `confirm: true`. The pending action shows in the state as `sleep.then`; it is kept in memory only. |
+| POST | `/v1/velour/show` | ✓ | Velour's window to the front and focused. |
+
+¹ only with `then: "screenOff"`.
 
 #### Windows and apps
 

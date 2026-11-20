@@ -413,8 +413,21 @@ validated operation to the Velour player's local socket, `$XDG_RUNTIME_DIR/velou
   at most 2000 tracks, watch targets only for playback. Velour validates again on its side.
 - Search queries, library contents and lyrics travel in the POST body, so they don't appear in request logs, and
   they are not written to logs or events.
-- Account-changing ops are limited to liking songs, adding songs to a playlist and creating a playlist. Removing
-  songs from a playlist, renaming and deleting playlists are not available remotely.
+- Account-changing ops are limited to liking/disliking songs, adding songs to a playlist, creating a playlist (also
+  from the queue), saving an album or playlist to the library and removing a song from one of your own playlists.
+  Renaming and deleting playlists are not available remotely.
+- `GET /v1/velour/events` streams the same state as `op: "state"` (now playing, queue position, volume, sleep timer).
+  It holds at most one parked request in Velour per stream; Velour parks at most 4 and answers the rest at once.
+- **Sleep timer actions** (`POST /v1/velour/sleep`): turning the screen off when the timer ends needs a control session
+  at the moment it is set (the action itself can run after the session has ended); putting the PC to sleep needs the
+  `power` feature and an explicit `confirm: true`, which the app asks for. The action is held in the agent's memory
+  and is dropped when the timer is cancelled (from the phone or in Velour) or the agent restarts.
+- **Show on PC** (`POST /v1/velour/show`) changes window focus, so it needs a control session.
+- **Audio output** (`GET /v1/media/outputs`, `PUT /v1/media/output`) is treated like the volume: no control session.
+  Only a PipeWire sink id from the current `pw-dump` list is accepted.
+- **On the phone**, the lock-screen/notification controls show the song title and artist; they appear only after the
+  Velour remote has been opened in this app run and can be turned off in the PC panel. While the remote screen is
+  open, the phone's volume buttons change Velour's volume instead of the phone's.
 
 ## Sunshine / Moonlight
 

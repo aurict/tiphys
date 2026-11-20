@@ -11,6 +11,13 @@ extension is `0.1.0`.
 
 ### Added
 
+- Velour remote as a music app: Home (mixes, quick picks), Explore, Search and Library tabs with a mini player; a
+  full-screen player in the cover's colour with swipe and double-tap gestures, karaoke lyrics, up next and a PC panel
+  (Velour and system volume, audio output, equalizer, sleep timer with screen off / PC sleep, screen off, show Velour
+  on the PC). Live state over `GET /v1/velour/events`; lock-screen and notification controls and the volume buttons
+  on Android. Agent: `GET /v1/media/outputs`, `PUT /v1/media/output`, `POST /v1/velour/sleep`, `POST /v1/velour/show`.
+  Needs Velour 2026-11-20 or later for live state, sleep timer, equalizer and Explore.
+
 - Velour remote (*System › Media*, `desktop` feature): for the [Velour](https://github.com/mikailustuner/velour)
   YouTube Music player, search with suggestions, the queue (jump, remove, reorder, clear), synced lyrics, like,
   shuffle/repeat, the library (playlists, albums, artists, liked, history) with album/playlist/artist pages, play

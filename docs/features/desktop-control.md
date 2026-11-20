@@ -73,11 +73,22 @@ All changing desktop endpoints require the token of an open control session, sen
 - **Tools**: media, clipboard, screenshot, **Turn the screen off/on** (DPMS), high quality mode, plus the
   [system](system.md) power actions.
 - **Media** controls any MPRIS player (`playerctl`) and the system volume. When the player is
-  [Velour](https://github.com/mikailustuner/velour) (YouTube Music), **Open in Velour remote** adds search with
-  suggestions, the queue (jump, swipe to remove, drag to reorder, clear), synced lyrics, like, shuffle/repeat, and the
-  library (playlists, albums, artists, liked songs, history) with album/playlist/artist pages, play next, add to
-  queue, radio and add to a playlist. It needs Velour's *Settings → Desktop → Remote control*; see
-  [security](../security.md#velour-remote).
+  [Velour](https://github.com/mikailustuner/velour) (YouTube Music), **Open Velour remote** opens a music app for it:
+  - **Home · Explore · Search · Library** at the bottom, with a mini player above them (tap or swipe up for the full
+    player, swipe sideways for the next/previous song). Home has your mixes and quick picks, Explore new releases,
+    charts and moods; Search has suggestions; Library has playlists, albums, artists, liked songs and history.
+  - **Full player**: the cover's colour behind it, swipe the cover for the next/previous song, double-tap to like,
+    seek bar, shuffle/repeat, and a panel with **Up next** (jump, swipe to remove, drag to reorder, clear, save as a
+    playlist), karaoke-style **Lyrics** (tap a line to jump there) and **PC**. Swipe down to close. Landscape puts
+    the cover on the left.
+  - **PC panel**: Velour's and the system's volume, the audio output (speakers, headphones…), equalizer presets, a
+    **sleep timer** (15–60 minutes or the end of the song, fading out; then optionally turn the screen off or put the
+    PC to sleep), turn the screen off while the music keeps playing, and bring Velour to the front.
+  - **On the phone** (Android): controls on the lock screen and in the notification (also Bluetooth buttons), and
+    while the remote is open the volume buttons change Velour's volume. Can be turned off in the PC panel.
+  - The state is live: changes made on the PC show up at once.
+  It needs Velour's *Settings → Desktop → Remote control*; see [security](../security.md#velour-remote). Live state,
+  the sleep timer, the equalizer and Explore need a Velour from 2026-11-20 or later.
 
 Browsing needs no session. The first changing action opens one, and a *Control on · 14:59 · Stop* bar stays at the
 bottom while it is open.
