@@ -15,7 +15,7 @@ import type { ControlSessions } from "./control.ts";
 import type { Hyprctl } from "./hyprctl.ts";
 import type { DesktopApp } from "./desktop_apps.ts";
 import { serviceTokenRoutes, touchServiceToken } from "./service_tokens.ts";
-import { unsupportedOn } from "./platform/support.ts";
+import { isSupported, unsupportedOn, unsupportedRoutes } from "./platform/support.ts";
 import type { ResearchService } from "./research/jobs.ts";
 import type { AnalysisQueue } from "./analysis/jobs.ts";
 
@@ -67,13 +67,35 @@ declare module "fastify" {
     scope?: string;
     /** No token needed: the route checks its own credential (only the recovery-code lockdown). */
     public?: boolean;
+    /**
+     * Game mode kiosk page (PLAN.md §19): no device token and no Tailscale identity check, because the local Firefox
+     * reaches the agent on 127.0.0.1 without Tailscale headers. Static files hold no secrets; the live WS and the art
+     * proxy check the in-memory display token themselves.
+     */
+    kiosk?: boolean;
   }
 }
 
 export async function buildApp(ctx: Ctx, opts: { logger?: boolean; logStream?: { write(line: string): void } } = {}): Promise<FastifyInstance> {
   const app = Fastify({
     // logStream: tests capture the log (leak checks); in production pino writes to stdout.
-    logger: opts.logger ? { level: "info", redact: ["req.headers.authorization"], ...(opts.logStream ? { stream: opts.logStream } : {}) } : false,
+    logger: opts.logger
+      ? {
+          level: "info",
+          redact: ["req.headers.authorization"],
+          // The game mode display token travels as ?t= (kiosk WS and art proxy): keep it out of the log.
+          serializers: {
+            req: (req: { method: string; url: string; hostname?: string; ip?: string; socket?: { remotePort?: number } }) => ({
+              method: req.method,
+              url: req.url.replace(/([?&]t=)[^&]*/, "$1[redacted]"),
+              host: req.hostname,
+              remoteAddress: req.ip,
+              remotePort: req.socket?.remotePort,
+            }),
+          },
+          ...(opts.logStream ? { stream: opts.logStream } : {}),
+        }
+      : false,
     bodyLimit: 32 * 1024 * 1024,
     trustProxy: "127.0.0.1",
   });
@@ -104,6 +126,7 @@ export async function buildApp(ctx: Ctx, opts: { logger?: boolean; logStream?: {
   // Authentication: every request except /v1/health requires a device token, or a service token on a route of its scope.
   app.addHook("onRequest", async (req) => {
     if (req.url === "/v1/health" || req.url.startsWith("/v1/health?")) return;
+    if (req.routeOptions.config?.kiosk === true) return;
     // Routes that authenticate themselves (the recovery-code lockdown: the phone is gone, so is its token). The
     // Tailscale identity check still applies.
     if (req.routeOptions.config?.public === true) {
@@ -191,6 +214,10 @@ export async function buildApp(ctx: Ctx, opts: { logger?: boolean; logStream?: {
   if (f.wake) (await import("./routes/wake.ts")).wakeRoutes(app, ctx);
   if (f.research) await (await import("./routes/research.ts")).researchRoutes(app, ctx);
   if (f.analysis) await (await import("./analysis/routes.ts")).analysisRoutes(app, ctx);
+  if (f.gamemode) {
+    if (!isSupported("gamemode")) unsupportedRoutes(app, "/v1/gamemode", "gamemode");
+    else await (await import("./gamemode/routes.ts")).gamemodeRoutes(app, ctx);
+  }
   for (const register of ctx.extraRoutes ?? []) await register(app, ctx);
 
   return app;

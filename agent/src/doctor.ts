@@ -179,8 +179,32 @@ async function featureChecks(d: DoctorDeps): Promise<Check[]> {
   if (f.services && d.platform === "linux" && !d.which("systemctl")) missing("services", ["systemctl"]);
   if (f.git && !d.which("git")) missing("git", ["git"]);
   if (f.claude && !d.which("claude") && !(await d.exists(expandHome("~/.claude/local/claude")))) missing("claude", ["claude"], "npm install -g @anthropic-ai/claude-code");
+  if (f.gamemode && d.platform === "linux") out.push(...(await gamemodeChecks(d, c)));
   if (f.transcribe && !(await d.exists(expandHome(c.transcribe.command)))) {
     out.push(fail("feature.transcribe", "doctor.feature.transcribeMissing", { command: c.transcribe.command }));
+  }
+  return out;
+}
+
+/**
+ * Game mode: a machine with a source configured is a display (kiosk tools; brightnessctl optional), otherwise a source
+ * (pw-record for the spectrum; the ETS2 plugin when the game is installed).
+ */
+async function gamemodeChecks(d: DoctorDeps, c: AgentConfig): Promise<Check[]> {
+  if (c.gamemode.source) {
+    const need = ["systemd-run", "systemd-inhibit", "hyprctl"].filter((t) => !d.which(t));
+    if (!d.which("firefox") && !d.which("firefox-esr")) need.push("firefox");
+    const out: Check[] = need.length ? [fail("feature.gamemode", "doctor.feature.toolsMissing", { feature: "gamemode", tools: need })] : [];
+    if (!d.which("brightnessctl")) out.push(warn("feature.gamemode.brightness", "doctor.feature.toolsMissing", { feature: "gamemode", tools: ["brightnessctl"] }));
+    return out;
+  }
+  const out: Check[] = [];
+  if (!d.which("pw-record")) out.push(warn("feature.gamemode.audio", "doctor.feature.toolsMissing", { feature: "gamemode", tools: ["pw-record"] }));
+  const { findGameDir, pluginStatus } = await import("./gamemode/ets2.ts");
+  const game = await findGameDir();
+  if (game) {
+    const p = await pluginStatus(game);
+    if (p.plugin !== "installed") out.push(warn("feature.gamemode.ets2", "doctor.gamemode.pluginMissing", { status: p.plugin }, "tiphys-agent gamemode install-plugin"));
   }
   return out;
 }
@@ -252,6 +276,7 @@ const TEXT: Record<string, string> = {
   "doctor.feature.unsupported": "Feature \"{feature}\" is on but does not work on {platform}.",
   "doctor.feature.dockerUnreachable": "Feature \"docker\" is on but the Docker daemon does not answer (is Docker Desktop running?).",
   "doctor.feature.transcribeMissing":"Feature \"transcribe\" is on but {command} does not exist.",
+  "doctor.gamemode.pluginMissing": "Game mode: the ETS2 telemetry plugin is {status}.",
   "doctor.push.ok": "Push notifications: {endpoints} device(s) registered.",
   "doctor.push.notConfigured": "No device registered for push notifications (set up ntfy in the app).",
   "doctor.version.unchecked": "Version {current}; latest release not reachable.",
