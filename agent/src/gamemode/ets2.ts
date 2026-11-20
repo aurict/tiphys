@@ -329,18 +329,31 @@ export async function pluginStatus(gameDir: string | null): Promise<{ plugin: "i
   return sha256(b) === PLUGIN.soSha256 ? { plugin: "installed", version: PLUGIN.version } : { plugin: "outdated", version: null };
 }
 
-/** The only entry of a zip (local file header; stored or deflated). */
+/** Compressed size of the local header at `local`, from the central directory (for entries with a data descriptor). */
+function centralSize(zip: Buffer, local: number): number | null {
+  const eocd = zip.lastIndexOf(Buffer.from([0x50, 0x4b, 0x05, 0x06]));
+  if (eocd < 0 || eocd + 22 > zip.length) return null;
+  let off = zip.readUInt32LE(eocd + 16);
+  for (let i = zip.readUInt16LE(eocd + 10); i > 0 && off + 46 <= zip.length && zip.readUInt32LE(off) === 0x02014b50; i--) {
+    if (zip.readUInt32LE(off + 42) === local) return zip.readUInt32LE(off + 20);
+    off += 46 + zip.readUInt16LE(off + 28) + zip.readUInt16LE(off + 30) + zip.readUInt16LE(off + 32);
+  }
+  return null;
+}
+
+/** One entry of a zip by name (local file header; stored or deflated). */
 export function unzipSingle(zip: Buffer, name: string): Buffer {
   let off = 0;
   while (off + 30 <= zip.length && zip.readUInt32LE(off) === 0x04034b50) {
     const flags = zip.readUInt16LE(off + 6);
     const method = zip.readUInt16LE(off + 8);
-    const csize = zip.readUInt32LE(off + 18);
     const nlen = zip.readUInt16LE(off + 26);
     const xlen = zip.readUInt16LE(off + 28);
     const fname = zip.subarray(off + 30, off + 30 + nlen).toString("utf8");
     const start = off + 30 + nlen + xlen;
-    if (flags & 0x08) break; // data descriptor: sizes not in the header (the pinned zip doesn't use one)
+    // Data descriptor (the pinned zip has one): the header's sizes are 0, the central directory has the real ones.
+    const csize = flags & 0x08 ? centralSize(zip, off) : zip.readUInt32LE(off + 18);
+    if (csize === null) break;
     if (fname === name) {
       const data = zip.subarray(start, start + csize);
       if (method === 0) return Buffer.from(data);
@@ -348,6 +361,7 @@ export function unzipSingle(zip: Buffer, name: string): Buffer {
       break;
     }
     off = start + csize;
+    if (flags & 0x08) off += off + 4 <= zip.length && zip.readUInt32LE(off) === 0x08074b50 ? 16 : 12; // crc + sizes, optional signature
   }
   throw new AppError("agent.gamemode.pluginBadArchive", 502);
 }

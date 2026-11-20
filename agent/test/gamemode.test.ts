@@ -673,6 +673,40 @@ describe("ETS2 telemetry", () => {
     h.writeUInt16LE(name.length, 26);
     expect(unzipSingle(Buffer.concat([h, name, comp]), "libscs-telemetry.so").toString()).toBe("hello plugin");
     expect(() => unzipSingle(Buffer.concat([h, name, comp]), "other.so")).toThrow();
+
+    // Data descriptor (flag 0x08, like the pinned release zip): sizes 0 in the local header, real ones in the central directory.
+    const entry = (fname: Buffer, local: number) => {
+      const lh = Buffer.alloc(30);
+      lh.writeUInt32LE(0x04034b50, 0);
+      lh.writeUInt16LE(0x08, 6);
+      lh.writeUInt16LE(8, 8);
+      lh.writeUInt16LE(fname.length, 26);
+      const dd = Buffer.alloc(16);
+      dd.writeUInt32LE(0x08074b50, 0);
+      dd.writeUInt32LE(comp.length, 8);
+      dd.writeUInt32LE(data.length, 12);
+      const cd = Buffer.alloc(46);
+      cd.writeUInt32LE(0x02014b50, 0);
+      cd.writeUInt16LE(0x08, 8);
+      cd.writeUInt16LE(8, 10);
+      cd.writeUInt32LE(comp.length, 20);
+      cd.writeUInt32LE(data.length, 24);
+      cd.writeUInt16LE(fname.length, 28);
+      cd.writeUInt32LE(local, 42);
+      return { body: Buffer.concat([lh, fname, comp, dd]), cd: Buffer.concat([cd, fname]) };
+    };
+    const first = entry(Buffer.from("README"), 0);
+    const second = entry(name, first.body.length);
+    const cdStart = first.body.length + second.body.length;
+    const eocd = Buffer.alloc(22);
+    eocd.writeUInt32LE(0x06054b50, 0);
+    eocd.writeUInt16LE(2, 8);
+    eocd.writeUInt16LE(2, 10);
+    eocd.writeUInt32LE(first.cd.length + second.cd.length, 12);
+    eocd.writeUInt32LE(cdStart, 16);
+    const dzip = Buffer.concat([first.body, second.body, first.cd, second.cd, eocd]);
+    expect(unzipSingle(dzip, "libscs-telemetry.so").toString()).toBe("hello plugin");
+    expect(() => unzipSingle(dzip, "other.so")).toThrow();
   });
 });
 
