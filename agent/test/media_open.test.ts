@@ -6,7 +6,7 @@ import { join } from "node:path";
 import { pathToFileURL } from "node:url";
 import { describe, expect, it } from "vitest";
 import { checkOpenUrl, openRoutes } from "../src/routes/desktop.ts";
-import { METADATA_FORMAT, imageType, mediaRoutes, parseMetadata, parsePlayerList, parseVolume, pickPlayer, type Exec } from "../src/routes/media.ts";
+import { METADATA_FORMAT, imageType, mediaRoutes, parseMetadata, parseOutputs, parsePlayerList, parseVolume, pickPlayer, type Exec } from "../src/routes/media.ts";
 import { testApp } from "./helpers.ts";
 
 const US = "\u001f";
@@ -14,11 +14,42 @@ const RS = "\u001e";
 /** Like playerctl's --format output: the format + a newline for each player. */
 const rec = (...f: string[]) => f.join(US) + RS + "\n";
 
+/** pw-dump output: two sinks (the second is the default), a source and the "default" metadata. */
+function pwDump(defaultSink = "bluez_output.AA") {
+  const node = (id: number, cls: string, name: string, description?: string) => ({
+    id,
+    type: "PipeWire:Interface:Node",
+    info: { props: { "media.class": cls, "node.name": name, ...(description ? { "node.description": description } : {}) } },
+  });
+  return JSON.stringify([
+    { id: 0, type: "PipeWire:Interface:Core", info: {} },
+    node(57, "Audio/Sink", "alsa_output.pci-0000_2b_00.3.analog-stereo", "Built-in Audio Analog Stereo"),
+    node(81, "Audio/Sink", "bluez_output.AA", "WH-1000XM4"),
+    node(60, "Audio/Source", "alsa_input.pci", "Mic"),
+    node(90, "Audio/Sink", "nameless"),
+    {
+      id: 40,
+      type: "PipeWire:Interface:Metadata",
+      props: { "metadata.name": "default" },
+      metadata: [
+        { subject: 0, key: "default.audio.sink", type: "Spa:String:JSON", value: { name: defaultSink } },
+        { subject: 0, key: "default.audio.source", type: "Spa:String:JSON", value: { name: "alsa_input.pci" } },
+      ],
+    },
+  ]);
+}
+
 function fakeExec(o: { list?: string; meta?: string; volume?: string; failAction?: boolean } = {}) {
   const calls: Array<{ cmd: string; args: string[]; env?: NodeJS.ProcessEnv }> = [];
   let vol = o.volume ?? "Volume: 0.60\n";
+  let sink = "bluez_output.AA";
   const exec: Exec = async (cmd, args, opts) => {
     calls.push({ cmd, args, env: opts.env });
+    if (cmd === "pw-dump") return { stdout: pwDump(sink), stderr: "", code: 0 };
+    if (cmd === "wpctl" && args[0] === "set-default") {
+      sink = args[1] === "57" ? "alsa_output.pci-0000_2b_00.3.analog-stereo" : sink;
+      return { stdout: "", stderr: "", code: 0 };
+    }
     if (cmd === "playerctl" && args[0] === "-l") return o.list === undefined ? { stdout: "", stderr: "No players found\n", code: 1 } : { stdout: o.list, stderr: "", code: 0 };
     if (cmd === "playerctl" && args[1] === "metadata") return { stdout: o.meta ?? "", stderr: "", code: 0 };
     if (cmd === "playerctl") return o.failAction ? { stdout: "", stderr: "Could not execute command", code: 1 } : { stdout: "", stderr: "", code: 0 };
@@ -183,6 +214,47 @@ describe("medya: uçlar", () => {
     expect((await get()).statusCode).toBe(404);
     art = pathToFileURL(join(dir, "yok.png")).href;
     expect((await get()).statusCode).toBe(404);
+    await app.close();
+  });
+});
+
+describe("medya: ses çıkışları", () => {
+  it("pw-dump: yalnız Audio/Sink, varsayılan işaretli, ad yoksa node.name", () => {
+    expect(parseOutputs(pwDump())).toEqual([
+      { id: 57, name: "Built-in Audio Analog Stereo", default: false },
+      { id: 81, name: "WH-1000XM4", default: true },
+      { id: 90, name: "nameless", default: false },
+    ]);
+    expect(parseOutputs("bozuk")).toEqual([]);
+    expect(parseOutputs("{}")).toEqual([]);
+  });
+
+  it("liste ve değiştirme: yalnız listedeki id, wpctl set-default", async () => {
+    const f = fakeExec();
+    const { app, auth } = await mediaApp(f);
+    const list = await app.inject({ url: "/v1/media/outputs", headers: auth });
+    expect(list.json().outputs.find((o: { default: boolean }) => o.default).id).toBe(81);
+    const set = await app.inject({ method: "PUT", url: "/v1/media/output", headers: auth, payload: { id: 57 } });
+    expect(set.statusCode).toBe(200);
+    expect(set.json().outputs.find((o: { default: boolean }) => o.default).id).toBe(57);
+    expect(f.calls.filter((c) => c.cmd === "wpctl").map((c) => c.args.join(" "))).toEqual(["set-default 57"]);
+    // A source or an unknown id is refused without running wpctl.
+    for (const id of [60, 999]) {
+      const r = await app.inject({ method: "PUT", url: "/v1/media/output", headers: auth, payload: { id } });
+      expect([r.statusCode, r.json().error.code]).toEqual([404, "agent.media.outputNotFound"]);
+    }
+    for (const payload of [{ id: "57" }, { id: -1 }, { id: 1.5 }, {}]) {
+      expect((await app.inject({ method: "PUT", url: "/v1/media/output", headers: auth, payload })).statusCode).toBe(400);
+    }
+    expect(f.calls.filter((c) => c.cmd === "wpctl")).toHaveLength(1);
+    await app.close();
+  });
+
+  it("pw-dump hatası → outputFailed", async () => {
+    const exec: Exec = async () => ({ stdout: "", stderr: "no pipewire", code: 1 });
+    const { app, auth } = await testApp((c) => c, [(a, ctx) => mediaRoutes(a, ctx, exec, { settleMs: 0 })]);
+    const r = await app.inject({ url: "/v1/media/outputs", headers: auth });
+    expect([r.statusCode, r.json().error.code]).toEqual([502, "agent.media.outputFailed"]);
     await app.close();
   });
 });

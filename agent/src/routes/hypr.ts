@@ -347,6 +347,12 @@ export function hyprRoutes(app: FastifyInstance, ctx: Ctx, io: HyprIo = realHypr
 
   const dispatch = (cmds: HyprCmd[]) => hyprctl.dispatch(cmds);
 
+  ctx.focusClass = async (cls) => {
+    const w = parseClients(await hyprJson(await io.hyprEnv(), "clients")).find((c) => c.class === cls);
+    if (w) await dispatch([{ op: "focusWindow", address: w.address }]);
+    return !!w;
+  };
+
   const clientsOf = async (env: NodeJS.ProcessEnv) => {
     const [c, m] = await Promise.all([hyprJson(env, "clients"), hyprJson(env, "monitors")]);
     return { clients: parseClients(c), monitors: parseMonitors(m) };

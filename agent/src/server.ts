@@ -53,6 +53,8 @@ export interface Ctx {
   control?: ControlSessions;
   /** Hyprland command adapter (shared classic/Lua mode detection; set up by hyprRoutes). */
   hyprctl?: Hyprctl;
+  /** Focuses the first Hyprland window of an app class (set by hyprRoutes); false if none is open. */
+  focusClass?: (cls: string) => Promise<boolean>;
   /** Launchable .desktop apps (set up by hyprRoutes; Claude's launch_app tool only opens these). */
   desktopApps?: () => Promise<DesktopApp[]>;
   /** Firefox bridge socket (11.2; set up by `serve`, a fake socket is supplied in tests). */

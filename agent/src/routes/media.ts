@@ -1,4 +1,6 @@
 // Media control (PC, "desktop" feature): MPRIS players via playerctl, system volume via wpctl (PipeWire).
+// Audio outputs: `pw-dump` lists the sinks (Audio/Sink nodes) and the default; switching runs `wpctl set-default` with an
+// id from that list only. Like the volume, no control session (sound only, nothing on screen changes).
 // playerctl needs the session D-Bus: a systemd user service usually has DBUS_SESSION_BUS_ADDRESS; otherwise
 // $XDG_RUNTIME_DIR/bus is used. No player isn't an error: 200 + players: [].
 // Cover art: an http(s) URL is passed to the app as is; local (file://) art only via /v1/media/art, read from the path
@@ -97,6 +99,41 @@ export function imageType(b: Buffer): string | null {
   return null;
 }
 
+export interface AudioOutput {
+  id: number;
+  name: string;
+  default: boolean;
+}
+
+/** `pw-dump` JSON → audio sinks with the default one marked (metadata "default" → default.audio.sink → node.name). */
+export function parseOutputs(json: string): AudioOutput[] {
+  let objs: unknown;
+  try {
+    objs = JSON.parse(json);
+  } catch {
+    return [];
+  }
+  if (!Array.isArray(objs)) return [];
+  type J = Record<string, unknown>;
+  const obj = (v: unknown): J => (v && typeof v === "object" ? (v as J) : {});
+  let defaultName: string | null = null;
+  for (const o of objs.map(obj)) {
+    if (o.type !== "PipeWire:Interface:Metadata" || obj(o.props)["metadata.name"] !== "default") continue;
+    for (const m of Array.isArray(o.metadata) ? o.metadata.map(obj) : []) {
+      if (m.key === "default.audio.sink") defaultName = typeof obj(m.value).name === "string" ? (obj(m.value).name as string) : null;
+    }
+  }
+  const out: AudioOutput[] = [];
+  for (const o of objs.map(obj)) {
+    const props = obj(obj(o.info).props);
+    if (props["media.class"] !== "Audio/Sink" || typeof o.id !== "number") continue;
+    const node = typeof props["node.name"] === "string" ? props["node.name"] : "";
+    const label = [props["node.description"], props["node.nick"], node].find((x) => typeof x === "string" && x.trim()) as string | undefined;
+    out.push({ id: o.id, name: (label ?? `#${o.id}`).slice(0, 200), default: !!node && node === defaultName });
+  }
+  return out;
+}
+
 const artId = (art: string) => createHash("sha256").update(art).digest("hex").slice(0, 12);
 
 export function mediaRoutes(app: FastifyInstance, _ctx: Ctx, exec: Exec = run, opts: { settleMs?: number } = {}) {
@@ -188,6 +225,22 @@ export function mediaRoutes(app: FastifyInstance, _ctx: Ctx, exec: Exec = run, o
       if (r.code !== 0) throw new AppError("agent.media.volumeFailed", 502, { stderr: r.stderr.slice(0, 500) });
     }
     return volume();
+  });
+
+  async function outputs() {
+    const r = await exec("pw-dump", [], { env, timeoutMs: 5000, allowFail: true });
+    if (r.code !== 0) throw new AppError("agent.media.outputFailed", 502, { stderr: r.stderr.slice(0, 500) });
+    return { outputs: parseOutputs(r.stdout) };
+  }
+
+  app.get("/v1/media/outputs", async () => outputs());
+
+  app.put("/v1/media/output", async (req) => {
+    const b = z.object({ id: z.number().int().min(0).max(1_000_000) }).parse(req.body);
+    if (!(await outputs()).outputs.some((o) => o.id === b.id)) throw new AppError("agent.media.outputNotFound", 404);
+    const r = await wpctl(["set-default", String(b.id)]);
+    if (r.code !== 0) throw new AppError("agent.media.outputFailed", 502, { stderr: r.stderr.slice(0, 500) });
+    return outputs();
   });
 
   app.get("/v1/media/art", async (req, reply) => {
