@@ -1,8 +1,11 @@
 #!/usr/bin/env node
 // tiphys-agent <command>
 //   serve                      starts the agent
-//   init [--name AD] [--features a,b] [--tailscale-login E-POSTA]   creates the settings file
-//   pair --name "Phone" [--url https://host:7443]   pairs a new device, prints a QR code
+//   init [--name AD] [--detect] [--features a,b] [--set-features a,b] [--disable a,b] [--tailscale-login E-POSTA]
+//                              creates/updates the settings file. --features ADDS, --set-features is an exact list,
+//                              --detect turns on the safe features this machine supports (detect.ts)
+//   pair --name "Phone" [--url https://host:7443]   pairs a new device, prints a QR code (URL found via Tailscale)
+//   doctor [--json]            checks the install (doctor.ts); exit 1 when a check fails
 //   devices | revoke <id>      paired devices
 //   schema                     prints the profile JSON Schema
 //   run -- KOMUT [arg...]      runs the command, sends a notification to the phone when done (for long jobs)
@@ -12,7 +15,10 @@
 //   lockdown --url https://atlas:7443   lost phone: asks for the recovery code (stdin), locks that agent and the agents
 //                              it fans out to (security center, PLAN.md §15 S-4)
 import { spawn } from "node:child_process";
+import { existsSync, realpathSync } from "node:fs";
 import { hostname } from "node:os";
+import { join } from "node:path";
+import { fileURLToPath } from "node:url";
 import { parseArgs } from "node:util";
 import { hashToken, newToken } from "./auth.ts";
 import { ConfigStore, defaultConfigPath } from "./config.ts";
@@ -28,6 +34,10 @@ const { values, positionals } = parseArgs({
     name: { type: "string" },
     url: { type: "string" },
     features: { type: "string" },
+    "set-features": { type: "string" },
+    disable: { type: "string" },
+    detect: { type: "boolean" },
+    json: { type: "boolean" },
     "tailscale-login": { type: "string" },
     config: { type: "string" },
     scope: { type: "string", multiple: true },
@@ -43,30 +53,47 @@ async function main() {
       return;
 
     case "init": {
-      const store = await ConfigStore.loadOrCreate(configPath, values.name ?? hostname());
-      await store.update((c) => {
-        if (values.name) c.name = values.name;
-        if (values["tailscale-login"]) c.requireTailscaleLogin = values["tailscale-login"];
-        if (values.features) {
-          const on = new Set(values.features.split(",").map((s) => s.trim()));
-          for (const k of Object.keys(c.features) as Array<keyof typeof c.features>) c.features[k] = on.has(k);
-        }
-        return c;
-      });
-      console.log(`Ayar dosyası: ${configPath}`);
+      const { initCommand, FeatureError } = await import("./detect.ts");
+      try {
+        await initCommand(configPath, {
+          name: values.name,
+          tailscaleLogin: values["tailscale-login"],
+          features: values.features,
+          setFeatures: values["set-features"],
+          disable: values.disable,
+          detect: values.detect === true,
+        });
+      } catch (e) {
+        if (!(e instanceof FeatureError)) throw e;
+        console.error(e.message);
+        process.exit(2);
+      }
       return;
     }
 
     case "pair": {
       const store = await ConfigStore.load(configPath);
       const name = values.name ?? "telefon";
+      // Without --url: this machine's MagicDNS name and the `tailscale serve` port of the agent (K4).
+      let url = values.url;
+      if (!url) {
+        const ts = await import("./tailscale.ts");
+        const port = store.get().listen.port;
+        const own = await ts.ownAgentUrl(port);
+        if (!own.url) {
+          const why = !own.state.installed ? "Tailscale is not installed (https://tailscale.com/download)" : !own.state.running ? "Tailscale is not running or not logged in (tailscale up)" : "Tailscale reports no MagicDNS name (enable MagicDNS)";
+          console.error(`Could not find this agent's address: ${why}.\nPass it yourself: tiphys-agent pair --url https://<machine>.<tailnet>.ts.net:7443`);
+          process.exit(1);
+        }
+        if (!own.served) console.error(`Note: tailscale serve does not publish the agent yet. Run:\n  ${ts.serveCommand(port)}\n`);
+        url = own.url;
+      }
       const token = newToken();
       const id = `${name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "cihaz"}-${Date.now().toString(36)}`;
       await store.update((c) => {
         c.devices.push({ id, name, tokenHash: hashToken(token), createdAt: new Date().toISOString() });
         return c;
       });
-      const url = values.url ?? `http://${store.get().listen.host}:${store.get().listen.port}`;
       const payload = JSON.stringify({ v: 1, type: "tiphys-pair", agent: store.get().name, url, token });
       console.log(`Cihaz eklendi: ${name} (${id})`);
       console.log("Tiphys'te Ayarlar › Hostlar › Ajan › QR ile eşle ekranından okut:\n");
@@ -74,6 +101,8 @@ async function main() {
       qrcode.generate(payload, { small: true });
       console.log(`\nQR okutulamazsa elle gir:\n  Adres: ${url}\n  Token: ${token}\n`);
       console.log("Token bir daha gösterilmez; ajan sadece özetini saklar.");
+      // The running agent re-reads agent.json (watch + on unknown tokens); check that it already accepts the device.
+      console.log((await agentKnowsToken(store.get(), token)) ? "The running agent accepts the new device; no restart needed." : "The agent did not confirm the new device (not running, or an older version). If pairing fails: systemctl --user restart tiphys-agent");
       return;
     }
 
@@ -173,6 +202,21 @@ async function main() {
       return;
     }
 
+    case "doctor": {
+      const store = await ConfigStore.load(configPath).catch((e: NodeJS.ErrnoException) => {
+        if (e.code !== "ENOENT") console.error(`Settings file ${configPath} could not be read: ${e.message}`);
+        return null;
+      });
+      const { runDoctor, defaultDoctorDeps, formatCheck } = await import("./doctor.ts");
+      const report = await runDoctor(defaultDoctorDeps(store?.get() ?? null, configPath));
+      if (values.json) console.log(JSON.stringify(report, null, 2));
+      else {
+        console.log(`Tiphys agent ${report.version}`);
+        for (const c of report.checks) console.log(formatCheck(c));
+      }
+      process.exit(report.checks.some((c) => c.status === "fail") ? 1 : 0);
+    }
+
     case "serve": {
       // Safety net: an uncaught error must not take down the whole agent (and every live Claude session); it's logged.
       process.on("unhandledRejection", (e) => console.error("yakalanmamış hata (ajan çalışmaya devam ediyor):", e));
@@ -196,11 +240,15 @@ async function main() {
       const app = await buildApp(ctx, { logger: true });
       const { host, port } = store.get().listen;
       await app.listen({ host, port });
+      // Devices paired with the CLI (another process) work without a restart (K4).
+      const unwatch = store.watch(() => console.error("agent.json başka bir süreç tarafından değişti; yeniden okundu"));
+      settleUpdateLater();
       // If the previous run didn't shut down cleanly (crash, out of memory): notify the phone.
       if (runs.previousCrashed) {
         void notifier.send({ key: "agent.restarted", params: { host: store.get().name }, link: "tiphys://system", priority: "high" });
       }
       const stop = async () => {
+        unwatch();
         await app.close();
         await ctx.browser?.close().catch(() => {});
         await runs.end().catch(() => {});
@@ -212,9 +260,46 @@ async function main() {
     }
 
     default:
-      console.error("komutlar: serve | init | pair | devices | revoke <id> | schema | run -- KOMUT | firefox install | vscode-a11y install|remove | service-token create|list|revoke");
+      console.error("komutlar: serve | init | pair | doctor | devices | revoke <id> | schema | run -- KOMUT | firefox install | vscode-a11y install|remove | service-token create|list|revoke");
       process.exit(2);
   }
+}
+
+/** GET /v1/devices on the local listen address with the new token (a few tries: the watcher is debounced). */
+async function agentKnowsToken(c: import("./config.ts").AgentConfig, token: string): Promise<boolean> {
+  const host = c.listen.host === "0.0.0.0" || c.listen.host === "::" ? "127.0.0.1" : c.listen.host.includes(":") ? `[${c.listen.host}]` : c.listen.host;
+  const headers: Record<string, string> = { authorization: `Bearer ${token}` };
+  if (c.requireTailscaleLogin) headers["tailscale-user-login"] = c.requireTailscaleLogin;
+  for (let i = 0; i < 3; i++) {
+    try {
+      const r = await fetch(`http://${host}:${c.listen.port}/v1/devices`, { headers, signal: AbortSignal.timeout(2000) });
+      if (r.ok) return true;
+      if (r.status !== 401) return false;
+    } catch {
+      return false;
+    }
+    await new Promise((res) => setTimeout(res, 700));
+  }
+  return false;
+}
+
+/**
+ * After a self-update the new version confirms itself once it has been up for 15 s (removes the marker the guard
+ * counts, see update.ts). Only installs from install.sh have the marker; update.ts loads only then.
+ */
+function settleUpdateLater() {
+  let root: string;
+  try {
+    root = join(realpathSync(fileURLToPath(new URL("..", import.meta.url))), "..", "..");
+  } catch {
+    return;
+  }
+  if (!existsSync(join(root, "update-pending"))) return;
+  setTimeout(async () => {
+    const { managedRoot, settleUpdate } = await import("./update.ts");
+    const r = managedRoot();
+    if (r && (await settleUpdate(r)) === "confirmed") console.error("güncelleme onaylandı");
+  }, 15_000).unref();
 }
 
 main().catch((e) => {

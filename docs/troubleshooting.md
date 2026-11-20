@@ -16,6 +16,8 @@ list is in [agent/api.md](agent/api.md). Below are the problems that come up in 
 ### "Agent unreachable (is the PC on and Tailscale connected?)"
 
 - Is Tailscale connected on the phone **and** the machine (`tailscale status`)?
+- Run `tiphys-agent doctor` on the machine: it checks Tailscale, `tailscale serve`, the agent, the settings file and
+  the tools of enabled features, and prints a fix for each problem.
 - Is the agent running and listening on `127.0.0.1:7443`? Check with `curl -s http://127.0.0.1:7443/v1/health` on
   the machine.
 - Is it published? Check with `tailscale serve status`. If nothing is listed, run
@@ -28,14 +30,15 @@ list is in [agent/api.md](agent/api.md). Below are the problems that come up in 
 - The app accepts only HTTPS with a valid certificate. Enable **HTTPS certificates** and **MagicDNS** in the Tailscale
   admin console, and use the `*.ts.net` name, not the `100.x.y.z` IP address. The certificate is not valid for the IP.
 - `http://` agent addresses do not work on Android (cleartext is blocked).
-- If you paired without `--url`, the QR contains `http://127.0.0.1:7443`. Pair again with `--url`, or fix the address
-  in *Settings › Hosts*.
+- Older agents put `http://127.0.0.1:7443` into the QR when paired without `--url`. Pair again (current agents take
+  the address from Tailscale), or fix the address in *Settings › Hosts*.
 
 ### "The agent rejected this phone; pair again" (`agent.auth.invalidToken`, `agent.auth.missingToken`)
 
 The token is unknown to the agent. It may have been revoked, the agent may use a different `agent.json`, or *Lock
-everything* was used. Pair again. After `tiphys-agent pair` the agent must be **restarted** before it accepts the new
-token. `tools/pair.sh` does that for you.
+everything* was used. Pair again. The running agent accepts a newly paired device at once; `pair` says so. If it
+says the agent did not confirm the device (an agent from before this change), restart it once:
+`systemctl --user restart tiphys-agent`.
 
 ### "This Tailscale account is not allowed on the agent" (`agent.auth.tailnetUserNotAllowed`)
 

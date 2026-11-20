@@ -30,3 +30,6 @@ __pycache__/
 firefox/node_modules/
 firefox/dist/
 agent/test/py/**/__pycache__/
+
+# Release builds (tools/release.sh dry runs)
+release/

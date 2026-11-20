@@ -1,7 +1,7 @@
 import websocket from "@fastify/websocket";
 import Fastify, { type FastifyInstance } from "fastify";
 import { ZodError } from "zod";
-import { authenticate } from "./auth.ts";
+import { authenticateFresh } from "./auth.ts";
 import type { ConfigStore, Device, ServiceToken } from "./config.ts";
 import { AppError } from "./errors.ts";
 import { Notifier } from "./notify.ts";
@@ -110,9 +110,9 @@ export async function buildApp(ctx: Ctx, opts: { logger?: boolean; logStream?: {
       if (want !== null && req.headers["tailscale-user-login"] !== want) throw new AppError("agent.auth.tailnetUserNotAllowed", 403);
       return;
     }
-    let caller: ReturnType<typeof authenticate>;
+    let caller: Awaited<ReturnType<typeof authenticateFresh>>;
     try {
-      caller = authenticate(ctx.store.get(), req, req.routeOptions.config?.scope);
+      caller = await authenticateFresh(ctx.store, req, req.routeOptions.config?.scope);
     } catch (e) {
       // A rejected token may be a planted decoy (security center traps): the hook raises the alarm; the caller sees
       // the same 401 as for any unknown token.
@@ -143,6 +143,8 @@ export async function buildApp(ctx: Ctx, opts: { logger?: boolean; logStream?: {
   agentStatusRoutes(ctx.runs ?? null)(app);
   configRoutes(app, ctx);
   serviceTokenRoutes(app, ctx);
+  // Doctor and self-update (K6/K8): tiny route file; the checks and the updater load on first use.
+  (await import("./routes/maintenance.ts")).maintenanceRoutes(app, ctx);
   const f = ctx.store.get().features;
   // Feature modules load only when the feature is on: a server without the desktop never loads the desktop code
   // (H1, PLAN.md §18). Order matters inside "desktop": hyprRoutes sets up the control session the later ones use.

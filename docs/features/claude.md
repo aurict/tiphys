@@ -35,8 +35,8 @@ There are three kinds of session:
 tiphys-agent init --name argo --features system,services,claude,git
 ```
 
-`init --features` switches on exactly the listed features and turns every other one **off**. To change one
-feature without touching the rest, use the app: *Settings › Hosts › argo › Agent settings › Features*. Feature
+`init --features` switches on the listed features and keeps the others (`--set-features` is an exact list). You
+can also change features in the app: *Settings › Hosts › argo › Agent settings › Features*. Feature
 changes apply after the agent restarts. All config keys are described in
 [Agent configuration](../agent/configuration.md).
 

@@ -49,12 +49,66 @@ To report a vulnerability, see [SECURITY.md](../SECURITY.md).
   request must carry the `Tailscale-User-Login` header that `tailscale serve` adds for the connecting user, and it
   must match. Other users in a shared tailnet are rejected with `agent.auth.tailnetUserNotAllowed`. The check relies
   on `tailscale serve` setting that header. Requests from tagged devices carry no user login and are rejected.
-- Use Tailscale ACLs to limit which of your devices can reach port 7443 at all.
+- Use Tailscale ACLs to limit which of your devices can reach port 7443 at all. Example (tailnet policy file;
+  replace the user; with `tagOwners`/tags you can narrow it to the phone):
+
+  ```jsonc
+  {
+    "acls": [
+      // Only your own devices may reach the agents' port; nobody else in the tailnet.
+      { "action": "accept", "src": ["you@example.com"], "dst": ["you@example.com:7443"] }
+    ]
+  }
+  ```
+
+  Shared or multi-user tailnets: combine it with `--tailscale-login`. **Headscale** works the same way (ACL policy
+  in its own format, `tailscale serve` and MagicDNS certificates need a Headscale version that supports them; set
+  `--url` for `pair` if the DNS name is not the one the phone uses).
+- If Tailscale is missing, `install.sh` stops short of publishing the agent and prints the steps; `pair` refuses to
+  guess an address and asks for `--url`; `tiphys-agent doctor` reports `doctor.tailscale.missing`. The agent never
+  listens on anything but loopback by itself.
+
+## Releases, installer and self-update
+
+The one-command install and the self-update rely on one chain of trust: an **ed25519 release key** that lives only on
+the maintainer's release PC.
+
+1. `tools/release-keygen.sh` creates the key pair once. The private key stays in
+   `~/.config/tiphys/release/update-signing.key` (mode 600; never in the repo, never in CI). The public key is
+   committed in three places: `agent/src/update_key.ts`, `install.sh` and `install.ps1`.
+2. `tools/release.sh` builds every bundle, writes `SHA256SUMS` over all release files and signs exactly that file
+   (`SHA256SUMS.sig`, raw 64-byte ed25519). It refuses to sign if the committed public key isn't the private key's
+   half, and re-verifies the signature with `openssl` and the key from `install.sh` before anything is uploaded.
+   The Node.js runtime inside each bundle is downloaded from nodejs.org and checked against its `SHASUMS256.txt`.
+3. **`install.sh`** verifies `SHA256SUMS.sig` with the key embedded in the script, using
+   `openssl pkeyutl -verify -rawin` (OpenSSL 3, or 1.1.1). Only then does it trust `SHA256SUMS`, and the bundle must
+   match its line. It probes openssl's ed25519 support with a throwaway key first (macOS's LibreSSL may lack it).
+   The signature is checked **before** anything from the bundle runs: verifying with the bundle's own Node.js would
+   let a tampered bundle vouch for itself. `install.ps1` does the same with `openssl.exe` (Git for Windows ships one).
+4. **`--insecure-skip-signature`** (`-InsecureSkipSignature`) installs when the signature can't be checked: no
+   openssl with ed25519, or an installer that still holds the placeholder key. The SHA-256 is still compared, but
+   `SHA256SUMS` came from the same server as the bundle, so that only proves the download is intact, not that the
+   maintainer published it. The flag is never implied; without it the installer stops and installs nothing.
+5. **Self-update** (`update` feature, installs from `install.sh` only) downloads from the fixed release location,
+   verifies the signature with the key compiled into the running agent, checks the SHA-256 and that the bundle is the
+   requested version, and refuses downgrades. The request carries only a version number, never a URL. Only paired
+   devices can trigger it. An agent built with the placeholder key refuses (`agent.update.noKey`). A failed start
+   of the new version is rolled back by the guard script after three attempts.
+
+What this does **not** protect against: a stolen release key (rotate it: new installers and a manual reinstall
+everywhere, since old agents only trust the old key), a compromised release PC, or a user who runs
+`curl … | sh` from a different URL. The installer itself is fetched over HTTPS from GitHub; check
+`install.sh` before piping it into a shell if that matters to you. Package installs (`.deb`, `.rpm`, AUR, Homebrew)
+rely on the package manager's own checks plus the checksums copied from the signed `SHA256SUMS`.
 
 ## Pairing and device tokens
 
 - `tiphys-agent pair` creates a 256-bit random token with prefix `tph_` and shows it once (QR + text). The agent
   stores only `sha256(token)`, and lookups use a constant-time comparison.
+- The running agent picks up a newly paired device without a restart: it watches `agent.json` and, when an unknown
+  token arrives, re-reads the file at most once a second before rejecting it. An invalid file is ignored (the old
+  settings stay). The QR carries no TLS fingerprint: `tailscale serve` uses a publicly trusted certificate that
+  renews every few months, so a pin would break; the app relies on normal certificate validation.
 - The phone stores the token in `flutter_secure_storage` (Android Keystore). The profile file holds only a
   reference to it.
 - Every endpoint except `GET /v1/health` requires `Authorization: Bearer <token>`. As a fallback for clients that

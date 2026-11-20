@@ -1,0 +1,8 @@
+# Draft winget manifest (PLAN K3), version manifest. Not submittable yet: winget "portable" installs need an .exe
+# entry point, and the bundle starts the agent as `node\node.exe dist\cli.js`. A small launcher (tiphys-agent.exe)
+# must be added to the Windows bundle first. Until then install.ps1 is the Windows install path.
+PackageIdentifier: Tiphys.Agent
+PackageVersion: "@VERSION@"
+DefaultLocale: en-US
+ManifestType: version
+ManifestVersion: 1.6.0

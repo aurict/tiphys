@@ -92,11 +92,13 @@ internet. More on the components: [architecture.md](architecture.md).
    sudo tailscale set --operator=$USER
    ```
 
-4. Optional: use Tailscale ACLs/grants to limit which of your devices may reach port 7443.
+4. Optional: use Tailscale ACLs/grants to limit which of your devices may reach port 7443. Example in
+   [Security › Network exposure](security.md#network-exposure); Headscale notes are there too.
 
 ### Node.js (every agent machine)
 
-The agent needs **Node.js 22 or newer** (`engines` in `agent/package.json`); CI and development use Node.js 24.
+Not needed with the one-command installer (the release bundle carries Node.js 24). From a checkout, the agent
+needs **Node.js 22 or newer** (`engines` in `agent/package.json`); CI and development use Node.js 24.
 
 ```sh
 node --version     # must print v22.x or newer
@@ -179,6 +181,47 @@ Firefox extension build needs only Node.js.
 
 ## 3. Agent on the PC
 
+### One-command install (recommended)
+
+```sh
+curl -fsSL https://raw.githubusercontent.com/aurict/tiphys/main/install.sh | sh
+```
+
+Windows (PowerShell, no administrator rights needed):
+`irm https://raw.githubusercontent.com/aurict/tiphys/main/install.ps1 | iex`.
+
+The installer downloads the newest release for your OS and CPU (Linux and macOS on x64/arm64, Windows x64; the
+bundle carries its own Node.js 24), **verifies its ed25519 signature and SHA-256** (needs `openssl`; see
+[Security › Releases](security.md#releases-installer-and-self-update)), installs it to
+`~/.local/share/tiphys-agent/versions/<version>` with a `current` link and a `tiphys-agent` command in
+`~/.local/bin`, creates a systemd user service (macOS: a LaunchAgent; Windows: a logon entry with a restart loop),
+runs `tiphys-agent init --detect`, publishes the agent with `tailscale serve` (asks for `sudo` once on Linux, or
+prints the command), and shows the pairing QR code.
+
+| Option | Meaning |
+|---|---|
+| `--version X.Y.Z` | A specific release instead of the newest |
+| `--name NAME` | Agent name (first install only; default: host name) |
+| `--no-service` / `--no-serve` / `--no-pair` | Skip that step |
+| `--uninstall [--purge]` | Remove service and program files; `--purge` also deletes `~/.config/tiphys` |
+| `--insecure-skip-signature` | Install although the signature can't be checked. Read [what this means](security.md#releases-installer-and-self-update) first |
+
+Pass options with `curl … | sh -s -- --version 0.4.0`. Re-running the installer updates; settings and paired
+devices are kept, and features are not changed on updates. When systemd user services are not available (a
+container, a plain `su` session) the service step is skipped with a message; start the agent with
+`tiphys-agent serve`. On servers, keep it running after logout with `sudo loginctl enable-linger $USER`.
+
+Afterwards: `tiphys-agent doctor` checks everything (Tailscale, `tailscale serve`, the service, permissions, tools
+for enabled features) and prints a fix for each problem. Turn on more features with
+`tiphys-agent init --features claude,control` and `systemctl --user restart tiphys-agent`. Other install paths
+(`.deb`/`.rpm`, AUR, Homebrew, Docker for servers): [packaging/README.md](../packaging/README.md).
+
+Updates: re-run the installer, or let the agent update itself from the app (`update` feature, on by default for
+installs made this way; signed releases only, see [api.md › Self-update](agent/api.md#self-update)).
+
+The rest of this section is the manual path from a git checkout (needed for development and for features that are
+not in the release bundles yet, such as the Firefox extension).
+
 ### Build
 
 ```sh
@@ -193,15 +236,20 @@ Do not use `--omit=optional` on the PC if you want the `claude` feature.
 ### Create the configuration
 
 ```sh
-node dist/cli.js init --name argo --features system,services,docker,power,git,claude
+node dist/cli.js init --name argo --detect --features git,claude
 ```
 
 - `init` creates `~/.config/tiphys/agent.json` (directory `0700`, file `0600`) or updates an existing one. The path
   can be changed with `--config PATH` or `TIPHYS_AGENT_CONFIG`.
 - `--name NAME`: the name shown in the app and in notifications (default: the hostname on first creation).
-- `--features a,b,c`: **an exact list**. Listed flags are turned on and **every other flag is turned off**. Without
-  `--features`, an existing file keeps its flags. A brand-new file without `--features` gets `system`, `services`,
-  `docker` and `power` on and everything else off.
+- `--detect`: turns on the safe features this machine supports (`system`, `services`, `docker` if the socket is
+  usable, `git`, `desktop` in a desktop session, `ports`, `transcribe` if configured) and prints risky ones
+  (`claude`, `control`, `power`, …) as suggestions instead of enabling them.
+  See [init and feature lists](agent/configuration.md#init-and-feature-lists).
+- `--features a,b,c`: turns these on and **keeps** everything else. (Before this release it was an exact list that
+  turned every other flag off.) `--set-features a,b,c` is the exact list; `--disable a,b` turns flags off.
+  A brand-new file without any of these gets `system`, `services`, `docker` and `power` on and everything else off
+  (with `--detect`: only what was detected).
 - `--tailscale-login LOGIN`: accept only requests whose `Tailscale-User-Login` header (set by `tailscale serve`)
   equals `LOGIN`, for example `you@example.com`. `init` can set it but not clear it; to remove the check, set
   `"requireTailscaleLogin": null` in `agent.json` (see [Changing agent.json safely](#changing-agentjson-safely)).
@@ -297,7 +345,7 @@ tools/deploy-agent.sh <ssh-target> <name> <features> [ssh-key]
 |---|---|
 | `ssh-target` | `user@host` for `ssh`, e.g. `user@atlas` or a tailnet address |
 | `name` | agent name (`init --name`) |
-| `features` | comma-separated, **complete** feature list (`init --features`) |
+| `features` | comma-separated feature list: the exact list on the first install (`init --set-features`), **added** on later runs (`init --features`); `TIPHYS_EXACT_FEATURES=1` makes it exact again |
 | `ssh-key` | optional private key passed to `ssh -i` |
 | `TIPHYS_TAILSCALE_LOGIN` (env) | optional; applied as `--tailscale-login` **only when `agent.json` does not exist yet** |
 
@@ -314,7 +362,8 @@ On the server, it:
 
 1. installs the distribution's `nodejs` with `sudo apt-get` if `node` is missing (Debian/Ubuntu only);
 2. runs `init` with the name, features and optional login if `~/.config/tiphys/agent.json` does not exist;
-3. runs `init --name NAME --features FEATURES` **every time**, which resets the feature set to exactly your list;
+3. on later runs, runs `init --name NAME --features FEATURES`, which **adds** your list and keeps features you turned
+   on from the app (with `TIPHYS_EXACT_FEATURES=1`: `--set-features`, exactly your list);
 4. writes `~/.config/systemd/user/tiphys-agent.service`, enables lingering (`sudo loginctl enable-linger`), enables
    and restarts the service;
 5. prints `active`, the `/v1/health` answer, and runs `sudo tailscale serve --bg --https=7443 http://127.0.0.1:7443`.
@@ -335,8 +384,10 @@ Then pair the phone with it ([section 7](#7-pair-the-phone)).
 
 ### Updating and changing features on a server
 
-Re-run the script to update the agent. Because step 3 above re-applies your list, **list every feature you want to
-keep**, including ones you turned on later from the app. Check the current set first:
+Re-run the script to update the agent. Your list is **added** to the current features, so features turned on from
+the app stay on. To turn one off, use the app or
+`ssh user@atlas 'cd ~/tiphys-agent && node dist/cli.js init --disable FEATURE'`. To make the list exact again, set
+`TIPHYS_EXACT_FEATURES=1` and list every feature you want to keep. Check the current set first:
 
 ```sh
 curl -s https://atlas.my-tailnet.ts.net:7443/v1/health \
@@ -344,11 +395,13 @@ curl -s https://atlas.my-tailnet.ts.net:7443/v1/health \
 # e.g. system,services,docker,power,watch,alerts,backups,telegram
 ```
 
-Paste that list (plus or minus what you want to change) as the third argument:
+With `TIPHYS_EXACT_FEATURES=1`, paste that list (plus or minus what you want to change) as the third argument:
 
 ```sh
-tools/deploy-agent.sh user@atlas atlas system,services,docker,power,watch,alerts,backups,telegram ~/.ssh/id_ed25519
+TIPHYS_EXACT_FEATURES=1 tools/deploy-agent.sh user@atlas atlas system,services,docker,power,watch,alerts,backups,telegram ~/.ssh/id_ed25519
 ```
+
+A server can also use the one-command installer instead (it brings its own Node.js and can update itself).
 
 Everything else in `agent.json` (devices, push endpoints, sections such as `wake` or `telegram`) is kept. To
 change only features without redeploying, use the app ([section 9](#9-feature-flags)).
@@ -373,8 +426,9 @@ stacks and log search work over SSH; the home screen shows it online when its SS
 | Command | Purpose |
 |---|---|
 | `serve` | Run the agent in the foreground (the systemd unit does this). |
-| `init [--name N] [--features a,b] [--tailscale-login L]` | Create or update `agent.json`. `--features` is an exact list. |
-| `pair --name "Phone" --url https://argo.my-tailnet.ts.net:7443` | Add a device, print the QR code and the one-time token. |
+| `init [--name N] [--detect] [--features a,b] [--set-features a,b] [--disable a,b] [--tailscale-login L]` | Create or update `agent.json`. `--features` adds, `--set-features` is exact, `--detect` enables safe detected features. |
+| `pair --name "Phone" [--url https://argo.my-tailnet.ts.net:7443]` | Add a device, print the QR code and the one-time token. Without `--url` the address comes from Tailscale. |
+| `doctor [--json]` | Check the install and print a fix for each problem; exit code 1 if something fails. |
 | `devices` | List paired devices (`id`, `name`, `createdAt`). |
 | `revoke <device-id>` | Remove a device and its push endpoint. |
 | `service-token create --name atlas --scope research` | Create a scoped token (`tps_…`), printed once. Scopes: `research`, `analysis`, `security-report`. |
@@ -388,15 +442,17 @@ Full reference: [agent/configuration.md › CLI](agent/configuration.md#cli).
 
 ### Changing agent.json safely
 
-The running agent reads `agent.json` **once at start** and keeps it in memory. It writes the whole file back
-whenever it changes something itself (the phone saves settings or registers for push, a service token is used, a
-device is revoked from the app, …). Two consequences:
+The running agent keeps `agent.json` in memory and **re-reads it when another process changes it** (a file
+watcher, and a re-read before rejecting an unknown token). Before it writes the file itself (the phone saves
+settings, a service token is used, …) it first picks up such changes, so a CLI change is not overwritten. So:
 
-- **After every CLI command that changes the file** (`init`, `pair`, `revoke`, `service-token create|revoke`),
-  restart the agent right away: `systemctl --user restart tiphys-agent`. Until then the running agent does not see
-  the change (a new device is rejected, a revoked one still works), and its next write can undo the change.
-  `tools/pair.sh` restarts for you.
-- **To edit `agent.json` by hand**, stop the agent first, edit, check the JSON, start it again:
+- `pair`, `revoke` and `service-token create|revoke` take effect **without a restart** (within about a second).
+  `pair` checks that the running agent accepts the new device and tells you if it does not (an agent from before
+  this change: restart it once).
+- **Feature changes** made with `init` still need `systemctl --user restart tiphys-agent`, like other settings
+  that are read at start ([section 11](#11-settings-reference)).
+- An invalid file is ignored by the running agent (it keeps the old settings) but stops the next start. When
+  editing by hand, it is still safest to stop the agent first, edit, check the JSON, start it again:
 
   ```sh
   systemctl --user stop tiphys-agent
@@ -439,12 +495,19 @@ systemctl --user restart tiphys-agent
 # re-run `node dist/cli.js firefox install` if you moved the checkout or changed the Node.js installation.
 ```
 
-Servers: re-run `tools/deploy-agent.sh` from the updated checkout with the full feature list
+Servers: re-run `tools/deploy-agent.sh` from the updated checkout
 ([above](#updating-and-changing-features-on-a-server)).
+
+Installed with `install.sh` / `install.ps1`: run the installer again, or update from the app (*agent settings ›
+update*, `POST /v1/update/apply`; needs the `update` feature). Package installs update with their package manager.
 
 App: rebuild and install over the existing app with the same signing key ([section 6](#6-build-and-install-the-app)).
 
 ### Uninstalling
+
+Installed with `install.sh`: `curl -fsSL https://raw.githubusercontent.com/aurict/tiphys/main/install.sh | sh -s -- --uninstall`
+(add `--purge` to delete `~/.config/tiphys` too), then `tailscale serve --https=7443 off`. Windows:
+`install.ps1 -Uninstall`. From a checkout:
 
 ```sh
 systemctl --user disable --now tiphys-agent
@@ -554,27 +617,30 @@ Pairing adds a device to an agent and gives the phone a random token (`tph_…`,
 ### With `tools/pair.sh` (recommended)
 
 ```text
-tools/pair.sh local       <agent-url> [device-name]              agent on this machine
-tools/pair.sh <ssh-target> <agent-url> [device-name] [ssh-key]   agent in ~/tiphys-agent on a server
+tools/pair.sh local       [agent-url|auto] [device-name]              agent on this machine
+tools/pair.sh <ssh-target> [agent-url|auto] [device-name] [ssh-key]   agent in ~/tiphys-agent on a server
 ```
 
 ```sh
-tools/pair.sh local https://argo.my-tailnet.ts.net:7443 Phone
+tools/pair.sh local
 tools/pair.sh user@atlas https://atlas.my-tailnet.ts.net:7443 Phone ~/.ssh/id_ed25519
 ```
 
-The script runs `pair --name NAME --url URL` and then restarts the `tiphys-agent` user service, so the running agent
-accepts the new token. The device name defaults to `Phone`.
+The script runs `pair --name NAME [--url URL]`. The running agent accepts the new token without a restart; the
+script no longer restarts it. If the agent on that machine predates this change, the CLI says it did not confirm
+the device: restart it once (`systemctl --user restart tiphys-agent`). The device name defaults to `Phone`.
 
 ### With the CLI directly
 
 ```sh
+tiphys-agent pair --name "Phone"                                   # install.sh installs
 node dist/cli.js pair --name "Phone" --url https://argo.my-tailnet.ts.net:7443
-systemctl --user restart tiphys-agent
 ```
 
-**Always pass `--url`** with the tailnet HTTPS address and port. Without it the QR contains the listen address
-`http://127.0.0.1:7443`, which the phone cannot reach.
+Without `--url`, the address is `https://<MagicDNS name of this machine>:<port>`, where the port is the
+`tailscale serve` HTTPS port that forwards to the agent (7443 if there is none yet; the command to create it is
+printed). If Tailscale is not installed, not running or has no DNS name, `pair` stops and asks for `--url`. Pass
+`--url` when the phone should use another name (e.g. Headscale, a custom domain).
 
 ### In the app
 
@@ -593,7 +659,7 @@ phone in daily use should be paired on its own so the agent can tell the devices
 
 | Where | How |
 |---|---|
-| Agent CLI | `node dist/cli.js devices`, then `node dist/cli.js revoke <device-id>` and **restart the agent** |
+| Agent CLI | `node dist/cli.js devices`, then `node dist/cli.js revoke <device-id>` (the running agent picks it up within about a second) |
 | App | *Settings › Hosts › (host) › Agent settings › Paired devices › Revoke* (takes effect immediately) |
 | App, everything | *Agent settings › Lock everything*: revokes **all** devices including this phone, all service tokens and all push endpoints. Pair again on the machine to get back in. |
 
@@ -676,9 +742,9 @@ How to change flags:
 - **App:** *Settings › Hosts › (host) › Agent settings › Features*, toggle, **Save**, then restart the agent. The
   app shows *Saved. Restart the agent to apply feature changes.* You can restart from a terminal on the phone
   (`systemctl --user restart tiphys-agent` over SSH).
-- **CLI:** `node dist/cli.js init --features <complete list>`, then restart. Remember it turns everything not
-  listed off.
-- **Servers:** the app, or re-run `tools/deploy-agent.sh` with the complete list.
+- **CLI:** `tiphys-agent init --features a,b` (adds) or `--disable a,b` (turns off), then restart.
+  `--set-features <complete list>` turns everything not listed off.
+- **Servers:** the app, or re-run `tools/deploy-agent.sh` (adds the listed features).
 
 ## 10. Setting up each feature
 

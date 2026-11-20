@@ -5,6 +5,9 @@
 # Features: system services docker power homepage claude uptime wake watch git desktop control ports transcribe alerts backups
 #   (control: endpoints that change the desktop; requires desktop, works only with a timed control session opened on the phone)
 #   (the event stream /v1/events is always on; no feature flag)
+# <features>: the exact list on the first install; on later runs these are ADDED (features turned on from the app stay
+#   on; nothing is turned off). Exact list again: TIPHYS_EXACT_FEATURES=1. Turn one off: the app, or
+#   ssh <target> 'cd ~/tiphys-agent && node dist/cli.js init --disable <feature>'.
 # Optional on first install: TIPHYS_TAILSCALE_LOGIN=you@example.com (only this Tailscale user's devices can connect).
 set -euo pipefail
 cd "$(dirname "$0")/../agent"
@@ -24,12 +27,17 @@ fi
 tar -C "$STAGE" -czf - . | "${SSH[@]}" 'rm -rf ~/tiphys-agent/dist ~/tiphys-agent/helpers ~/tiphys-agent/node_modules && tar -C ~/tiphys-agent -xzf -'
 rm -rf "$STAGE"
 
-"${SSH[@]}" bash -s -- "$NAME" "$FEATURES" "${TIPHYS_TAILSCALE_LOGIN:-}" <<'REMOTE'
+"${SSH[@]}" bash -s -- "$NAME" "$FEATURES" "${TIPHYS_TAILSCALE_LOGIN:-}" "${TIPHYS_EXACT_FEATURES:-}" <<'REMOTE'
 set -euo pipefail
-NAME=$1 FEATURES=$2 LOGIN=${3:-}
+NAME=$1 FEATURES=$2 LOGIN=${3:-} EXACT=${4:-}
 cd ~/tiphys-agent
-[ -f ~/.config/tiphys/agent.json ] || node dist/cli.js init --name "$NAME" --features "$FEATURES" ${LOGIN:+--tailscale-login "$LOGIN"}
-node dist/cli.js init --name "$NAME" --features "$FEATURES" >/dev/null
+if [ ! -f ~/.config/tiphys/agent.json ]; then
+  node dist/cli.js init --name "$NAME" --set-features "$FEATURES" ${LOGIN:+--tailscale-login "$LOGIN"}
+elif [ -n "$EXACT" ]; then
+  node dist/cli.js init --name "$NAME" --set-features "$FEATURES"
+else
+  node dist/cli.js init --name "$NAME" --features "$FEATURES"   # adds; never turns anything off
+fi
 mkdir -p ~/.config/systemd/user
 cat > ~/.config/systemd/user/tiphys-agent.service <<UNIT
 [Unit]
