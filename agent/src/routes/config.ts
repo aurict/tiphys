@@ -119,7 +119,8 @@ export function configRoutes(app: FastifyInstance, ctx: Ctx) {
       if (p.watch) c.watch = p.watch;
       if (p.transcribe) c.transcribe = p.transcribe;
       // The clipboard watcher reads the setting on every change: no restart needed.
-      if (p.desktop) c.desktop = p.desktop;
+      // Merged: backend/helperPath (config file only) are kept.
+      if (p.desktop) c.desktop = { ...c.desktop, ...p.desktop };
       // Checks read the setting every round: no restart needed.
       if (p.backups) c.backups = p.backups;
       // Stack roots and incident links are read on every use: no restart needed.

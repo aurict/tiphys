@@ -227,6 +227,19 @@ export class ClipboardWatcher {
 }
 
 export function desktopRoutes(app: FastifyInstance, ctx: Ctx, io: ClipboardIo = realClipboardIo, opts?: ConstructorParameters<typeof ClipboardWatcher>[2]) {
+  clipboardRoutes(app, ctx, io, opts);
+
+  app.get("/v1/desktop/screenshot", async (req, reply) => {
+    const q = z.object({ scale: z.coerce.number().min(0.1).max(1).default(0.5) }).parse(req.query);
+    // PNG: distributions' grim packages are often built with JPEG support disabled.
+    const r = await runBuffer("grim", ["-s", String(q.scale), "-t", "png", "-l", "3", "-"], await waylandEnv(), 20000);
+    if (r.code !== 0 || r.out.length === 0) throw new AppError("agent.desktop.screenshotFailed", 502, { stderr: r.err });
+    return reply.header("content-type", "image/png").header("cache-control", "no-store").send(r.out);
+  });
+}
+
+/** Clipboard read/write + sync watcher (Wayland tools); also used by the helper backend on Wayland desktops. */
+export function clipboardRoutes(app: FastifyInstance, ctx: Ctx, io: ClipboardIo = realClipboardIo, opts?: ConstructorParameters<typeof ClipboardWatcher>[2]) {
   const watcher = new ClipboardWatcher(ctx, io, opts);
   watcher.start();
   app.addHook("onClose", async () => watcher.stop());
@@ -248,14 +261,6 @@ export function desktopRoutes(app: FastifyInstance, ctx: Ctx, io: ClipboardIo = 
     if ((await io.read(env).catch(() => null))?.toString("utf8") === text) return { ok: true };
     await io.write(env, text);
     return { ok: true };
-  });
-
-  app.get("/v1/desktop/screenshot", async (req, reply) => {
-    const q = z.object({ scale: z.coerce.number().min(0.1).max(1).default(0.5) }).parse(req.query);
-    // PNG: distributions' grim packages are often built with JPEG support disabled.
-    const r = await runBuffer("grim", ["-s", String(q.scale), "-t", "png", "-l", "3", "-"], await waylandEnv(), 20000);
-    if (r.code !== 0 || r.out.length === 0) throw new AppError("agent.desktop.screenshotFailed", 502, { stderr: r.err });
-    return reply.header("content-type", "image/png").header("cache-control", "no-store").send(r.out);
   });
 }
 

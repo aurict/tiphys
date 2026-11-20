@@ -285,7 +285,32 @@ export interface HyprOpts {
   thumbCacheMs?: number;
 }
 
-async function defaultThemes(exec: Exec): Promise<string[]> {
+/**
+ * App icon file (resolved by IconResolver) → response body: a PNG as is; an SVG converted to PNG with rsvg-convert,
+ * otherwise ffmpeg's librsvg decoder; if neither exists, the SVG as is. Also used by the helper backend.
+ */
+export async function iconImage(io: Pick<HyprIo, "has" | "bytes">, path: string, size: number): Promise<{ type: string; body: Buffer }> {
+  const file = await readFile(path);
+  if (file.length > 2 * 1024 * 1024) throw new AppError("agent.desktop.iconNotFound", 404);
+  if (path.toLowerCase().endsWith(".png")) {
+    if (!isPng(file)) throw new AppError("agent.desktop.iconNotFound", 404);
+    return { type: "image/png", body: file };
+  }
+  const s = String(size);
+  const tries: Array<[string, string[]]> = [
+    ["rsvg-convert", ["-w", s, "-h", s, "-a", "-f", "png", path]],
+    ["ffmpeg", ["-v", "error", "-c:v", "librsvg", "-width", s, "-height", s, "-keep_ar", "1", "-i", path, "-frames:v", "1", "-f", "image2pipe", "-c:v", "png", "-"]],
+  ];
+  for (const [cmd, args] of tries) {
+    if (!(await io.has(cmd))) continue;
+    const r = await io.bytes(cmd, args, { env: process.env, timeoutMs: 10000 }).catch(() => null);
+    if (r && r.code === 0 && isPng(r.out)) return { type: "image/png", body: r.out };
+  }
+  return { type: "image/svg+xml", body: file };
+}
+
+/** The user's icon theme(s): gtk settings.ini + gsettings. */
+export async function defaultThemes(exec: Exec): Promise<string[]> {
   const ini = await Promise.all(["gtk-3.0", "gtk-4.0"].map((d) => readFile(join(process.env.XDG_CONFIG_HOME || join(homedir(), ".config"), d, "settings.ini"), "utf8").catch(() => "")));
   const g = await exec("gsettings", ["get", "org.gnome.desktop.interface", "icon-theme"], { timeoutMs: 3000, allowFail: true }).then((r) => (r.code === 0 ? r.stdout : null), () => null);
   return themesFrom(ini, g);
@@ -426,28 +451,7 @@ export function hyprRoutes(app: FastifyInstance, ctx: Ctx, io: HyprIo = realHypr
     if (!hit) {
       const path = a.icon ? await icons.resolve(a.icon) : null;
       if (!path) throw new AppError("agent.desktop.iconNotFound", 404);
-      const file = await readFile(path);
-      if (file.length > 2 * 1024 * 1024) throw new AppError("agent.desktop.iconNotFound", 404);
-      if (path.toLowerCase().endsWith(".png")) {
-        if (!isPng(file)) throw new AppError("agent.desktop.iconNotFound", 404);
-        hit = { type: "image/png", body: file };
-      } else {
-        hit = { type: "image/svg+xml", body: file };
-        // SVG → PNG: rsvg-convert, otherwise ffmpeg's librsvg decoder; if neither exists, the SVG as is.
-        const s = String(size);
-        const tries: Array<[string, string[]]> = [
-          ["rsvg-convert", ["-w", s, "-h", s, "-a", "-f", "png", path]],
-          ["ffmpeg", ["-v", "error", "-c:v", "librsvg", "-width", s, "-height", s, "-keep_ar", "1", "-i", path, "-frames:v", "1", "-f", "image2pipe", "-c:v", "png", "-"]],
-        ];
-        for (const [cmd, args] of tries) {
-          if (!(await io.has(cmd))) continue;
-          const r = await io.bytes(cmd, args, { env: process.env, timeoutMs: 10000 }).catch(() => null);
-          if (r && r.code === 0 && isPng(r.out)) {
-            hit = { type: "image/png", body: r.out };
-            break;
-          }
-        }
-      }
+      hit = await iconImage(io, path, size);
       if (iconCache.size > 400) iconCache.clear();
       iconCache.set(key, hit);
     }

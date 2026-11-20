@@ -317,8 +317,20 @@ export const agentConfigSchema = z.object({
     .object({ url: z.url({ protocol: /^https$/ }).default("https://127.0.0.1:47990"), username: z.string().min(1).max(128), password: z.string().min(1).max(256) })
     .nullable()
     .default(null),
-  /** Desktop ("desktop" feature): silent notification to the phone when the PC clipboard changes (text only). */
-  desktop: z.object({ clipboardSync: z.boolean().default(true) }).default({ clipboardSync: true }),
+  /**
+   * Desktop ("desktop" feature): silent notification to the phone when the PC clipboard changes (text only).
+   * backend (read at startup; absent = "auto"): "hyprland" = the agent drives Hyprland itself, "helper" = the native
+   * helper `tiphys-desktop` (other desktops, desktop_helper.ts), "auto" = Hyprland if an instance is found, else the
+   * helper if its binary is found, else Hyprland. helperPath: the helper binary (absent = next to the agent, then PATH).
+   * Both optional so existing configs and API answers stay the same; only the config file sets them (not PATCH).
+   */
+  desktop: z
+    .object({
+      clipboardSync: z.boolean().default(true),
+      backend: z.enum(["auto", "hyprland", "helper"]).optional(),
+      helperPath: z.string().min(1).max(4096).optional(),
+    })
+    .default({ clipboardSync: true }),
   transcribe: z
     .object({ command: z.string().default("~/.local/bin/transcribe"), model: z.enum(["small", "large-v3"]).default("small") })
     .default({ command: "~/.local/bin/transcribe", model: "small" }),

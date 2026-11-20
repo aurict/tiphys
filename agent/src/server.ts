@@ -151,7 +151,10 @@ export async function buildApp(ctx: Ctx, opts: { logger?: boolean; logStream?: {
     (await import("./routes/processes.ts")).processRoutes(app, ctx);
   }
   if (f.git) (await import("./routes/git.ts")).gitRoutes(app, ctx);
-  if (f.desktop) {
+  // Desktop backend (once at startup): Hyprland as before, or the native helper on other desktops (desktop_backend.ts).
+  const backend = f.desktop ? await (await import("./desktop_backend.ts")).selectBackend(ctx.store.get().desktop, await defaultBackendDeps()) : null;
+  if (backend?.backend === "helper") await helperDesktop(app, ctx, backend.helperPath);
+  else if (f.desktop) {
     const [desktop, browser, media, velour, hypr, stream, sunshine, atspi] = await Promise.all([
       import("./routes/desktop.ts"),
       import("./routes/browser.ts"),
@@ -171,6 +174,8 @@ export async function buildApp(ctx: Ctx, opts: { logger?: boolean; logStream?: {
     stream.streamRoutes(app, ctx); // live screen (10.2): uses hyprRoutes' control session
     sunshine.sunshineRoutes(app, ctx); // high quality (10.2 B): Sunshine status, start/stop, Moonlight pairing
     atspi.atspiRoutes(app, ctx); // mobile view (11.4): AT-SPI tree; uses hyprRoutes' control session
+    const { capabilitiesRoute, HYPRLAND_CAPABILITIES } = await import("./desktop_backend.ts");
+    capabilitiesRoute(app, async () => ({ backend: "hyprland", capabilities: HYPRLAND_CAPABILITIES }));
   }
   if (f.ports) (await import("./routes/ports.ts")).portRoutes(app, ctx);
   if (f.transcribe) (await import("./routes/transcribe.ts")).transcribeRoutes(app, ctx);
@@ -184,4 +189,42 @@ export async function buildApp(ctx: Ctx, opts: { logger?: boolean; logStream?: {
   for (const register of ctx.extraRoutes ?? []) await register(app, ctx);
 
   return app;
+}
+
+/** Hyprland detection and helper lookup used by the "auto" backend (both cheap: a directory listing, a few stats). */
+async function defaultBackendDeps(): Promise<import("./desktop_backend.ts").BackendDeps> {
+  const [{ hyprEnv }, { findHelper }] = await Promise.all([import("./routes/hypr.ts"), import("./desktop_backend.ts")]);
+  const { realHyprIo } = await import("./routes/hypr.ts");
+  return { hyprland: hyprEnv, hyprlandInstalled: () => realHyprIo.has("hyprctl"), findHelper: (p) => findHelper(p) };
+}
+
+/**
+ * "desktop" on the helper backend: the panel, screenshot, live screen and (off Wayland) clipboard go through
+ * `tiphys-desktop`; media, Velour, "Open on PC" and the Firefox bridge are the same as on Hyprland. AT-SPI mobile view,
+ * Sunshine, Claude's PC tools and the Firefox window raising stay Hyprland-only.
+ */
+async function helperDesktop(app: FastifyInstance, ctx: Ctx, helperPath: string | null) {
+  const [desktop, browser, media, velour, portable, helper, hypr] = await Promise.all([
+    import("./routes/desktop.ts"),
+    import("./routes/browser.ts"),
+    import("./routes/media.ts"),
+    import("./routes/velour.ts"),
+    import("./routes/desktop_portable.ts"),
+    import("./desktop_helper.ts"),
+    import("./routes/hypr.ts"),
+  ]);
+  // Clipboard: wl-paste/wl-copy (with PC → phone sync) on a Wayland session that has them, else the helper.
+  const wayland =
+    process.platform === "linux" &&
+    (await desktop.waylandEnv().then(() => true, () => false)) &&
+    (await hypr.realHyprIo.has("wl-paste")) &&
+    (await hypr.realHyprIo.has("wl-copy"));
+  if (wayland) desktop.clipboardRoutes(app, ctx);
+  const env = async () => ({ ...process.env, ...(await desktop.waylandEnv().catch(() => ({}))), ...desktop.sessionBusEnv() });
+  desktop.openRoutes(app, browser.browserOpener(ctx), env);
+  media.mediaRoutes(app, ctx);
+  velour.velourRoutes(app, ctx);
+  const client = new helper.HelperClient({ command: helperPath, log: (msg, err) => app.log.warn({ err }, msg) });
+  portable.portableRoutes(app, ctx, { client, clipboard: wayland ? "wayland" : "helper" });
+  browser.browserRoutes(app, ctx); // Firefox bridge: uses portableRoutes' control session
 }
