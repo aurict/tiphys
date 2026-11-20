@@ -64,8 +64,11 @@ async function listening(): Promise<Listen[]> {
   return parseSs((await run("ss", ["-ltnpH"], { allowFail: true })).stdout);
 }
 
+/** A tailscale query; Tailscale not installed = empty output (the port list still works, nothing shows as shared). */
+const tailscaleQuery = (args: string[]) => run(tailscaleBin(), args, { allowFail: true, timeoutMs: 8000 }).catch(() => ({ stdout: "", stderr: "", code: -1 }));
+
 async function dnsName(): Promise<string | null> {
-  const r = await run(tailscaleBin(), ["status", "--self", "--peers=false", "--json"], { allowFail: true, timeoutMs: 8000 });
+  const r = await tailscaleQuery(["status", "--self", "--peers=false", "--json"]);
   try {
     return ((JSON.parse(r.stdout) as { Self?: { DNSName?: string } }).Self?.DNSName ?? "").replace(/\.$/, "") || null;
   } catch {
@@ -79,7 +82,7 @@ export function portRoutes(app: FastifyInstance, _ctx: Ctx) {
   app.get("/v1/ports", async () => {
     const [ports, serve, dns] = await Promise.all([
       listening(),
-      run(tailscaleBin(), ["serve", "status", "--json"], { allowFail: true, timeoutMs: 8000 }),
+      tailscaleQuery(["serve", "status", "--json"]),
       dnsName(),
     ]);
     const shared = parseServe(serve.stdout);
