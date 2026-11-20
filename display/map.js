@@ -1,7 +1,8 @@
 // Map card. Interface (main.js):
 //   const map = createMap(el)      el: the element to fill
 //   map.update(truck)              every `truck` message (contract fields x, z, heading, speed, state)
-//   map.setDestination(name|null)  job destination city: marked on the map when the name matches a map city
+//   map.setDestination(name|null)  job destination city: marked on the map when the name matches a map city (until a
+//                                  route to the destination company is known: route.js, /gamemode/map/route.json)
 //   map.setMotion('low'|'normal'|'high'), map.setTone([r,g,b])
 //   map.frame(now)                 called from the page's animation loop
 // The real map is MapLibre GL (vendor/) over the PMTiles the agent serves from ~/.local/share/tiphys/gamemode/map/
@@ -11,6 +12,7 @@
 import { createRadar } from './radar.js';
 import { gameToLngLat, headingBearing } from './projection.js';
 import { citiesInTile, findCity } from './cities.js';
+import { createNavigator } from './route.js';
 
 const MAP = new URL('map/', import.meta.url).href;      // /gamemode/map/
 const VENDOR = new URL('vendor/', import.meta.url).href;
@@ -18,6 +20,8 @@ const TRAIL_STEP = 8;        // game m between trail points
 const TRAIL_MAX = 5000;
 const JUMP = 3000;           // game m: a bigger jump (ferry, train, teleport) breaks the trail
 const PITCH = 50;
+const ROUTE_AHEAD = 8000;    // game m of the route line drawn ahead of the truck
+const ROUTE_EVERY = 250;     // ms between route line updates
 
 const C = {                  // Tiphys dark tokens (tokens.css) mapped onto the map
   land: '#050507',
@@ -46,6 +50,7 @@ function style(tone) {
       world: { type: 'vector', url: `pmtiles://${MAP}world.pmtiles` },
       trail: { type: 'geojson', data: { type: 'Feature', geometry: { type: 'MultiLineString', coordinates: [] }, properties: {} } },
       dest: { type: 'geojson', data: { type: 'FeatureCollection', features: [] } },
+      route: { type: 'geojson', data: { type: 'FeatureCollection', features: [] } },
     },
     layers: [
       { id: 'land', type: 'background', paint: { 'background-color': C.land } },
@@ -64,10 +69,16 @@ function style(tone) {
         paint: { 'line-color': C.divided, 'line-width': width(1) } },
       { id: 'road-freeway', type: 'line', ...src, filter: road('freeway'), layout: { 'line-cap': 'round', 'line-join': 'round' },
         paint: { 'line-color': C.freeway, 'line-width': width(1) } },
+      { id: 'route-casing', type: 'line', source: 'route', layout: { 'line-cap': 'round', 'line-join': 'round' },
+        paint: { 'line-color': C.land, 'line-opacity': 0.85, 'line-width': ['interpolate', ['linear'], ['zoom'], 4, 5, 9, 9, 13, 16] } },
+      { id: 'route-glow', type: 'line', source: 'route', layout: { 'line-cap': 'round', 'line-join': 'round' },
+        paint: { 'line-color': t, 'line-opacity': 0.22, 'line-width': 22, 'line-blur': 8 } },
+      { id: 'route', type: 'line', source: 'route', layout: { 'line-cap': 'round', 'line-join': 'round' },
+        paint: { 'line-color': t, 'line-width': ['interpolate', ['linear'], ['zoom'], 4, 2.5, 9, 5, 13, 10] } },
       { id: 'trail-glow', type: 'line', source: 'trail', layout: { 'line-cap': 'round', 'line-join': 'round' },
         paint: { 'line-color': t, 'line-opacity': 0.16, 'line-width': 16, 'line-blur': 6 } },
       { id: 'trail', type: 'line', source: 'trail', layout: { 'line-cap': 'round', 'line-join': 'round' },
-        paint: { 'line-color': t, 'line-opacity': 0.8, 'line-width': 4.5 } },
+        paint: { 'line-color': t, 'line-opacity': 0.5, 'line-width': 4 } },
       { id: 'dest-glow', type: 'circle', source: 'dest', paint: { 'circle-radius': 26, 'circle-color': t, 'circle-opacity': 0.14, 'circle-blur': 0.6, 'circle-pitch-alignment': 'map' } },
       { id: 'dest', type: 'circle', source: 'dest',
         paint: { 'circle-radius': 9, 'circle-color': C.land, 'circle-stroke-color': t, 'circle-stroke-width': 3.5, 'circle-pitch-alignment': 'map' } },
@@ -149,6 +160,11 @@ export function createMap(el) {
   let motion = 'normal';
   let destination = null, destFound = null;
   let cities = null, citiesLoading = false;
+  const nav = createNavigator(async () => {
+    const r = await fetch(`${MAP}route.json`, { cache: 'no-store' });
+    return r.ok ? r.json() : null; // 404: route data not generated (docs › Map data)
+  });
+  let routeDirty = false, routePushedAt = 0, routeDest = null;
 
   // Pose interpolation (game coordinates) from the rendered pose toward the newest sample over the sample interval.
   let pose = null, from = null, to = null, t0 = 0, dur = 50, lastArrival = 0;
@@ -202,6 +218,7 @@ export function createMap(el) {
 
   function update(tr) {
     radar?.update(tr);
+    if (gl && nav.update(tr)) routeDirty = true;
     if (!tr || tr.state === 'none' || tr.x == null) return;
     const now = performance.now();
     const sample = { x: tr.x, z: tr.z, heading: tr.heading ?? 0 };
@@ -235,7 +252,7 @@ export function createMap(el) {
   function applyTone() {
     if (!gl) return;
     const t = `rgb(${tone.map(Math.round).join(',')})`;
-    for (const id of ['trail-glow', 'trail', 'dest-glow']) gl.map.setPaintProperty(id, id.startsWith('dest') ? 'circle-color' : 'line-color', t);
+    for (const id of ['trail-glow', 'trail', 'dest-glow', 'route-glow', 'route']) gl.map.setPaintProperty(id, id.startsWith('dest') ? 'circle-color' : 'line-color', t);
     gl.map.setPaintProperty('dest', 'circle-stroke-color', t);
     truckEl.style.setProperty('--truck-tone', t);
   }
@@ -266,7 +283,31 @@ export function createMap(el) {
     if (!cities || !gl) return;
     const c = findCity(cities, destination);
     destFound = c?.name ?? null;
-    if (c) gl.map.getSource('dest')?.setData({ type: 'Feature', geometry: { type: 'Point', coordinates: c.lngLat }, properties: {} });
+    if (c && !routeDest) gl.map.getSource('dest')?.setData({ type: 'Feature', geometry: { type: 'Point', coordinates: c.lngLat }, properties: {} });
+  }
+
+  /** Route line from the drawn truck pose; the destination marker on the company once a route is known. */
+  function pushRoute(now) {
+    if (!gl || (!routeDirty && now - routePushedAt < ROUTE_EVERY)) return;
+    routeDirty = false;
+    routePushedAt = now;
+    const line = nav.line(ROUTE_AHEAD);
+    if (line && pose) {
+      // Start at the interpolated pose; drop the first route points it has already passed.
+      const a = (pose.heading ?? 0) * Math.PI * 2, hx = -Math.sin(a), hz = -Math.cos(a);
+      let i = 1;
+      while (i < Math.min(3, line.length - 1) && (line[i][0] - pose.x) * hx + (line[i][1] - pose.z) * hz < 0) i++;
+      line.splice(0, i, [pose.x, pose.z]);
+    }
+    gl.map.getSource('route')?.setData(line
+      ? { type: 'Feature', geometry: { type: 'LineString', coordinates: line.map(([x, z]) => gameToLngLat(x, z)) }, properties: {} }
+      : { type: 'FeatureCollection', features: [] });
+    const d = nav.dest;
+    if (d !== routeDest) {
+      routeDest = d;
+      if (d) gl.map.getSource('dest')?.setData({ type: 'Feature', geometry: { type: 'Point', coordinates: gameToLngLat(d[0], d[1]) }, properties: {} });
+      else void locateDestination();
+    }
   }
 
   function frame(now) {
@@ -288,6 +329,7 @@ export function createMap(el) {
     cam.zoom += (wantZoom - cam.zoom) * (1 - Math.exp(-dt / 2500));
     gl.map.jumpTo({ center, bearing: cam.bearing, zoom: cam.zoom, pitch: PITCH });
     if (now - trailPushedAt > 1000) { trailPushedAt = now; pushTrail(); }
+    pushRoute(now);
   }
 
   return {

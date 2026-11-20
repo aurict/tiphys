@@ -37,7 +37,7 @@ export const OFF = {
   routeDistance: 1060, routeTime: 1064, speedLimit: 1068, jobCargoDamage: 1468,
   parkBrake: 1566, blinkerLeft: 1578, blinkerRight: 1579, lowBeam: 1583, highBeam: 1584, beacon: 1585,
   x: 2200, z: 2216, heading: 2224,
-  cargo: 2620, cityDst: 2748, citySrc: 3004,
+  cargo: 2620, cityDstId: 2684, cityDst: 2748, compDstId: 2812, citySrc: 3004,
   fineOffence: 3436, ferryTarget: 3532, trainTarget: 3788,
   jobIncome: 4000, cancelPenalty: 4200, deliveredRevenue: 4208, fineAmount: 4216, tollAmount: 4224, ferryAmount: 4232, trainAmount: 4240,
   onJob: 4300, jobCancelled: 4302, jobDelivered: 4303, fined: 4304, tollgate: 4305, ferry: 4306, train: 4307,
@@ -140,7 +140,7 @@ export function parseTelemetry(buf: Buffer | null, running: boolean, at = Date.n
     ...(timeScale > 0 && timeScale < 1000 ? { timeScale: round(timeScale) } : {}),
     restMinutes: restStop,
     job: onJob
-      ? { from: str(buf, OFF.citySrc), to: str(buf, OFF.cityDst), cargo: str(buf, OFF.cargo), income: u64(OFF.jobIncome), currency, deadlineGameTime: deadline === 0 || deadline === 0xffffffff ? null : deadline }
+      ? { from: str(buf, OFF.citySrc), to: str(buf, OFF.cityDst), toCityId: str(buf, OFF.cityDstId), toCompanyId: str(buf, OFF.compDstId), cargo: str(buf, OFF.cargo), income: u64(OFF.jobIncome), currency, deadlineGameTime: deadline === 0 || deadline === 0xffffffff ? null : deadline }
       : null,
     nav: navDistance > 0 || navTime > 0 ? { distance: Math.round(navDistance), time: Math.round(navTime) } : null,
   };

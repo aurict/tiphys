@@ -29,6 +29,9 @@ extension is `0.1.0`.
   agent (never stored on the phone).
 - Map: the page renders PMTiles you build once from your own game files with truckermudgeon/maps (a separate GPL-3
   tool, not part of Tiphys) and copy to `~/.local/share/tiphys/gamemode/map/`; without them a built-in radar.
+- Route line: the page draws the fastest route from the truck to the job's destination company (the game doesn't
+  export its GPS route), from a `route.json` made by `tools/gamemode-route.mjs` out of the same tool's routing graph;
+  replanned when you leave it. The truck message's `job` carries `toCityId` and `toCompanyId` for this.
 - Privacy: no drive history, telemetry or music is stored; the event log gets only started/stopped; the page's
   display token is memory-only and dies on stop.
 - Packaging: release bundles (`tools/release.sh`, so `install.sh`, `install.ps1` and the packages) and

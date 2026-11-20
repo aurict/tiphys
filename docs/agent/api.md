@@ -1246,8 +1246,8 @@ Messages (JSON text, `type` first, SI units unless named; binary frames: byte 0 
 {type:"lyrics", artId|null, title, kind:"synced"|"plain"|"none", lines:[{t, text}]}
 {type:"truck", state:"none"|"menu"|"paused"|"driving", at, speed, speedLimit|null, rpm, rpmMax, gear, gears, fuel, fuelCap,
   fuelRange, cruise, parkingBrake, lowBeam, highBeam, beacon, blinkerL, blinkerR, wear, cargoDamage|null, x, z, heading,
-  gameTime, timeScale?, restMinutes|null, job:{from, to, cargo, income, currency, deadlineGameTime|null}|null,
-  nav:{distance, time}|null}
+  gameTime, timeScale?, restMinutes|null, job:{from, to, toCityId, toCompanyId, cargo, income, currency,
+  deadlineGameTime|null}|null, nav:{distance, time}|null}
   // state "none" → only {type, state, reason, at}, reason: "noGame"|"noPlugin"|"unsupported"
 {type:"event", kind:"fine"|"ferry"|"train"|"toll"|"delivered"|"cancelled"|"fuelLow"|"rest", amount?, currency?, detail?}
 ```

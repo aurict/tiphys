@@ -6,7 +6,8 @@ Game mode turns a laptop next to your PC into an ambient second screen while you
   and optional synced lyrics;
 - the **ETS2 cockpit**: speed and speed limit, gear and RPM, fuel and range, cruise control, lights, damage, the
   current job and the in-game clock;
-- a **live map** with the truck's position (or a built-in "radar" when no map data is installed);
+- a **live map** with the truck's position and the **route line** to the job's destination (or a built-in "radar"
+  when no map data is installed);
 - short notices for fines, tolls, ferries/trains, deliveries, low fuel and rest stops.
 
 You start and stop it from the phone. When it stops, nothing is left running and no file is left behind on either
@@ -124,6 +125,7 @@ What the page loads from `~/.local/share/tiphys/gamemode/map/` (`$XDG_DATA_HOME`
 | `world.pmtiles` | the background: water, country and state borders |
 | `sprites.json`, `sprites.png`, `sprites@2x.json`, `sprites@2x.png` | the icon sprite sheet (POIs, road shields); built by the tool, not used by the page's style yet |
 | `fonts/PlusJakartaSans Regular/<range>.pbf`, `fonts/PlusJakartaSans SemiBold/<range>.pbf` | glyphs for map labels |
+| `route.json` (optional) | the road graph for the route line, made by `tools/gamemode-route.mjs`; see [Route line](#route-line) |
 | `SCHEMA.md` (optional) | your own notes: tool commit, game version, layers |
 
 ### Build it
@@ -153,6 +155,8 @@ npx parser -i "$GAME" -o ../parsed
 # with EXDEV, so keep TMPDIR on the same file system as the output.
 TMPDIR="$W/tmp" npx generator map -m europe -i ../parsed -o ../out
 npx generator spritesheet -m europe -i ../parsed -o ../out
+npx generator graph -m europe -i ../parsed -o ../graph
+node /path/to/tiphys/tools/gamemode-route.mjs --graph=../graph/europe-graph.json --parsed=../parsed --out=../out/route.json
 R=packages/clis/generator/resources
 tippecanoe -Z4 -z8 -y name -b 10 -X -o ../out/world.pmtiles "$R/water.geojson" "$R/countries.geojson" "$R/states.geojson"
 ```
@@ -218,6 +222,21 @@ rsync -a "$W/out/" laptop:.local/share/tiphys/gamemode/map/
 No agent restart is needed; the page loads the files when the mode starts. Rebuild after game updates or new map
 DLC. The build cache (`~/.cache/tiphys-mapbuild`, several GB with `parsed/`) can be deleted afterwards.
 
+### Route line
+
+ETS2's telemetry gives the remaining distance and time of the in-game GPS route, but not the route itself. The page
+therefore plans its own: when a job is active it loads `route.json` (once, ~3 MB) and finds the fastest path (by the
+graph's estimated road durations) from the truck to the destination company's entrance (`job.toCompanyId` and
+`job.toCityId` from the telemetry). It draws the next ~8 km ahead of the truck and trims what you have driven. When
+you stay more than 60 m off the line for 3 s it plans again from where you are (at most every 5 s).
+
+- The route can differ from the in-game GPS (different road weights, avoided roads, DLC you don't own). There are
+  no turn instructions or lanes; follow the in-game GPS when they disagree.
+- `route.json` is made by `tools/gamemode-route.mjs` (Tiphys' own script, Node.js only) from the routing graph of
+  `npx generator graph` and the parsed `europe-nodes.json` / `europe-companies.json`. Rebuild it together with the
+  map.
+- Without `route.json` the map only marks the destination city (see Troubleshooting).
+
 ## Privacy
 
 Nothing about your music or your drives is saved:
@@ -251,6 +270,7 @@ Nothing about your music or your drives is saved:
 | Plugin *Outdated* | A different `libscs-telemetry.so` is in the plugins folder; tap *Update*. |
 | `agent.gamemode.pluginDownloadFailed` / `pluginHashMismatch` / `pluginBadArchive` (502) | The PC could not download the pinned release, or the file did not match the pinned SHA-256; nothing was written. Check the PC's internet connection and retry. |
 | Radar instead of a map | No (or incomplete) map data in `~/.local/share/tiphys/gamemode/map/` on the **laptop** (see [Map data](#map-data)), or Firefox has no WebGL2 (check `about:support` → Graphics). The reason is logged in the page console. |
+| No route line | `route.json` is missing from the map folder on the **laptop** (see [Route line](#route-line)), there is no job, or the destination company is not in it (the console logs `[route] …`). An agent older than this feature doesn't send `job.toCompanyId`. |
 | No destination marker | The marker is placed by matching the job's destination name against the map's city names (English, from the game data). A city name the game shows in another language (e.g. *München* for *Munich*) is not matched; the rest of the map works. |
 | Brightness does not change | `brightnessctl` is missing or your user may not write the backlight (e.g. not in the `video` group). The mode runs without changing it. |
 | The screen went to sleep / Firefox window is not fullscreen | `systemd-inhibit` is missing, or another tool overrides the Hyprland window rule. `tiphys-agent doctor` on the laptop lists missing tools. |

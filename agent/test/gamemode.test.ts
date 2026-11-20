@@ -587,6 +587,8 @@ function telemetryBuf(p: Partial<Record<string, number | boolean | string>> = {}
   d.setFloat64(OFF.heading, 0.25, true);
   b.write("Bursa", OFF.citySrc);
   b.write("München", OFF.cityDst);
+  b.write("munchen", OFF.cityDstId);
+  b.write("tradeaux", OFF.compDstId);
   b.write("Elektronik", OFF.cargo);
   b.write("speeding", OFF.fineOffence);
   b.write("Calais", OFF.ferryTarget);
@@ -609,7 +611,7 @@ describe("ETS2 telemetry", () => {
       fuel: 400, fuelCap: 800, fuelRange: 950, cruise: 0, parkingBrake: true, lowBeam: true, highBeam: false, beacon: false,
       blinkerL: false, blinkerR: true, wear: 0.12, cargoDamage: 0.02,
       x: -12345.68, z: 4567.89, heading: 0.25, gameTime: 4000, restMinutes: 300,
-      job: { from: "Bursa", to: "München", cargo: "Elektronik", income: 12500, currency: "EUR", deadlineGameTime: 5000 },
+      job: { from: "Bursa", to: "München", toCityId: "munchen", toCompanyId: "tradeaux", cargo: "Elektronik", income: 12500, currency: "EUR", deadlineGameTime: 5000 },
       nav: { distance: 123456, time: 5400 },
     });
   });
@@ -758,5 +760,56 @@ describe("display map projection (display/projection.js)", () => {
     expect(Math.abs(b(0.25) - 270)).toBeLessThan(15); // west
     expect(Math.abs(b(0.5) - 180)).toBeLessThan(15);  // south
     expect(Math.abs(b(0.75) - 90)).toBeLessThan(15);  // east
+  });
+});
+
+describe("display route line (display/route.js)", () => {
+  const load = () => import(String(new URL("../../display/route.js", import.meta.url)));
+  // A two-way road along +x: nodes 0…4 every 100 m; state 2i drives east (forward), 2i+1 west (backward). Plus a
+  // one-way slip 4 → 5 (north of node 4) that can only be driven eastbound.
+  const data = () => {
+    const x = [0, 100, 200, 300, 400, 400], z = [0, 0, 0, 0, 0, -100];
+    const edges: number[][] = Array.from({ length: 12 }, () => []);
+    for (let i = 0; i < 4; i++) { edges[2 * i]!.push(2 * (i + 1), 5); edges[2 * (i + 1) + 1]!.push(2 * i + 1, 5); }
+    edges[8]!.push(10, 5);
+    const off = [0], to: number[] = [], t: number[] = [];
+    for (const e of edges) { for (let k = 0; k < e.length; k += 2) { to.push(e[k]!); t.push(e[k + 1]!); } off.push(to.length); }
+    return { v: 1, x, z, off, to, t, companies: { "tradeaux.munchen": 0, "posped.berlin": 5 } };
+  };
+  const EAST = 0.75, WEST = 0.25; // SCS heading: 0 = north (−z), counter-clockwise
+
+  it("plans along the travel direction and respects one-way edges", async () => {
+    const { createGraph } = await load();
+    const g = createGraph(data());
+    expect(g.plan(-10, 0, EAST, 4)).toEqual([0, 1, 2, 3, 4]);
+    expect(g.plan(410, 2, WEST, 0)).toEqual([4, 3, 2, 1, 0]);
+    // Facing west at node 2, the slip at node 4 is still reached (no westbound way there: a U-turn, at a high cost).
+    expect(g.plan(205, 0, WEST, 5)?.at(-1)).toBe(5);
+    expect(g.plan(0, 0, EAST, 99)).toBeNull();
+  });
+
+  it("follows the truck, trims the driven part and replans when off the route", async () => {
+    const { createNavigator } = await load();
+    const nav = createNavigator(async () => data());
+    const truck = (x: number, z: number, heading = WEST, job: object | null = { toCompanyId: "tradeaux", toCityId: "munchen" }) =>
+      ({ type: "truck", state: "driving", x, z, heading, job });
+    nav.update(truck(410, 0), 0);
+    await new Promise((r) => setTimeout(r, 0)); // route.json loaded
+    expect(nav.update(truck(410, 0), 1)).toBe(true);
+    expect(nav.dest).toEqual([0, 0]);
+    expect(nav.line()![0]).toEqual([410, 0]);
+    expect(nav.line()!.at(-1)).toEqual([0, 0]);
+    // Halfway: the line starts at the truck and skips what was driven.
+    nav.update(truck(250, 3), 100);
+    expect(nav.line()!.slice(0, 3)).toEqual([[250, 3], [250, 0], [200, 0]]);
+    expect(nav.line(60)!.length).toBe(4); // up to the first point past 60 m
+    // 200 m off the road: replanned only after 3 s off it (and 5 s since the last plan).
+    expect(nav.update(truck(150, 200), 6000)).toBe(false);
+    expect(nav.update(truck(150, 200), 9100)).toBe(true);
+    // Unknown company: no route; job over: cleared.
+    nav.update(truck(0, 0, WEST, { toCompanyId: "x", toCityId: "y" }), 20_000);
+    expect(nav.line()).toBeNull();
+    expect(nav.update(truck(0, 0, WEST, null), 21_000)).toBe(true);
+    expect(nav.dest).toBeNull();
   });
 });

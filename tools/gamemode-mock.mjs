@@ -237,6 +237,17 @@ function loadRoute(names) {
 }
 const routeNames = String(args.route ?? 'Kassel,Nuremberg').split(',');
 const ROUTE = args['no-truck'] ? null : loadRoute(routeNames);
+// The job's destination company (job.toCompanyId/toCityId, for the page's route line): the destination city's company
+// nearest the end of the simulated route.
+const DEST = (() => {
+  if (!ROUTE) return null;
+  const read = (f) => JSON.parse(fs.readFileSync(path.join(PARSED, `europe-${f}.json`), 'utf8'));
+  const city = read('cities').find((c) => c.name === routeNames.at(-1));
+  const [ex, ez] = ROUTE.at(-1);
+  const list = read('companies').filter((c) => c.cityToken === city?.token);
+  list.sort((a, b) => Math.hypot(a.x - ex, a.y - ez) - Math.hypot(b.x - ex, b.y - ez));
+  return list[0] ? { toCompanyId: list[0].token, toCityId: list[0].cityToken } : null;
+})();
 const routeLen = ROUTE ? ROUTE.slice(1).reduce((a, p, i) => a + Math.hypot(p[0] - ROUTE[i][0], p[1] - ROUTE[i][1]), 0) : 0;
 const headingOf = (dx, dz) => ((Math.atan2(-dx, -dz) / (Math.PI * 2)) % 1 + 1) % 1; // SCS: 0 = north (−z), CCW
 
@@ -315,7 +326,7 @@ function truckMsg() {
     lowBeam: args.night ? true : false, highBeam: false, beacon: false, blinkerL: false, blinkerR: false,
     wear: sim.wear, cargoDamage: 0.01,
     x: sim.x, z: sim.z, heading: sim.hd, gameTime: sim.gameTime, ...(TIME_SCALE > 0 ? { timeScale: TIME_SCALE } : {}), restMinutes: 205,
-    job: args['no-job'] ? null : { from, to, cargo: 'Elektronik', income: 12400, currency: 'EUR', deadlineGameTime: sim.gameTime + 600 },
+    job: args['no-job'] ? null : { from, to, ...DEST, cargo: 'Elektronik', income: 12400, currency: 'EUR', deadlineGameTime: sim.gameTime + 600 },
     nav: args['no-job'] ? null : { distance: sim.navLeft, time: sim.navLeft / 22 }, // real s
   };
 }
