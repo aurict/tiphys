@@ -125,15 +125,15 @@ fn key(k: &'static str) -> CFString {
 }
 
 fn num(d: &Dict, k: &'static str) -> Option<f64> {
-    d.find(&key(k))?.downcast::<CFNumber>()?.to_f64()
+    d.find(key(k))?.downcast::<CFNumber>()?.to_f64()
 }
 
 fn text(d: &Dict, k: &'static str) -> Option<String> {
-    Some(d.find(&key(k))?.downcast::<CFString>()?.to_string())
+    Some(d.find(key(k))?.downcast::<CFString>()?.to_string())
 }
 
 fn sub_dict(d: &Dict, k: &'static str) -> Option<Dict> {
-    let untyped = d.find(&key(k))?.downcast::<CFDictionary>()?;
+    let untyped = d.find(key(k))?.downcast::<CFDictionary>()?;
     // SAFETY: the reference is a live CFDictionary (checked by downcast); get rule retains it.
     Some(unsafe { Dict::wrap_under_get_rule(untyped.as_concrete_TypeRef()) })
 }
@@ -329,8 +329,18 @@ fn flags_for(k: Key) -> CGEventFlags {
     }
 }
 
+/// UTF-16 chunks of at most TEXT_CHUNK units that never split a surrogate pair.
 fn utf16_chunks(s: &str) -> Vec<Vec<u16>> {
-    s.encode_utf16().collect::<Vec<_>>().chunks(TEXT_CHUNK).map(|c| c.to_vec()).collect()
+    let mut out: Vec<Vec<u16>> = Vec::new();
+    for c in s.chars() {
+        let mut b = [0u16; 2];
+        let units = c.encode_utf16(&mut b);
+        match out.last_mut() {
+            Some(last) if last.len() + units.len() <= TEXT_CHUNK => last.extend_from_slice(units),
+            _ => out.push(units.to_vec()),
+        }
+    }
+    out
 }
 
 impl Backend for Mac {

@@ -498,6 +498,8 @@ impl Backend for Win {
             let bmp = CreateCompatibleBitmap(screen, w, h);
             let old = SelectObject(mem, bmp.into());
             let blt = BitBlt(mem, 0, 0, w, h, Some(screen), r.x, r.y, SRCCOPY);
+            // GetDIBits wants the bitmap not selected into a DC.
+            SelectObject(mem, old);
             let mut bi = BITMAPINFO {
                 bmiHeader: BITMAPINFOHEADER {
                     biSize: size_of::<BITMAPINFOHEADER>() as u32,
@@ -515,7 +517,6 @@ impl Backend for Win {
             } else {
                 0
             };
-            SelectObject(mem, old);
             let _ = DeleteObject(bmp.into());
             let _ = DeleteDC(mem);
             ReleaseDC(None, screen);
