@@ -15,6 +15,7 @@ import { Notifier, payloadOf, type Notice } from "../src/notify.ts";
 import { CLIP_MAX_PAYLOAD, ClipboardWatcher, desktopRoutes, type ClipboardIo } from "../src/routes/desktop.ts";
 import { remoteErrorCode } from "../src/routes/git.ts";
 import { testApp } from "./helpers.ts";
+import { auditIdle } from "../src/audit.ts";
 
 const gitEnv = { ...process.env, GIT_AUTHOR_NAME: "T", GIT_AUTHOR_EMAIL: "t@e", GIT_COMMITTER_NAME: "T", GIT_COMMITTER_EMAIL: "t@e" };
 
@@ -288,6 +289,7 @@ describe("pano eşitleme (PC → telefon)", () => {
     f.copy("pc'de kopyalandı " + secret);
     await wait(30);
     expect(sent).toHaveLength(1);
+    await auditIdle(); // the audit line is written after the response
     const files = await Promise.all(["events.jsonl", "audit.jsonl"].map((n) => readFile(join(dir, n), "utf8").catch(() => "")));
     expect(files[1]).toContain("/v1/desktop/clipboard");
     for (const text of files) expect(text).not.toContain(secret);

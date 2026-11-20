@@ -59,6 +59,15 @@ export function recordAudit(ctx: Ctx, entry: AuditEntry, log: (msg: string, err:
   return next;
 }
 
+/**
+ * Resolves once the audit lines of requests that have already answered are on disk (the line is written after the
+ * response). For tests that read audit.jsonl directly.
+ */
+export async function auditIdle(): Promise<void> {
+  await new Promise((r) => setImmediate(r));
+  await Promise.all(chains.values());
+}
+
 export function auditRoutes(app: FastifyInstance, ctx: Ctx) {
   const file = auditFile(ctx);
 

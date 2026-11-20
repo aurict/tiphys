@@ -10,6 +10,7 @@ import type { TelegramService } from "../src/telegram/service.ts";
 import { feedInputSchema, TEMPLATES, type FeedInput } from "../src/telegram/state.ts";
 import { fetchLinkRequest, jaccard, headlineTokens, normalizeUrl, pinnedLinkRequest, publicAddress, publicHost, reachable, urlKey, validateItems } from "../src/telegram/validate.ts";
 import { testApp } from "./helpers.ts";
+import { auditIdle } from "../src/audit.ts";
 
 const TOKEN = `123456789:${"A".repeat(20)}secretPART${"b".repeat(5)}`;
 const PC_TOKEN = "tps_pcSECRETtoken";
@@ -691,6 +692,7 @@ describe("telegram: routes, auth and secrets", () => {
     expect(cfg.research).toEqual({ url: "https://pc.test", wakeHostId: null, hasToken: true });
     // and PUT bot/feeds with invalid input don't echo it either
     bodies.push((await s.req("PUT", "/v1/telegram/bot", { token: `${TOKEN}!` })).raw);
+    await auditIdle(); // the audit line is written after the response
     const files = await Promise.all(["events.jsonl", "audit.jsonl", "telegram-state.json"].map((f) => readFile(join(s.dir, f), "utf8")));
     for (const text of [...bodies, ...files, s.logs.join("\n"), JSON.stringify(s.sent)]) {
       expect(text).not.toContain("secretPART");

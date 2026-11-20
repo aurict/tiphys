@@ -18,6 +18,7 @@ import { escapeDelims, secretDir, secretGlob, secretPath, type SecSupport, type 
 import { ConfigStore } from "../src/config.ts";
 import { Notifier } from "../src/notify.ts";
 import { buildApp } from "../src/server.ts";
+import { auditIdle } from "../src/audit.ts";
 
 const PW = "argo-Sudo-pw-42";
 
@@ -567,6 +568,7 @@ describe("sudo (F3)", () => {
     await t.app.inject({ url: "/v1/audit", headers: w.auth });
     const events = JSON.stringify((await t.get(id)).events);
     expect(events).toContain('"kind":"sudo"');
+    await auditIdle(); // the audit line is written after the response
     for (const blob of [events, await readFile(join(w.cfg, "claude-sessions.json"), "utf8"), await readFile(join(w.cfg, "audit.jsonl"), "utf8"), JSON.stringify(t.audits), await readFile(w.log, "utf8"), JSON.stringify(t.sent)]) {
       expect(blob).not.toContain(PW);
       expect(blob).not.toContain("wrong-password-1");

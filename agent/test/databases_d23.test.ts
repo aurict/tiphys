@@ -19,6 +19,7 @@ import { checkReadStatement, checkWriteStatement, columnKinds, LIMITS, statement
 import { maskPasswords, WriteLog, WRITE_LOG_MAX_BYTES } from "../src/db/writelog.ts";
 import { Notifier } from "../src/notify.ts";
 import { buildApp } from "../src/server.ts";
+import { auditIdle } from "../src/audit.ts";
 
 const SECRET = "Wr1te-S3cret-pw-K7";
 const READ_SECRET = "R3ad-S3cret-pw-M2";
@@ -385,7 +386,7 @@ async function setup(o: { now?: () => number; drivers?: DbServiceOpts["drivers"]
   };
   const audit = async () => {
     await new Promise((r) => setTimeout(r, 50));
-    return readFile(join(dirname(store.path), "audit.jsonl"), "utf8").catch(() => "");
+    return auditIdle().then(() => readFile(join(dirname(store.path), "audit.jsonl"), "utf8").catch(() => ""));
   };
   const cfgDir = dirname(store.path);
   return { dir, cfgDir, app, store, logs, call, responses, audit, other };

@@ -9,6 +9,7 @@ import type { Spawn } from "../src/agy/acp.ts";
 import { AgyManager, shq } from "../src/agy/manager.ts";
 import { agyRoutes } from "../src/agy/routes.ts";
 import { testApp } from "./helpers.ts";
+import { auditIdle } from "../src/audit.ts";
 
 const FAKE = fileURLToPath(new URL("./fake_agy_acp.mjs", import.meta.url));
 const fakeSpawn: Spawn = (_cmd, args, o) => spawn(process.execPath, [FAKE, ...args.slice(1)], { cwd: o.cwd, stdio: ["pipe", "pipe", "pipe"], detached: true });
@@ -67,6 +68,7 @@ describe("agy", () => {
     expect(res.json().events).toEqual([]);
     expect(t.sent.some((n) => (n as { key: string }).key === "agy.done")).toBe(true);
     await new Promise((x) => setTimeout(x, 100)); // the audit line is written after the response
+    await auditIdle(); // the audit line is written after the response
     const audit = await readFile(join(t.dir, "audit.jsonl"), "utf8");
     expect(audit).toContain("/v1/agy/sessions");
     expect(audit).not.toContain("say hello");

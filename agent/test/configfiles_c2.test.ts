@@ -19,6 +19,7 @@ import { Notifier, type Notice } from "../src/notify.ts";
 import { redact } from "../src/redact.ts";
 import { buildApp } from "../src/server.ts";
 import type { Stack } from "../src/stacks.ts";
+import { auditIdle } from "../src/audit.ts";
 
 const COMPOSE = `services:
   app:
@@ -210,6 +211,7 @@ describe("restart: affected", () => {
     ]);
     const ev = (await t.events()).find((e) => e.key === "config.saved");
     expect(ev!.params).toEqual({ file: "web/.env", keys: "DB_PASSWORD,OTHER", backupId: s.body.backupId, restart: "ok", services: "app,db,worker" });
+    await auditIdle(); // the audit line is written after the response
     const audit = (await readFile(join(t.dir, "cfg", "audit.jsonl"), "utf8")).split("\n").filter(Boolean).map((l) => JSON.parse(l));
     expect(audit.find((e) => e.method === "PUT" && e.status === 200).detail).toMatchObject({ file: "web/.env", restart: "ok" });
     // env_file → the services loading it

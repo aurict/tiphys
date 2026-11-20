@@ -14,6 +14,7 @@ import { configFilesRoutes } from "../src/configfiles/routes.ts";
 import { Notifier } from "../src/notify.ts";
 import { redact } from "../src/redact.ts";
 import { buildApp } from "../src/server.ts";
+import { auditIdle } from "../src/audit.ts";
 
 // --- Parser ---------------------------------------------------------------------------------------------------------
 
@@ -349,6 +350,7 @@ describe("config files routes", () => {
     const p2 = await t.call("POST", `/v1/config-files/${dbId}/preview`, { baseHash: dd.body.hash, ops: [{ op: "set", key: "POSTGRES_DB", value: "x" }] });
     expect(p2.body.affected).toEqual([{ stack: "web", project: "web", services: ["app", "cache"] }]);
     // Audit: file label, key names, restart; no values.
+    await auditIdle(); // the audit line is written after the response
     const audit = await readFile(join(t.dir, "cfg", "audit.jsonl"), "utf8");
     const put = audit.split("\n").filter(Boolean).map((l) => JSON.parse(l)).find((e) => e.method === "PUT" && e.status === 200);
     expect(put.detail).toMatchObject({ file: "web/.env", keys: ["DB_PASSWORD", "OTHER", "API_TOKEN", "API_TOKEN2", "NEW_KEY"], restart: "none" });

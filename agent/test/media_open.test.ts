@@ -284,9 +284,11 @@ describe("PC'de aç", () => {
     expect(bad.json().error.code).toBe("agent.desktop.badUrl");
     expect((await post(42)).statusCode).toBe(400);
     expect(opened).toHaveLength(1);
+    // The audit line is written after the response: read it through the route, which waits for pending lines.
+    const audit = JSON.stringify((await app.inject({ url: "/v1/audit", headers: auth })).json().entries);
+    expect(audit).toContain("/v1/desktop/open");
     const files = await Promise.all(["events.jsonl", "audit.jsonl"].map((n) => readFile(join(dir, n), "utf8").catch(() => "")));
-    expect(files[1]).toContain("/v1/desktop/open");
-    for (const text of files) expect(text).not.toContain("gizli-belge");
+    for (const text of [audit, ...files]) expect(text).not.toContain("gizli-belge");
     await app.close();
   });
 

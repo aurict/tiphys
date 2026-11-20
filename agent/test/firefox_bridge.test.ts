@@ -20,6 +20,7 @@ import type { Ctx } from "../src/server.ts";
 import { openRoutes } from "../src/routes/desktop.ts";
 import { hyprRoutes, type HyprIo } from "../src/routes/hypr.ts";
 import { testApp } from "./helpers.ts";
+import { auditIdle } from "../src/audit.ts";
 
 const tmp = () => mkdtemp(join(tmpdir(), "tiphys-ff-"));
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
@@ -393,6 +394,7 @@ describe("tarayıcı uçları", () => {
     const denied = await post("/v1/desktop/browser/tabs/5/scroll", { fraction: 1 });
     expect([denied.statusCode, denied.json().error.code]).toEqual([403, "agent.browser.permissionRequired"]);
     expect(ext.reqs.length).toBe(n);
+    await auditIdle(); // the audit line is written after the response
     const audit = await readFile(join(dir, "audit.jsonl"), "utf8");
     expect(audit).toContain("/v1/desktop/browser/tabs/5/activate");
     for (const secret of ["gizli.example", "gizli yazı", "Haber", "gövde"]) expect(audit).not.toContain(secret);
