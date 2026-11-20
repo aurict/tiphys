@@ -689,3 +689,38 @@ describe("request log", () => {
     expect(logs.join("")).not.toContain("SECRET123");
   });
 });
+
+describe("display map projection (display/projection.js)", () => {
+  // Plain browser module; a computed specifier keeps tsc from asking for types.
+  const load = () => import(String(new URL("../../display/projection.js", import.meta.url)));
+
+  it("inverts the LCC and places cities where the map tiles have them", async () => {
+    const p = await load();
+    for (const [lon, lat] of [[15, 50], [-3, 56], [28, 60]] as const) {
+      const [X, Y] = p.lccForward(lon, lat);
+      const [lo, la] = p.lccInverse(X, Y);
+      expect(lo).toBeCloseTo(lon, 9);
+      expect(la).toBeCloseTo(lat, 9);
+    }
+    // City label points of ets2.pmtiles (generated with the same constants), from game coordinates of the city areas.
+    const near = (a: number[], b: number[]) => expect(Math.hypot(a[0]! - b[0]!, a[1]! - b[1]!)).toBeLessThan(0.003);
+    near(p.gameToLngLat(-3419.96, -3747.54), [9.2743, 51.2561]);   // Kassel
+    near(p.gameToLngLat(1849.11, 6498.55), [10.9343, 49.5113]);    // Nuremberg
+    near(p.gameToLngLat(-24054.89, 5660.02), [3.864, 49.1785]);    // Reims
+    // Great Britain is drawn at 0.75 scale around Calais: Aberdeen lands in Scotland, not in the North Sea.
+    const [lon, lat] = p.gameToLngLat(-39596.79 + 750, -56040.47 + 750);
+    expect(lon).toBeGreaterThan(-3.5);
+    expect(lon).toBeLessThan(-2);
+    expect(lat).toBeGreaterThan(56.5);
+  });
+
+  it("turns the SCS heading (0 = north, counter-clockwise) into a map bearing", async () => {
+    const p = await load();
+    const b = (h: number) => p.headingBearing(-3419.96, -3747.54, h);
+    // Kassel is west of the LCC central meridian (15°E), so grid north points a few degrees west of true north.
+    expect(Math.min(b(0), 360 - b(0))).toBeLessThan(15);
+    expect(Math.abs(b(0.25) - 270)).toBeLessThan(15); // west
+    expect(Math.abs(b(0.5) - 180)).toBeLessThan(15);  // south
+    expect(Math.abs(b(0.75) - 90)).toBeLessThan(15);  // east
+  });
+});

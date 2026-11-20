@@ -173,7 +173,7 @@ setInterval(tickClock, 1000);
 function updateIdleChips() {
   const t = $('#idle-truck .lbl');
   const st = truck?.state ?? 'none';
-  t.textContent = st === 'none' ? 'ETS2 kapalı' : st === 'menu' ? 'ETS2 menüde' : st === 'paused' ? 'ETS2 duraklatıldı' : 'ETS2 yolda';
+  t.textContent = st === 'none' ? (truck?.reason === 'noPlugin' ? 'ETS2 · eklenti yok' : truck?.reason === 'unsupported' ? 'ETS2 · eklenti sürümü uyumsuz' : 'ETS2 kapalı') : st === 'menu' ? 'ETS2 menüde' : st === 'paused' ? 'ETS2 duraklatıldı' : 'ETS2 yolda';
   const m = $('#idle-music .lbl');
   m.textContent = music.hasMusic ? (music.playing ? music.title : `Duraklatıldı · ${music.title}`) : "Velour'da çalan bir şey yok";
 }

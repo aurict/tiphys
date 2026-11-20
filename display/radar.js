@@ -1,17 +1,13 @@
-// Map card renderer. Interface (kept small so MapLibre + PMTiles can replace the body later):
-//   const map = createMap(el)      el: the element to fill
-//   map.update(truck)              every `truck` message (contract fields x, z, heading, speed, state)
-//   map.setDestination(name|null)  job destination city (shown by the card; a real map can place a marker)
-//   map.setMotion('low'|'normal'|'high'), map.setTone([r,g,b])
-//   map.frame(now)                 called from the page's animation loop
-// This built-in fallback is a dark "radar" in game coordinates: heading-up, subtle world grid, range rings, the truck as
-// an accent arrow and an in-memory breadcrumb trail (never stored; gone when the page closes).
+// Map fallback: a dark "radar" in game coordinates (heading-up, subtle world grid, range rings, the truck as an accent
+// arrow and an in-memory breadcrumb trail, never stored). map.js shows it while the real map loads and keeps it when the
+// map data is missing or WebGL fails. Same interface as createMap (update, setDestination, setMotion, setTone, frame)
+// plus destroy().
 
 const TRAIL_STEP = 8;        // m between breadcrumbs
 const TRAIL_MAX = 5000;      // points (~40 km)
 const JUMP = 3000;           // m: a bigger jump (ferry, train, teleport) breaks the trail
 
-export function createMap(el) {
+export function createRadar(el) {
   const canvas = document.createElement('canvas');
   canvas.className = 'map-canvas';
   el.prepend(canvas);
@@ -36,7 +32,8 @@ export function createMap(el) {
     canvas.height = Math.round(h * dpr);
     dirty = true;
   }
-  new ResizeObserver(resize).observe(el);
+  const ro = new ResizeObserver(resize);
+  ro.observe(el);
 
   const angleOf = (heading) => heading * Math.PI * 2; // SCS: 0 = north, counter-clockwise
   const lerpAngle = (a, b, t) => {
@@ -201,6 +198,7 @@ export function createMap(el) {
 
   return {
     update,
+    destroy() { ro.disconnect(); canvas.remove(); },
     setDestination(name) { destination = name; },
     get destination() { return destination; },
     setMotion(m) { if (m !== motion) { motion = m; resize(); } },

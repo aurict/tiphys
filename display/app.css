@@ -187,13 +187,13 @@ body[data-scene="idle"] #scene-idle, body[data-scene="connecting"] #scene-connec
 .gear-ring { position: relative; width: 136px; height: 136px; flex: none; }
 .gear-ring .ring { width: 100%; height: 100%; }
 .gear-ring .arc.outer { stroke: var(--host-1); }
-.gear-ring .arc.inner { stroke: var(--host-2); }
-.gear-v { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-size: 30px; font-weight: 800; letter-spacing: -0.03em; }
-.legend { display: flex; flex-direction: column; gap: 8px; font-size: 21px; font-weight: 700; min-width: 0; }
-.legend > div { display: flex; align-items: center; gap: 8px; white-space: nowrap; }
-.legend .sub { font-size: 15px; font-weight: 600; color: var(--label); margin: -6px 0 4px 17px; }
-.sq { width: 9px; height: 9px; border-radius: 3px; flex: none; }
-.sq.c1 { background: var(--host-1); } .sq.c2 { background: var(--host-2); }
+.gear-c { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+.gear-v { font-size: 46px; line-height: 1; font-weight: 800; letter-spacing: -0.03em; font-variant-numeric: tabular-nums; }
+.gear-of { margin-top: 4px; font-size: 14px; font-weight: 600; color: var(--label); font-variant-numeric: tabular-nums; }
+.gear-of:empty { display: none; }
+.legend { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.legend .rpm-v { font-size: 30px; font-weight: 800; letter-spacing: -0.02em; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.legend .sub { font-size: 15px; font-weight: 600; color: var(--label); }
 
 .t-fuel { display: flex; flex-direction: column; }
 .fuel-big { margin-top: auto; font-size: 54px; font-weight: 800; letter-spacing: -0.035em; line-height: 1; }
@@ -322,3 +322,16 @@ body[data-motion="low"] .mu-lyrics .ly { filter: none; }
 body[data-motion="low"] .sk::after { animation: none; }
 
 #perf { position: fixed; right: 12px; bottom: 10px; z-index: 99; font: 600 13px var(--mono); color: #aaa; background: rgba(0,0,0,.6); padding: 6px 10px; border-radius: 8px; white-space: pre; }
+
+/* ---------- real map (map.js) ---------- */
+.map-card .map-gl { position: absolute; inset: 0; border-radius: inherit; overflow: hidden; opacity: 0; transition: opacity 600ms ease; }
+.map-card .map-gl.on { opacity: 1; }
+.map-gl .maplibregl-canvas { outline: none; }
+.map-truck { position: absolute; left: 50%; top: 66%; z-index: 1; width: 92px; height: 92px; translate: -50% -50%; pointer-events: none;
+  opacity: 0; transition: opacity 600ms ease; --truck-tone: rgb(var(--tone-rgb));
+  background: radial-gradient(closest-side, color-mix(in srgb, var(--truck-tone) 38%, transparent), transparent); border-radius: 50%; }
+.map-truck.on { opacity: 1; }
+.map-truck svg { position: absolute; inset: 22px; width: 48px; height: 48px; overflow: visible; filter: drop-shadow(0 2px 6px rgba(0,0,0,.6)); }
+.map-truck path { fill: #F5F5F7; stroke: var(--truck-tone); stroke-width: 2.5; stroke-linejoin: round; }
+.map-card.no-truck .map-truck { display: none; }
+.map-card.no-truck .map-gl.on { opacity: 0; }

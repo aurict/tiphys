@@ -1,11 +1,16 @@
 #!/usr/bin/env node
 // Development mock for the Game mode display (PLAN.md § 19, "Sözleşme"). Dependency-free (node: built-ins only).
-// Serves display/ at /gamemode/, a fake GET /v1/gamemode/art and WS /v1/gamemode/live emitting contract messages:
-// music with progress, placeholder synced lyrics, spectrum frames, a truck driving a curvy road with events.
+// Serves display/ at /gamemode/, the map data dir at /gamemode/map/ (range requests, like the agent), a fake
+// GET /v1/gamemode/art and WS /v1/gamemode/live emitting contract messages: music with progress, placeholder synced
+// lyrics, spectrum frames, a truck with events. The truck drives a real route (Kassel → Nuremberg by default, shortest
+// path over the road graph) when the parsed game data of the map build is present, else a synthetic curvy road.
 //
 //   node tools/gamemode-mock.mjs [--port=8787] [--host=127.0.0.1] [--token=dev]
 //     --scene=auto|drive|music   --motion=low|normal|high   --clock12   --dim-idle=MIN   --no-lyrics-setting
-//     --no-truck | --truck-state=driving|paused|menu|none   --night   --game-time=HH:MM   --no-job
+//     --no-truck | --truck-state=driving|paused|menu|none   --truck-reason=noGame|noPlugin|unsupported (state none)
+//     --night   --game-time=HH:MM   --no-job   --time-scale=N (default 19; 0 = leave timeScale out)
+//     --map-dir=DIR (default ~/.local/share/tiphys/gamemode/map)   --parsed=DIR (default ~/.cache/tiphys-mapbuild/parsed)
+//     --route=Kassel,Nuremberg (city names from the parsed data)   --speed=KMH (cap the simulated speed)
 //     --no-music | --paused   --no-cover   --long-title   --no-lyrics   --plain-lyrics   --seek=SEC
 //     --source-down   --events=fine,toll,ferry,train,delivered,cancelled,fuelLow,rest | --no-events   --event-every=SEC
 //     --art-url=https://…  (serve this image as the cover instead of the generated ones)
@@ -19,6 +24,7 @@ import crypto from 'node:crypto';
 import zlib from 'node:zlib';
 import fs from 'node:fs';
 import path from 'node:path';
+import os from 'node:os';
 import { fileURLToPath } from 'node:url';
 
 const args = Object.fromEntries(process.argv.slice(2).map((a) => {
@@ -30,6 +36,8 @@ const PORT = Number(args.port ?? 8787);
 const HOST = String(args.host ?? '127.0.0.1');
 const TOKEN = String(args.token ?? 'dev');
 const DISPLAY = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../display');
+const MAP_DIR = path.resolve(String(args['map-dir'] ?? path.join(os.homedir(), '.local/share/tiphys/gamemode/map')));
+const PARSED = path.resolve(String(args.parsed ?? path.join(os.homedir(), '.cache/tiphys-mapbuild/parsed')));
 
 // ------------------------------------------------------------------ PNG covers (generated, nothing copyrighted)
 const CRC = new Uint32Array(256).map((_, n) => { let c = n; for (let k = 0; k < 8; k++) c = c & 1 ? 0xedb88320 ^ (c >>> 1) : c >>> 1; return c >>> 0; });
@@ -152,14 +160,120 @@ if (args['live-music']) { setInterval(pollVelour, 1000); pollVelour(); }
 // ------------------------------------------------------------------ truck simulation
 const KMH = 1 / 3.6;
 const parseHM = (s) => { const [h, m] = String(s).split(':').map(Number); return h * 60 + (m || 0); };
+
+/**
+ * A real route over the game's road graph (roads + prefab junctions from the map build's parsed JSON), shortest path
+ * by length. Returns [[x, z], …] in game metres or null when the data isn't there. Read once at start, memory only.
+ */
+function loadRoute(names) {
+  const read = (f) => JSON.parse(fs.readFileSync(path.join(PARSED, `europe-${f}.json`), 'utf8'));
+  try {
+    if (!fs.existsSync(path.join(PARSED, 'europe-nodes.json'))) return null;
+    const t0 = Date.now();
+    const cities = read('cities');
+    const ends = names.map((n) => {
+      const c = cities.find((x) => x.name === n);
+      if (!c) throw new Error(`no city "${n}" in the parsed data`);
+      const ar = c.areas.find((x) => !x.hidden) ?? { width: 0, height: 0 };
+      return [c.x + ar.width / 2, c.y + ar.height / 2];
+    });
+    const pos = new Map();
+    for (const n of read('nodes')) pos.set(n.uid, [n.x, n.y, n.rotation]);
+    const adj = new Map();
+    const link = (u, v) => {
+      const a = pos.get(u), b = pos.get(v);
+      if (!a || !b) return;
+      const w = Math.hypot(a[0] - b[0], a[1] - b[1]);
+      if (!adj.has(u)) adj.set(u, []);
+      if (!adj.has(v)) adj.set(v, []);
+      adj.get(u).push([v, w]); adj.get(v).push([u, w]);
+    };
+    const roads = new Map(); // "u>v" of a road's start>end node: the path follows its curve
+    for (const r of read('roads')) if (!r.hidden) { link(r.startNodeUid, r.endNodeUid); roads.set(`${r.startNodeUid}>${r.endNodeUid}`, true); }
+    for (const p of read('prefabs')) for (let i = 0; i < p.nodeUids.length; i++) for (let j = i + 1; j < p.nodeUids.length; j++) link(p.nodeUids[i], p.nodeUids[j]);
+    const nearest = ([x, z]) => { let best = null, bd = Infinity; for (const u of adj.keys()) { const [a, b] = pos.get(u); const d = (a - x) ** 2 + (b - z) ** 2; if (d < bd) { bd = d; best = u; } } return best; };
+    const [src, dst] = ends.map(nearest);
+    // Dijkstra with a binary heap.
+    const dist = new Map([[src, 0]]), prev = new Map(), heap = [[0, src]];
+    const push = (e) => { heap.push(e); let i = heap.length - 1; while (i > 0) { const q = (i - 1) >> 1; if (heap[q][0] <= heap[i][0]) break; [heap[q], heap[i]] = [heap[i], heap[q]]; i = q; } };
+    const pop = () => { const top = heap[0], last = heap.pop(); if (heap.length) { heap[0] = last; let i = 0; for (;;) { const l = 2 * i + 1, r = l + 1; let m = i; if (l < heap.length && heap[l][0] < heap[m][0]) m = l; if (r < heap.length && heap[r][0] < heap[m][0]) m = r; if (m === i) break; [heap[m], heap[i]] = [heap[i], heap[m]]; i = m; } } return top; };
+    while (heap.length) {
+      const [d, u] = pop();
+      if (u === dst) break;
+      if (d > dist.get(u)) continue;
+      for (const [v, w] of adj.get(u)) if (d + w < (dist.get(v) ?? Infinity)) { dist.set(v, d + w); prev.set(v, u); push([d + w, v]); }
+    }
+    if (!prev.has(dst)) throw new Error('no road path');
+    const ids = [];
+    for (let u = dst; u; u = prev.get(u)) ids.push(u);
+    ids.reverse();
+    // Roads are cubic Hermite curves between their nodes (tangent = node rotation × chord length), as the map draws them.
+    const curve = (a, b) => {
+      const [p0, p1] = [pos.get(a), pos.get(b)];
+      const d = Math.hypot(p1[0] - p0[0], p1[1] - p0[1]);
+      const m0 = [Math.cos(p0[2]) * d, Math.sin(p0[2]) * d], m1 = [Math.cos(p1[2]) * d, Math.sin(p1[2]) * d];
+      const steps = Math.max(1, Math.min(16, Math.ceil(d / 25)));
+      const pts = [];
+      for (let i = 1; i <= steps; i++) {
+        const t = i / steps, t2 = t * t, t3 = t2 * t;
+        const h = [2 * t3 - 3 * t2 + 1, t3 - 2 * t2 + t, -2 * t3 + 3 * t2, t3 - t2];
+        pts.push([0, 1].map((k) => h[0] * p0[k] + h[1] * m0[k] + h[2] * p1[k] + h[3] * m1[k]));
+      }
+      return pts;
+    };
+    const out = [pos.get(ids[0]).slice(0, 2)];
+    for (let i = 1; i < ids.length; i++) {
+      const [a, b] = [ids[i - 1], ids[i]];
+      if (roads.has(`${a}>${b}`)) out.push(...curve(a, b));
+      else if (roads.has(`${b}>${a}`)) out.push(...curve(b, a).reverse().slice(1), pos.get(b).slice(0, 2)); // walked backwards
+      else out.push(pos.get(b).slice(0, 2));
+    }
+    console.log(`[mock] route ${names.join(' → ')}: ${out.length} nodes, ${Math.round(dist.get(dst) / 1000)} km (${Date.now() - t0} ms)`);
+    return out;
+  } catch (e) {
+    console.log(`[mock] no real route (${e.message}); using a synthetic road`);
+    return null;
+  }
+}
+const routeNames = String(args.route ?? 'Kassel,Nuremberg').split(',');
+const ROUTE = args['no-truck'] ? null : loadRoute(routeNames);
+const routeLen = ROUTE ? ROUTE.slice(1).reduce((a, p, i) => a + Math.hypot(p[0] - ROUTE[i][0], p[1] - ROUTE[i][1]), 0) : 0;
+const headingOf = (dx, dz) => ((Math.atan2(-dx, -dz) / (Math.PI * 2)) % 1 + 1) % 1; // SCS: 0 = north (−z), CCW
+
 const sim = {
   x: -31250, z: 4120, hd: 0.12, speed: 0, dist: 0, fuel: 512, fuelCap: 740,
   gameTime: 2 * 1440 + parseHM(args.night ? '22:40' : args['game-time'] ?? '14:20'), // Wed
   navLeft: 412_000, wear: 0.034, cruise: 0, gear: 0,
+  seg: 0, segT: 0, // position on ROUTE: segment index + metres into it
 };
 const truckState = args['no-truck'] ? 'none' : String(args['truck-state'] ?? 'driving');
+const TIME_SCALE = Number(args['time-scale'] ?? 19);
+const MAX_KMH = Number(args.speed ?? 999);
 const LIMITS = [{ until: 1800, limit: 80 }, { until: 2600, limit: 60 }, { until: 6000, limit: 90 }, { until: 6800, limit: 80 }];
 function limitAt(d) { const m = d % 6800; return (LIMITS.find((l) => m < l.until) ?? LIMITS[0]).limit; }
+function placeOnRoute(advance) {
+  sim.segT += advance;
+  while (sim.seg < ROUTE.length - 1) {
+    const [a, b] = [ROUTE[sim.seg], ROUTE[sim.seg + 1]];
+    const len = Math.hypot(b[0] - a[0], b[1] - a[1]);
+    if (sim.segT <= len) {
+      const k = len ? sim.segT / len : 0;
+      sim.x = a[0] + (b[0] - a[0]) * k; sim.z = a[1] + (b[1] - a[1]) * k;
+      if (len > 0.5) {
+        // Ease the heading toward the segment's (nodes are corners; a real truck turns smoothly).
+        const want = headingOf(b[0] - a[0], b[1] - a[1]);
+        let d = want - sim.hd; d -= Math.round(d);
+        sim.hd = ((sim.hd + d * Math.min(1, advance / 25)) % 1 + 1) % 1;
+      }
+      return;
+    }
+    sim.segT -= len; sim.seg++;
+  }
+  sim.seg = 0; sim.segT = 0; sim.dist = 0; // arrived: start over (the page sees a jump and breaks its trail)
+  sim.hd = headingOf(ROUTE[1][0] - ROUTE[0][0], ROUTE[1][1] - ROUTE[0][1]);
+  placeOnRoute(0);
+}
+if (ROUTE) { sim.hd = headingOf(ROUTE[1][0] - ROUTE[0][0], ROUTE[1][1] - ROUTE[0][1]); placeOnRoute(Number(args['route-start'] ?? 0)); }
 let lastSim = Date.now();
 function stepSim() {
   const now = Date.now();
@@ -167,36 +281,42 @@ function stepSim() {
   lastSim = now;
   if (truckState !== 'driving') return;
   const limit = limitAt(sim.dist);
-  // Mostly at the limit, sometimes a bit over (shows the warning ring), slower in curves.
+  // Mostly at the limit, sometimes a bit over (shows the warning ring).
   const over = Math.sin(sim.dist / 900) > 0.75 ? 9 : 0;
-  const target = (limit + over - 2 + Math.sin(now / 4000) * 2) * KMH;
+  const target = Math.min(MAX_KMH, limit + over - 2 + Math.sin(now / 4000) * 2) * KMH;
   sim.speed += Math.max(-2.5 * dt, Math.min(1.2 * dt, target - sim.speed));
   sim.dist += sim.speed * dt;
-  const curve = Math.sin(sim.dist / 700) * 0.000045 + Math.sin(sim.dist / 2300 + 1) * 0.00003;
-  sim.hd = (sim.hd + curve * sim.speed * dt + 1) % 1;
-  const a = sim.hd * Math.PI * 2;
-  sim.x += -Math.sin(a) * sim.speed * dt;
-  sim.z += -Math.cos(a) * sim.speed * dt;
+  if (ROUTE) {
+    placeOnRoute(sim.speed * dt);
+    sim.navLeft = Math.max(0, routeLen - sim.dist);
+  } else {
+    const curve = Math.sin(sim.dist / 700) * 0.000045 + Math.sin(sim.dist / 2300 + 1) * 0.00003;
+    sim.hd = (sim.hd + curve * sim.speed * dt + 1) % 1;
+    const a = sim.hd * Math.PI * 2;
+    sim.x += -Math.sin(a) * sim.speed * dt;
+    sim.z += -Math.cos(a) * sim.speed * dt;
+    sim.navLeft = Math.max(0, sim.navLeft - sim.speed * dt);
+  }
   sim.fuel = Math.max(0, sim.fuel - sim.speed * dt * 0.00034);
-  sim.navLeft = Math.max(0, sim.navLeft - sim.speed * dt);
-  sim.gameTime += dt * 19 / 60;
+  sim.gameTime += dt * (TIME_SCALE || 19) / 60;
   sim.cruise = sim.dist % 5000 > 2500 ? limit * KMH : 0;
   sim.gear = Math.max(1, Math.min(12, Math.round(3 + sim.speed / 2.4)));
 }
 function truckMsg() {
   const at = Date.now();
-  if (truckState === 'none' || args['source-down']) return { type: 'truck', state: 'none', at };
+  if (truckState === 'none' || args['source-down']) return { type: 'truck', state: 'none', reason: String(args['truck-reason'] ?? 'noGame'), at };
   const kmh = sim.speed / KMH;
   const rpm = truckState === 'driving' ? 1050 + ((kmh % 12) / 12) * 450 + Math.sin(at / 700) * 40 : 650;
+  const [from, to] = ROUTE ? routeNames : ['Kassel', 'Nürnberg'];
   return {
     type: 'truck', state: truckState, at,
     speed: sim.speed, speedLimit: limitAt(sim.dist) * KMH, rpm, rpmMax: 2500, gear: truckState === 'driving' ? sim.gear : 0, gears: 12,
     fuel: sim.fuel, fuelCap: sim.fuelCap, fuelRange: sim.fuel / 0.34, cruise: sim.cruise, parkingBrake: truckState !== 'driving',
     lowBeam: args.night ? true : false, highBeam: false, beacon: false, blinkerL: false, blinkerR: false,
     wear: sim.wear, cargoDamage: 0.01,
-    x: sim.x, z: sim.z, heading: sim.hd, gameTime: sim.gameTime, restMinutes: 205,
-    job: args['no-job'] ? null : { from: 'Kassel', to: 'Nürnberg', cargo: 'Elektronik', income: 12400, currency: 'EUR', deadlineGameTime: sim.gameTime + 600 },
-    nav: args['no-job'] ? null : { distance: sim.navLeft, time: sim.navLeft / 22 / 19 }, // real s (game time runs ~19× faster)
+    x: sim.x, z: sim.z, heading: sim.hd, gameTime: sim.gameTime, ...(TIME_SCALE > 0 ? { timeScale: TIME_SCALE } : {}), restMinutes: 205,
+    job: args['no-job'] ? null : { from, to, cargo: 'Elektronik', income: 12400, currency: 'EUR', deadlineGameTime: sim.gameTime + 600 },
+    nav: args['no-job'] ? null : { distance: sim.navLeft, time: sim.navLeft / 22 }, // real s
   };
 }
 
@@ -335,7 +455,14 @@ if (!args['no-events'] && !args['source-down']) {
 }
 
 // ------------------------------------------------------------------ HTTP
-const TYPES = { '.html': 'text/html; charset=utf-8', '.css': 'text/css; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.ttf': 'font/ttf', '.txt': 'text/plain; charset=utf-8', '.png': 'image/png', '.svg': 'image/svg+xml' };
+const TYPES = { '.html': 'text/html; charset=utf-8', '.css': 'text/css; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.mjs': 'text/javascript; charset=utf-8',
+  '.ttf': 'font/ttf', '.txt': 'text/plain; charset=utf-8', '.png': 'image/png', '.svg': 'image/svg+xml', '.json': 'application/json',
+  '.pbf': 'application/x-protobuf', '.pmtiles': 'application/octet-stream' };
+/** A file below root (no escaping it), or null. */
+function fileIn(root, rel) {
+  const file = path.resolve(root, rel);
+  return file.startsWith(root + path.sep) && fs.existsSync(file) && fs.statSync(file).isFile() ? file : null;
+}
 async function artFor(id) {
   if (args['art-url']) return fetchImage(String(args['art-url']));
   if (live.art.has(id)) return fetchImage(live.art.get(id));
@@ -370,10 +497,24 @@ const server = http.createServer(async (req, res) => {
     return;
   }
   if (url.pathname === '/gamemode') { res.writeHead(301, { location: '/gamemode/' }).end(); return; }
+  if (url.pathname.startsWith('/gamemode/map/')) {
+    // Map data, with single byte ranges (PMTiles reads the archive in pieces), like the agent.
+    const file = fileIn(MAP_DIR, decodeURIComponent(url.pathname.slice('/gamemode/map/'.length)));
+    if (!file) { res.writeHead(404).end(); return; }
+    const size = fs.statSync(file).size;
+    const type = TYPES[path.extname(file)] ?? 'application/octet-stream';
+    const m = /^bytes=(\d*)-(\d*)$/.exec(req.headers.range ?? '');
+    if (!m) { res.writeHead(200, { 'content-type': type, 'content-length': size, 'accept-ranges': 'bytes', 'cache-control': 'no-cache' }); fs.createReadStream(file).pipe(res); return; }
+    const start = m[1] === '' ? Math.max(0, size - Number(m[2])) : Number(m[1]);
+    const end = m[1] === '' || m[2] === '' ? size - 1 : Math.min(Number(m[2]), size - 1);
+    if (start > end || start >= size) { res.writeHead(416, { 'content-range': `bytes */${size}` }).end(); return; }
+    res.writeHead(206, { 'content-type': type, 'content-length': end - start + 1, 'content-range': `bytes ${start}-${end}/${size}`, 'accept-ranges': 'bytes', 'cache-control': 'no-cache' });
+    fs.createReadStream(file, { start, end }).pipe(res);
+    return;
+  }
   if (url.pathname.startsWith('/gamemode/')) {
-    const rel = decodeURIComponent(url.pathname.slice('/gamemode/'.length)) || 'index.html';
-    const file = path.resolve(DISPLAY, rel);
-    if (!file.startsWith(DISPLAY + path.sep) || !fs.existsSync(file) || !fs.statSync(file).isFile()) { res.writeHead(404).end(); return; }
+    const file = fileIn(DISPLAY, decodeURIComponent(url.pathname.slice('/gamemode/'.length)) || 'index.html');
+    if (!file) { res.writeHead(404).end(); return; }
     res.writeHead(200, { 'content-type': TYPES[path.extname(file)] ?? 'application/octet-stream', 'cache-control': 'no-store' });
     fs.createReadStream(file).pipe(res);
     return;

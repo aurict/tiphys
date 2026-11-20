@@ -5,16 +5,23 @@ import { fmtInt, fmtMoney, fmtDistance, fmtGameTime, fmtGear, fmtDuration } from
 
 const $ = (s) => document.querySelector(s);
 const KMH = 3.6;
-// Contract: nav.time is in real seconds. ETS2's default time compression (1 real s ≈ 19 game s on roads) turns it into
-// a game-clock ETA. If the source ever sends game seconds, set this to 1.
+// Contract: nav.time is in real seconds; the truck message's timeScale (game s per real s, from the telemetry) turns it
+// into a game-clock ETA. Without it, ETS2's default road compression (19) is assumed.
 const GAME_TIME_SCALE = 19;
+
+// Map card text when there is no telemetry, by the truck message's reason.
+const NONE_COPY = {
+  noGame: ['Euro Truck Simulator 2 çalışmıyor', 'Oyunu başlatınca konum ve kokpit burada görünür.'],
+  noPlugin: ['Telemetri eklentisi yok', "Oyun açık ama telemetri gelmiyor. SCS telemetri eklentisini Tiphys › Oyun Modu › Kurulum'dan kur, sonra oyunu yeniden başlat."],
+  unsupported: ['Telemetri sürümü desteklenmiyor', "Kurulu telemetri eklentisi başka bir sürüm. Tiphys › Oyun Modu › Kurulum'dan sabitlenmiş sürümü yeniden kur."],
+};
 
 export function createCockpit() {
   const el = {
     mapCard: $('#map-card'), empty: $('#map-empty'), emptyT: $('#map-empty-t'), emptyS: $('#map-empty-s'),
     dest: $('#cam-dest'), dist: $('#cam-dist'), distU: $('#cam-dist-u'), eta: $('#cam-eta'), income: $('#cam-income'), cargo: $('#map-cargo'),
     speedTile: $('#t-speed'), speedV: $('#speed-v'), speedArc: $('#t-speed .arc'), limit: $('#speed-limit'), limitV: $('#speed-limit span'),
-    gearV: $('#gear-v'), rpmV: $('#rpm-v'), gearOf: $('#gear-of'), rpmArc: $('#t-gear .arc.outer'), gearArc: $('#t-gear .arc.inner'),
+    gearV: $('#gear-v'), rpmV: $('#rpm-v'), gearOf: $('#gear-of'), rpmArc: $('#t-gear .arc.outer'),
     fuelTile: $('#t-fuel'), fuelRange: $('#fuel-range'), fuelFill: $('#fuel-fill'), fuelL: $('#fuel-l'), fuelPct: $('#fuel-pct'),
     chips: $('#chips'),
   };
@@ -51,8 +58,9 @@ export function createCockpit() {
     el.mapCard.classList.toggle('no-truck', !live);
     document.querySelector('.cockpit').classList.toggle('off', !live || tr.state !== 'driving');
     if (!tr || tr.state === 'none') {
-      el.emptyT.textContent = 'Euro Truck Simulator 2 çalışmıyor';
-      el.emptyS.textContent = "Oyunu başlatınca konum ve kokpit burada görünür. Oyun açıkken de boş kalıyorsa SCS telemetri eklentisini Tiphys › Oyun Modu › Kurulum'dan kur.";
+      const [t, s] = NONE_COPY[tr?.reason] ?? NONE_COPY.noGame;
+      el.emptyT.textContent = t;
+      el.emptyS.textContent = s;
     } else if (tr.state === 'menu') {
       el.empty.hidden = false;
       el.emptyT.textContent = 'Oyun menüde';
@@ -69,7 +77,7 @@ export function createCockpit() {
       const d = fmtDistance(tr.nav.distance);
       set(el.dist, 'dist', d.value, text);
       set(el.distU, 'distU', d.unit, text);
-      const eta = tr.gameTime != null && tr.nav.time != null ? tr.gameTime + (tr.nav.time * GAME_TIME_SCALE) / 60 : null;
+      const eta = tr.gameTime != null && tr.nav.time != null ? tr.gameTime + (tr.nav.time * (tr.timeScale > 0 ? tr.timeScale : GAME_TIME_SCALE)) / 60 : null;
       set(el.eta, 'eta', fmtGameTime(eta, clock24), text);
     } else if (live) {
       set(el.dist, 'dist', '–', text); set(el.eta, 'eta', job?.deadlineGameTime != null ? fmtGameTime(job.deadlineGameTime, clock24) : '–', text);
@@ -81,7 +89,7 @@ export function createCockpit() {
     set(el.limit, 'limitOn', limit > 0, (n, v) => { n.hidden = !v; });
     if (limit) set(el.limitV, 'limit', String(limit), text);
     set(el.speedTile, 'over', limit > 0 && Math.abs(tr.speed) * KMH > limit + 2, (n, v) => n.classList.toggle('over', v));
-    set(el.gearOf, 'gearOf', tr.gears ? `${fmtGear(tr.gear)} / ${tr.gears}` : fmtGear(tr.gear), text);
+    set(el.gearOf, 'gearOf', tr.gears ? `/ ${tr.gears}` : '', text);
     set(el.gearV, 'gear', fmtGear(tr.gear), text);
 
     const cap = tr.fuelCap || 1;
@@ -116,8 +124,6 @@ export function createCockpit() {
     set(el.rpmV, 'rpm', fmtInt(Math.round(disp.rpm / 10) * 10), text);
     const rk = truck.rpmMax ? Math.min(1, disp.rpm / truck.rpmMax) : 0;
     set(el.rpmArc, 'rpmArc', Math.round(rk * 200) / 2, arc);
-    const gk = truck.gears ? Math.max(0, truck.gear) / truck.gears : 0;
-    set(el.gearArc, 'gearArc', Math.round(gk * 200) / 2, arc);
     set(el.fuelRange, 'range', fmtInt(Math.round(disp.range)), text);
     set(el.fuelFill, 'fuelK', Math.round(disp.fuel * 500) / 500, (n, v) => { n.style.transform = `scaleX(${v})`; });
   }
