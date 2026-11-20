@@ -6,31 +6,14 @@ import type { ConfigStore, Device, ServiceToken } from "./config.ts";
 import { AppError } from "./errors.ts";
 import { Notifier } from "./notify.ts";
 import { configRoutes } from "./routes/config.ts";
-import { dockerRoutes } from "./routes/docker.ts";
-import { homepageRoutes } from "./routes/homepage.ts";
-import { powerRoutes } from "./routes/power.ts";
-import { serviceRoutes } from "./routes/services.ts";
-import { systemRoutes } from "./routes/system.ts";
-import { wakeRoutes } from "./routes/wake.ts";
 import { auditRoutes, type AuditDetail } from "./audit.ts";
 import { EventLog, eventRoutes, eventsPath } from "./events.ts";
 import { agentStatusRoutes, type RunLog } from "./runs.ts";
-import { desktopRoutes, openRoutes } from "./routes/desktop.ts";
-import { browserOpener, browserRoutes } from "./routes/browser.ts";
 import type { BrowserBridge } from "./browser_bridge.ts";
-import { mediaRoutes } from "./routes/media.ts";
-import { velourRoutes } from "./routes/velour.ts";
-import { hyprRoutes } from "./routes/hypr.ts";
-import { streamRoutes } from "./routes/stream.ts";
-import { sunshineRoutes } from "./routes/sunshine.ts";
-import { atspiRoutes, type UiService } from "./atspi.ts";
+import type { UiService } from "./atspi.ts";
 import type { ControlSessions } from "./control.ts";
 import type { Hyprctl } from "./hyprctl.ts";
 import type { DesktopApp } from "./desktop_apps.ts";
-import { gitRoutes } from "./routes/git.ts";
-import { portRoutes } from "./routes/ports.ts";
-import { processRoutes } from "./routes/processes.ts";
-import { transcribeRoutes } from "./routes/transcribe.ts";
 import { serviceTokenRoutes, touchServiceToken } from "./service_tokens.ts";
 import type { ResearchService } from "./research/jobs.ts";
 import type { AnalysisQueue } from "./analysis/jobs.ts";
@@ -161,29 +144,41 @@ export async function buildApp(ctx: Ctx, opts: { logger?: boolean; logStream?: {
   configRoutes(app, ctx);
   serviceTokenRoutes(app, ctx);
   const f = ctx.store.get().features;
+  // Feature modules load only when the feature is on: a server without the desktop never loads the desktop code
+  // (H1, PLAN.md §18). Order matters inside "desktop": hyprRoutes sets up the control session the later ones use.
   if (f.system) {
-    systemRoutes(app, ctx);
-    processRoutes(app, ctx);
+    (await import("./routes/system.ts")).systemRoutes(app, ctx);
+    (await import("./routes/processes.ts")).processRoutes(app, ctx);
   }
-  if (f.git) gitRoutes(app, ctx);
+  if (f.git) (await import("./routes/git.ts")).gitRoutes(app, ctx);
   if (f.desktop) {
-    desktopRoutes(app, ctx);
-    openRoutes(app, browserOpener(ctx)); // "Open on PC": new tab if the extension is connected
-    mediaRoutes(app, ctx);
-    velourRoutes(app, ctx); // Velour (YouTube Music player) remote over its local control socket
-    hyprRoutes(app, ctx);
-    browserRoutes(app, ctx); // Firefox bridge (11.2): uses hyprRoutes' control session
-    streamRoutes(app, ctx); // live screen (10.2): uses hyprRoutes' control session
-    sunshineRoutes(app, ctx); // high quality (10.2 B): Sunshine status, start/stop, Moonlight pairing
-    atspiRoutes(app, ctx); // mobile view (11.4): AT-SPI tree; uses hyprRoutes' control session
+    const [desktop, browser, media, velour, hypr, stream, sunshine, atspi] = await Promise.all([
+      import("./routes/desktop.ts"),
+      import("./routes/browser.ts"),
+      import("./routes/media.ts"),
+      import("./routes/velour.ts"),
+      import("./routes/hypr.ts"),
+      import("./routes/stream.ts"),
+      import("./routes/sunshine.ts"),
+      import("./atspi.ts"),
+    ]);
+    desktop.desktopRoutes(app, ctx);
+    desktop.openRoutes(app, browser.browserOpener(ctx)); // "Open on PC": new tab if the extension is connected
+    media.mediaRoutes(app, ctx);
+    velour.velourRoutes(app, ctx); // Velour (YouTube Music player) remote over its local control socket
+    hypr.hyprRoutes(app, ctx);
+    browser.browserRoutes(app, ctx); // Firefox bridge (11.2): uses hyprRoutes' control session
+    stream.streamRoutes(app, ctx); // live screen (10.2): uses hyprRoutes' control session
+    sunshine.sunshineRoutes(app, ctx); // high quality (10.2 B): Sunshine status, start/stop, Moonlight pairing
+    atspi.atspiRoutes(app, ctx); // mobile view (11.4): AT-SPI tree; uses hyprRoutes' control session
   }
-  if (f.ports) portRoutes(app, ctx);
-  if (f.transcribe) transcribeRoutes(app, ctx);
-  if (f.services) serviceRoutes(app, ctx);
-  if (f.docker) dockerRoutes(app, ctx);
-  if (f.power) powerRoutes(app, ctx);
-  if (f.homepage) homepageRoutes(app, ctx);
-  if (f.wake) wakeRoutes(app, ctx);
+  if (f.ports) (await import("./routes/ports.ts")).portRoutes(app, ctx);
+  if (f.transcribe) (await import("./routes/transcribe.ts")).transcribeRoutes(app, ctx);
+  if (f.services) (await import("./routes/services.ts")).serviceRoutes(app, ctx);
+  if (f.docker) (await import("./routes/docker.ts")).dockerRoutes(app, ctx);
+  if (f.power) (await import("./routes/power.ts")).powerRoutes(app, ctx);
+  if (f.homepage) (await import("./routes/homepage.ts")).homepageRoutes(app, ctx);
+  if (f.wake) (await import("./routes/wake.ts")).wakeRoutes(app, ctx);
   if (f.research) await (await import("./routes/research.ts")).researchRoutes(app, ctx);
   if (f.analysis) await (await import("./analysis/routes.ts")).analysisRoutes(app, ctx);
   for (const register of ctx.extraRoutes ?? []) await register(app, ctx);

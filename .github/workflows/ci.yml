@@ -37,6 +37,10 @@ jobs:
           const files = readdirSync('dist', { recursive: true }).filter(f => f.endsWith('.js') && !/^(cli|firefox_host)\.js$/.test(f));
           for (const f of files) await import('./dist/' + f);
           console.log('loaded', files.length, 'modules');"
+      - name: Feature modules load only when their feature is on (memory, PLAN.md §18 H4)
+        run: node test/load_check.mjs
+      - name: Memory of an agent with only "system" on (budget; ~111 MB measured on the dev PC)
+        run: MAX_MB=160 NODE_OPTIONS=--max-semi-space-size=1 ../tools/measure-agent.sh system
 
   atspi-helper:
     name: AT-SPI helper (Python)

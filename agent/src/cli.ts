@@ -14,12 +14,10 @@
 import { spawn } from "node:child_process";
 import { hostname } from "node:os";
 import { parseArgs } from "node:util";
-import qrcode from "qrcode-terminal";
 import { hashToken, newToken } from "./auth.ts";
 import { ConfigStore, defaultConfigPath } from "./config.ts";
 import { EventLog, eventsPath } from "./events.ts";
 import { Notifier } from "./notify.ts";
-import { profileJsonSchema } from "./profile/schema.ts";
 import { buildApp, type Ctx } from "./server.ts";
 
 const [cmd, ...rest] = process.argv.slice(2);
@@ -40,6 +38,7 @@ const configPath = values.config ?? defaultConfigPath();
 async function main() {
   switch (cmd) {
     case "schema":
+      const { profileJsonSchema } = await import("./profile/schema.ts");
       process.stdout.write(JSON.stringify(profileJsonSchema(), null, 2) + "\n");
       return;
 
@@ -71,6 +70,7 @@ async function main() {
       const payload = JSON.stringify({ v: 1, type: "tiphys-pair", agent: store.get().name, url, token });
       console.log(`Cihaz eklendi: ${name} (${id})`);
       console.log("Tiphys'te Ayarlar › Hostlar › Ajan › QR ile eşle ekranından okut:\n");
+      const { default: qrcode } = await import("qrcode-terminal");
       qrcode.generate(payload, { small: true });
       console.log(`\nQR okutulamazsa elle gir:\n  Adres: ${url}\n  Token: ${token}\n`);
       console.log("Token bir daha gösterilmez; ajan sadece özetini saklar.");

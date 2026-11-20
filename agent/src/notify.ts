@@ -2,7 +2,6 @@
 // On registration the phone tells the agent its endpoint URL and WebPush public key (pubKey + auth).
 // The agent encrypts the JSON with RFC 8291 (aes128gcm) and sends it; the ntfy server can't read the content.
 // Tiphys on the phone builds the text in the selected language. Google/Firebase are not used.
-import { generateRequestDetails } from "web-push";
 import type { AgentConfig } from "./config.ts";
 import type { EventLog } from "./events.ts";
 
@@ -86,6 +85,8 @@ export class Notifier {
           let headers: Record<string, string> = { "Content-Type": "application/json" };
           let data: string | Buffer = body;
           if (e.pubKey && e.auth) {
+            // Loaded on the first encrypted push only (~5 MB that an idle agent doesn't need).
+            const { generateRequestDetails } = await import("web-push");
             const req = generateRequestDetails({ endpoint: e.url, keys: { p256dh: e.pubKey, auth: e.auth } }, body, {
               TTL: 86400,
               urgency: n.priority === "high" ? "high" : "normal",

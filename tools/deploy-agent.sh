@@ -38,7 +38,8 @@ After=network-online.target
 
 [Service]
 WorkingDirectory=%h/tiphys-agent
-ExecStart=$(command -v node) %h/tiphys-agent/dist/cli.js serve
+# Smaller young-generation heap: ~10 MB less resident memory, no measurable slowdown (PLAN.md §18 H3).
+ExecStart=$(command -v node) --max-semi-space-size=1 %h/tiphys-agent/dist/cli.js serve
 Restart=on-failure
 RestartSec=5
 # No memory/CPU limit: Claude sessions and commands started from the phone should run like a terminal on the PC
