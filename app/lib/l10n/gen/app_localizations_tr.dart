@@ -1952,7 +1952,7 @@ class AppLocalizationsTr extends AppLocalizations {
 
   @override
   String agentOutdatedHint(String version) {
-    return 'Bu uygulama $version sürümlü ajan bekliyor. PC\'de tools/deploy-agent.sh ile (uzak sunucu) ya da ajanı yeniden derleyerek (yerel) güncelle.';
+    return 'Bu uygulama $version sürümlü ajanı bekliyor. Aşağıda “Güncelle” varsa onunla, yoksa kurulum komutunu o bilgisayarda yeniden çalıştırarak güncelleyin.';
   }
 
   @override
@@ -11444,4 +11444,572 @@ class AppLocalizationsTr extends AppLocalizations {
   String fixErrSshConfig(String host, String reason) {
     return '“$host” makinesinin SSH adresi kullanılamıyor: $reason. ProxyCommand, ProxyJump, LocalCommand veya KnownHostsCommand olmadan doğrudan bir adres (kullanıcı@makine) kullanın.';
   }
+
+  @override
+  String get pairPaste => 'Yapıştır';
+
+  @override
+  String get pairPasteTitle => 'Eşleme kodunu yapıştır';
+
+  @override
+  String get pairPasteHint =>
+      'QR kodun metnini ya da `tiphys-agent pair` komutunun altına yazdığı adres ile token’ı yapıştırın.';
+
+  @override
+  String get pairPasteLabel => 'Eşleme kodu';
+
+  @override
+  String get pairPasteFromClipboard => 'Panodan yapıştır';
+
+  @override
+  String get pairPasteUse => 'Eşle';
+
+  @override
+  String get pairPasteInvalid =>
+      'Tiphys eşleme kodu bulunamadı. Ajan adresi (https://…) ve tph_ ile başlayan bir token gerekli.';
+
+  @override
+  String get doctorTitle => 'Sağlık kontrolü';
+
+  @override
+  String get doctorRowHint =>
+      'Tailscale, servis, ayarlar, disk ve sürümü denetler';
+
+  @override
+  String get doctorRunning => 'Kurulum denetleniyor…';
+
+  @override
+  String get doctorRerun => 'Yeniden çalıştır';
+
+  @override
+  String get doctorAllGood => 'Her şey yolunda';
+
+  @override
+  String doctorSummary(int fails, int warns) {
+    String _temp0 = intl.Intl.pluralLogic(
+      fails,
+      locale: localeName,
+      other: '$fails sorun',
+      zero: 'Sorun yok',
+    );
+    String _temp1 = intl.Intl.pluralLogic(
+      warns,
+      locale: localeName,
+      other: '$warns uyarı',
+      zero: 'uyarı yok',
+    );
+    return '$_temp0, $_temp1';
+  }
+
+  @override
+  String doctorAgentVersion(String version) {
+    return 'Ajan $version';
+  }
+
+  @override
+  String get doctorProblems => 'Sorunlar';
+
+  @override
+  String get doctorWarnings => 'Uyarılar';
+
+  @override
+  String get doctorOk => 'Sorunsuz';
+
+  @override
+  String get doctorStatusFail => 'Sorun';
+
+  @override
+  String get doctorStatusWarn => 'Uyarı';
+
+  @override
+  String get doctorStatusOk => 'Sorunsuz';
+
+  @override
+  String get doctorFixLabel => 'Önerilen çözüm (o bilgisayarda çalıştırın)';
+
+  @override
+  String get doctorMissingTitle => 'Bu ajanda henüz sağlık kontrolü yok';
+
+  @override
+  String get doctorMissingHint =>
+      'Ajan uygulamadan eski. Ajanı güncelleyin: kurulum komutunu o bilgisayarda yeniden çalıştırın, sonra tekrar deneyin.';
+
+  @override
+  String doctorTailscaleOk(String name) {
+    return 'Tailscale $name olarak çalışıyor.';
+  }
+
+  @override
+  String get doctorTailscaleMissing =>
+      'Tailscale kurulu değil. Tiphys bu bilgisayara yalnızca tailnet’iniz üzerinden ulaşır.';
+
+  @override
+  String get doctorTailscaleLoggedOut =>
+      'Tailscale kurulu ama oturum açılmamış.';
+
+  @override
+  String get doctorTailscaleStopped => 'Tailscale çalışmıyor.';
+
+  @override
+  String doctorTailscaleServed(String ports) {
+    return 'tailscale serve ajanı HTTPS $ports portunda yayınlıyor.';
+  }
+
+  @override
+  String doctorTailscaleNotServed(String port) {
+    return 'tailscale serve ajanı (port $port) tailnet’te yayınlamıyor.';
+  }
+
+  @override
+  String get doctorTailscaleServeUnknown => 'tailscale serve durumu okunamadı.';
+
+  @override
+  String doctorAgentListening(String address) {
+    return 'Ajan $address adresinde yanıt veriyor.';
+  }
+
+  @override
+  String doctorAgentNotListening(String address) {
+    return 'Ajan $address adresinde yanıt vermiyor.';
+  }
+
+  @override
+  String doctorConfigOk(String path) {
+    return '$path ayar dosyası gizli.';
+  }
+
+  @override
+  String doctorConfigMissing(String path) {
+    return '$path konumunda ayar dosyası yok.';
+  }
+
+  @override
+  String doctorConfigPermissions(String path, String mode) {
+    return '$path izinleri $mode; kimlik bilgisi tuttuğu için 600 olmalı.';
+  }
+
+  @override
+  String doctorConfigWrongOwner(String path) {
+    return '$path başka bir kullanıcıya ait.';
+  }
+
+  @override
+  String get doctorTimeSynced => 'Saat eşitlenmiş.';
+
+  @override
+  String get doctorTimeNotSynced =>
+      'Saat eşitlenmemiş (sertifikalar ve zamanlanmış işler doğru saate ihtiyaç duyar).';
+
+  @override
+  String get doctorTimeUnchecked => 'Saat eşitlemesi denetlenmedi.';
+
+  @override
+  String doctorDiskOk(String mb) {
+    return '$mb MB boş disk alanı.';
+  }
+
+  @override
+  String doctorDiskLow(String mb) {
+    return 'Disk alanı az: $mb MB boş.';
+  }
+
+  @override
+  String doctorDiskFull(String mb) {
+    return 'Yalnızca $mb MB boş disk alanı var.';
+  }
+
+  @override
+  String get doctorDiskUnchecked => 'Disk alanı denetlenmedi.';
+
+  @override
+  String doctorNodeOk(String version) {
+    return 'Node.js $version.';
+  }
+
+  @override
+  String doctorNodeOld(String version) {
+    return 'Node.js $version çalışır; 24 önerilir.';
+  }
+
+  @override
+  String doctorNodeTooOld(String version) {
+    return 'Node.js $version çok eski (22 veya üstü gerekli).';
+  }
+
+  @override
+  String doctorFeatureToolsMissing(String feature, String tools) {
+    return '“$feature” özelliği açık ama şunlar gerekli: $tools.';
+  }
+
+  @override
+  String doctorFeatureDockerDenied(String socket) {
+    return '“docker” özelliği açık ama $socket bu kullanıcıya erişilebilir değil.';
+  }
+
+  @override
+  String doctorFeatureTranscribeMissing(String command) {
+    return '“transcribe” özelliği açık ama $command yok.';
+  }
+
+  @override
+  String doctorPushOk(String count) {
+    return 'Anlık bildirimler: $count cihaz kayıtlı.';
+  }
+
+  @override
+  String get doctorPushNotConfigured =>
+      'Anlık bildirim için kayıtlı cihaz yok (uygulamada ntfy kurun).';
+
+  @override
+  String doctorVersionLatest(String current) {
+    return '$current en son sürüm.';
+  }
+
+  @override
+  String doctorVersionOutdated(String current, String latest) {
+    return 'Sürüm $current; $latest çıktı.';
+  }
+
+  @override
+  String doctorVersionUnchecked(String current) {
+    return 'Sürüm $current; en son sürüm denetlenemedi.';
+  }
+
+  @override
+  String get agentFeatUpdate => 'Kendini güncelleme';
+
+  @override
+  String agentNewerHint(String version, String expected) {
+    return 'Bu ajan ($version), uygulamanın beklediğinden ($expected) yeni. Bir şey çalışmazsa uygulamayı güncelleyin.';
+  }
+
+  @override
+  String updateAvailable(String version) {
+    return 'Güncelleme var · $version';
+  }
+
+  @override
+  String updateRowHint(String current) {
+    return 'Kurulu $current. Bu ajanı güncellemek için dokunun.';
+  }
+
+  @override
+  String updateRowManualHint(String current) {
+    return 'Kurulu $current. Bu kurulum, kurulduğu yolla güncellenir.';
+  }
+
+  @override
+  String get updateAction => 'Güncelle';
+
+  @override
+  String updateConfirm(String host, String current, String latest) {
+    return '$host üzerindeki ajan $current sürümünden $latest sürümüne güncellensin mi? İmzalı sürüm indirilir, denetlenir ve ajan yeniden başlar. O bilgisayardaki açık oturumlar kesilir.';
+  }
+
+  @override
+  String get updateAuthTitle => 'Ajanı güncelle';
+
+  @override
+  String updateTitle(String host) {
+    return '$host güncelleniyor';
+  }
+
+  @override
+  String updateApplying(String version) {
+    return '$version indiriliyor ve denetleniyor…';
+  }
+
+  @override
+  String updateRestarting(String version) {
+    return 'Ajan yeniden başlıyor. $version sürümünün yanıt vermesi bekleniyor…';
+  }
+
+  @override
+  String updateTimeout(String version) {
+    return 'Ajan $version sürümüyle zamanında geri gelmedi. Başlayamazsa kendiliğinden önceki sürüme döner. Neyin yanlış olduğunu görmek için sağlık kontrolünü çalıştırın.';
+  }
+
+  @override
+  String updateDone(String host, String version) {
+    return '$host artık $version sürümünde';
+  }
+
+  @override
+  String updateManualTitle(String version) {
+    return '$version sürümüne güncelle';
+  }
+
+  @override
+  String get updateManualBody =>
+      'Bu ajan tek komutlu kurucuyla kurulmadı (git deposundan, paketten ya da Docker’dan çalışıyor), bu yüzden kendini güncelleyemez. O bilgisayarda, kurulduğu yolla güncelleyin:';
+
+  @override
+  String get updateManualInstaller => 'Kurucuya geçin (önerilir)';
+
+  @override
+  String get updateManualCheckout => 'Git deposu';
+
+  @override
+  String get updateManualPackages =>
+      'Paketler (.deb, .rpm, AUR, Homebrew): paket yöneticisini kullanın. Docker: imajı yeniden derleyip kapsayıcıyı yeniden oluşturun.';
+
+  @override
+  String get updateErrDisabled =>
+      'Bu ajanda kendini güncelleme kapalı. Önce ajan ayarlarında “Kendini güncelleme”yi açın.';
+
+  @override
+  String get updateErrNotManaged =>
+      'Bu kurulum kendini güncelleyemez; kurulduğu yolla güncelleyin.';
+
+  @override
+  String updateErrNotNewer(String current) {
+    return 'Ajan zaten $current ya da daha yeni bir sürümde.';
+  }
+
+  @override
+  String updateErrPlatform(String platform, String arch) {
+    return 'Bu bilgisayar için sürüm yok ($platform, $arch).';
+  }
+
+  @override
+  String get updateErrNoKey =>
+      'Bu ajan derlemesinde sürüm anahtarı yok; sürümleri doğrulayamadığı için kendini güncellemez.';
+
+  @override
+  String get updateErrBusy => 'Bu ajanda zaten bir güncelleme sürüyor.';
+
+  @override
+  String get updateErrUnreachable =>
+      'Ajan sürüm sunucusuna ulaşamadı. Daha sonra tekrar deneyin.';
+
+  @override
+  String get updateErrBadRelease =>
+      'İndirilen sürüm imza veya sağlama denetiminden geçemedi. Hiçbir şey değiştirilmedi.';
+
+  @override
+  String updateErrFailed(String code) {
+    return 'Güncelleme başarısız oldu ($code).';
+  }
+
+  @override
+  String get desktopBackendUnknown => 'bu masaüstü';
+
+  @override
+  String get desktopCapWindows => 'pencere listesi';
+
+  @override
+  String get desktopCapThumbnails => 'pencere önizlemeleri';
+
+  @override
+  String get desktopCapWorkspaces => 'çalışma alanları';
+
+  @override
+  String get desktopCapPcTools => 'Claude’un bilgisayarı kullanması';
+
+  @override
+  String get desktopCapClipboardSync => 'pano eşitleme';
+
+  @override
+  String get desktopCapDpms => 'ekranı kapat/aç';
+
+  @override
+  String get desktopCapLaunch => 'uygulama başlatma';
+
+  @override
+  String desktopCapsMissing(String backend, String features) {
+    return '$backend üzerinde yok: $features.';
+  }
+
+  @override
+  String get desktopHelperDown => 'Masaüstü yardımcısı çalışmıyor';
+
+  @override
+  String get desktopErrUnsupported =>
+      'Bu, bu bilgisayarın masaüstünde kullanılamıyor.';
+
+  @override
+  String get desktopErrHelperMissing =>
+      'Masaüstü yardımcısı (tiphys-desktop) bu bilgisayarda kurulu değil. Kurulum komutunu orada yeniden çalıştırın.';
+
+  @override
+  String get desktopErrHelperFailed =>
+      'Masaüstü yardımcısı hata verdi. Tekrar deneyin; sürerse sağlık kontrolünü çalıştırın.';
+
+  @override
+  String desktopErrPermission(String permission) {
+    return 'Bilgisayar $permission iznini vermedi. Sistem Ayarları › Gizlilik ve Güvenlik › $permission altında Tiphys ajanına izin verin, sonra tekrar deneyin.';
+  }
+
+  @override
+  String desktopErrPermissionOther(String message) {
+    return 'Bilgisayar, masaüstü yardımcısının gereken bir iznini vermedi: $message';
+  }
+
+  @override
+  String get desktopPermAccessibility => 'Erişilebilirlik';
+
+  @override
+  String get desktopPermScreenRecording => 'Ekran Kaydı';
+
+  @override
+  String get liveNotifyTitle => 'Uygulama açıkken';
+
+  @override
+  String get liveNotifyHint =>
+      'ntfy’nin ulaşmadığı bilgisayarlar için Tiphys, uygulama açıkken her 20 saniyede yeni olaylara bakar ve bunları bildirim olarak gösterir. Uygulama kapalıyken bildirim almak için ntfy gerekir.';
+
+  @override
+  String get liveNotifyHintNoPush =>
+      'Bu cihazda Tiphys, uygulama açıkken bilgisayarlarınızda her 20 saniyede yeni olaylara bakar ve bunları bildirim olarak gösterir. Uygulama kapalıyken bildirim almak için ntfy gerekir (kılavuza bakın).';
+
+  @override
+  String get liveNotifyDocs => 'Bildirimler nasıl çalışır';
+
+  @override
+  String get onbSettingsRow => 'Bilgisayar kur';
+
+  @override
+  String get onbSettingsRowHint => 'Ajanı kurun, eşleyin, denetleyin';
+
+  @override
+  String onbStepOf(int step, int total) {
+    return 'Adım $step/$total';
+  }
+
+  @override
+  String get onbSkip => 'Atla';
+
+  @override
+  String get onbBack => 'Geri';
+
+  @override
+  String get onbFinish => 'Bitir';
+
+  @override
+  String get onbWelcomeTitle => 'Bilgisayarlarınız, telefonunuzdan';
+
+  @override
+  String get onbWelcomeBody =>
+      'Tiphys, ulaşmak istediğiniz her bilgisayardaki küçük bir ajanla konuşur: Claude Code çalıştırın, terminal açın, dosyalara göz atın, servisleri izleyin ve masaüstünü kullanın. Hiçbir şey üçüncü taraf bir buluttan geçmez.';
+
+  @override
+  String get onbTailscaleTitle => 'Tailscale gerekli';
+
+  @override
+  String get onbTailscaleBody =>
+      'Telefon bilgisayarlarınıza yalnızca kendi Tailscale ağınızın içinden ulaşır. Tailscale’i bu cihaza ve her bilgisayara kurun ve hepsinde aynı hesapla oturum açın.';
+
+  @override
+  String get onbTailscaleInstall => 'Tailscale’i edinin';
+
+  @override
+  String get onbTailscaleHave => 'Tailscale kurulu';
+
+  @override
+  String get onbInstallTitle => 'Ajanı kurun';
+
+  @override
+  String get onbInstallBody =>
+      'Bilgisayarda tek bir komut çalıştırın. İmzalı ajanı kullanıcınız için kurar, güvenli özellikleri açar, tailnet’inizde yayınlar ve bir QR kod gösterir.';
+
+  @override
+  String get onbInstallOs => 'Bilgisayarın sistemi';
+
+  @override
+  String get onbInstallDocker => 'Docker’lı sunucu';
+
+  @override
+  String get onbInstallRun => 'Terminalde çalıştırın';
+
+  @override
+  String get onbInstallRunWindows => 'PowerShell’de çalıştırın';
+
+  @override
+  String get onbInstallHint =>
+      'İpucu: komutu bilgisayara paylaşın ya da kopyalayın. Daha sonra yeniden çalıştırmak ajanı günceller.';
+
+  @override
+  String get onbInstallHintWindows =>
+      'PowerShell’i normal kullanıcınızla açın (yönetici olarak değil). Daha sonra yeniden çalıştırmak ajanı günceller.';
+
+  @override
+  String get onbInstallHintDocker =>
+      'Sunucular için: imajda masaüstü ve Claude özellikleri yok. <tailnet> yerine tailnet adınızı yazın.';
+
+  @override
+  String get onbInstallDockerDocs => 'Docker kılavuzu';
+
+  @override
+  String get onbPairTitle => 'Bu cihazı eşleyin';
+
+  @override
+  String get onbPairBody =>
+      'Kurucu sonunda bir QR kod gösterir. Onu okutun ya da altına yazılan adres ile token’ı yapıştırın.';
+
+  @override
+  String get onbPairBodyPaste =>
+      'Kurucu sonunda bir QR kod ve altında adres ile token gösterir. O metni kopyalayıp buraya yapıştırın.';
+
+  @override
+  String onbPaired(String name) {
+    return '$name ile eşlendi';
+  }
+
+  @override
+  String get onbPairAgain => 'Başka bir kod okut';
+
+  @override
+  String get onbPairLater =>
+      'QR kod yok mu? Bilgisayarda tiphys-agent pair komutunu çalıştırın. Bu adımı atlayıp bilgisayarı daha sonra Ayarlar › Hostlar altında da ekleyebilirsiniz.';
+
+  @override
+  String get onbHealthTitle => 'Kurulumu denetleyin';
+
+  @override
+  String get onbHealthBody =>
+      'Ajan kendini denetler. Kırmızı olanları düzeltin (önerilen komutu kopyalayıp bilgisayarda çalıştırın), sonra denetimi yeniden çalıştırın.';
+
+  @override
+  String get onbFeaturesTitle => 'Telefon neler yapabilir';
+
+  @override
+  String get onbFeaturesBody =>
+      'Kurucu, bu bilgisayarın desteklediği güvenli özellikleri açtı. Bir şeyleri değiştirebilen özellikler siz açana kadar kapalı kalır.';
+
+  @override
+  String get onbFeaturesOn => 'Şu an açık';
+
+  @override
+  String get onbFeaturesNone => 'Henüz yok.';
+
+  @override
+  String get onbFeaturesRisky => 'Yalnızca gerekirse açın';
+
+  @override
+  String get onbFeaturesRiskyHint =>
+      'Bunları ajan ayarlarından açın. Kilidi açık bu telefonu tutan herkes bunları kullanabilir; bu yüzden önce bir uygulama kilidi kurun (Ayarlar › Güvenlik).';
+
+  @override
+  String get onbRiskClaude =>
+      'Bilgisayarda Claude Code çalıştırır. Claude izin verdiğiniz klasörlerde dosyaları okuyup değiştirebilir ve komut çalıştırabilir.';
+
+  @override
+  String get onbRiskControl =>
+      'Telefonun (ve Claude’un) masaüstünde tıklamasına, yazmasına ve uygulama açmasına izin verir; her seferinde kilidini açtığınız kısa ve görünür bir oturumda.';
+
+  @override
+  String get onbRiskPower =>
+      'Bilgisayarı telefondan kapatın, yeniden başlatın ya da uyutun.';
+
+  @override
+  String get onbRiskConfigfiles =>
+      'Yığınlarınızın .env dosyalarını ve diğer gizli bilgilerini gösterir ve düzenler (değerler siz kilidi açana kadar gizli kalır).';
+
+  @override
+  String get onbRiskSecurityFix =>
+      'Claude’un diğer makinelerdeki güvenlik bulgularını SSH üzerinden düzeltmesine izin verir; yedekli ve onayınızla.';
+
+  @override
+  String get onbRiskUpdate =>
+      'Güncelle’ye dokunduğunuzda yeni imzalı ajan sürümlerini kurar. Ajan yeniden başlar.';
 }

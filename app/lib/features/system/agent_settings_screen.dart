@@ -11,6 +11,7 @@ import '../../state/providers.dart';
 import '../../theme/tokens.dart';
 import '../../widgets/forms.dart';
 import '../../widgets/surfaces.dart';
+import '../desktop/desktop_caps.dart' show desktopCapsOf;
 import '../security/security_fix_targets_screen.dart' show FixTargetsLink;
 import 'agent_providers.dart';
 import 'backups.dart';
@@ -19,7 +20,10 @@ final agentConfigProvider = FutureProvider.autoDispose.family<Map<String, dynami
   return withAgent(ref, hostId, (c) => c.get('/v1/config'));
 });
 
-const agentFeatures = ['system', 'services', 'docker', 'power', 'git', 'desktop', 'control', 'ports', 'transcribe', 'alerts', 'backups', 'homepage', 'claude', 'uptime', 'wake', 'watch', 'research', 'telegram', 'incidents', 'agy', 'securityFix'];
+const agentFeatures = ['system', 'services', 'docker', 'power', 'git', 'desktop', 'control', 'ports', 'transcribe', 'alerts', 'backups', 'homepage', 'claude', 'uptime', 'wake', 'watch', 'research', 'telegram', 'incidents', 'agy', 'securityFix', 'update'];
+
+/// Shown only when the agent reports them (older agents don't know them and would refuse the key).
+const agentFeaturesIfKnown = {'update'};
 
 class AgentSettingsScreen extends ConsumerStatefulWidget {
   const AgentSettingsScreen({super.key, required this.hostId});
@@ -169,11 +173,12 @@ class _AgentSettingsState extends ConsumerState<AgentSettingsScreen> {
             return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
               GroupedSection(title: l.agentFeatures, footer: l.agentRestartHint, children: [
                 for (final f in agentFeatures)
-                  SwitchRow(
-                    title: agentFeatureName(l, f),
-                    value: _features![f] ?? false,
-                    onChanged: (v) => setState(() => _features![f] = v),
-                  ),
+                  if (!agentFeaturesIfKnown.contains(f) || _features!.containsKey(f))
+                    SwitchRow(
+                      title: agentFeatureName(l, f),
+                      value: _features![f] ?? false,
+                      onChanged: (v) => setState(() => _features![f] = v),
+                    ),
               ]),
               if (_features!['securityFix'] == true && _features!['claude'] == true) FixTargetsLink(hostId: widget.hostId),
               FieldCard(title: l.agentAllowedRoots, children: [
@@ -209,7 +214,7 @@ class _AgentSettingsState extends ConsumerState<AgentSettingsScreen> {
                     child: TextButton.icon(onPressed: _useProfileGrafana, icon: const Icon(LucideIcons.copy, size: 16), label: Text(l.agentAlertsUseProfileGrafana)),
                   ),
               ],
-              if (_features!['desktop'] == true && _clipboardSync != null)
+              if (_features!['desktop'] == true && _clipboardSync != null && desktopCapsOf(ref, widget.hostId).has('clipboardSync'))
                 GroupedSection(footer: l.agentClipboardSyncHint, children: [
                   SwitchRow(title: l.agentClipboardSync, value: _clipboardSync!, onChanged: (v) => setState(() => _clipboardSync = v)),
                 ]),
@@ -316,6 +321,7 @@ String agentFeatureName(AppLocalizations l, String f) => switch (f) {
       'incidents' => l.incTitle,
       'agy' => 'agy (Antigravity)',
       'securityFix' => l.fixFeatureName,
+      'update' => l.agentFeatUpdate,
       _ => l.agentFeatWatch,
     };
 

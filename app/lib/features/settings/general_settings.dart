@@ -4,7 +4,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
+import '../../core/links.dart';
+import '../../core/platform.dart';
 import '../../core/profile/model.dart';
+import '../../core/util/open_url.dart';
 import '../../l10n/gen/app_localizations.dart';
 import '../../state/providers.dart';
 import '../../theme/tokens.dart';
@@ -157,6 +160,16 @@ class NotificationsScreen extends ConsumerWidget {
     final agentHosts = p.hosts.where((h) => h.agent != null).toList();
     return SettingsPage(title: l.settingsNotifications, children: [
       const PushSection(),
+      // Without ntfy (and always on iOS and desktops): the app polls the agents while it is open (live_events.dart).
+      GroupedSection(title: l.liveNotifyTitle, footer: hasUnifiedPush ? l.liveNotifyHint : l.liveNotifyHintNoPush, children: [
+        GroupedRow(
+          title: l.liveNotifyDocs,
+          icon: LucideIcons.bookOpen,
+          iconBackground: const Color(0xFF5E5CE6),
+          external: true,
+          onTap: () => openExternal(kDocsNotifications),
+        ),
+      ]),
       GroupedSection(title: 'Claude', children: [
         SwitchRow(title: l.notifyClaudeDone, value: c.notifyDone, onChanged: (v) => setC(c.copyWith(notifyDone: v))),
         SwitchRow(title: l.notifyClaudeWaiting, value: c.notifyWaiting, onChanged: (v) => setC(c.copyWith(notifyWaiting: v))),

@@ -11,21 +11,27 @@ import '../secrets/secret_store.dart';
 /// Agent version this app version expects; an "out of date" warning is shown for an older agent.
 const kExpectedAgentVersion = '0.3.0';
 
-/// "0.2.0" < "0.3.0" ? (numeric x.y.z only; an unparseable version isn't considered old)
-bool agentOutdated(String? version) {
-  if (version == null) return false;
+/// Compares x.y.z with [kExpectedAgentVersion]: <0 older, 0 same, >0 newer; null if either isn't numeric x.y.z.
+int? compareAgentVersion(String? version) {
+  if (version == null) return null;
   List<int>? p(String v) {
     final m = RegExp(r'^(\d+)\.(\d+)\.(\d+)').firstMatch(v);
     return m == null ? null : [for (var i = 1; i <= 3; i++) int.parse(m.group(i)!)];
   }
 
   final a = p(version), b = p(kExpectedAgentVersion);
-  if (a == null || b == null) return false;
+  if (a == null || b == null) return null;
   for (var i = 0; i < 3; i++) {
-    if (a[i] != b[i]) return a[i] < b[i];
+    if (a[i] != b[i]) return a[i] < b[i] ? -1 : 1;
   }
-  return false;
+  return 0;
 }
+
+/// "0.2.0" < "0.3.0" ? (numeric x.y.z only; an unparseable version isn't considered old)
+bool agentOutdated(String? version) => (compareAgentVersion(version) ?? 0) < 0;
+
+/// Agent newer than this app expects (the app may not know its newest features yet).
+bool agentNewer(String? version) => (compareAgentVersion(version) ?? 0) > 0;
 
 class AgentError implements Exception {
   const AgentError(this.code, [this.params = const {}, this.status]);

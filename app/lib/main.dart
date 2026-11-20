@@ -5,9 +5,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/date_symbol_data_local.dart';
-import 'package:path_provider/path_provider.dart';
 
 import 'app.dart';
+import 'core/platform.dart';
 import 'core/profile/codec.dart';
 import 'core/profile/model.dart';
 import 'core/profile/repository.dart';
@@ -17,6 +17,7 @@ import 'core/security/app_lock.dart';
 import 'features/claude/pc_ongoing.dart';
 import 'features/databases/db_data.dart' show dbClearCsvCopiesProvider;
 import 'features/files/share_to_pc.dart';
+import 'features/onboarding/onboarding_state.dart';
 import 'features/settings/push_section.dart';
 import 'state/providers.dart';
 
@@ -25,7 +26,8 @@ Future<void> main(List<String> args) async {
   await initializeDateFormatting();
 
   final codec = ProfileCodec(await rootBundle.loadString('assets/profile/tiphys.schema.json'));
-  final docs = await getApplicationDocumentsDirectory();
+  final docs = await appDataDirectory();
+  await docs.create(recursive: true); // the desktop support folder doesn't exist on first start
   final secrets = KeystoreSecretStore();
   final repo = ProfileRepository(file: File('${docs.path}/profile.json'), codec: codec, secrets: secrets);
 
@@ -40,7 +42,7 @@ Future<void> main(List<String> args) async {
   final push = PushService(vault: const SecureVault(), loadProfile: loadProfile, secrets: secrets);
 
   // If a UnifiedPush message arrived while the app was closed: only show the notification, don't open the UI.
-  final background = args.contains('--unifiedpush-bg');
+  final background = hasUnifiedPush && args.contains('--unifiedpush-bg');
   await push.init(background: background);
   if (background) return;
 
@@ -57,11 +59,14 @@ Future<void> main(List<String> args) async {
     initial = Profile.empty;
   }
 
+  final onboardingSeen = await loadOnboardingSeen(const SecureVault(), hasHosts: initial.hosts.isNotEmpty);
+
   final container = ProviderContainer(overrides: [
     secretStoreProvider.overrideWithValue(secrets),
     repositoryProvider.overrideWithValue(repo),
     initialProfileProvider.overrideWithValue(initial),
     pushServiceProvider.overrideWithValue(push),
+    onboardingSeenInitialProvider.overrideWithValue(onboardingSeen),
   ]);
 
   // CSV exports of the database console left in the cache (an export or share cut short by a kill).

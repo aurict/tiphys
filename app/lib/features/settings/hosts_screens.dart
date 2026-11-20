@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
+import '../../core/platform.dart';
 import '../../core/profile/model.dart';
 import '../../l10n/gen/app_localizations.dart';
 import '../../state/providers.dart';
@@ -259,7 +260,7 @@ class _HostEditScreenState extends ConsumerState<HostEditScreen> {
               SecretFieldView(input: _agentToken, label: l.hostAgentToken),
               OutlinedButton.icon(
                 onPressed: () async {
-                  final p = await PairScannerPage.open(context);
+                  final p = await pickPairing(context);
                   if (p == null) return;
                   setState(() {
                     _agentUrl.text = p.url;
@@ -267,8 +268,8 @@ class _HostEditScreenState extends ConsumerState<HostEditScreen> {
                     if (_name.text.isEmpty) _name.text = p.agent;
                   });
                 },
-                icon: const Icon(LucideIcons.qrCode, size: 18),
-                label: Text(l.pairWithQr),
+                icon: Icon(hasQrScanner ? LucideIcons.qrCode : LucideIcons.clipboardPaste, size: 18),
+                label: Text(hasQrScanner ? l.pairWithQr : l.pairPasteTitle),
                 style: OutlinedButton.styleFrom(minimumSize: const Size(44, 48)),
               ),
             ]),

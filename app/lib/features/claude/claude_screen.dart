@@ -3,10 +3,10 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:path_provider/path_provider.dart';
 import 'package:go_router/go_router.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
+import '../../core/platform.dart';
 import '../../core/util/refresh.dart';
 import '../../core/profile/model.dart';
 import '../../l10n/gen/app_localizations.dart';
@@ -14,6 +14,7 @@ import '../../state/providers.dart';
 import '../../theme/tokens.dart';
 import '../../widgets/floating_tab_bar.dart';
 import '../../widgets/surfaces.dart';
+import '../desktop/desktop_caps.dart' show desktopCapsOf;
 import '../desktop/desktop_data.dart' show controlHeader, controlProvider;
 import '../agy/agy_data.dart';
 import '../system/agent_providers.dart';
@@ -25,7 +26,7 @@ final claudeHostProvider = Provider<Host?>((ref) {
 });
 
 /// Outbox folder (null in widget tests: the box is in memory only, no real disk I/O).
-final outboxDirProvider = Provider<Future<String?> Function()>((ref) => () async => (await getApplicationDocumentsDirectory()).path);
+final outboxDirProvider = Provider<Future<String?> Function()>((ref) => () async => (await appDataDirectory()).path);
 
 final claudeSessionsProvider = FutureProvider.autoDispose<Map<String, dynamic>>((ref) async {
   final host = ref.watch(claudeHostProvider);
@@ -318,7 +319,7 @@ class _NewSessionSheetState extends ConsumerState<_NewSessionSheet> {
     // Use the PC only if desktop + remote control are enabled on the Claude host.
     final host = ref.watch(claudeHostProvider);
     final features = host == null ? null : (ref.watch(healthProvider(host.id)).value?['features'] as Map?);
-    final pcAvailable = widget.resume == null && features != null && features['desktop'] == true && features['control'] == true;
+    final pcAvailable = widget.resume == null && features != null && features['desktop'] == true && features['control'] == true && desktopCapsOf(ref, host!.id).has('pcTools');
     final pc = _pc && pcAvailable;
     Widget chips<T>(String label, List<(T, String)> opts, T value, ValueChanged<T> set) => Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Padding(padding: const EdgeInsets.only(top: 10, bottom: 6), child: Text(label, style: Theme.of(context).textTheme.labelMedium)),

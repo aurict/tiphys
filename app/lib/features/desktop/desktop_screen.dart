@@ -24,6 +24,7 @@ import '../system/media.dart';
 import '../system/tools.dart' show ClipboardScreen, ScreenshotScreen;
 import 'browser.dart';
 import 'browser_screen.dart';
+import 'desktop_caps.dart';
 import 'desktop_data.dart';
 import 'live_screen.dart';
 import 'mobile_view_screen.dart';
@@ -87,6 +88,8 @@ class _DesktopScreenState extends ConsumerState<DesktopScreen> {
     final controlOff = features != null && features['control'] != true;
     final session = ref.watch(controlProvider);
     final active = session != null && session.hostId == widget.hostId;
+    final caps = desktopCapsOf(ref, widget.hostId);
+    final missing = missingDesktopFeatures(l, caps);
 
     final slivers = <Widget>[
       SliverAppBar(
@@ -99,7 +102,7 @@ class _DesktopScreenState extends ConsumerState<DesktopScreen> {
           onPressed: () => context.canPop() ? context.pop() : context.go('/system'),
         ),
         actions: [
-          if (!featureOff)
+          if (!featureOff && caps.has('stream'))
             IconButton(
               tooltip: l.liveTitle,
               icon: const Icon(LucideIcons.monitorPlay),
@@ -115,6 +118,7 @@ class _DesktopScreenState extends ConsumerState<DesktopScreen> {
                 ref.invalidate(desktopStateProvider(widget.hostId));
                 ref.invalidate(desktopAppsProvider((widget.hostId, _lang)));
                 ref.invalidate(browserStatusProvider(widget.hostId));
+                ref.invalidate(desktopCapsProvider(widget.hostId));
               },
             ),
         ],
@@ -125,9 +129,14 @@ class _DesktopScreenState extends ConsumerState<DesktopScreen> {
     } else {
       slivers.addAll([
         if (controlOff) _pad(SliverToBoxAdapter(child: _Note(icon: LucideIcons.eye, text: l.desktopControlOffHint))),
-        ..._windowSlivers(l, controlOff),
-        _pad(SliverToBoxAdapter(child: _Tools(hostId: widget.hostId, host: host!, controlOff: controlOff, powerOn: features?['power'] == true))),
-        ..._appSlivers(l, controlOff),
+        // Helper backend that couldn't start (no helper binary, OS permission): say why instead of failing each call.
+        if (caps.error != null && caps.caps.isEmpty)
+          _pad(SliverToBoxAdapter(child: _Note(icon: LucideIcons.monitorOff, title: l.desktopHelperDown, text: agentErrorText(l, AgentError(caps.error!)))))
+        else if (missing.isNotEmpty && !caps.isHyprland)
+          _pad(SliverToBoxAdapter(child: _Note(icon: LucideIcons.info, text: l.desktopCapsMissing(desktopBackendName(l, caps), missing.join(', '))))),
+        if (caps.has('windows')) ..._windowSlivers(l, controlOff, caps),
+        _pad(SliverToBoxAdapter(child: _Tools(hostId: widget.hostId, host: host!, controlOff: controlOff, powerOn: features?['power'] == true, caps: caps))),
+        if (caps.has('apps')) ..._appSlivers(l, controlOff, caps),
       ]);
     }
     slivers.add(SliverToBoxAdapter(child: SizedBox(height: MediaQuery.paddingOf(context).bottom + (active ? 96 : 40))));
@@ -159,7 +168,7 @@ class _DesktopScreenState extends ConsumerState<DesktopScreen> {
     return controlOff;
   }
 
-  List<Widget> _windowSlivers(AppLocalizations l, bool controlOff) {
+  List<Widget> _windowSlivers(AppLocalizations l, bool controlOff, DesktopCaps caps) {
     final value = ref.watch(desktopStateProvider(widget.hostId));
     return value.when(
       skipLoadingOnRefresh: true,
@@ -176,30 +185,32 @@ class _DesktopScreenState extends ConsumerState<DesktopScreen> {
         )),
       ],
       data: (s) => [
-        _pad(SliverToBoxAdapter(child: SectionLabel(l.desktopWorkspaces))),
-        SliverToBoxAdapter(
-          child: SizedBox(
-            height: 58,
-            child: ListView(
-              scrollDirection: Axis.horizontal,
-              padding: const EdgeInsets.symmetric(horizontal: TiphysTokens.gutter),
-              children: [
-                for (final w in s.workspaces)
-                  Padding(
-                    padding: const EdgeInsets.only(right: 8),
-                    child: _WorkspaceChip(
-                      ws: w,
-                      onTap: w.focused
-                          ? null
-                          : () {
-                              if (!_blocked(controlOff)) _act('/v1/desktop/workspace/${w.id}');
-                            },
+        if (caps.has('workspaces')) ...[
+          _pad(SliverToBoxAdapter(child: SectionLabel(l.desktopWorkspaces))),
+          SliverToBoxAdapter(
+            child: SizedBox(
+              height: 58,
+              child: ListView(
+                scrollDirection: Axis.horizontal,
+                padding: const EdgeInsets.symmetric(horizontal: TiphysTokens.gutter),
+                children: [
+                  for (final w in s.workspaces)
+                    Padding(
+                      padding: const EdgeInsets.only(right: 8),
+                      child: _WorkspaceChip(
+                        ws: w,
+                        onTap: w.focused
+                            ? null
+                            : () {
+                                if (!_blocked(controlOff)) _act('/v1/desktop/workspace/${w.id}');
+                              },
+                      ),
                     ),
-                  ),
-              ],
+                ],
+              ),
             ),
           ),
-        ),
+        ],
         _pad(SliverToBoxAdapter(child: SectionLabel(l.desktopWindows))),
         if (s.windows.isEmpty)
           _pad(SliverToBoxAdapter(child: _Note(icon: LucideIcons.appWindow, title: l.desktopNoWindows, text: l.desktopNoWindowsHint)))
@@ -210,6 +221,8 @@ class _DesktopScreenState extends ConsumerState<DesktopScreen> {
             itemBuilder: (c, i) => _WindowCard(
               hostId: widget.hostId,
               w: s.windows[i],
+              thumbs: caps.has('thumbnails'),
+              canClose: caps.has('windowActions'),
               onFocus: () {
                 if (!_blocked(controlOff)) _act('/v1/desktop/windows/${s.windows[i].address}/focus');
               },
@@ -219,7 +232,7 @@ class _DesktopScreenState extends ConsumerState<DesktopScreen> {
                 if (!await confirmDialog(context, message: l.desktopCloseConfirm(w.label), confirmLabel: l.desktopCloseWindow, destructive: true)) return;
                 await _act('/v1/desktop/windows/${w.address}/close');
               },
-              onMenu: () => _windowMenu(s, s.windows[i], controlOff),
+              onMenu: () => _windowMenu(s, s.windows[i], controlOff, caps),
             ),
           )),
           _pad(SliverToBoxAdapter(
@@ -233,7 +246,8 @@ class _DesktopScreenState extends ConsumerState<DesktopScreen> {
     );
   }
 
-  Future<void> _windowMenu(DesktopState s, DesktopWindow w, bool controlOff) async {
+  Future<void> _windowMenu(DesktopState s, DesktopWindow w, bool controlOff, DesktopCaps caps) async {
+    final actions = caps.has('windowActions');
     final l = AppLocalizations.of(context);
     final t = context.tokens;
     final picked = await showModalBottomSheet<String>(
@@ -247,30 +261,36 @@ class _DesktopScreenState extends ConsumerState<DesktopScreen> {
               padding: const EdgeInsets.fromLTRB(20, 0, 20, 8),
               child: Text(w.label, style: Theme.of(c).textTheme.titleMedium, maxLines: 2, overflow: TextOverflow.ellipsis),
             ),
-            if (w.visible) ListTile(leading: const Icon(LucideIcons.monitorPlay), title: Text(l.liveShowWindow), onTap: () => Navigator.pop(c, 'live')),
-            if (w.visible) ListTile(leading: const Icon(LucideIcons.layoutList), title: Text(l.uiTitle), onTap: () => Navigator.pop(c, 'mobile')),
+            if (w.visible && caps.has('stream')) ListTile(leading: const Icon(LucideIcons.monitorPlay), title: Text(l.liveShowWindow), onTap: () => Navigator.pop(c, 'live')),
+            if (w.visible && caps.has('mobileView')) ListTile(leading: const Icon(LucideIcons.layoutList), title: Text(l.uiTitle), onTap: () => Navigator.pop(c, 'mobile')),
             ListTile(leading: const Icon(LucideIcons.scanEye), title: Text(l.desktopFocus), onTap: () => Navigator.pop(c, 'focus')),
-            ListTile(leading: const Icon(LucideIcons.maximize), title: Text(l.desktopFullscreen), onTap: () => Navigator.pop(c, 'fullscreen')),
-            ListTile(leading: const Icon(LucideIcons.pictureInPicture2), title: Text(l.desktopFloat), onTap: () => Navigator.pop(c, 'float')),
-            ListTile(leading: const Icon(LucideIcons.pin), title: Text(l.desktopPin), onTap: () => Navigator.pop(c, 'pin')),
-            Padding(padding: const EdgeInsets.fromLTRB(20, 8, 20, 6), child: Text(l.desktopMoveTo, style: Theme.of(c).textTheme.bodySmall)),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              child: Wrap(spacing: 8, runSpacing: 8, children: [
-                for (final n in s.moveTargets)
-                  ActionChip(
-                    label: Text('$n'),
-                    tooltip: l.desktopWorkspace('$n'),
-                    onPressed: n == w.workspaceId ? null : () => Navigator.pop(c, 'move:$n'),
-                  ),
-              ]),
-            ),
+            if (actions) ...[
+              ListTile(leading: const Icon(LucideIcons.maximize), title: Text(l.desktopFullscreen), onTap: () => Navigator.pop(c, 'fullscreen')),
+              ListTile(leading: const Icon(LucideIcons.pictureInPicture2), title: Text(l.desktopFloat), onTap: () => Navigator.pop(c, 'float')),
+              // The helper backend has no "pin"; it answers 501.
+              if (caps.isHyprland) ListTile(leading: const Icon(LucideIcons.pin), title: Text(l.desktopPin), onTap: () => Navigator.pop(c, 'pin')),
+            ],
+            if (actions && caps.has('workspaces')) ...[
+              Padding(padding: const EdgeInsets.fromLTRB(20, 8, 20, 6), child: Text(l.desktopMoveTo, style: Theme.of(c).textTheme.bodySmall)),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: Wrap(spacing: 8, runSpacing: 8, children: [
+                  for (final n in s.moveTargets)
+                    ActionChip(
+                      label: Text('$n'),
+                      tooltip: l.desktopWorkspace('$n'),
+                      onPressed: n == w.workspaceId ? null : () => Navigator.pop(c, 'move:$n'),
+                    ),
+                ]),
+              ),
+            ],
             const SizedBox(height: 6),
-            ListTile(
-              leading: Icon(LucideIcons.x, color: t.danger),
-              title: Text(l.desktopCloseWindow, style: TextStyle(color: t.danger)),
-              onTap: () => Navigator.pop(c, 'close'),
-            ),
+            if (actions)
+              ListTile(
+                leading: Icon(LucideIcons.x, color: t.danger),
+                title: Text(l.desktopCloseWindow, style: TextStyle(color: t.danger)),
+                onTap: () => Navigator.pop(c, 'close'),
+              ),
           ]),
         ),
       ),
@@ -291,7 +311,7 @@ class _DesktopScreenState extends ConsumerState<DesktopScreen> {
     }
   }
 
-  List<Widget> _appSlivers(AppLocalizations l, bool controlOff) {
+  List<Widget> _appSlivers(AppLocalizations l, bool controlOff, DesktopCaps caps) {
     final value = ref.watch(desktopAppsProvider((widget.hostId, _lang)));
     final recentIds = ref.watch(desktopRecentProvider.select((m) => m[widget.hostId] ?? const <String>[]));
     final header = <Widget>[
@@ -323,6 +343,7 @@ class _DesktopScreenState extends ConsumerState<DesktopScreen> {
         final recents = [for (final id in recentIds) ?byId[id]];
         void launch(DesktopApp a) async {
           if (_blocked(controlOff)) return;
+          if (!caps.has('launch')) return toast(context, l.desktopCapsMissing(desktopBackendName(l, caps), l.desktopCapLaunch));
           if (await desktopAction(context, ref, widget.hostId, '/v1/desktop/apps/${Uri.encodeComponent(a.id)}/launch', done: l.desktopLaunched(a.name))) {
             await ref.read(desktopRecentProvider.notifier).add(widget.hostId, a.id);
           }
@@ -500,9 +521,15 @@ class _WorkspaceChip extends StatelessWidget {
 }
 
 class _WindowCard extends ConsumerWidget {
-  const _WindowCard({required this.hostId, required this.w, required this.onFocus, required this.onClose, required this.onMenu});
+  const _WindowCard({required this.hostId, required this.w, required this.onFocus, required this.onClose, required this.onMenu, this.thumbs = true, this.canClose = true});
   final String hostId;
   final DesktopWindow w;
+
+  /// The backend makes window thumbnails (otherwise the app icon).
+  final bool thumbs;
+
+  /// Window actions (close by swipe) are available.
+  final bool canClose;
   final VoidCallback onFocus;
   final Future<void> Function() onClose;
   final VoidCallback onMenu;
@@ -511,7 +538,7 @@ class _WindowCard extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final l = AppLocalizations.of(context);
     final t = context.tokens;
-    final thumb = w.visible ? ref.watch(desktopThumbProvider((hostId, w.address))).value : null;
+    final thumb = w.visible && thumbs ? ref.watch(desktopThumbProvider((hostId, w.address))).value : null;
     final preview = ClipRRect(
       borderRadius: BorderRadius.circular(12),
       child: ColoredBox(
@@ -545,7 +572,7 @@ class _WindowCard extends ConsumerWidget {
     );
     return Dismissible(
       key: ValueKey('win-${w.address}'),
-      direction: DismissDirection.horizontal,
+      direction: canClose ? DismissDirection.horizontal : DismissDirection.none,
       confirmDismiss: (_) async {
         await onClose();
         return false; // the card disappears by itself when the list refreshes
@@ -558,7 +585,7 @@ class _WindowCard extends ConsumerWidget {
         button: true,
         excludeSemantics: true,
         customSemanticsActions: {
-          CustomSemanticsAction(label: l.desktopCloseWindow): () => onClose(),
+          if (canClose) CustomSemanticsAction(label: l.desktopCloseWindow): () => onClose(),
           CustomSemanticsAction(label: l.desktopWindowMenu): onMenu,
         },
         child: TCard(
@@ -687,11 +714,12 @@ class _Pill extends StatelessWidget {
 
 /// Media, clipboard, screenshot (existing tool screens) + screen off/on (DPMS) + sleep.
 class _Tools extends ConsumerWidget {
-  const _Tools({required this.hostId, required this.host, required this.controlOff, required this.powerOn});
+  const _Tools({required this.hostId, required this.host, required this.controlOff, required this.powerOn, required this.caps});
   final String hostId;
   final Host host;
   final bool controlOff;
   final bool powerOn;
+  final DesktopCaps caps;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -713,25 +741,27 @@ class _Tools extends ConsumerWidget {
           },
         ),
       GroupedRow(title: l.mediaTitle, icon: LucideIcons.music, iconBackground: const Color(0xFFFF375F), onTap: () => open(MediaScreen(hostId: hostId))),
-      GroupedRow(title: l.toolsClipboard, icon: LucideIcons.clipboard, iconBackground: const Color(0xFFBF5AF2), onTap: () => open(ClipboardScreen(host: host))),
-      GroupedRow(title: l.toolsScreenshot, icon: LucideIcons.monitor, iconBackground: const Color(0xFF30B0C7), onTap: () => open(ScreenshotScreen(host: host))),
-      GroupedRow(
-        title: l.moonlightEntry,
-        subtitle: l.moonlightSubtitle,
-        icon: LucideIcons.gamepad2,
-        iconBackground: const Color(0xFF5E5CE6),
-        onTap: () => showMoonlightSheet(context, hostId),
-      ),
-      GroupedRow(
-        title: screenOn ? l.desktopScreenOff : l.desktopScreenOn,
-        icon: screenOn ? LucideIcons.monitorOff : LucideIcons.monitorCheck,
-        iconBackground: const Color(0xFF636366),
-        showChevron: false,
-        onTap: () {
-          if (controlOff) return toast(context, l.desktopControlOffHint);
-          desktopAction(context, ref, hostId, '/v1/desktop/dpms/${screenOn ? 'off' : 'on'}');
-        },
-      ),
+      if (caps.has('clipboard')) GroupedRow(title: l.toolsClipboard, icon: LucideIcons.clipboard, iconBackground: const Color(0xFFBF5AF2), onTap: () => open(ClipboardScreen(host: host))),
+      if (caps.has('screenshot')) GroupedRow(title: l.toolsScreenshot, icon: LucideIcons.monitor, iconBackground: const Color(0xFF30B0C7), onTap: () => open(ScreenshotScreen(host: host))),
+      if (caps.has('sunshine'))
+        GroupedRow(
+          title: l.moonlightEntry,
+          subtitle: l.moonlightSubtitle,
+          icon: LucideIcons.gamepad2,
+          iconBackground: const Color(0xFF5E5CE6),
+          onTap: () => showMoonlightSheet(context, hostId),
+        ),
+      if (caps.has('dpms'))
+        GroupedRow(
+          title: screenOn ? l.desktopScreenOff : l.desktopScreenOn,
+          icon: screenOn ? LucideIcons.monitorOff : LucideIcons.monitorCheck,
+          iconBackground: const Color(0xFF636366),
+          showChevron: false,
+          onTap: () {
+            if (controlOff) return toast(context, l.desktopControlOffHint);
+            desktopAction(context, ref, hostId, '/v1/desktop/dpms/${screenOn ? 'off' : 'on'}');
+          },
+        ),
       if (powerOn)
         GroupedRow(
           title: l.systemSuspend,

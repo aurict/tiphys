@@ -1,6 +1,7 @@
 import 'package:go_router/go_router.dart';
 
 import '../system/agent_settings_screen.dart';
+import '../system/doctor.dart';
 import 'claude_terminal_files.dart';
 import 'general_settings.dart';
 import 'hosts_screens.dart';
@@ -17,6 +18,7 @@ final settingsRoute = GoRoute(
     GoRoute(path: 'hosts', builder: (c, s) => const HostsScreen(), routes: [
       GoRoute(path: 'edit', builder: (c, s) => HostEditScreen(hostId: s.uri.queryParameters['id'])),
       GoRoute(path: 'agent', builder: (c, s) => AgentSettingsScreen(hostId: s.uri.queryParameters['id']!)),
+      GoRoute(path: 'health', builder: (c, s) => HealthScreen(hostId: s.uri.queryParameters['id'] ?? '')),
     ]),
     GoRoute(path: 'secrets', builder: (c, s) => const SecretsScreen()),
     GoRoute(path: 'claude', builder: (c, s) => const ClaudeSettingsScreen()),

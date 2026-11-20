@@ -1967,7 +1967,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String agentOutdatedHint(String version) {
-    return 'This app expects agent $version. Update it on the PC with tools/deploy-agent.sh (remote) or by rebuilding the agent (local).';
+    return 'This app expects agent $version. Update it with “Update” below if offered, or re-run the install command on that computer.';
   }
 
   @override
@@ -11684,4 +11684,575 @@ class AppLocalizationsEn extends AppLocalizations {
   String fixErrSshConfig(String host, String reason) {
     return 'The SSH destination of “$host” cannot be used: $reason. Use a direct destination (user@host) without ProxyCommand, ProxyJump, LocalCommand or KnownHostsCommand.';
   }
+
+  @override
+  String get pairPaste => 'Paste';
+
+  @override
+  String get pairPasteTitle => 'Paste pairing code';
+
+  @override
+  String get pairPasteHint =>
+      'Paste the text of the QR code, or the address and token that `tiphys-agent pair` prints below it.';
+
+  @override
+  String get pairPasteLabel => 'Pairing code';
+
+  @override
+  String get pairPasteFromClipboard => 'Paste from clipboard';
+
+  @override
+  String get pairPasteUse => 'Pair';
+
+  @override
+  String get pairPasteInvalid =>
+      'No Tiphys pairing code found. It needs the agent address (https://…) and a token starting with tph_.';
+
+  @override
+  String get doctorTitle => 'Health check';
+
+  @override
+  String get doctorRowHint =>
+      'Checks Tailscale, the service, settings, disk and version';
+
+  @override
+  String get doctorRunning => 'Checking the install…';
+
+  @override
+  String get doctorRerun => 'Run again';
+
+  @override
+  String get doctorAllGood => 'Everything looks good';
+
+  @override
+  String doctorSummary(int fails, int warns) {
+    String _temp0 = intl.Intl.pluralLogic(
+      fails,
+      locale: localeName,
+      other: '$fails problems',
+      one: '1 problem',
+      zero: 'No problems',
+    );
+    String _temp1 = intl.Intl.pluralLogic(
+      warns,
+      locale: localeName,
+      other: '$warns warnings',
+      one: '1 warning',
+      zero: 'no warnings',
+    );
+    return '$_temp0, $_temp1';
+  }
+
+  @override
+  String doctorAgentVersion(String version) {
+    return 'Agent $version';
+  }
+
+  @override
+  String get doctorProblems => 'Problems';
+
+  @override
+  String get doctorWarnings => 'Warnings';
+
+  @override
+  String get doctorOk => 'OK';
+
+  @override
+  String get doctorStatusFail => 'Problem';
+
+  @override
+  String get doctorStatusWarn => 'Warning';
+
+  @override
+  String get doctorStatusOk => 'OK';
+
+  @override
+  String get doctorFixLabel => 'Suggested fix (run it on that computer)';
+
+  @override
+  String get doctorMissingTitle => 'This agent has no health check yet';
+
+  @override
+  String get doctorMissingHint =>
+      'It is older than the app. Update the agent: re-run the install command on that computer, then try again.';
+
+  @override
+  String doctorTailscaleOk(String name) {
+    return 'Tailscale is running as $name.';
+  }
+
+  @override
+  String get doctorTailscaleMissing =>
+      'Tailscale is not installed. Tiphys reaches this computer only through your tailnet.';
+
+  @override
+  String get doctorTailscaleLoggedOut =>
+      'Tailscale is installed but not logged in.';
+
+  @override
+  String get doctorTailscaleStopped => 'Tailscale is not running.';
+
+  @override
+  String doctorTailscaleServed(String ports) {
+    return 'tailscale serve publishes the agent on HTTPS port $ports.';
+  }
+
+  @override
+  String doctorTailscaleNotServed(String port) {
+    return 'tailscale serve does not publish the agent (port $port) in your tailnet.';
+  }
+
+  @override
+  String get doctorTailscaleServeUnknown =>
+      'Could not read the tailscale serve status.';
+
+  @override
+  String doctorAgentListening(String address) {
+    return 'The agent answers on $address.';
+  }
+
+  @override
+  String doctorAgentNotListening(String address) {
+    return 'The agent does not answer on $address.';
+  }
+
+  @override
+  String doctorConfigOk(String path) {
+    return 'The settings file $path is private.';
+  }
+
+  @override
+  String doctorConfigMissing(String path) {
+    return 'No settings file at $path.';
+  }
+
+  @override
+  String doctorConfigPermissions(String path, String mode) {
+    return '$path has mode $mode; it must be 600 because it holds credentials.';
+  }
+
+  @override
+  String doctorConfigWrongOwner(String path) {
+    return '$path belongs to another user.';
+  }
+
+  @override
+  String get doctorTimeSynced => 'The clock is synchronized.';
+
+  @override
+  String get doctorTimeNotSynced =>
+      'The clock is not synchronized (certificates and schedules need the right time).';
+
+  @override
+  String get doctorTimeUnchecked => 'Clock sync was not checked.';
+
+  @override
+  String doctorDiskOk(String mb) {
+    return '$mb MB free disk space.';
+  }
+
+  @override
+  String doctorDiskLow(String mb) {
+    return 'Low disk space: $mb MB free.';
+  }
+
+  @override
+  String doctorDiskFull(String mb) {
+    return 'Only $mb MB free disk space.';
+  }
+
+  @override
+  String get doctorDiskUnchecked => 'Disk space was not checked.';
+
+  @override
+  String doctorNodeOk(String version) {
+    return 'Node.js $version.';
+  }
+
+  @override
+  String doctorNodeOld(String version) {
+    return 'Node.js $version works; 24 is recommended.';
+  }
+
+  @override
+  String doctorNodeTooOld(String version) {
+    return 'Node.js $version is too old (22 or newer is needed).';
+  }
+
+  @override
+  String doctorFeatureToolsMissing(String feature, String tools) {
+    return 'The “$feature” feature is on but needs: $tools.';
+  }
+
+  @override
+  String doctorFeatureDockerDenied(String socket) {
+    return 'The “docker” feature is on but $socket is not accessible to this user.';
+  }
+
+  @override
+  String doctorFeatureTranscribeMissing(String command) {
+    return 'The “transcribe” feature is on but $command does not exist.';
+  }
+
+  @override
+  String doctorPushOk(String count) {
+    return 'Push notifications: $count device(s) registered.';
+  }
+
+  @override
+  String get doctorPushNotConfigured =>
+      'No device is registered for push notifications (set up ntfy in the app).';
+
+  @override
+  String doctorVersionLatest(String current) {
+    return 'Version $current is the latest.';
+  }
+
+  @override
+  String doctorVersionOutdated(String current, String latest) {
+    return 'Version $current; $latest is available.';
+  }
+
+  @override
+  String doctorVersionUnchecked(String current) {
+    return 'Version $current; the latest release could not be checked.';
+  }
+
+  @override
+  String get agentFeatUpdate => 'Self-update';
+
+  @override
+  String agentNewerHint(String version, String expected) {
+    return 'This agent ($version) is newer than this app expects ($expected). Update the app if something does not work.';
+  }
+
+  @override
+  String updateAvailable(String version) {
+    return 'Update available · $version';
+  }
+
+  @override
+  String updateRowHint(String current) {
+    return 'Installed $current. Tap to update this agent.';
+  }
+
+  @override
+  String updateRowManualHint(String current) {
+    return 'Installed $current. This install updates the way it was installed.';
+  }
+
+  @override
+  String get updateAction => 'Update';
+
+  @override
+  String updateConfirm(String host, String current, String latest) {
+    return 'Update the agent on $host from $current to $latest? It downloads the signed release, checks it and restarts. Open sessions on that computer are interrupted.';
+  }
+
+  @override
+  String get updateAuthTitle => 'Update the agent';
+
+  @override
+  String updateTitle(String host) {
+    return 'Updating $host';
+  }
+
+  @override
+  String updateApplying(String version) {
+    return 'Downloading and checking $version…';
+  }
+
+  @override
+  String updateRestarting(String version) {
+    return 'The agent is restarting. Waiting for $version to answer…';
+  }
+
+  @override
+  String updateTimeout(String version) {
+    return 'The agent did not come back with $version in time. If it failed to start, it switches back to the previous version by itself. Run the health check to see what is wrong.';
+  }
+
+  @override
+  String updateDone(String host, String version) {
+    return '$host now runs $version';
+  }
+
+  @override
+  String updateManualTitle(String version) {
+    return 'Update to $version';
+  }
+
+  @override
+  String get updateManualBody =>
+      'This agent was not installed with the one-command installer (it runs from a git checkout, a package or Docker), so it cannot update itself. Update it on that computer the way it was installed:';
+
+  @override
+  String get updateManualInstaller => 'Switch to the installer (recommended)';
+
+  @override
+  String get updateManualCheckout => 'Git checkout';
+
+  @override
+  String get updateManualPackages =>
+      'Packages (.deb, .rpm, AUR, Homebrew): use the package manager. Docker: rebuild the image and recreate the container.';
+
+  @override
+  String get updateErrDisabled =>
+      'Self-update is off on this agent. Turn on “Self-update” in its agent settings first.';
+
+  @override
+  String get updateErrNotManaged =>
+      'This install cannot update itself; update it the way it was installed.';
+
+  @override
+  String updateErrNotNewer(String current) {
+    return 'The agent already runs $current or newer.';
+  }
+
+  @override
+  String updateErrPlatform(String platform, String arch) {
+    return 'There is no release for this computer ($platform, $arch).';
+  }
+
+  @override
+  String get updateErrNoKey =>
+      'This agent build has no release key, so it cannot check releases and does not update itself.';
+
+  @override
+  String get updateErrBusy => 'An update is already running on this agent.';
+
+  @override
+  String get updateErrUnreachable =>
+      'The agent could not reach the release server. Try again later.';
+
+  @override
+  String get updateErrBadRelease =>
+      'The downloaded release failed its signature or checksum check. Nothing was changed.';
+
+  @override
+  String updateErrFailed(String code) {
+    return 'The update failed ($code).';
+  }
+
+  @override
+  String get desktopBackendUnknown => 'this desktop';
+
+  @override
+  String get desktopCapWindows => 'window list';
+
+  @override
+  String get desktopCapThumbnails => 'window thumbnails';
+
+  @override
+  String get desktopCapWorkspaces => 'workspaces';
+
+  @override
+  String get desktopCapPcTools => 'Claude using the PC';
+
+  @override
+  String get desktopCapClipboardSync => 'clipboard sync';
+
+  @override
+  String get desktopCapDpms => 'screen off/on';
+
+  @override
+  String get desktopCapLaunch => 'starting apps';
+
+  @override
+  String desktopCapsMissing(String backend, String features) {
+    return 'Not available on $backend: $features.';
+  }
+
+  @override
+  String get desktopHelperDown => 'The desktop helper is not running';
+
+  @override
+  String get desktopErrUnsupported =>
+      'This is not available on this computer’s desktop.';
+
+  @override
+  String get desktopErrHelperMissing =>
+      'The desktop helper (tiphys-desktop) is not installed on this computer. Re-run the install command there.';
+
+  @override
+  String get desktopErrHelperFailed =>
+      'The desktop helper failed. Try again; if it keeps failing, run the health check.';
+
+  @override
+  String desktopErrPermission(String permission) {
+    return 'The computer refused the $permission permission. Allow the Tiphys agent under System Settings › Privacy & Security › $permission, then try again.';
+  }
+
+  @override
+  String desktopErrPermissionOther(String message) {
+    return 'The computer refused a permission the desktop helper needs: $message';
+  }
+
+  @override
+  String get desktopPermAccessibility => 'Accessibility';
+
+  @override
+  String get desktopPermScreenRecording => 'Screen Recording';
+
+  @override
+  String get liveNotifyTitle => 'While the app is open';
+
+  @override
+  String get liveNotifyHint =>
+      'For computers that ntfy does not reach, Tiphys checks for new events every 20 seconds while the app is open and shows them as notifications. Notifications while the app is closed need ntfy.';
+
+  @override
+  String get liveNotifyHintNoPush =>
+      'On this device Tiphys checks your computers for new events every 20 seconds while the app is open and shows them as notifications. Notifications while the app is closed need ntfy (see the guide).';
+
+  @override
+  String get liveNotifyDocs => 'How notifications work';
+
+  @override
+  String get onbSettingsRow => 'Set up a computer';
+
+  @override
+  String get onbSettingsRowHint => 'Install the agent, pair, check it';
+
+  @override
+  String onbStepOf(int step, int total) {
+    return 'Step $step of $total';
+  }
+
+  @override
+  String get onbSkip => 'Skip';
+
+  @override
+  String get onbBack => 'Back';
+
+  @override
+  String get onbFinish => 'Finish';
+
+  @override
+  String get onbWelcomeTitle => 'Your computers, from your phone';
+
+  @override
+  String get onbWelcomeBody =>
+      'Tiphys talks to a small agent on each computer you want to reach: run Claude Code, open a terminal, browse files, watch services and use the desktop. Nothing goes through a third-party cloud.';
+
+  @override
+  String get onbTailscaleTitle => 'You need Tailscale';
+
+  @override
+  String get onbTailscaleBody =>
+      'The phone reaches your computers only inside your own Tailscale network. Install Tailscale on this device and on each computer, and log them into the same account.';
+
+  @override
+  String get onbTailscaleInstall => 'Get Tailscale';
+
+  @override
+  String get onbTailscaleHave => 'I have Tailscale';
+
+  @override
+  String get onbInstallTitle => 'Install the agent';
+
+  @override
+  String get onbInstallBody =>
+      'Run one command on the computer. It installs the signed agent for your user, turns on the safe features, publishes it in your tailnet and shows a QR code.';
+
+  @override
+  String get onbInstallOs => 'The computer runs';
+
+  @override
+  String get onbInstallDocker => 'Server with Docker';
+
+  @override
+  String get onbInstallRun => 'Run in a terminal';
+
+  @override
+  String get onbInstallRunWindows => 'Run in PowerShell';
+
+  @override
+  String get onbInstallHint =>
+      'Tip: share it to the computer or copy it there. Running it again later updates the agent.';
+
+  @override
+  String get onbInstallHintWindows =>
+      'Open PowerShell as your normal user (not as administrator). Running it again later updates the agent.';
+
+  @override
+  String get onbInstallHintDocker =>
+      'For servers: the image has no desktop or Claude features. Replace <tailnet> with your tailnet name.';
+
+  @override
+  String get onbInstallDockerDocs => 'Docker guide';
+
+  @override
+  String get onbPairTitle => 'Pair this device';
+
+  @override
+  String get onbPairBody =>
+      'At the end, the installer shows a QR code. Scan it, or paste the address and token printed below it.';
+
+  @override
+  String get onbPairBodyPaste =>
+      'At the end, the installer shows a QR code with the address and token below it. Copy that text and paste it here.';
+
+  @override
+  String onbPaired(String name) {
+    return 'Paired with $name';
+  }
+
+  @override
+  String get onbPairAgain => 'Scan another code';
+
+  @override
+  String get onbPairLater =>
+      'No QR code? Run tiphys-agent pair on the computer. You can also skip this and add the computer later under Settings › Hosts.';
+
+  @override
+  String get onbHealthTitle => 'Check the install';
+
+  @override
+  String get onbHealthBody =>
+      'The agent checks itself. Fix what is red (copy the suggested command and run it on the computer), then run the check again.';
+
+  @override
+  String get onbFeaturesTitle => 'What the phone can do';
+
+  @override
+  String get onbFeaturesBody =>
+      'The installer turned on the safe features this computer supports. Features that can change things stay off until you turn them on.';
+
+  @override
+  String get onbFeaturesOn => 'On now';
+
+  @override
+  String get onbFeaturesNone => 'None yet.';
+
+  @override
+  String get onbFeaturesRisky => 'Turn on only if you need them';
+
+  @override
+  String get onbFeaturesRiskyHint =>
+      'Turn these on in the agent settings. Anyone holding this unlocked phone could use them, so set an app lock (Settings › Security) first.';
+
+  @override
+  String get onbRiskClaude =>
+      'Runs Claude Code on the computer. Claude can read and change files and run commands in the folders you allow.';
+
+  @override
+  String get onbRiskControl =>
+      'Lets the phone (and Claude) click, type and open apps on the desktop, in a short, visible session you unlock each time.';
+
+  @override
+  String get onbRiskPower =>
+      'Shut down, restart or put the computer to sleep from the phone.';
+
+  @override
+  String get onbRiskConfigfiles =>
+      'Shows and edits .env files and other secrets of your stacks (values stay hidden until you unlock).';
+
+  @override
+  String get onbRiskSecurityFix =>
+      'Lets Claude fix security findings on other machines over SSH, with backups and your approval.';
+
+  @override
+  String get onbRiskUpdate =>
+      'Installs new signed agent releases when you tap Update. The agent restarts.';
 }

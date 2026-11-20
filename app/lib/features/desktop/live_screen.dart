@@ -29,6 +29,7 @@ import '../system/agent_providers.dart';
 import 'desktop_data.dart';
 import 'desktop_screen.dart' show controlBackgroundLimit;
 import 'live_stream.dart';
+import 'desktop_caps.dart';
 import 'moonlight.dart';
 import 'remote_strip.dart';
 
@@ -219,7 +220,8 @@ class _LiveScreenState extends ConsumerState<LiveScreen> {
                                   onHide: () => setState(() => _chrome = false),
                                   onStop: _stop,
                                   onBack: _exit,
-                                  onMoonlight: () => showMoonlightSheet(context, widget.hostId),
+                                  onMoonlight: desktopCapsOf(ref, widget.hostId).has('sunshine') ? () => showMoonlightSheet(context, widget.hostId) : null,
+                                  h264: desktopCapsOf(ref, widget.hostId).has('h264'),
                                 ),
                               )
                             else
@@ -464,7 +466,7 @@ class _FramePainter extends CustomPainter {
 // ---- top bar ----
 
 class _TopBar extends ConsumerStatefulWidget {
-  const _TopBar({required this.title, required this.live, required this.session, required this.touchpad, required this.onMode, required this.onHide, required this.onStop, required this.onBack, required this.onMoonlight});
+  const _TopBar({required this.title, required this.live, required this.session, required this.touchpad, required this.onMode, required this.onHide, required this.onStop, required this.onBack, required this.onMoonlight, this.h264 = true});
   final String title;
   final LiveController live;
   final ControlSession? session;
@@ -474,8 +476,11 @@ class _TopBar extends ConsumerStatefulWidget {
   final VoidCallback onStop;
   final VoidCallback onBack;
 
-  /// "High quality (Moonlight)" at the end of the quality menu.
-  final VoidCallback onMoonlight;
+  /// "High quality (Moonlight)" at the end of the quality menu; null where the backend has no Sunshine.
+  final VoidCallback? onMoonlight;
+
+  /// The backend can send H.264 (the helper backends stream MJPEG only): otherwise no codec choice.
+  final bool h264;
   @override
   ConsumerState<_TopBar> createState() => _TopBarState();
 }
@@ -533,7 +538,7 @@ class _TopBarState extends ConsumerState<_TopBar> {
         onSelected: (v) => switch (v) {
           LiveQuality q => c.setQuality(q),
           LiveCodec k => c.setCodec(k),
-          _ => widget.onMoonlight(),
+          _ => widget.onMoonlight?.call(),
         },
         itemBuilder: (_) => [
           for (final (q, label) in [
@@ -544,7 +549,7 @@ class _TopBarState extends ConsumerState<_TopBar> {
           ])
             CheckedPopupMenuItem<Object>(value: q, checked: q == c.quality, child: Text(label)),
           // Codec: H.264 only if the phone has a decoder (Auto requires a hardware decoder).
-          if (c.video != null) ...[
+          if (c.video != null && widget.h264) ...[
             const PopupMenuDivider(),
             for (final (k, label) in [
               (LiveCodec.auto, l.liveCodecAuto),
@@ -558,12 +563,14 @@ class _TopBarState extends ConsumerState<_TopBar> {
                 child: Text(label),
               ),
           ],
-          const PopupMenuDivider(),
           // Sunshine + Moonlight: 60 fps NVENC (games, video); doesn't replace the in-app stream, sits alongside it.
-          PopupMenuItem<Object>(
-            value: 'moonlight',
-            child: ListTile(contentPadding: EdgeInsets.zero, leading: const Icon(LucideIcons.gamepad2), title: Text(l.moonlightEntry)),
-          ),
+          if (widget.onMoonlight != null) ...[
+            const PopupMenuDivider(),
+            PopupMenuItem<Object>(
+              value: 'moonlight',
+              child: ListTile(contentPadding: EdgeInsets.zero, leading: const Icon(LucideIcons.gamepad2), title: Text(l.moonlightEntry)),
+            ),
+          ],
         ],
         child: _GlassIcon(icon: LucideIcons.gauge, label: qLabel),
       ),

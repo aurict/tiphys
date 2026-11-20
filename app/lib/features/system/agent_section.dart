@@ -1,4 +1,5 @@
-// System › Agent: agent version (warning if it lags behind), uptime, memory and unexpected restarts.
+// System › Agent: agent version (a gentle banner if it differs from what the app expects), update available, health
+// check, uptime, memory and unexpected restarts.
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
@@ -9,6 +10,8 @@ import '../../l10n/gen/app_localizations.dart';
 import '../../theme/tokens.dart';
 import '../../widgets/surfaces.dart';
 import 'agent_providers.dart';
+import 'agent_update.dart';
+import 'doctor.dart';
 
 String _mb(num bytes) => bytes >= 1024 * 1024 * 1024 ? '${(bytes / (1024 * 1024 * 1024)).toStringAsFixed(1)} GB' : '${(bytes / (1024 * 1024)).round()} MB';
 
@@ -31,44 +34,74 @@ class AgentSection extends ConsumerWidget {
     final status = ref.watch(agentStatusProvider(host.id));
     final version = (status.value?['version'] ?? health?['version']) as String?;
     final outdated = agentOutdated(version);
+    final newer = agentNewer(version);
+    final update = ref.watch(agentUpdateProvider(host.id)).value;
     final st = status.value;
     final restarts = (st?['unexpectedRestarts24h'] as num?)?.toInt() ?? 0;
-    return GroupedSection(
-      title: l.agentSection,
-      footer: outdated ? l.agentOutdatedHint(kExpectedAgentVersion) : null,
-      children: [
-        GroupedRow(
-          title: l.agentVersion,
-          icon: LucideIcons.package,
-          iconBackground: outdated ? t.warning : const Color(0xFF6C6C70),
-          trailingText: version == null ? '—' : (outdated ? l.agentOutdated(version) : version),
-          showChevron: false,
+    return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+      if (outdated || newer)
+        Padding(
+          padding: const EdgeInsets.only(top: 12),
+          child: AgentVersionBanner(text: outdated ? l.agentOutdatedHint(kExpectedAgentVersion) : l.agentNewerHint(version!, kExpectedAgentVersion)),
         ),
-        if (st != null) ...[
+      GroupedSection(
+        title: l.agentSection,
+        children: [
           GroupedRow(
-            title: l.agentUptime,
-            icon: LucideIcons.clock,
-            iconBackground: const Color(0xFF6C6C70),
-            trailingText: _uptime(l, (st['uptimeSeconds'] as num).toInt()),
+            title: l.agentVersion,
+            icon: LucideIcons.package,
+            iconBackground: outdated ? t.warning : const Color(0xFF6C6C70),
+            trailingText: version == null ? '—' : (outdated ? l.agentOutdated(version) : version),
             showChevron: false,
           ),
-          GroupedRow(
-            title: l.agentMemory,
-            subtitle: l.agentMemoryValue(_mb(st['memory']['agentBytes'] as num), _mb(st['memory']['childrenBytes'] as num)),
-            icon: LucideIcons.memoryStick,
-            iconBackground: const Color(0xFF6C6C70),
-            showChevron: false,
-          ),
-          GroupedRow(
-            title: l.agentRestarts,
-            subtitle: l.agentRestartsWindow,
-            icon: restarts > 0 ? LucideIcons.triangleAlert : LucideIcons.shieldCheck,
-            iconBackground: restarts > 0 ? t.danger : t.success,
-            trailingText: '$restarts',
-            showChevron: false,
-          ),
+          if (update != null && update.available) AgentUpdateRow(host: host, info: update),
+          HealthCheckRow(hostId: host.id),
+          if (st != null) ...[
+            GroupedRow(
+              title: l.agentUptime,
+              icon: LucideIcons.clock,
+              iconBackground: const Color(0xFF6C6C70),
+              trailingText: _uptime(l, (st['uptimeSeconds'] as num).toInt()),
+              showChevron: false,
+            ),
+            GroupedRow(
+              title: l.agentMemory,
+              subtitle: l.agentMemoryValue(_mb(st['memory']['agentBytes'] as num), _mb(st['memory']['childrenBytes'] as num)),
+              icon: LucideIcons.memoryStick,
+              iconBackground: const Color(0xFF6C6C70),
+              showChevron: false,
+            ),
+            GroupedRow(
+              title: l.agentRestarts,
+              subtitle: l.agentRestartsWindow,
+              icon: restarts > 0 ? LucideIcons.triangleAlert : LucideIcons.shieldCheck,
+              iconBackground: restarts > 0 ? t.danger : t.success,
+              trailingText: '$restarts',
+              showChevron: false,
+            ),
+          ],
         ],
-      ],
+      ),
+    ]);
+  }
+}
+
+/// Soft note about an agent version this app doesn't expect (not an error: most things still work).
+class AgentVersionBanner extends StatelessWidget {
+  const AgentVersionBanner({super.key, required this.text});
+  final String text;
+  @override
+  Widget build(BuildContext context) {
+    final t = context.tokens;
+    return Semantics(
+      container: true,
+      child: TCard(
+        child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Icon(LucideIcons.info, color: t.warning, size: 20),
+          const SizedBox(width: 10),
+          Expanded(child: Text(text, style: TextStyle(color: t.text, height: 1.35, fontSize: 13.5))),
+        ]),
+      ),
     );
   }
 }

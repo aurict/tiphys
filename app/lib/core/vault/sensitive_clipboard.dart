@@ -6,7 +6,10 @@
 import 'dart:async';
 import 'dart:math';
 
+import 'package:flutter/services.dart';
 import 'package:tiphys_native/tiphys_native.dart';
+
+import '../platform.dart';
 
 /// Local clipboard operations (tests supply a fake).
 abstract interface class SensitiveClipboardNative {
@@ -16,12 +19,29 @@ abstract interface class SensitiveClipboardNative {
   Future<bool> clearIfLabel(String label);
 }
 
+/// Android: the native plugin (sensitive flag, clip label). Elsewhere (iOS, desktops; no tiphys_native there) a
+/// plain copy, cleared later only if the clipboard still holds exactly that text.
 class TiphysSensitiveClipboard implements SensitiveClipboardNative {
-  const TiphysSensitiveClipboard();
+  TiphysSensitiveClipboard();
+  final _plain = <String, String>{};
+
   @override
-  Future<void> setSensitive(String text, String label) => TiphysNative.setSensitiveClipboard(text, label);
+  Future<void> setSensitive(String text, String label) async {
+    if (hasTiphysNative) return TiphysNative.setSensitiveClipboard(text, label);
+    _plain
+      ..clear()
+      ..[label] = text;
+    await Clipboard.setData(ClipboardData(text: text));
+  }
+
   @override
-  Future<bool> clearIfLabel(String label) => TiphysNative.clearClipboardIfLabel(label);
+  Future<bool> clearIfLabel(String label) async {
+    if (hasTiphysNative) return TiphysNative.clearClipboardIfLabel(label);
+    final text = _plain.remove(label);
+    if (text == null || (await Clipboard.getData(Clipboard.kTextPlain))?.text != text) return false;
+    await Clipboard.setData(const ClipboardData(text: ''));
+    return true;
+  }
 }
 
 typedef TimerFactory = Timer Function(Duration, void Function());
