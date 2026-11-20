@@ -46,6 +46,7 @@ describe("trivy helpers", () => {
     const b = trivyArgs({ target: { input: "/tmp/x/image.tar" }, platform: "", credentials: false });
     expect(b).toContain("/tmp/x/image.tar:/in/image.tar:ro");
     expect(b.slice(-2)).toEqual(["--input", "/in/image.tar"]);
+    for (const x of [a, b]) expect(x.join(" ")).toContain("--label tiphys.tool=trivy");
   });
 
   it("only well-formed digest references are fetched", () => {
@@ -165,6 +166,7 @@ describe("secret scanning", () => {
     const a = gitleaksArgs("git", "/tmp/r.git");
     for (const x of ["--network", "none", "--read-only", "--redact"]) expect(a).toContain(x);
     expect(a).toContain("/tmp/r.git:/repo:ro");
+    expect(a.join(" ")).toContain("--label tiphys.tool=gitleaks");
   });
 
   it("local rules: well-known formats only", () => {

@@ -20,14 +20,18 @@ import { AppError, notFound } from "../errors.ts";
 import { run } from "../exec.ts";
 import type { Notifier } from "../notify.ts";
 import { PC_DISALLOWED_TOOLS, PC_SERVER, PC_SYSTEM_PROMPT, PC_TOOLS, SHOT_MARK, pcToolName } from "./pc.ts";
+import { SEC_SERVER, SEC_TOOLS, newNonce, secToolName, securityFirstMessage, securitySystemPrompt, type SecState, type SecSupport } from "./security_fix.ts";
 import { findTranscript, transcriptEvents } from "./transcript.ts";
 
 export type QueryFn = (p: { prompt: AsyncIterable<SDKUserMessage>; options: Options }) => Query;
 
 export type SessionStatus = "starting" | "running" | "waiting" | "idle" | "error" | "stopped";
 
-/** "code": regular session working in a folder; "pc": Claude uses the PC (10.3, PC tools only). */
-export type SessionKind = "code" | "pc";
+/**
+ * "code": regular session working in a folder; "pc": Claude uses the PC (10.3, PC tools only); "security": Claude
+ * fixes security items on pinned targets over SSH (PLAN.md §16, tiphys_sec tools only).
+ */
+export type SessionKind = "code" | "pc" | "security";
 
 /** The control session a PC session is bound to (token kept in memory only; never written to disk). */
 export interface ControlBinding {
@@ -76,6 +80,9 @@ export type ClaudeEvent = { seq: number; at: string } & (
     }
   | { kind: "permission"; requestId: string; toolName: string; input: unknown; reason: string | null }
   | { kind: "permissionResolved"; requestId: string; allow: boolean }
+  /** Security session: a tool needs the sudo password of a host (POST …/sudo); attempt 2–3 after a wrong one. */
+  | { kind: "sudo"; requestId: string; host: string; attempt: number; investigate?: true }
+  | { kind: "sudoResolved"; requestId: string; provided: boolean }
   /** The PC session's control binding opened/closed (reason: stopped | expired | shutdown | lost). */
   | { kind: "control"; active: boolean; expiresAt: string | null; reason: string | null }
   | { kind: "status"; status: SessionStatus }
@@ -103,6 +110,10 @@ export interface StartRequest {
   kind?: SessionKind;
   /** "pc": the control session opened by the phone (lock re-prompted). */
   control?: ControlBinding;
+  /** "security": the brief from the monitoring server (untrusted data) and the hosts to pin. */
+  security?: { brief: string; hosts: string[]; investigate: boolean; origin?: unknown };
+  /** Device that started the session (security audit records). */
+  device?: string;
 }
 
 const MAX_EVENTS = 3000;
@@ -120,6 +131,8 @@ interface PersistedSession {
   createdAt: string;
   costUsd: number;
   kind?: SessionKind;
+  /** "security": pinned targets, mode rules, nonce, backups and timers (never passwords). */
+  security?: SecState;
 }
 const MAX_TEXT = 20000;
 
@@ -192,6 +205,10 @@ export class LiveSession {
   pcWarnedFor: string | null = null;
   /** End of the bound control session (set by the manager). */
   controlUntil: () => string | null = () => null;
+  /** "security" session state (pinned targets, backups, timers). */
+  security: SecState | null = null;
+  /** Open sudo password requests (security sessions). */
+  readonly pendingSudo = new Map<string, (password: string | false | null) => void>();
 
   constructor(cwd: string, profileId: string, model: string, permissionMode: PermissionMode, title: string, id?: string) {
     this.id = id ?? randomUUID();
@@ -249,6 +266,7 @@ export class LiveSession {
       resumeCommand:
         this.sdkSessionId && /^[A-Za-z0-9-]{8,80}$/.test(this.sdkSessionId) ? `cd '${this.cwd.replace(/'/g, `'\\''`)}' && claude --resume ${this.sdkSessionId}` : null,
       kind: this.kind,
+      ...(this.security ? { security: { hosts: this.security.targets.map((t) => ({ host: t.host, name: t.name })), investigate: this.security.investigate, origin: this.security.origin } } : {}),
       ...(this.kind === "pc" ? { control: { active: this.control !== null && this.controlUntil() !== null, expiresAt: this.controlUntil() } } : {}),
     };
   }
@@ -373,17 +391,22 @@ export class ClaudeManager {
   #saveTimer: NodeJS.Timeout | null = null;
   /** PC sessions (without it the "pc" kind can't be opened). */
   readonly pc: PcSupport | null;
+  /** Security fix sessions (tiphys_sec tools). */
+  readonly sec: SecSupport | null;
 
-  constructor(getConfig: () => AgentConfig, notifier: Notifier, queryFn: QueryFn, statePath: string | null = null, pc: PcSupport | null = null) {
+  constructor(getConfig: () => AgentConfig, notifier: Notifier, queryFn: QueryFn, statePath: string | null = null, pc: PcSupport | null = null, sec: SecSupport | null = null) {
     this.#getConfig = getConfig;
     this.#notifier = notifier;
     this.#query = queryFn;
     this.#statePath = statePath;
     this.pc = pc;
+    this.sec = sec;
     // Sessions inactive and idle for 6 hours are closed (history stays on disk and can be resumed).
     this.#sweep = setInterval(() => {
       const cutoff = Date.now() - 6 * 3600_000;
       for (const s of this.sessions.values()) {
+        // A security session with backups or rollback timers stays: its rollback must remain possible.
+        if (s.security && (s.security.backups.length || s.security.timers.length)) continue;
         if (s.lastActivity < cutoff && (s.status === "idle" || s.status === "error" || s.status === "stopped")) this.close(s.id);
       }
     }, 600_000);
@@ -442,15 +465,19 @@ export class ClaudeManager {
     const cfg = this.#getConfig().claude;
     const pc = req.kind === "pc";
     if (pc && (!this.pc?.available() || !req.control)) throw new AppError("agent.claude.pcUnavailable", 403);
-    // No file tools in a PC session: the folder is only the process's working directory (home folder).
-    let cwd = pc ? homedir() : await this.checkCwd(req.cwd);
-    if (req.worktree && !pc) cwd = await this.createWorktree(cwd, randomUUID().slice(0, 8));
+    const sec = req.kind === "security" ? await this.#securityStart(req) : undefined;
+    // No file tools in a PC/security session: the folder is only the process's working directory (home folder).
+    let cwd = pc || sec ? homedir() : await this.checkCwd(req.cwd);
+    if (req.worktree && !pc && !sec) cwd = await this.createWorktree(cwd, randomUUID().slice(0, 8));
     const profileId = req.profileId ?? cfg.defaultProfile;
     // Session opened without a message (empty): the title is taken from the first message sent.
-    const s = this.#create({ ...req, cwd, profileId }, req.title || req.prompt || (req.resume ? "(devam)" : ""));
+    const title = sec ? req.title || req.prompt || `Güvenlik: ${sec.state.targets.map((t) => t.name).join(", ")}` : req.title || req.prompt || (req.resume ? "(devam)" : "");
+    const s = this.#create({ ...req, cwd, profileId, ...(sec ? { permissionMode: sec.mode } : {}) }, title, undefined, sec?.state);
     this.sessions.set(s.id, s);
     if (pc) this.bindControl(s, req.control!);
-    if (req.prompt) this.send(s, req.prompt, req.images);
+    // Security: the user's note (trusted) + the brief inside the nonce-delimited data block; starts right away.
+    if (sec) this.send(s, securityFirstMessage(req.prompt, req.security!.brief, sec.state.nonce));
+    else if (req.prompt) this.send(s, req.prompt, req.images);
     // A session opened (or resumed) without a message waits for the first message; the process starts then.
     else s.setStatus("idle");
     this.#save();
@@ -468,7 +495,7 @@ export class ClaudeManager {
       const done = (r: PermissionResult) => {
         if (!s.pending.delete(requestId)) return;
         s.emit({ kind: "permissionResolved", requestId, allow: r.behavior === "allow" });
-        if (s.status === "waiting" || s.status === "running") s.setStatus(s.pending.size > 0 ? "waiting" : "running");
+        if (s.status === "waiting" || s.status === "running") s.setStatus(s.pending.size + s.pendingSudo.size > 0 ? "waiting" : "running");
         resolvePermission(r);
       };
       s.pending.set(requestId, done);
@@ -478,7 +505,8 @@ export class ClaudeManager {
       s.setStatus("waiting");
       void this.#notifier.send({
         key: "claude.waiting",
-        params: { title: s.title, tool: notifyTool, ...(s.kind === "pc" ? { pc: 1 } : {}) }, // pc: the phone hides the buttons on the lock screen
+        // pc / security: the phone hides the buttons on the lock screen (they act on the PC / on servers)
+        params: { title: s.title, tool: notifyTool, ...(s.kind === "pc" ? { pc: 1 } : s.kind === "security" ? { security: 1 } : {}) },
         link: `tiphys://claude/${s.id}`,
         priority: "high",
         // So the phone can decide with the notification's "Allow / Deny" buttons without opening the app.
@@ -487,13 +515,93 @@ export class ClaudeManager {
     });
   }
 
-  #create(req: StartRequest & { profileId: string }, title: string, id?: string): LiveSession {
+  /** Validates a security start: feature, brief, pinned targets (asked ∩ configured), investigate = plan only. */
+  async #securityStart(req: StartRequest): Promise<{ state: SecState; mode: PermissionMode }> {
+    const c = this.#getConfig();
+    if (!this.sec || !c.features.securityFix) throw new AppError("agent.claude.securityFixDisabled", 403);
+    const b = req.security;
+    if (!b) throw new AppError("agent.claude.securityRequired", 400);
+    const asked = new Set(b.hosts);
+    const targets = c.securityFix.targets.filter((t) => asked.has(t.host));
+    if (!targets.length) throw new AppError("agent.claude.securityNoTargets", 400, { hosts: b.hosts });
+    const mode = req.permissionMode ?? (b.investigate ? "plan" : "default");
+    if (b.investigate && mode !== "plan") throw new AppError("agent.claude.securityInvestigateReadOnly", 400);
+    // Pin: each ssh destination is resolved once with `ssh -G`; later connections use only these values (-F /dev/null).
+    const pinned = [];
+    for (const t of structuredClone(targets)) {
+      if (t.ssh === null) {
+        pinned.push(t);
+        continue;
+      }
+      try {
+        pinned.push({ ...t, resolved: await this.sec.resolve(t) });
+      } catch (e) {
+        throw new AppError("agent.claude.securitySshConfig", 400, { host: t.host, reason: (e as Error).message.slice(0, 300) });
+      }
+    }
+    const state: SecState = { targets: pinned, investigate: b.investigate, origin: b.origin ?? null, nonce: newNonce(), device: req.device ?? null, backups: [], timers: [], applied: [], seq: 0 };
+    return { state, mode };
+  }
+
+  /**
+   * Asks the phone for a host's sudo password: "sudo" event + claude.sudo notification. Resolves with the password,
+   * false (the user denied) or null (cancelled, interrupted, timed out after 10 min).
+   */
+  #askSudo(s: LiveSession, host: string, attempt: number, signal?: AbortSignal): Promise<string | false | null> {
+    return new Promise((resolveSudo) => {
+      const requestId = randomUUID();
+      const done = (password: string | false | null) => {
+        if (!s.pendingSudo.delete(requestId)) return;
+        clearTimeout(timer);
+        s.emit({ kind: "sudoResolved", requestId, provided: typeof password === "string" });
+        if (s.status === "waiting" || s.status === "running") s.setStatus(s.pending.size + s.pendingSudo.size > 0 ? "waiting" : "running");
+        resolveSudo(password);
+      };
+      const timer = setTimeout(() => done(null), 10 * 60_000);
+      timer.unref();
+      s.pendingSudo.set(requestId, done);
+      if (signal?.aborted) return done(null);
+      signal?.addEventListener("abort", () => done(null), { once: true });
+      // investigate: the app warns that this is a possible-attack session (root is needed only to look).
+      s.emit({ kind: "sudo", requestId, host, attempt, ...(s.security?.investigate ? { investigate: true as const } : {}) });
+      // An idle session (device-initiated rollback) stays idle; the event and notification are enough.
+      if (s.status === "running" || s.status === "waiting") s.setStatus("waiting");
+      void this.#notifier.send({
+        key: "claude.sudo",
+        params: { title: s.title, host: s.security?.targets.find((t) => t.host === host)?.name ?? host },
+        link: `tiphys://claude/${s.id}`,
+        priority: "high",
+        data: { sessionId: s.id, requestId, host },
+      });
+    });
+  }
+
+  /** The phone answered a sudo request (password, or false = deny). The password is handed to the tool only. */
+  resolveSudo(s: LiveSession, requestId: string, password: string | false) {
+    const done = s.pendingSudo.get(requestId);
+    if (!done) throw notFound("claude.sudo", { requestId });
+    done(password);
+  }
+
+  /** Cancels open sudo requests (DELETE …/sudo): the tools get no password. */
+  cancelSudo(s: LiveSession) {
+    for (const done of [...s.pendingSudo.values()]) done(null);
+  }
+
+  /** Denies the session's open permission and sudo requests without stopping Claude (before a device rollback). */
+  cancelPending(s: LiveSession) {
+    for (const done of [...s.pending.values()]) done({ behavior: "deny", message: "The user rolled back this host from the phone; stop and summarise." });
+    for (const done of [...s.pendingSudo.values()]) done(null);
+  }
+
+  #create(req: StartRequest & { profileId: string }, title: string, id?: string, sec?: SecState): LiveSession {
     const pc = req.kind === "pc";
     // PC session is "default" only: bypass/plan modes must not change the tool rules.
     const mode = pc ? "default" : (req.permissionMode ?? "default");
     const s = new LiveSession(req.cwd, req.profileId, req.model ?? "", mode, title, id);
     s.effort = req.effort;
     if (pc) return this.#createPc(s, req);
+    if (sec) return this.#createSecurity(s, req, sec);
     const canUseTool: CanUseTool = (toolName, input, opts) => this.#ask(s, toolName, input, opts.decisionReason ?? null, opts.signal);
     s.options = {
       cwd: req.cwd,
@@ -539,6 +647,44 @@ export class ClaudeManager {
       includePartialMessages: true,
       permissionMode: "default",
       canUseTool: deny,
+      ...(req.model ? { model: req.model } : {}),
+      ...(req.effort ? { effort: req.effort } : {}),
+      ...(req.resume ? { resume: req.resume } : {}),
+      stderr: () => {},
+    };
+    return s;
+  }
+
+  /**
+   * "security" session: like "pc" (no built-in tools, no user settings/MCP servers), only the in-process tiphys_sec
+   * tools. The SDK always runs in "default"; the user's mode (s.permissionMode) is enforced inside the tools.
+   */
+  #createSecurity(s: LiveSession, req: StartRequest & { profileId: string }, state: SecState): LiveSession {
+    const sec = this.sec;
+    if (!sec) throw new AppError("agent.claude.securityFixDisabled", 403);
+    s.kind = "security";
+    s.security = state;
+    const server = sec.server(s, state, {
+      approve: async (tool, input, reason, signal) => (await this.#ask(s, secToolName(tool), input, reason, signal, `Güvenlik · ${reason}`)).behavior === "allow",
+      askSudo: (host, attempt, signal) => this.#askSudo(s, host, attempt, signal),
+      changed: () => this.#save(),
+    });
+    const prefix = `mcp__${SEC_SERVER}__`;
+    const canUseTool: CanUseTool = async (toolName) =>
+      toolName.startsWith(prefix) ? { behavior: "allow" } : { behavior: "deny", message: `Only the tiphys_sec tools can be used in a security session (${toolName} is off).` };
+    s.options = {
+      cwd: req.cwd,
+      env: this.profileEnv(req.profileId),
+      settingSources: [],
+      strictMcpConfig: true,
+      tools: [],
+      mcpServers: { [SEC_SERVER]: server },
+      allowedTools: SEC_TOOLS.map(secToolName),
+      disallowedTools: PC_DISALLOWED_TOOLS,
+      systemPrompt: securitySystemPrompt(state.nonce),
+      includePartialMessages: true,
+      permissionMode: "default",
+      canUseTool,
       ...(req.model ? { model: req.model } : {}),
       ...(req.effort ? { effort: req.effort } : {}),
       ...(req.resume ? { resume: req.resume } : {}),
@@ -629,8 +775,12 @@ export class ClaudeManager {
       try {
         const pc = p.kind === "pc";
         if (pc && !this.pc) continue; // desktop off: the PC session doesn't come back
+        const sec = p.kind === "security" ? p.security : undefined;
+        // Feature off: a security session still comes back if it has backups or timers (rollback must stay possible).
+        if (p.kind === "security" && (!sec || !this.sec || (!this.#getConfig().features.securityFix && !sec.backups.length && !sec.timers.length))) continue;
         // A PC session comes back without a control binding (the token isn't written to disk); the phone rebinds it.
-        const s = this.#create({ cwd: pc ? homedir() : await this.checkCwd(p.cwd), profileId: p.profileId, prompt: "", model: p.model || undefined, effort: p.effort, permissionMode: p.permissionMode, resume: p.sdkSessionId ?? undefined, kind: p.kind }, p.title, p.id);
+        // A security session comes back with its pinned targets, mode, nonce and backups; sudo passwords are gone.
+        const s = this.#create({ cwd: pc || sec ? homedir() : await this.checkCwd(p.cwd), profileId: p.profileId, prompt: "", model: p.model || undefined, effort: p.effort, permissionMode: p.permissionMode, resume: p.sdkSessionId ?? undefined, kind: p.kind }, p.title, p.id, sec);
         s.sdkSessionId = p.sdkSessionId;
         s.createdAt = p.createdAt;
         s.costUsd = p.costUsd;
@@ -675,6 +825,7 @@ export class ClaudeManager {
       createdAt: s.createdAt,
       costUsd: s.costUsd,
       ...(s.kind === "pc" ? { kind: s.kind } : {}),
+      ...(s.kind === "security" && s.security ? { kind: s.kind, security: s.security } : {}),
     }));
     const tmp = `${this.#statePath}.tmp`;
     await writeFile(tmp, JSON.stringify(list, null, 1), { mode: 0o600 });
@@ -747,6 +898,7 @@ export class ClaudeManager {
 
   async interrupt(s: LiveSession) {
     for (const done of [...s.pending.values()]) done({ behavior: "deny", message: "interrupted", interrupt: true });
+    for (const done of [...s.pendingSudo.values()]) done(null);
     await s.query?.interrupt();
   }
 
@@ -758,6 +910,14 @@ export class ClaudeManager {
 
   async setMode(s: LiveSession, mode: PermissionMode) {
     if (s.kind === "pc" && mode !== "default") throw new AppError("agent.claude.pcModeFixed", 400);
+    if (s.kind === "security") {
+      // Our own modes (the SDK stays "default"): investigate is read-only; bypass only at start.
+      if (s.security?.investigate && mode !== "plan") throw new AppError("agent.claude.securityInvestigateReadOnly", 400);
+      if (mode === "bypassPermissions" && s.permissionMode !== "bypassPermissions") throw new AppError("agent.claude.bypassNeedsNewSession", 400);
+      s.permissionMode = mode;
+      this.#save();
+      return;
+    }
     if (mode === "bypassPermissions" && s.permissionMode !== "bypassPermissions") {
       // A session not started with bypassed permissions can't switch to bypass later (SDK security rule).
       throw new AppError("agent.claude.bypassNeedsNewSession", 400);
@@ -772,12 +932,14 @@ export class ClaudeManager {
     const s = this.sessions.get(id);
     if (!s) return;
     for (const done of [...s.pending.values()]) done({ behavior: "deny", message: "closed" });
+    for (const done of [...s.pendingSudo.values()]) done(null);
     s.inbox.close();
     s.query?.close();
     s.setStatus("stopped");
     s.listeners.clear();
     this.sessions.delete(id);
     this.pc?.forget(id);
+    this.sec?.forget(id);
     this.#save();
   }
 
@@ -788,8 +950,10 @@ export class ClaudeManager {
     await this.saveNow().catch(() => {});
     for (const s of this.sessions.values()) {
       for (const done of [...s.pending.values()]) done({ behavior: "deny", message: "closed" });
+      for (const done of [...s.pendingSudo.values()]) done(null);
       s.inbox.close();
       s.query?.close();
+      this.sec?.forget(s.id); // sudo passwords are wiped on shutdown
     }
     this.sessions.clear();
   }

@@ -13,6 +13,7 @@ import '../agy/agy_texts.dart';
 import '../configfiles/configfiles_texts.dart';
 import '../databases/db_texts.dart';
 import '../incidents/incident_texts.dart';
+import '../security/security_fix.dart' show fixErrorCodes, fixErrorText;
 import '../security/security_texts.dart';
 
 /// Overridden in tests.
@@ -172,6 +173,8 @@ String agentErrorText(AppLocalizations l, Object e) {
     final c when c.startsWith('agent.telegram.') || c.startsWith('agent.research.') => telegramReasonText(l, c, e.params),
     // Incident room (PLAN.md §13.1).
     final c when c.startsWith('agent.incident.') || c == 'agent.preview.invalid' => incidentErrorText(l, c, e.params),
+    // Security fix sessions (PLAN.md §16).
+    final c when fixErrorCodes.contains(c) => fixErrorText(l, c, e.params),
     // Config files and secrets (PLAN.md §13.3).
     final c when c.startsWith('agent.security.') || c.startsWith('agent.blackbox.') => securityErrorText(l, c, e.params),
     final c when c.startsWith('agent.agy.') => agyErrorText(l, c),

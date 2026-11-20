@@ -7140,5 +7140,270 @@
   "secCardError": "Security data could not be loaded",
   "secCardLastKnown": "Last known state",
   "secCardLastKnownShort": "last known",
-  "secCardNoHosts": "No machines are audited yet."
+  "secCardNoHosts": "No machines are audited yet.",
+  "fixSelect": "Select",
+  "fixSelectCancel": "Cancel selection",
+  "fixSelectAll": "Select all",
+  "fixSend": "Send to Claude",
+  "fixSelectedCount": "{count} selected",
+  "@fixSelectedCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "fixSelectedTooMany": "{count} selected (at most {max})",
+  "@fixSelectedTooMany": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      },
+      "max": {
+        "type": "int"
+      }
+    }
+  },
+  "fixSendTitle": "Send to Claude",
+  "fixSendIntro": "Claude connects to your machines over SSH and fixes these with guarded tools. You choose what it may do without asking.",
+  "fixBriefLoading": "Preparing the brief…",
+  "fixItemsTitle": "Selected ({count})",
+  "@fixItemsTitle": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "fixModeFix": "Fix",
+  "fixModeInvestigate": "Investigate",
+  "fixBriefTruncated": "The brief was too long and was cut: some items were left out.",
+  "fixHostsTitle": "Machines",
+  "fixHostsNone": "No machine could be resolved for these items.",
+  "fixHostNoRoot": "last audit ran without root",
+  "fixTargetSet": "Target set",
+  "fixTargetSetNow": "Set target",
+  "fixTargetsNoneHint": "Claude only works on machines that have a fix target. Set one for at least one machine.",
+  "fixModeTitle": "Permissions",
+  "fixModeInvestigateNote": "These items may be traces of an attack. Claude only reads (plan mode), so nothing is changed or deleted before you have looked at it.",
+  "fixBypassWarning": "In this mode Claude can run any command on the selected machines without asking, including commands that reach the network. The tool rules (targets, backups) still apply, but the network command blocklist is only a heuristic, not a sandbox, and a mistake can lock you out.",
+  "fixBypassConfirm": "Start without asking for permission? Claude can run any command on the selected machines without asking you, including ones that reach the network.",
+  "fixBypassConfirmGo": "Start without asking",
+  "fixNoteLabel": "Your note (optional)",
+  "fixNoteHint": "e.g. leave port 8080 open, it is expected",
+  "fixPreview": "Brief sent to Claude ({bytes} bytes)",
+  "@fixPreview": {
+    "placeholders": {
+      "bytes": {
+        "type": "int"
+      }
+    }
+  },
+  "fixPreviewHint": "Data from the audited machines. Claude treats it as data, not as instructions.",
+  "fixStart": "Start session",
+  "fixErrRateLimited": "Too many briefs: at most {limit} every {minutes} minutes. Try again later.",
+  "@fixErrRateLimited": {
+    "placeholders": {
+      "limit": {
+        "type": "int"
+      },
+      "minutes": {
+        "type": "int"
+      }
+    }
+  },
+  "fixErrItemNotFound": "The item no longer exists (the audit may have moved on). Refresh and select again.",
+  "fixErrTruncated": "Left out: the brief was too long.",
+  "fixErrHostNotFound": "Machine not found",
+  "fixErrDisabled": "Security fixes are off on the PC agent. Turn on “Security fixes” in Settings › Hosts › Agent › Features.",
+  "fixErrRequired": "The session needs the security brief.",
+  "fixErrNoTargets": "None of these machines has a fix target on the PC agent. Set one first.",
+  "fixErrInvestigateReadOnly": "Investigations are read-only: use plan mode.",
+  "fixErrBypassNew": "“Don't ask” can only be chosen when a session starts. Start a new session.",
+  "fixFeatureName": "Security fixes (Claude over SSH)",
+  "fixTargetsTitle": "Fix targets",
+  "fixTargetsLinkHint": "Machines Claude may reach over SSH when fixing security findings.",
+  "fixTargetsIntro": "Claude can only work on the machines listed here. The ID is the machine's ID in the security center; without an SSH address the machine is this PC.",
+  "fixTargetsEmpty": "No fix targets yet.",
+  "fixTargetAdd": "Add target",
+  "fixTargetDeleteConfirm": "Remove the fix target “{name}”?",
+  "@fixTargetDeleteConfirm": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "fixTargetPickHost": "Machine from the security center",
+  "fixTargetHostLabel": "Machine ID",
+  "fixTargetHostHelper": "The ID the security center uses for this machine",
+  "fixTargetNameLabel": "Name",
+  "fixTargetThisPc": "This PC",
+  "fixTargetThisPcHint": "Runs locally, without SSH",
+  "fixTargetSshLabel": "SSH address",
+  "fixTargetSshHelper": "user@host; the key and known_hosts of the PC are used",
+  "fixTargetPortLabel": "Port (optional)",
+  "fixTargetHostInvalid": "Lowercase letters, digits and dashes, e.g. atlas",
+  "fixTargetSshInvalid": "Use user@host (letters, digits, dot, dash, underscore)",
+  "fixTargetPortInvalid": "Port 1–65535 (SSH targets only)",
+  "fixTargetDuplicate": "This machine already has a target",
+  "fixTargetTooMany": "At most {max} targets",
+  "@fixTargetTooMany": {
+    "placeholders": {
+      "max": {
+        "type": "int"
+      }
+    }
+  },
+  "fixTargetCacheInvalid": "The sudo password is remembered for 1–120 minutes",
+  "fixSudoCacheTitle": "sudo password",
+  "fixSudoCacheLabel": "Remember for (minutes)",
+  "fixSudoCacheHint": "Only in the PC agent's memory, per session and machine; never written to disk.",
+  "fixBadgeFix": "Security fix",
+  "fixBadgeInvestigate": "Investigation",
+  "fixToolHosts": "Machines",
+  "fixToolRead": "Read file",
+  "fixToolRun": "Run command",
+  "fixToolWrite": "Write file",
+  "fixToolValidate": "Validate",
+  "fixToolSafeApply": "Apply with rollback timer",
+  "fixToolConfirm": "Confirm change",
+  "fixToolRollback": "Roll back",
+  "fixSudoTitle": "sudo password for {host}",
+  "@fixSudoTitle": {
+    "placeholders": {
+      "host": {
+        "type": "String"
+      }
+    }
+  },
+  "fixSudoBody": "Claude needs root on this machine to continue. The password goes only to the agent's memory, is used for sudo and is never written to disk, logs or the chat.",
+  "fixSudoInvestigateWarn": "This machine may be compromised (these items look like an attack). A compromised account on it could capture the password you type, and a password you use elsewhere would then be exposed. Consider denying and using a one-off password.",
+  "fixSudoLabel": "Password",
+  "fixSudoWrong": "That password was not accepted (attempt {attempt}). Try again.",
+  "@fixSudoWrong": {
+    "placeholders": {
+      "attempt": {
+        "type": "int"
+      }
+    }
+  },
+  "fixSudoSend": "Send",
+  "fixSudoDeny": "Deny",
+  "fixSudoLater": "Later",
+  "fixSudoCard": "sudo password needed for {host}",
+  "@fixSudoCard": {
+    "placeholders": {
+      "host": {
+        "type": "String"
+      }
+    }
+  },
+  "fixSudoEnter": "Enter password",
+  "fixSudoProvided": "Password sent",
+  "fixSudoNotProvided": "No password given",
+  "notifClaudeSudoTitle": "Claude needs a sudo password",
+  "notifClaudeSudoBody": "{title} · {host}",
+  "@notifClaudeSudoBody": {
+    "placeholders": {
+      "title": {
+        "type": "String"
+      },
+      "host": {
+        "type": "String"
+      }
+    }
+  },
+  "fixPanelTitle": "Security session",
+  "fixPanelHosts": "Machines",
+  "fixPanelNoHosts": "No machine is pinned to this session.",
+  "fixPanelSudoCached": "sudo password remembered",
+  "fixPanelTimers": "Rollback timers",
+  "fixPanelTimersHint": "Claude applied a change with a timer: if it is not confirmed in time, the old state returns by itself.",
+  "fixTimerLeftSemantics": "{time} left",
+  "@fixTimerLeftSemantics": {
+    "placeholders": {
+      "time": {
+        "type": "String"
+      }
+    }
+  },
+  "fixPanelChanged": "Changed files ({count})",
+  "@fixPanelChanged": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "fixPanelBackups": "Backups ({count})",
+  "@fixPanelBackups": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "fixPanelNothing": "Nothing yet.",
+  "fixBackupNew": "new file (rolling back removes it)",
+  "fixRollback": "Roll back",
+  "fixRollbackConfirm": "Restore the backed-up files on {host}? The changes made in this session are reverted.",
+  "@fixRollbackConfirm": {
+    "placeholders": {
+      "host": {
+        "type": "String"
+      }
+    }
+  },
+  "fixRollbackDone": "Restored {restored} file(s)",
+  "@fixRollbackDone": {
+    "placeholders": {
+      "restored": {
+        "type": "int"
+      }
+    }
+  },
+  "fixRollbackPartial": "Restored {restored}, failed {failed}",
+  "@fixRollbackPartial": {
+    "placeholders": {
+      "restored": {
+        "type": "int"
+      },
+      "failed": {
+        "type": "int"
+      }
+    }
+  },
+  "fixForgetSudo": "Forget sudo passwords",
+  "fixForgetConfirm": "Delete the sudo passwords the agent remembers for this session? Claude will ask again when it needs one.",
+  "fixForgetDone": "Sudo passwords forgotten",
+  "fixAuditTitle": "Check the result",
+  "fixAuditBody": "Run the audit again: a fix counts when the audit confirms it. Then accept the new state if the remaining changes are intended.",
+  "fixAuditRun": "Re-run audit",
+  "fixAuditRunning": "Auditing…",
+  "fixAuditDone": "The audit is done. Open the machine to review what is left and accept the state.",
+  "fixAuditOpen": "Open {name}",
+  "@fixAuditOpen": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "fixErrOwnerOnly": "Only the device that started this security session can answer it, change its mode or roll it back.",
+  "fixErrTargetGone": "This machine's fix target was removed or changed since the session started, so it cannot be rolled back from here.",
+  "fixModeRootNote": "Outside “Don't ask”, every step that runs as root asks you first, in every mode (reading as root too, even in plan mode).",
+  "fixRunsAsRoot": "Runs as root",
+  "fixContentPreview": "The file cannot be read as the normal user, so this is a preview of the new content, not a diff.",
+  "fixErrSshConfig": "The SSH destination of “{host}” cannot be used: {reason}. Use a direct destination (user@host) without ProxyCommand, ProxyJump, LocalCommand or KnownHostsCommand.",
+  "@fixErrSshConfig": {
+    "placeholders": {
+      "host": {
+        "type": "String"
+      },
+      "reason": {
+        "type": "String"
+      }
+    }
+  }
 }

@@ -16,6 +16,8 @@ import '../claude/claude_screen.dart' show relativeTime;
 import '../incidents/host_picker.dart';
 import '../system/agent_providers.dart';
 import 'security_data.dart' show securityCall;
+import 'security_fix.dart';
+import 'security_fix_sheet.dart';
 import 'security_more_data.dart';
 import 'security_more_texts.dart';
 import 'security_section_widgets.dart';
@@ -167,6 +169,21 @@ class _VulnDetailState extends ConsumerState<SecurityVulnDetailScreen> {
   bool _fixedOnly = false;
   bool _busy = false;
 
+  /// Multi-select of CVEs for "Send to Claude".
+  late final _sel = FixSelection()..addListener(_onSel);
+
+  void _onSel() {
+    if (mounted) setState(() {});
+  }
+
+  @override
+  void dispose() {
+    _sel.dispose();
+    super.dispose();
+  }
+
+  FixItem _item(VulnImage img, VulnItem v) => FixItem.vuln(hex: img.hex, cve: v.id, label: '${v.id} · ${v.pkg} ${v.installed}${v.fixed == null ? '' : ' → ${v.fixed}'}');
+
   (String, String?) get _key => (widget.hex, widget.agentHint);
 
   Future<void> _scan(Host agent, VulnImage img) async {
@@ -183,8 +200,16 @@ class _VulnDetailState extends ConsumerState<SecurityVulnDetailScreen> {
     final l = AppLocalizations.of(context);
     final async = ref.watch(vulnImageProvider(_key));
     final img = async.value?.$2;
+    final agent = async.value?.$1;
+    final all = img == null ? const <FixItem>[] : [for (final v in img.vulns) _item(img, v)];
     return SettingsPage(
       title: img?.title ?? l.secVulnsTitle,
+      actions: [if (img != null && img.status == 'ok' && img.vulns.isNotEmpty) FixSelectButton(selection: _sel)],
+      bottomBar: agent != null && _sel.selecting
+          ? FixBar(selection: _sel, all: all, onSend: () async {
+              if (await sendToClaude(context, ref, agentId: agent.id, items: _sel.items) && mounted) _sel.done();
+            })
+          : null,
       onRefresh: () async {
         ref.invalidate(vulnImageProvider(_key));
         await ref.read(vulnImageProvider(_key).future).then((_) {}, onError: (_) {});
@@ -250,7 +275,7 @@ class _VulnDetailState extends ConsumerState<SecurityVulnDetailScreen> {
         ]),
         SectionLabel(l.secVulnTableTitle(shown.length)),
         if (shown.isEmpty) TCard(child: Text(_fixedOnly ? l.secVulnNoneFixed : l.secVulnNone)),
-        for (final v in capped) Padding(padding: const EdgeInsets.only(bottom: 8), child: _VulnRow(vuln: v)),
+        for (final v in capped) Padding(padding: const EdgeInsets.only(bottom: 8), child: _VulnRow(vuln: v, selection: _sel, item: _item(i, v))),
         if (shown.length > capped.length) Padding(padding: const EdgeInsets.all(8), child: Text(l.secMoreRows(shown.length - capped.length))),
         if (i.truncated) Padding(padding: const EdgeInsets.all(8), child: Text(l.secVulnTruncated, style: tt.bodySmall?.copyWith(color: t.warning))),
       ],
@@ -259,8 +284,10 @@ class _VulnDetailState extends ConsumerState<SecurityVulnDetailScreen> {
 }
 
 class _VulnRow extends StatelessWidget {
-  const _VulnRow({required this.vuln});
+  const _VulnRow({required this.vuln, required this.selection, required this.item});
   final VulnItem vuln;
+  final FixSelection selection;
+  final FixItem item;
 
   @override
   Widget build(BuildContext context) {
@@ -269,7 +296,10 @@ class _VulnRow extends StatelessWidget {
     final tt = Theme.of(context).textTheme;
     final v = vuln;
     final version = v.fixed == null ? '${v.installed} · ${l.secVulnNoFix}' : '${v.installed} → ${v.fixed}';
-    return TCard(
+    return FixPick(
+      selection: selection,
+      item: item,
+      child: TCard(
       padding: const EdgeInsets.all(12),
       semanticLabel: '${v.id}, ${securitySeverityName(l, v.severity)}, ${v.pkg}, $version, ${v.title}',
       child: ExcludeSemantics(
@@ -284,6 +314,7 @@ class _VulnRow extends StatelessWidget {
           Text(version, style: tt.bodySmall?.copyWith(fontFamily: monoFamily, color: v.fixed == null ? t.textSecondary : t.success)),
           if (v.title.isNotEmpty) Padding(padding: const EdgeInsets.only(top: 4), child: Text(v.title, style: tt.bodySmall, maxLines: 4, overflow: TextOverflow.ellipsis)),
         ]),
+      ),
       ),
     );
   }

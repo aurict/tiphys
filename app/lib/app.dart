@@ -42,6 +42,7 @@ import 'features/incidents/incidents_screen.dart';
 import 'features/security/security_attacks_screen.dart';
 import 'features/security/security_blackbox_screen.dart';
 import 'features/security/security_exposure_screen.dart';
+import 'features/security/security_fix_targets_screen.dart';
 import 'features/security/security_host_screen.dart';
 import 'features/security/security_recovery_screen.dart';
 import 'features/security/security_scanners_screen.dart';
@@ -163,6 +164,7 @@ final routerProvider = Provider<GoRouter>((ref) {
       ),
       GoRoute(path: '/note', builder: (c, s) => QuickNoteScreen(args: s.extra is QuickNoteArgs ? s.extra as QuickNoteArgs : const QuickNoteArgs())),
       GoRoute(path: '/claude/schedules', builder: (c, s) => const ClaudeSchedulesScreen()),
+      GoRoute(path: '/claude/security-targets', builder: (c, s) => FixTargetsScreen(hostId: s.uri.queryParameters['host'], addHost: s.uri.queryParameters['add'], addName: s.uri.queryParameters['name'])),
       GoRoute(path: '/share', builder: (c, s) => ShareToPcScreen(items: (s.extra as List?)?.cast<SharedMediaFile>() ?? const [])),
       GoRoute(path: '/git', builder: (c, s) => GitScreen(hostId: s.uri.queryParameters['host'] ?? '', path: s.uri.queryParameters['path'] ?? '~')),
       GoRoute(path: '/system/telegram', builder: (c, s) => TelegramScreen(hostId: s.uri.queryParameters['host'])),

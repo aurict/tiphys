@@ -10857,4 +10857,421 @@ class AppLocalizationsTr extends AppLocalizations {
 
   @override
   String get secCardNoHosts => 'Henüz denetlenen makine yok.';
+
+  @override
+  String get fixSelect => 'Seç';
+
+  @override
+  String get fixSelectCancel => 'Seçimi bırak';
+
+  @override
+  String get fixSelectAll => 'Tümünü seç';
+
+  @override
+  String get fixSend => 'Claude\'a ilet';
+
+  @override
+  String fixSelectedCount(int count) {
+    return '$count seçili';
+  }
+
+  @override
+  String fixSelectedTooMany(int count, int max) {
+    return '$count seçili (en çok $max)';
+  }
+
+  @override
+  String get fixSendTitle => 'Claude\'a ilet';
+
+  @override
+  String get fixSendIntro =>
+      'Claude makinelerinize SSH ile bağlanır ve bunları korumalı araçlarla düzeltir. Neyi sormadan yapabileceğini siz seçersiniz.';
+
+  @override
+  String get fixBriefLoading => 'Özet hazırlanıyor…';
+
+  @override
+  String fixItemsTitle(int count) {
+    return 'Seçilenler ($count)';
+  }
+
+  @override
+  String get fixModeFix => 'Düzelt';
+
+  @override
+  String get fixModeInvestigate => 'İncele';
+
+  @override
+  String get fixBriefTruncated =>
+      'Özet çok uzundu ve kısaltıldı: bazı öğeler dışarıda kaldı.';
+
+  @override
+  String get fixHostsTitle => 'Makineler';
+
+  @override
+  String get fixHostsNone => 'Bu öğeler için bir makine bulunamadı.';
+
+  @override
+  String get fixHostNoRoot => 'son denetim root olmadan çalıştı';
+
+  @override
+  String get fixTargetSet => 'Hedef tanımlı';
+
+  @override
+  String get fixTargetSetNow => 'Hedef ayarla';
+
+  @override
+  String get fixTargetsNoneHint =>
+      'Claude yalnız düzeltme hedefi olan makinelerde çalışır. En az bir makine için hedef ayarlayın.';
+
+  @override
+  String get fixModeTitle => 'İzinler';
+
+  @override
+  String get fixModeInvestigateNote =>
+      'Bu öğeler bir saldırının izi olabilir. Claude yalnız okur (plan kipi); siz bakmadan hiçbir şey değiştirilmez veya silinmez.';
+
+  @override
+  String get fixBypassWarning =>
+      'Bu kipte Claude seçili makinelerde sormadan her komutu çalıştırabilir; ağa erişen komutlar dahil. Araç kuralları (hedefler, yedek) yine geçerlidir ama ağ komutu engel listesi yalnızca bir sezgidir, korumalı alan değildir; bir hata sizi dışarıda bırakabilir.';
+
+  @override
+  String get fixBypassConfirm =>
+      'İzin sormadan başlatılsın mı? Claude seçili makinelerde size sormadan her komutu çalıştırabilir; ağa erişen komutlar dahil.';
+
+  @override
+  String get fixBypassConfirmGo => 'Sormadan başlat';
+
+  @override
+  String get fixNoteLabel => 'Notunuz (isteğe bağlı)';
+
+  @override
+  String get fixNoteHint => 'ör. 8080 portu açık kalsın, beklenen bir durum';
+
+  @override
+  String fixPreview(int bytes) {
+    return 'Claude\'a giden özet ($bytes bayt)';
+  }
+
+  @override
+  String get fixPreviewHint =>
+      'Denetlenen makinelerden gelen veri. Claude bunu talimat değil, veri olarak ele alır.';
+
+  @override
+  String get fixStart => 'Oturumu başlat';
+
+  @override
+  String fixErrRateLimited(int limit, int minutes) {
+    return 'Çok fazla özet istendi: $minutes dakikada en çok $limit. Sonra tekrar deneyin.';
+  }
+
+  @override
+  String get fixErrItemNotFound =>
+      'Öğe artık yok (denetim ilerlemiş olabilir). Yenileyip tekrar seçin.';
+
+  @override
+  String get fixErrTruncated => 'Dışarıda bırakıldı: özet çok uzundu.';
+
+  @override
+  String get fixErrHostNotFound => 'Makine bulunamadı';
+
+  @override
+  String get fixErrDisabled =>
+      'PC ajanında güvenlik düzeltmeleri kapalı. Ayarlar › Makineler › Ajan › Özellikler\'den “Güvenlik düzeltmeleri”ni açın.';
+
+  @override
+  String get fixErrRequired => 'Oturum için güvenlik özeti gerekli.';
+
+  @override
+  String get fixErrNoTargets =>
+      'Bu makinelerin hiçbirinin PC ajanında düzeltme hedefi yok. Önce bir hedef ayarlayın.';
+
+  @override
+  String get fixErrInvestigateReadOnly =>
+      'İncelemeler salt okunurdur: plan kipini kullanın.';
+
+  @override
+  String get fixErrBypassNew =>
+      '“Sorma” yalnız oturum başlarken seçilebilir. Yeni bir oturum başlatın.';
+
+  @override
+  String get fixFeatureName => 'Güvenlik düzeltmeleri (Claude, SSH ile)';
+
+  @override
+  String get fixTargetsTitle => 'Düzeltme hedefleri';
+
+  @override
+  String get fixTargetsLinkHint =>
+      'Claude güvenlik bulgularını düzeltirken SSH ile hangi makinelere bağlanabilir.';
+
+  @override
+  String get fixTargetsIntro =>
+      'Claude yalnız burada listelenen makinelerde çalışabilir. Kimlik, makinenin güvenlik merkezindeki kimliğidir; SSH adresi yoksa makine bu PC\'dir.';
+
+  @override
+  String get fixTargetsEmpty => 'Henüz düzeltme hedefi yok.';
+
+  @override
+  String get fixTargetAdd => 'Hedef ekle';
+
+  @override
+  String fixTargetDeleteConfirm(String name) {
+    return '“$name” düzeltme hedefi kaldırılsın mı?';
+  }
+
+  @override
+  String get fixTargetPickHost => 'Güvenlik merkezindeki makine';
+
+  @override
+  String get fixTargetHostLabel => 'Makine kimliği';
+
+  @override
+  String get fixTargetHostHelper =>
+      'Güvenlik merkezinin bu makine için kullandığı kimlik';
+
+  @override
+  String get fixTargetNameLabel => 'Ad';
+
+  @override
+  String get fixTargetThisPc => 'Bu PC';
+
+  @override
+  String get fixTargetThisPcHint => 'SSH olmadan yerelde çalışır';
+
+  @override
+  String get fixTargetSshLabel => 'SSH adresi';
+
+  @override
+  String get fixTargetSshHelper =>
+      'kullanıcı@makine; PC\'nin anahtarı ve known_hosts dosyası kullanılır';
+
+  @override
+  String get fixTargetPortLabel => 'Port (isteğe bağlı)';
+
+  @override
+  String get fixTargetHostInvalid => 'Küçük harf, rakam ve tire, ör. atlas';
+
+  @override
+  String get fixTargetSshInvalid =>
+      'kullanıcı@makine biçimini kullanın (harf, rakam, nokta, tire, alt çizgi)';
+
+  @override
+  String get fixTargetPortInvalid => 'Port 1–65535 (yalnız SSH hedefleri)';
+
+  @override
+  String get fixTargetDuplicate => 'Bu makinenin zaten bir hedefi var';
+
+  @override
+  String fixTargetTooMany(int max) {
+    return 'En çok $max hedef';
+  }
+
+  @override
+  String get fixTargetCacheInvalid => 'sudo parolası 1–120 dakika hatırlanır';
+
+  @override
+  String get fixSudoCacheTitle => 'sudo parolası';
+
+  @override
+  String get fixSudoCacheLabel => 'Hatırlama süresi (dakika)';
+
+  @override
+  String get fixSudoCacheHint =>
+      'Yalnız PC ajanının belleğinde, oturum ve makine başına; diske asla yazılmaz.';
+
+  @override
+  String get fixBadgeFix => 'Güvenlik düzeltmesi';
+
+  @override
+  String get fixBadgeInvestigate => 'İnceleme';
+
+  @override
+  String get fixToolHosts => 'Makineler';
+
+  @override
+  String get fixToolRead => 'Dosya oku';
+
+  @override
+  String get fixToolRun => 'Komut çalıştır';
+
+  @override
+  String get fixToolWrite => 'Dosya yaz';
+
+  @override
+  String get fixToolValidate => 'Doğrula';
+
+  @override
+  String get fixToolSafeApply => 'Geri alma zamanlayıcılı uygula';
+
+  @override
+  String get fixToolConfirm => 'Değişikliği onayla';
+
+  @override
+  String get fixToolRollback => 'Geri al';
+
+  @override
+  String fixSudoTitle(String host) {
+    return '$host için sudo parolası';
+  }
+
+  @override
+  String get fixSudoBody =>
+      'Claude\'un devam etmesi için bu makinede root gerekiyor. Parola yalnız ajanın belleğine gider, sudo için kullanılır; diske, günlüğe veya sohbete asla yazılmaz.';
+
+  @override
+  String get fixSudoInvestigateWarn =>
+      'Bu makine ele geçirilmiş olabilir (öğeler bir saldırıya benziyor). Üzerindeki ele geçirilmiş bir hesap yazdığınız parolayı yakalayabilir; başka yerlerde de kullandığınız bir parola ifşa olur. Reddedip tek seferlik bir parola kullanmayı düşünün.';
+
+  @override
+  String get fixSudoLabel => 'Parola';
+
+  @override
+  String fixSudoWrong(int attempt) {
+    return 'Parola kabul edilmedi ($attempt. deneme). Tekrar deneyin.';
+  }
+
+  @override
+  String get fixSudoSend => 'Gönder';
+
+  @override
+  String get fixSudoDeny => 'Reddet';
+
+  @override
+  String get fixSudoLater => 'Sonra';
+
+  @override
+  String fixSudoCard(String host) {
+    return '$host için sudo parolası gerekiyor';
+  }
+
+  @override
+  String get fixSudoEnter => 'Parolayı gir';
+
+  @override
+  String get fixSudoProvided => 'Parola gönderildi';
+
+  @override
+  String get fixSudoNotProvided => 'Parola verilmedi';
+
+  @override
+  String get notifClaudeSudoTitle => 'Claude\'un sudo parolasına ihtiyacı var';
+
+  @override
+  String notifClaudeSudoBody(String title, String host) {
+    return '$title · $host';
+  }
+
+  @override
+  String get fixPanelTitle => 'Güvenlik oturumu';
+
+  @override
+  String get fixPanelHosts => 'Makineler';
+
+  @override
+  String get fixPanelNoHosts => 'Bu oturuma sabitlenmiş makine yok.';
+
+  @override
+  String get fixPanelSudoCached => 'sudo parolası hatırlanıyor';
+
+  @override
+  String get fixPanelTimers => 'Geri alma zamanlayıcıları';
+
+  @override
+  String get fixPanelTimersHint =>
+      'Claude bir değişikliği zamanlayıcıyla uyguladı: süre içinde onaylanmazsa eski hâl kendiliğinden döner.';
+
+  @override
+  String fixTimerLeftSemantics(String time) {
+    return '$time kaldı';
+  }
+
+  @override
+  String fixPanelChanged(int count) {
+    return 'Değişen dosyalar ($count)';
+  }
+
+  @override
+  String fixPanelBackups(int count) {
+    return 'Yedekler ($count)';
+  }
+
+  @override
+  String get fixPanelNothing => 'Henüz yok.';
+
+  @override
+  String get fixBackupNew => 'yeni dosya (geri alınca silinir)';
+
+  @override
+  String get fixRollback => 'Geri al';
+
+  @override
+  String fixRollbackConfirm(String host) {
+    return '$host üzerindeki yedeklenmiş dosyalar geri yüklensin mi? Bu oturumda yapılan değişiklikler geri alınır.';
+  }
+
+  @override
+  String fixRollbackDone(int restored) {
+    return '$restored dosya geri yüklendi';
+  }
+
+  @override
+  String fixRollbackPartial(int restored, int failed) {
+    return '$restored geri yüklendi, $failed başarısız';
+  }
+
+  @override
+  String get fixForgetSudo => 'sudo parolalarını unut';
+
+  @override
+  String get fixForgetConfirm =>
+      'Ajanın bu oturum için hatırladığı sudo parolaları silinsin mi? Claude gerektiğinde yeniden sorar.';
+
+  @override
+  String get fixForgetDone => 'sudo parolaları unutuldu';
+
+  @override
+  String get fixAuditTitle => 'Sonucu doğrula';
+
+  @override
+  String get fixAuditBody =>
+      'Denetimi yeniden çalıştırın: düzeltme, denetim doğruladığında geçerlidir. Sonra kalan değişiklikler istediğiniz gibiyse yeni durumu kabul edin.';
+
+  @override
+  String get fixAuditRun => 'Yeniden denetle';
+
+  @override
+  String get fixAuditRunning => 'Denetleniyor…';
+
+  @override
+  String get fixAuditDone =>
+      'Denetim bitti. Kalanlara bakmak ve durumu kabul etmek için makineyi açın.';
+
+  @override
+  String fixAuditOpen(String name) {
+    return '$name makinesini aç';
+  }
+
+  @override
+  String get fixErrOwnerOnly =>
+      'Bu güvenlik oturumunu yalnız başlatan cihaz yanıtlayabilir, kipini değiştirebilir veya geri alabilir.';
+
+  @override
+  String get fixErrTargetGone =>
+      'Bu makinenin düzeltme hedefi oturum başladığından beri kaldırılmış veya değiştirilmiş; buradan geri alınamaz.';
+
+  @override
+  String get fixModeRootNote =>
+      '“İzin sorma” dışında root olarak çalışan her adım, her kipte önce size sorar (plan kipinde bile root ile okuma dahil).';
+
+  @override
+  String get fixRunsAsRoot => 'Root olarak çalışır';
+
+  @override
+  String get fixContentPreview =>
+      'Dosya normal kullanıcıyla okunamıyor; bu bir fark değil, yeni içeriğin önizlemesidir.';
+
+  @override
+  String fixErrSshConfig(String host, String reason) {
+    return '“$host” makinesinin SSH adresi kullanılamıyor: $reason. ProxyCommand, ProxyJump, LocalCommand veya KnownHostsCommand olmadan doğrudan bir adres (kullanıcı@makine) kullanın.';
+  }
 }

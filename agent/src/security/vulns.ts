@@ -117,6 +117,8 @@ export function trivyArgs(o: { target: { ref: string } | { input: string }; plat
   const args = [
     "run",
     "--rm",
+    "--label",
+    "tiphys.tool=trivy",
     "--memory",
     "2g",
     "--cpus",

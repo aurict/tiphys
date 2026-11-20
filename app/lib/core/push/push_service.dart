@@ -37,6 +37,8 @@ const _endpointKey = 'app:pushEndpoint';
     'claude.done' => (l.notifClaudeDoneTitleWith(s('title')), claudeDoneBody(l, p)),
     'claude.waiting' => (l.notifClaudeWaitingTitle, l.notifClaudeWaitingBody(s('title'), s('tool'))),
     'claude.error' => (l.notifClaudeErrorTitle, s('title')),
+    // A security fix session needs the sudo password of a machine (typed in the app; the notification has no buttons).
+    'claude.sudo' => (l.notifClaudeSudoTitle, l.notifClaudeSudoBody(s('title'), s('host'))),
     // Claude using the PC: control ended (while Claude is running) / ends within 2 min (with an "Extend" button).
     // agy sessions (Antigravity CLI): same three notices as Claude.
     'agy.done' => (l.notifAgyDoneTitleWith(s('title')), ''),
@@ -203,7 +205,7 @@ bool noticeAllowed(Profile p, String key, [Map<String, dynamic> params = const {
       'claude.waiting' || 'agy.waiting' => p.claude.notifyWaiting,
       'agy.error' => p.claude.notifyError,
       'claude.error' || 'claude.scheduleFailed' || 'claude.pcEnded' => p.claude.notifyError,
-      'claude.pcExpiring' => p.claude.notifyWaiting,
+      'claude.pcExpiring' || 'claude.sudo' => p.claude.notifyWaiting,
       'host.offline' || 'host.online' => p.notifications.pcOffline,
       'service.failed' || 'service.recovered' || 'agent.restarted' => p.notifications.serviceDown,
       'grafana.alert' || 'grafana.resolved' => p.notifications.grafanaAlerts,
@@ -221,11 +223,12 @@ bool noticeAllowed(Profile p, String key, [Map<String, dynamic> params = const {
     };
 
 /// Notification never shown on the lock screen (secret): those whose buttons run in the background without unlocking
-/// and affect the PC — a PC session's permission request ("Allow": payment, sending a message, command) and "Extend".
+/// and affect the PC — a PC session's permission request ("Allow": payment, sending a message, command), a security fix
+/// session's too (`security: 1`: it changes machines over SSH), a sudo password request, and "Extend".
 /// PC session: the agent's `pc: 1` param or the PC session held on the phone ([heldPcSession]). "Stop" (ongoing
 /// notification) stays on the lock screen: stopping is safe. A Telegram approval too: "Send" messages other people.
 NotificationVisibility? lockScreenVisibility(String key, Map<String, dynamic> params, String? sessionId, String? heldPcSession) {
-  final pc = key == 'claude.pcExpiring' || (key == 'claude.waiting' && (params['pc'] == 1 || (sessionId != null && sessionId == heldPcSession)));
+  final pc = key == 'claude.pcExpiring' || key == 'claude.sudo' || (key == 'claude.waiting' && (params['pc'] == 1 || params['security'] == 1 || (sessionId != null && sessionId == heldPcSession)));
   return pc || key == 'telegram.approval' ? NotificationVisibility.secret : null;
 }
 
@@ -238,6 +241,7 @@ int noticeId(String key, Map<String, dynamic> p, {String? link, String? requestI
     'claude.done' || 'claude.error' || 'claude.pcEnded' || 'agy.done' || 'agy.error' => 'claude|$link',
     'claude.pcExpiring' => 'claude-pc-expiring|$link',
     'claude.waiting' || 'agy.waiting' => 'claude-wait|$link|$requestId',
+    'claude.sudo' => 'claude-sudo|$link|$requestId',
     'host.offline' || 'host.online' => 'host|${s('host')}',
     'disk.full' => 'disk|${s('host')}|${s('mount')}',
     'disk.ok' => 'disk|${s('host')}|${s('name')}',
@@ -904,7 +908,7 @@ class PushService {
     final l = lookupAppLocalizations(_localeOf(profile));
     final text = noticeText(l, key, params);
     if (text == null) return;
-    final high = const {'claude.pcExpiring', 'claude.pcEnded', 'claude.waiting', 'agy.waiting', 'host.offline', 'disk.full', 'service.failed', 'grafana.alert', 'agent.restarted', 'docker.died', 'docker.oom', 'docker.unhealthy', 'docker.restartLoop', 'uptime.down', 'incident.actionFailed', 'config.restartFailed', 'db.restoreTest.failed', 'backup.stale', 'backup.failed', 'claude.scheduleFailed', 'telegram.approval', 'telegram.pcUnreachable'}.contains(key) ||
+    final high = const {'claude.pcExpiring', 'claude.pcEnded', 'claude.waiting', 'claude.sudo', 'agy.waiting', 'host.offline', 'disk.full', 'service.failed', 'grafana.alert', 'agent.restarted', 'docker.died', 'docker.oom', 'docker.unhealthy', 'docker.restartLoop', 'uptime.down', 'incident.actionFailed', 'config.restartFailed', 'db.restoreTest.failed', 'backup.stale', 'backup.failed', 'claude.scheduleFailed', 'telegram.approval', 'telegram.pcUnreachable'}.contains(key) ||
         (key == 'security.change' && params['severity'] == 'critical') ||
         securityUrgentKeys.contains(key) ||
         (key == 'telegram.failed' && params['reason'] != 'agent.telegram.approvalExpired');

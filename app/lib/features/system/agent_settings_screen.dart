@@ -11,6 +11,7 @@ import '../../state/providers.dart';
 import '../../theme/tokens.dart';
 import '../../widgets/forms.dart';
 import '../../widgets/surfaces.dart';
+import '../security/security_fix_targets_screen.dart' show FixTargetsLink;
 import 'agent_providers.dart';
 import 'backups.dart';
 
@@ -18,7 +19,7 @@ final agentConfigProvider = FutureProvider.autoDispose.family<Map<String, dynami
   return withAgent(ref, hostId, (c) => c.get('/v1/config'));
 });
 
-const agentFeatures = ['system', 'services', 'docker', 'power', 'git', 'desktop', 'control', 'ports', 'transcribe', 'alerts', 'backups', 'homepage', 'claude', 'uptime', 'wake', 'watch', 'research', 'telegram', 'incidents', 'agy'];
+const agentFeatures = ['system', 'services', 'docker', 'power', 'git', 'desktop', 'control', 'ports', 'transcribe', 'alerts', 'backups', 'homepage', 'claude', 'uptime', 'wake', 'watch', 'research', 'telegram', 'incidents', 'agy', 'securityFix'];
 
 class AgentSettingsScreen extends ConsumerStatefulWidget {
   const AgentSettingsScreen({super.key, required this.hostId});
@@ -174,6 +175,7 @@ class _AgentSettingsState extends ConsumerState<AgentSettingsScreen> {
                     onChanged: (v) => setState(() => _features![f] = v),
                   ),
               ]),
+              if (_features!['securityFix'] == true && _features!['claude'] == true) FixTargetsLink(hostId: widget.hostId),
               FieldCard(title: l.agentAllowedRoots, children: [
                 TField(controller: _roots, label: l.agentAllowedRoots, helper: l.agentAllowedRootsHint, mono: true, maxLines: 4),
               ]),
@@ -313,6 +315,7 @@ String agentFeatureName(AppLocalizations l, String f) => switch (f) {
       'telegram' => 'Telegram',
       'incidents' => l.incTitle,
       'agy' => 'agy (Antigravity)',
+      'securityFix' => l.fixFeatureName,
       _ => l.agentFeatWatch,
     };
 

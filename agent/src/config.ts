@@ -49,6 +49,24 @@ export const securityRole = z.enum(["server", "desktop"]);
 const allowedPorts = z.array(z.string().regex(/^(tcp|udp)\/([1-9]\d{0,3}|[1-5]\d{4}|6[0-4]\d{3}|65[0-4]\d{2}|655[0-2]\d|6553[0-5])$/)).max(100);
 /** Hostname or IP for ssh (no leading "-", no user part, no spaces). */
 const sshHost = z.string().regex(/^(?!-)[A-Za-z0-9.:_-]{1,253}$/);
+/** ssh destination of a security fix target: "user@host" or a bare host/alias; no options, spaces or leading "-". */
+export const SSH_DEST = /^(?:[A-Za-z0-9_][A-Za-z0-9_.-]{0,31}@)?[A-Za-z0-9_][A-Za-z0-9_.-]{0,252}$/;
+export const securityFixTargetSchema = z.strictObject({
+  /** Security host id as known on the monitoring server. */
+  host: id,
+  name: z.string().min(1).max(80),
+  /** null = this machine (commands run locally). */
+  ssh: z.string().regex(SSH_DEST).nullable(),
+  port: z.number().int().min(1).max(65535).optional(),
+});
+export const securityFixSchema = z.object({
+  targets: z
+    .array(securityFixTargetSchema)
+    .max(20)
+    .refine((a) => new Set(a.map((t) => t.host)).size === a.length, { message: "hedef host kimlikleri benzersiz olmalı" })
+    .default([]),
+  sudoCacheMinutes: z.number().int().min(1).max(120).default(15),
+});
 export const securitySourceSchema = z.discriminatedUnion("kind", [
   z.strictObject({
     kind: z.literal("ssh"),
@@ -211,6 +229,8 @@ export const agentConfigSchema = z.object({
     security: z.boolean().default(false),
     /** Antigravity CLI (agy) sessions from the phone over its Agent Client Protocol (PC; agy installed and logged in). */
     agy: z.boolean().default(false),
+    /** Claude "security" sessions fix security items on pinned targets over SSH (PLAN.md §16); needs "claude". */
+    securityFix: z.boolean().default(false),
   }),
   devices: z.array(deviceSchema).default([]),
   /** Scoped service tokens (tps_…): they open only routes that declare one of their scopes. */
@@ -373,6 +393,8 @@ export const agentConfigSchema = z.object({
         .default([]),
     })
     .default({ connections: [], restoreTests: [] }),
+  /** Claude security fix sessions ("securityFix" feature): targets reachable over SSH (or this machine). */
+  securityFix: securityFixSchema.default({ targets: [], sudoCacheMinutes: 15 }),
   /** Security center ("security" feature). The token of an agent source is never returned by the API. */
   security: z
     .object({

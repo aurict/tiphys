@@ -52,6 +52,7 @@ The file is validated with a zod schema (`agent/src/config.ts`) when it loads. I
 | `serviceTokens` | array | `[]` | Scoped tokens for other agents: `{id, name, scopes: ["research" | "analysis" | "security-report" | "blackbox" | "lockdown"], tokenHash, createdAt, lastUsedAt?}`. Only the hash is stored; `lastUsedAt` is updated at most hourly. Managed by `service-token` and the app. A service token can call only routes of its scopes (see [api.md](api.md#authentication)). |
 | `allowedRoots` | string[] | `["~"]` | Directories that path-based features may touch: git, the Claude working directory and the folder picker. Paths are resolved with `realpath` (symlinks followed) before the check. `~` is expanded. |
 | `claude` | object | see [claude](#claude) | Claude Code profiles. |
+| `securityFix` | object | `{"targets": [], "sudoCacheMinutes": 15}` | Machines Claude may fix security findings on, and the sudo password cache time. See [securityFix](#securityfix). |
 | `homepage` | object | see [homepage](#homepage) | Homepage dashboard integration. |
 | `push` | object | see [push](#push) | Push notification endpoints and the ntfy token. |
 | `uptimeKuma` | object or `null` | `null` | Uptime Kuma login. |
@@ -90,6 +91,7 @@ Risk levels below are a guide to how much a holder of a device token can do with
 | `power` | `true` | `reboot`, `poweroff`, `suspend` via `systemctl`, each with explicit confirmation. | high |
 | `homepage` | `false` | Reads the [Homepage](https://gethomepage.dev) `services.yaml`, health-checks each service, and adds new services to it. | low |
 | `claude` | `false` | Claude Code sessions, history, slash commands, schedules and the folder picker. PC-control sessions also need `desktop` and `control`. See [Claude](../features/claude.md). | high |
+| `securityFix` | `false` | Claude **security fix sessions** (`kind: "security"`): Claude fixes the findings you selected in the security center on pinned machines over SSH (or on this machine), only through the in-process `tiphys_sec` tools, in a permission mode you choose; the sudo password is typed on the phone and kept in memory only. Needs `claude` on the same agent (the routes live in the Claude module) and at least one target in [securityFix](#securityfix). The monitoring server that produces the brief needs `security`. See [Security fix sessions](../features/claude.md#security-fix-sessions) and [Security](../security.md#claude-security-fix-sessions). | **high** (with *Don't ask* Claude runs any command that passes the denylist on the pinned machines without asking, as the SSH user and, with the sudo password, as root) |
 | `agy` | `false` | Antigravity CLI (`agy`) sessions from the phone: one `agy acp` process per session (Agent Client Protocol), agy's own permission prompts answered from the phone, resuming earlier conversations. Needs `agy` installed and logged in on this machine; folders must lie inside `allowedRoots`. Starts no process until a session is opened. See [agy](../features/agy.md). | high |
 | `uptime` | `false` | Uptime Kuma bridge: monitors, heartbeats, maintenance windows (read and write). Needs `uptimeKuma`. | low |
 | `wake` | `false` | Sends Wake-on-LAN magic packets to the configured `wake.targets`. | low |
@@ -128,6 +130,45 @@ Endpoints that are always on, whatever the flags: health, config, devices, push 
 | `defaultProfile` | `personal` | Profile used when a request doesn't name one. |
 
 The working directory of every session has to be inside `allowedRoots`.
+
+### securityFix
+
+Feature `securityFix` (with `claude`). The machines a [security fix session](../features/claude.md#security-fix-sessions)
+may work on. Managed from the app (*Settings › Hosts › (host) › Agent settings › Fix targets*) through
+`GET`/`PUT /v1/claude/security/targets`, not through `PATCH /v1/config` (`GET /v1/config` leaves this section out).
+Read on each use, so changes need no restart (the feature flag itself does).
+
+```json
+"securityFix": {
+  "targets": [
+    { "host": "atlas", "name": "atlas", "ssh": "admin@atlas.my-tailnet.ts.net" },
+    { "host": "orion", "name": "orion (alt port)", "ssh": "admin@orion", "port": 2222 },
+    { "host": "self", "name": "This PC", "ssh": null }
+  ],
+  "sudoCacheMinutes": 15
+}
+```
+
+| Field | Default | Meaning |
+| --- | --- | --- |
+| `targets` | `[]` | At most 20 entries, unique by `host`. A session starts only with targets that are listed here **and** named in the brief. |
+| `targets[].host` | required | The machine's id in the security center of the monitoring server (`[a-z0-9][a-z0-9-]{0,62}`, for example `atlas` or `self`). It is how the brief's machines are matched to targets. |
+| `targets[].name` | required | Display name, 1 to 80 characters. |
+| `targets[].ssh` | required | `user@host` or a bare host or ssh alias: matching `^(?:[A-Za-z0-9_][A-Za-z0-9_.-]{0,31}@)?[A-Za-z0-9_][A-Za-z0-9_.-]{0,252}$`, so no spaces, no options and no leading `-`. `null` means **this machine**: commands run locally with `sh -c`, without SSH. |
+| `targets[].port` | none | SSH port, 1 to 65535. Passed as `-p`; leave it out for a local target. |
+| `sudoCacheMinutes` | `15` | How long the agent remembers a sudo password per machine and session, 1 to 120. Memory only; see [Security](../security.md#claude-security-fix-sessions). |
+
+Entries are strict: an unknown key is rejected. Remote targets use the agent user's own SSH setup (keys, agent,
+`~/.ssh/config`, `known_hosts`) and the agent never learns a host key (`StrictHostKeyChecking=yes`), so connect to each
+machine once by hand as the agent user before adding it. The remote machine needs `/bin/sh`, `base64` and `timeout`.
+A session **copies** its targets when it starts and resolves each SSH destination once with `ssh -G`; later
+connections use `-F /dev/null` and only the resolved values, so editing `~/.ssh/config` mid-session changes nothing
+(a `Match exec` there runs once, at the start). A destination that uses `ProxyCommand`, `ProxyJump`, `LocalCommand` or
+`KnownHostsCommand` is refused: the session does not start (`agent.claude.securitySshConfig`). Removing a target, or
+changing its destination or port, later makes that machine unusable for the running session (its tools refuse it).
+On a target with `ssh: null` (this PC) Claude may never write under `~/.ssh`, `~/.config`, `~/.claude`, `~/.local`,
+`~/.cache`, shell startup files, the agent's own folder and the systemd user unit folders; see
+[Claude](../features/claude.md#targets).
 
 ### homepage
 
@@ -423,9 +464,10 @@ The app reads the redacted config with `GET /v1/config` and changes it with `PAT
 - `telegram` becomes `{configured, username}` and `research` becomes `{url, wakeHostId, hasToken}`
 - `incidents.analysis` becomes `{mode, url, language, hasToken}`
 - `databases` is left out (connections are read through `/v1/db/connections`, without passwords)
+- `securityFix` is left out (read through `GET /v1/claude/security/targets`)
 - `security` is left out (hosts are read through `/v1/security/hosts`, the scanners, Cloudflare, traps, black box and lockdown targets through their own `/v1/security/*` and `/v1/blackbox/*` routes; tokens come back only as `hasToken`)
 
-**Patchable fields:** `name`, `features` (partial), `allowedRoots`, `claude`, `homepage`, `pushToken` (string or `null`), `uptimeKuma`, `sunshine`, `wake`, `watch`, `alerts`, `transcribe`, `desktop`, `backups`, `research` (`{url, token?, wakeHostId?}` or `null`), `stacks` (`{roots}`), `incidents` (`{links?, analysis?: {mode, url? (null clears), token?, language?}}`; an omitted part is kept), `configFiles` (`{extraPaths}`). `databases` and `security` are not patchable here (`/v1/db/*`, `/v1/security/*`, `/v1/blackbox/settings`). The bot token has its own route (`PUT /v1/telegram/bot`). Unknown keys are rejected. The phone **cannot** change `listen`, `requireTailscaleLogin`, `devices`, `serviceTokens` or push endpoints this way (service tokens have their own routes, `/v1/service-tokens`; they are not part of `GET /v1/config`).
+**Patchable fields:** `name`, `features` (partial), `allowedRoots`, `claude`, `homepage`, `pushToken` (string or `null`), `uptimeKuma`, `sunshine`, `wake`, `watch`, `alerts`, `transcribe`, `desktop`, `backups`, `research` (`{url, token?, wakeHostId?}` or `null`), `stacks` (`{roots}`), `incidents` (`{links?, analysis?: {mode, url? (null clears), token?, language?}}`; an omitted part is kept), `configFiles` (`{extraPaths}`). `databases`, `security` and `securityFix` are not patchable here (`/v1/db/*`, `/v1/security/*`, `/v1/blackbox/settings`, `/v1/claude/security/targets`). The bot token has its own route (`PUT /v1/telegram/bot`). Unknown keys are rejected. The phone **cannot** change `listen`, `requireTailscaleLogin`, `devices`, `serviceTokens` or push endpoints this way (service tokens have their own routes, `/v1/service-tokens`; they are not part of `GET /v1/config`).
 
 **Password fields.** For `uptimeKuma.password`, `sunshine.password`, `alerts.grafana.token`, `research.token` and `incidents.analysis.token`, an omitted value keeps the stored secret, but only if the URL is unchanged. If the URL changes and no new secret is sent, the request fails with `agent.config.passwordRequired`, so an old secret is never sent to a new host. Sending `null` for the section removes it.
 
@@ -468,11 +510,11 @@ All state files sit next to `agent.json` (by default in `~/.config/tiphys/`) and
 | --- | --- | --- |
 | `agent.json` | config store | The configuration. Saves are serialized and each goes through its own temporary file, then a rename. |
 | `events.jsonl` | always | Event log: every notification (except sensitive ones such as clipboard text) and non-notifying events such as Docker restarts, git commits/pushes, control session start/end and `ui.opened`. Rotated to `events.jsonl.1` above 2 MB. |
-| `audit.jsonl` | always | One line for every non-GET request: `{at, device, method, path, status}`. Bodies and query strings are never logged. Rotated to `audit.jsonl.1` above 1 MB. |
+| `audit.jsonl` | always | One line for every non-GET request: `{at, device, method, path, status}`. Bodies and query strings are never logged. Security fix sessions add one line per tool step with method `TOOL`, see [Security](../security.md#claude-security-fix-sessions). Rotated to `audit.jsonl.1` above 1 MB. |
 | `agent-runs.json` | `serve` | The last 50 start/stop records, used to detect unexpected restarts. |
 | `control-indicator.json` | `desktop` | The Hyprland border colour and width saved while a control session is open. Restored and deleted on the next start if the agent crashed. |
 | `a11y-state.json` | `desktop` + mobile view | The previous `org.a11y.Status.IsEnabled` value. Restored when the last view closes or on startup. |
-| `claude-sessions.json` | `claude` | Live Claude sessions, restored after an agent restart. |
+| `claude-sessions.json` | `claude` | Live Claude sessions, restored after an agent restart. A security fix session also keeps its pinned targets, mode, data-block nonce, backup list and rollback timers here (never a password). |
 | `claude-schedules.json` | `claude` | Scheduled Claude tasks. |
 | `telegram-state.json` | `telegram` | Recipients (chat id, names, status, subscriptions), invites, feeds, the `getUpdates` offset and the newsletter archive (last 60 issues per feed with items, rendered parts and deliveries). No tokens. A corrupt file is moved aside to `telegram-state.json.corrupt-<time>` and the agent starts empty (event `telegram.stateCorrupt`). |
 | `incidents/` | `incidents` | Directory (`0700`): `index.json` (summaries) and `<id>.json` per incident (redacted logs, inspect summary, git log/status, metrics, deploys, timeline, notes). Atomic writes, `0600`. Resolved incidents are deleted after 90 days; at most 500 are kept (oldest resolved first). `deploys.jsonl` (`incidents` + `docker`, `0600`): compose service image changes (ids, references, container names; no env); rotated at 1 MB to `deploys.jsonl.1`. |

@@ -121,9 +121,9 @@ class _ClaudeScreenState extends ConsumerState<ClaudeScreen> {
                       for (final s in live)
                         GroupedRow(
                           title: '${s['title']}'.isEmpty ? l.claudeUntitled : '${s['title']}',
-                          subtitle: '${s['kind'] == 'pc' ? l.claudePcUse : _folder('${s['cwd']}')} · '
+                          subtitle: '${s['kind'] == 'pc' ? l.claudePcUse : (s['kind'] == 'security' ? ((s['security'] as Map?)?['investigate'] == true ? l.fixBadgeInvestigate : l.fixBadgeFix) : _folder('${s['cwd']}'))} · '
                               '${(s['pendingPermissions'] as int) > 0 ? l.homeClaudeWaiting(s['pendingPermissions'] as int) : claudeStatusText(l, '${s['status']}')}',
-                          icon: s['kind'] == 'pc' ? LucideIcons.monitor : LucideIcons.asterisk,
+                          icon: s['kind'] == 'pc' ? LucideIcons.monitor : (s['kind'] == 'security' ? LucideIcons.shieldCheck : LucideIcons.asterisk),
                           iconBackground: statusColor('${s['status']}'),
                           trailingText: '\$${(s['costUsd'] as num).toStringAsFixed(2)}',
                           onTap: () => context.push('/claude/session/${s['id']}'),

@@ -66,7 +66,7 @@ export function parseGitleaks(json: string): GitleaksHit[] {
 }
 
 export function gitleaksArgs(mode: "git" | "stdin", mount: string | null): string[] {
-  const args = ["run", "--rm", "-i", "--network", "none", "--read-only", "--memory", "1g", "--cpus", "1", "--security-opt", "no-new-privileges"];
+  const args = ["run", "--rm", "-i", "--network", "none", "--read-only", "--memory", "1g", "--cpus", "1", "--security-opt", "no-new-privileges", "--label", "tiphys.tool=gitleaks"];
   if (mount) args.push("-v", `${mount}:/repo:ro`, "-e", "GIT_CONFIG_COUNT=1", "-e", "GIT_CONFIG_KEY_0=safe.directory", "-e", "GIT_CONFIG_VALUE_0=*");
   args.push(GITLEAKS_IMAGE, mode);
   if (mode === "git") args.push("/repo");

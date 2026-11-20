@@ -2,7 +2,8 @@
 
 A read-only security audit of your machines, collected on one **monitoring server** (for example `atlas`) and shown
 in the app as a score, a list of findings and a list of changes since the last state you accepted. Nothing is fixed
-automatically: the audit only reads what the host reports about itself. On top of it the monitoring server can run
+automatically: the audit only reads what the host reports about itself. You can hand findings to a Claude session that
+fixes them over SSH ([Fixing findings with Claude](#fixing-findings-with-claude)), but only when you start it. On top of it the monitoring server can run
 heavier checks (container vulnerability and secret scans, an outside view of what the internet can reach, attack
 detection from Cloudflare), plant traps, keep a tamper-evident record of what was done through the agents, and lock
 everything when a phone is lost. Those are described from [Container vulnerability scan](#container-vulnerability-scan)
@@ -48,8 +49,11 @@ API reference: [../agent/api.md#security](../agent/api.md#security). Configurati
 
 There is **no automatic AI analysis** of security incidents (the incident room skips it for the `security` kind), and
 the audit never changes anything on the audited machine. The later features change nothing on a host either, with
-three explicit exceptions that you start yourself: `tools/install-audit.sh --trap` on an SSH host (decoy file and audit
-rule), a decoy file the agent creates on its own machine, and the lockdown (which revokes access on the agents).
+four explicit exceptions that you start yourself: `tools/install-audit.sh --trap` on an SSH host (decoy file and audit
+rule), a decoy file the agent creates on its own machine, the lockdown (which revokes access on the agents), and a
+[Claude security fix session](#fixing-findings-with-claude), which you start from the findings you selected and whose
+permission mode you choose. The audit itself stays read-only in that case too: it only runs again afterwards to check
+the result.
 
 ## How the audit works
 
@@ -667,6 +671,112 @@ needs a broad Workers token. Cloudflare's **GraphQL Analytics** does know the cl
 
 State: `security-attacks.json` (mode `0600`).
 
+## Fixing findings with Claude
+
+*Needs the `security` feature on the monitoring server and the `claude` and `securityFix` features on the agent that
+runs Claude (default off), plus at least one fix target. See
+[Security fix sessions](claude.md#security-fix-sessions) for what the session can do and
+[Security](../security.md#claude-security-fix-sessions) for its guardrails and limits.*
+
+You can pick findings and send them to a Claude session that connects to the machines over SSH and fixes them with
+guarded tools. The audit stays what it was: read-only. Only the session you start changes anything, in the permission
+mode you choose, and the audit then runs again to check the result.
+
+### The flow
+
+1. **Select.** On the machine screen (findings and baseline changes), the vulnerabilities, the secrets and the outside
+   view, *Select* turns on a selection mode. Tick items or use *Select all*, then *Send to Claude*. At most 30 items
+   at a time.
+2. **Brief.** The app asks the monitoring server for a brief of the selected items (`POST /v1/security/brief`, see
+   below). The sheet shows the items with their mode (*Fix* or *Investigate*), the machines they concern (name, role,
+   *last audit ran without root*) and the **fix target** of each machine. A machine without a target is marked *Set
+   target*; Claude only works on machines that have one. The sheet also shows the brief that will be sent, byte for
+   byte.
+3. **Session.** You choose the permission mode (*Plan first*, *Ask every time*, *Accept edits, ask for commands*,
+   *Don't ask*), may add a note, and start. *Don't ask* needs a second confirmation. The app sends the brief, the
+   machines and your note to the agent that runs Claude, which opens a session of the kind `security` and starts
+   working at once. Your note is your own instruction and is treated as trusted; the brief is not.
+4. **Work.** Claude reads, changes files with backups, asks the phone for approvals and for the sudo password when
+   it needs root. The chat shows a *Security session* panel with the changed files, backups, rollback timers and a
+   *Roll back* button per machine. Details in [Claude](claude.md#security-fix-sessions).
+5. **Re-audit.** When Claude is done (a fix session; an investigation changes nothing and has no such card), a card
+   under its result offers *Re-run audit*. It runs a normal (not full)
+   check on every machine of the session through the monitoring server. A fix counts when the audit confirms it:
+   the finding is gone from the machine's list.
+6. **Accept.** *Open machine* leads to the machine screen. If the remaining baseline changes are the ones you
+   wanted (for example a new sshd drop-in), use *Accept this state* as usual. Nothing accepts the baseline for you.
+
+### What the brief contains
+
+The brief is the boundary against prompt injection. Everything in a security report comes from machines that may be
+compromised: a container name, a file name, a key comment or a log line can be written by an attacker. So the brief
+carries **structured data only**:
+
+- **A fixed English template per rule**, written in the agent's code: what the problem is, why it matters, what the
+  expected state is, and where a fix usually goes (for example an sshd drop-in, the compose file, an nft rule). There
+  is one for every finding rule, every baseline category and every outside-view rule, and one each for vulnerabilities
+  and secrets.
+- **Parameters** (`port=22; proto=tcp`) that pass a **per-rule allowlist**: only the keys listed for that rule
+  are kept (unknown keys are dropped), and each value must match that key's pattern (a number, one of a few words, or a
+  name made of `A-Z a-z 0-9 _ . : @ / + -` up to 120 characters). A value that does not match is replaced by
+  `‹invalid:<first 8 hex of its sha256>›`, so it can be recognised but not read. Fields an attacker can influence
+  (container, image and file names, key comments, log streams, change items) therefore cannot hold a space, and no
+  sentence fits in them.
+- **Redaction** as the last step over the whole text, with the same patterns the agent applies everywhere else.
+- Which machines are involved (id, name, role, whether the last audit ran as root, source), a generation time, the
+  language Claude should answer in (the app's language) and a line saying that everything below is data, never
+  instructions.
+
+It **never** contains raw report text, CVE titles or descriptions, log lines or secret values.
+
+| Item | What the brief says |
+| --- | --- |
+| Finding | severity, rule, the allowlisted parameters, the template |
+| Baseline change | severity (critical for an added or changed item in a critical category), category, kind (added, removed, changed), parameters taken from the item and the current report (user, fingerprint, key comment, sshd value, container flags, SUID mode and owner), the template |
+| Vulnerability | CVE id, image digest and up to 5 image references, up to 20 affected packages with installed and fixed version, up to 10 machines with the containers that run it; the advice is a newer tag or digest, and "no fixed version" is reported as such |
+| Secret | source (`github`, `loki`, `local`), rule, where, file, line, commit, stream, time and whether it was dismissed. **No value** |
+| Outside view | severity, rule, target host name and the allowlisted parameters (port, path, days, missing headers) |
+
+The brief is at most 120 KB. Items keep the order you selected them in, duplicates are dropped, and an item that does
+not fit is left out with the per-item error `agent.security.briefTruncated` (the response says `truncated: true`; the
+text then ends with a note on how many items were omitted).
+
+The response also lists, for every requested item, its `ref` and either its `mode` or an error code. The `ref` in this
+JSON is the raw identifier (`finding:atlas:ssh.passwordAuth`); the app keeps it to know which items the session
+covered. The text of the brief shows each ref with every part checked and redacted, and the raw `ref` is **never put
+into a prompt**. The `origin` the app stores with the session (the monitoring server's host id and the refs) is kept
+and returned in the session summary, and is not shown to Claude either.
+
+The endpoint takes device tokens only, allows 10 briefs per device per 10 minutes, and its audit record holds only the
+number of items per type and the size in bytes, not their ids. See [API](../agent/api.md#security).
+
+### Investigate items
+
+Some items may be traces of an attack rather than a misconfiguration. They get the mode `investigate`:
+
+| Kind | Items |
+| --- | --- |
+| Findings | `users.uid0`, `users.emptyPassword`, `ssh.emptyPasswords` |
+| Baseline changes | categories `users`, `passwords`, `sudoers`, `authKeys`, `cron`, `autostart`, `timers` |
+
+If **any** selected item is `investigate`, the whole session is an investigation: it can only run in *Plan first* mode,
+the app offers no other mode, and the agent refuses to start it or to switch it to another one
+(`agent.claude.securityInvestigateReadOnly`). Claude only reads: it does not delete users, keys, cron entries or logs,
+so evidence is kept, and it reports what it finds. Even a read that needs root asks you first. The brief carries the note *INVESTIGATE ONLY* for those items, and
+the sudo password dialog warns that the machine may be compromised (do not type a password you use elsewhere). Fix the
+other items in a separate session afterwards.
+
+### Secrets
+
+For a secret finding Claude gets the place (repository, file, line, commit) and no value. It is told to take the file
+out of the working tree or the repository, add it to `.gitignore` or stop the program logging it, and **not** to read or
+print the value. **Rotating or revoking the credential is your job**: Claude says so and never tries it. Rewriting git
+history needs your explicit approval. The tools also mask secret files in everything they return, see
+[Security](../security.md#claude-security-fix-sessions).
+
+Findings the audit cannot judge are left alone as well: for a port that may be expected, Claude is told to change
+nothing and to tell you to mark it as expected in the audit settings.
+
 ## Schedules and limits
 
 - A timer ticks every minute (first tick 30 seconds after the agent starts). A machine is checked when
@@ -746,7 +856,8 @@ State: `security-attacks.json` (mode `0600`).
   machines* add, edit or delete a machine (SSH address, user, port and key file, or an agent URL and its
   `security-report` token). The token is never shown again.
 
-The app is gaining screens for S-2 to S-5 (vulnerabilities, secrets, traps, black box, recovery code, outside view,
+*Select* on the machine, vulnerability, secret and outside-view screens starts
+[Fixing findings with Claude](#fixing-findings-with-claude). The app is gaining screens for S-2 to S-5 (vulnerabilities, secrets, traps, black box, recovery code, outside view,
 attacks); this page and the [API reference](../agent/api.md#security) describe the agent behaviour they use, and the
 endpoints can always be called directly with a device token. The notification links (`tiphys://security/vulns/…`,
 `…/secrets`, `…/traps`, `…/exposure`, `…/attacks` and `…/blackbox`) point at those screens.

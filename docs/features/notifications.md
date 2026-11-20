@@ -50,7 +50,7 @@ then offers a *Subscribe in ntfy* shortcut for it. See [Monitoring](monitoring.m
 | Setting | Keys | Default |
 | --- | --- | --- |
 | Claude › When a session finishes | `claude.done` | on |
-| Claude › When it needs my approval | `claude.waiting`, `claude.pcExpiring` | on |
+| Claude › When it needs my approval | `claude.waiting`, `claude.pcExpiring`, `claude.sudo` | on |
 | Claude › When it fails | `claude.error`, `claude.scheduleFailed`, `claude.pcEnded` | on |
 | System › PC goes offline | `host.offline`, `host.online` | on |
 | System › A service crashes | `service.*`, `docker.*`, `agent.restarted` | on |
@@ -72,7 +72,8 @@ the screen opened when you tap the notification.
 | Key | Sent when | Deep link | Priority |
 | --- | --- | --- | --- |
 | `claude.done` | A Claude session finishes a turn (summary, files changed, cost, duration) | Claude session | normal |
-| `claude.waiting` | Claude asks for permission to use a tool | Claude session | high |
+| `claude.waiting` | Claude asks for permission to use a tool (`pc: 1` for a PC session, `security: 1` for a security fix session) | Claude session | high |
+| `claude.sudo` | A Claude security fix session needs the sudo password of a machine (`title`, `host` name; data: `sessionId`, `requestId`, `host`). The password is typed in the app; the notification has no buttons | Claude session | high |
 | `agy.done` | An agy session finished a turn | agy session | low |
 | `agy.waiting` | agy asks for permission (data: `sessionId`, `requestId`, for notification buttons) | agy session | high |
 | `agy.error` | An agy turn failed | agy session | normal |
@@ -136,7 +137,11 @@ with the stored device token):
 - **Copy** on `clipboard.pc`: puts the PC's text on the phone clipboard.
 
 Approval notifications for Claude PC sessions, the *Extend* notification and clipboard notifications are hidden
-from the lock screen (Android "secret" visibility), because their buttons act on the PC.
+from the lock screen (Android "secret" visibility), because their buttons act on the PC. The same goes for
+`claude.waiting` with `security: 1` (a security fix session changes machines over SSH) and for `claude.sudo`. A sudo
+password is never entered from a notification: tap it to open the session and type it in the app. See
+[Fixing findings with Claude](security.md#fixing-findings-with-claude) and
+[Security fix sessions](claude.md#security-fix-sessions).
 
 ## Sensitive notifications
 

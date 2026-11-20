@@ -18,6 +18,7 @@ import { ExposureScanner, type ExposureOpts } from "./exposure.ts";
 import { CloudflareWatch } from "./cloudflare.ts";
 import { SecurityService, type SecurityHost, type ServiceOpts } from "./service.ts";
 import { VulnScanner, type InventoryHost, type VulnOpts } from "./vulns.ts";
+import { buildBrief, type BriefItem } from "./brief.ts";
 
 const invalid = (e: ZodError) =>
   new AppError("agent.request.invalid", 400, { issues: e.issues.map((i) => ({ path: i.path.map(String).join("."), message: i.code })) });
@@ -46,6 +47,15 @@ const patchBody = z.strictObject({
   traps: z.boolean().optional(),
 });
 const selfPatch = z.strictObject({ role: securityRole.optional(), allowedPorts: ports.optional(), sudo: z.boolean().optional() });
+
+const briefItem = z.discriminatedUnion("type", [
+  z.strictObject({ type: z.literal("finding"), host: hostId, id: z.string().min(1).max(400) }),
+  z.strictObject({ type: z.literal("change"), host: hostId, id: z.string().min(1).max(400) }),
+  z.strictObject({ type: z.literal("vuln"), image: z.string().regex(/^sha256:[a-f0-9]{64}$/), cve: z.string().regex(/^[A-Za-z0-9._:-]{1,80}$/) }),
+  z.strictObject({ type: z.literal("secret"), id: z.string().regex(/^[a-f0-9]{24}$/) }),
+  z.strictObject({ type: z.literal("exposure"), id: z.string().min(1).max(400) }),
+]);
+const briefBody = z.strictObject({ items: z.array(briefItem).min(1).max(30), language: z.enum(["tr", "en"]).default("tr") });
 
 const agentSecurityExposure = agentConfigSchema.shape.security.unwrap().shape.exposure;
 
@@ -90,6 +100,7 @@ export interface SecurityRouteOpts extends ServiceOpts {
   checkLimit?: RateLimit;
   scanLimit?: RateLimit;
   rawLimit?: RateLimit;
+  briefLimit?: RateLimit;
 }
 
 export function securityRoutes(opts: SecurityRouteOpts = {}) {
@@ -397,6 +408,26 @@ export function securityRoutes(opts: SecurityRouteOpts = {}) {
       await ctx.store.update((c) => ((c.security.alerts.telegramRecipient = b.telegramRecipient), c));
       req.auditDetail = { telegram: b.telegramRecipient !== null };
       return ctx.store.get().security.alerts;
+    });
+
+    // §16 F1: sanitized brief of selected items for a Claude fix session on the PC (device tokens only).
+    const briefLimit = opts.briefLimit ?? new RateLimit(10, 10 * 60_000);
+    app.post("/v1/security/brief", async (req) => {
+      if (!req.device) throw new AppError("agent.auth.scopeDenied", 403);
+      const b = parse(briefBody, req.body);
+      if (!briefLimit.take(req.device.id)) throw new AppError("agent.security.briefRateLimited", 429, { limit: briefLimit.max, windowSeconds: briefLimit.windowMs / 1000 });
+      const brief = buildBrief(b.items as BriefItem[], {
+        hosts: svc.hosts(),
+        state: (id) => svc.states.get(id),
+        image: (id) => vulns.state.images[id],
+        secret: (id) => secrets.state.findings[id],
+        exposure: exposure.runs[0]?.findings ?? [],
+      }, { language: b.language, now: new Date() });
+      const counts: Record<string, number> = {};
+      for (const i of b.items) counts[i.type] = (counts[i.type] ?? 0) + 1;
+      req.auditDetail = { ...counts, bytes: brief.bytes };
+      if (!brief.items.some((i) => "mode" in i)) throw new AppError("agent.security.itemNotFound", 404);
+      return brief;
     });
 
     // ---- S-4 black box ----

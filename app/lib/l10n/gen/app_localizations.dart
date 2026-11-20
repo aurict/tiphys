@@ -18469,6 +18469,708 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'No machines are audited yet.'**
   String get secCardNoHosts;
+
+  /// No description provided for @fixSelect.
+  ///
+  /// In en, this message translates to:
+  /// **'Select'**
+  String get fixSelect;
+
+  /// No description provided for @fixSelectCancel.
+  ///
+  /// In en, this message translates to:
+  /// **'Cancel selection'**
+  String get fixSelectCancel;
+
+  /// No description provided for @fixSelectAll.
+  ///
+  /// In en, this message translates to:
+  /// **'Select all'**
+  String get fixSelectAll;
+
+  /// No description provided for @fixSend.
+  ///
+  /// In en, this message translates to:
+  /// **'Send to Claude'**
+  String get fixSend;
+
+  /// No description provided for @fixSelectedCount.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} selected'**
+  String fixSelectedCount(int count);
+
+  /// No description provided for @fixSelectedTooMany.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} selected (at most {max})'**
+  String fixSelectedTooMany(int count, int max);
+
+  /// No description provided for @fixSendTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Send to Claude'**
+  String get fixSendTitle;
+
+  /// No description provided for @fixSendIntro.
+  ///
+  /// In en, this message translates to:
+  /// **'Claude connects to your machines over SSH and fixes these with guarded tools. You choose what it may do without asking.'**
+  String get fixSendIntro;
+
+  /// No description provided for @fixBriefLoading.
+  ///
+  /// In en, this message translates to:
+  /// **'Preparing the brief…'**
+  String get fixBriefLoading;
+
+  /// No description provided for @fixItemsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Selected ({count})'**
+  String fixItemsTitle(int count);
+
+  /// No description provided for @fixModeFix.
+  ///
+  /// In en, this message translates to:
+  /// **'Fix'**
+  String get fixModeFix;
+
+  /// No description provided for @fixModeInvestigate.
+  ///
+  /// In en, this message translates to:
+  /// **'Investigate'**
+  String get fixModeInvestigate;
+
+  /// No description provided for @fixBriefTruncated.
+  ///
+  /// In en, this message translates to:
+  /// **'The brief was too long and was cut: some items were left out.'**
+  String get fixBriefTruncated;
+
+  /// No description provided for @fixHostsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Machines'**
+  String get fixHostsTitle;
+
+  /// No description provided for @fixHostsNone.
+  ///
+  /// In en, this message translates to:
+  /// **'No machine could be resolved for these items.'**
+  String get fixHostsNone;
+
+  /// No description provided for @fixHostNoRoot.
+  ///
+  /// In en, this message translates to:
+  /// **'last audit ran without root'**
+  String get fixHostNoRoot;
+
+  /// No description provided for @fixTargetSet.
+  ///
+  /// In en, this message translates to:
+  /// **'Target set'**
+  String get fixTargetSet;
+
+  /// No description provided for @fixTargetSetNow.
+  ///
+  /// In en, this message translates to:
+  /// **'Set target'**
+  String get fixTargetSetNow;
+
+  /// No description provided for @fixTargetsNoneHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Claude only works on machines that have a fix target. Set one for at least one machine.'**
+  String get fixTargetsNoneHint;
+
+  /// No description provided for @fixModeTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Permissions'**
+  String get fixModeTitle;
+
+  /// No description provided for @fixModeInvestigateNote.
+  ///
+  /// In en, this message translates to:
+  /// **'These items may be traces of an attack. Claude only reads (plan mode), so nothing is changed or deleted before you have looked at it.'**
+  String get fixModeInvestigateNote;
+
+  /// No description provided for @fixBypassWarning.
+  ///
+  /// In en, this message translates to:
+  /// **'In this mode Claude can run any command on the selected machines without asking, including commands that reach the network. The tool rules (targets, backups) still apply, but the network command blocklist is only a heuristic, not a sandbox, and a mistake can lock you out.'**
+  String get fixBypassWarning;
+
+  /// No description provided for @fixBypassConfirm.
+  ///
+  /// In en, this message translates to:
+  /// **'Start without asking for permission? Claude can run any command on the selected machines without asking you, including ones that reach the network.'**
+  String get fixBypassConfirm;
+
+  /// No description provided for @fixBypassConfirmGo.
+  ///
+  /// In en, this message translates to:
+  /// **'Start without asking'**
+  String get fixBypassConfirmGo;
+
+  /// No description provided for @fixNoteLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Your note (optional)'**
+  String get fixNoteLabel;
+
+  /// No description provided for @fixNoteHint.
+  ///
+  /// In en, this message translates to:
+  /// **'e.g. leave port 8080 open, it is expected'**
+  String get fixNoteHint;
+
+  /// No description provided for @fixPreview.
+  ///
+  /// In en, this message translates to:
+  /// **'Brief sent to Claude ({bytes} bytes)'**
+  String fixPreview(int bytes);
+
+  /// No description provided for @fixPreviewHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Data from the audited machines. Claude treats it as data, not as instructions.'**
+  String get fixPreviewHint;
+
+  /// No description provided for @fixStart.
+  ///
+  /// In en, this message translates to:
+  /// **'Start session'**
+  String get fixStart;
+
+  /// No description provided for @fixErrRateLimited.
+  ///
+  /// In en, this message translates to:
+  /// **'Too many briefs: at most {limit} every {minutes} minutes. Try again later.'**
+  String fixErrRateLimited(int limit, int minutes);
+
+  /// No description provided for @fixErrItemNotFound.
+  ///
+  /// In en, this message translates to:
+  /// **'The item no longer exists (the audit may have moved on). Refresh and select again.'**
+  String get fixErrItemNotFound;
+
+  /// No description provided for @fixErrTruncated.
+  ///
+  /// In en, this message translates to:
+  /// **'Left out: the brief was too long.'**
+  String get fixErrTruncated;
+
+  /// No description provided for @fixErrHostNotFound.
+  ///
+  /// In en, this message translates to:
+  /// **'Machine not found'**
+  String get fixErrHostNotFound;
+
+  /// No description provided for @fixErrDisabled.
+  ///
+  /// In en, this message translates to:
+  /// **'Security fixes are off on the PC agent. Turn on “Security fixes” in Settings › Hosts › Agent › Features.'**
+  String get fixErrDisabled;
+
+  /// No description provided for @fixErrRequired.
+  ///
+  /// In en, this message translates to:
+  /// **'The session needs the security brief.'**
+  String get fixErrRequired;
+
+  /// No description provided for @fixErrNoTargets.
+  ///
+  /// In en, this message translates to:
+  /// **'None of these machines has a fix target on the PC agent. Set one first.'**
+  String get fixErrNoTargets;
+
+  /// No description provided for @fixErrInvestigateReadOnly.
+  ///
+  /// In en, this message translates to:
+  /// **'Investigations are read-only: use plan mode.'**
+  String get fixErrInvestigateReadOnly;
+
+  /// No description provided for @fixErrBypassNew.
+  ///
+  /// In en, this message translates to:
+  /// **'“Don\'t ask” can only be chosen when a session starts. Start a new session.'**
+  String get fixErrBypassNew;
+
+  /// No description provided for @fixFeatureName.
+  ///
+  /// In en, this message translates to:
+  /// **'Security fixes (Claude over SSH)'**
+  String get fixFeatureName;
+
+  /// No description provided for @fixTargetsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Fix targets'**
+  String get fixTargetsTitle;
+
+  /// No description provided for @fixTargetsLinkHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Machines Claude may reach over SSH when fixing security findings.'**
+  String get fixTargetsLinkHint;
+
+  /// No description provided for @fixTargetsIntro.
+  ///
+  /// In en, this message translates to:
+  /// **'Claude can only work on the machines listed here. The ID is the machine\'s ID in the security center; without an SSH address the machine is this PC.'**
+  String get fixTargetsIntro;
+
+  /// No description provided for @fixTargetsEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'No fix targets yet.'**
+  String get fixTargetsEmpty;
+
+  /// No description provided for @fixTargetAdd.
+  ///
+  /// In en, this message translates to:
+  /// **'Add target'**
+  String get fixTargetAdd;
+
+  /// No description provided for @fixTargetDeleteConfirm.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove the fix target “{name}”?'**
+  String fixTargetDeleteConfirm(String name);
+
+  /// No description provided for @fixTargetPickHost.
+  ///
+  /// In en, this message translates to:
+  /// **'Machine from the security center'**
+  String get fixTargetPickHost;
+
+  /// No description provided for @fixTargetHostLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Machine ID'**
+  String get fixTargetHostLabel;
+
+  /// No description provided for @fixTargetHostHelper.
+  ///
+  /// In en, this message translates to:
+  /// **'The ID the security center uses for this machine'**
+  String get fixTargetHostHelper;
+
+  /// No description provided for @fixTargetNameLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Name'**
+  String get fixTargetNameLabel;
+
+  /// No description provided for @fixTargetThisPc.
+  ///
+  /// In en, this message translates to:
+  /// **'This PC'**
+  String get fixTargetThisPc;
+
+  /// No description provided for @fixTargetThisPcHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Runs locally, without SSH'**
+  String get fixTargetThisPcHint;
+
+  /// No description provided for @fixTargetSshLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'SSH address'**
+  String get fixTargetSshLabel;
+
+  /// No description provided for @fixTargetSshHelper.
+  ///
+  /// In en, this message translates to:
+  /// **'user@host; the key and known_hosts of the PC are used'**
+  String get fixTargetSshHelper;
+
+  /// No description provided for @fixTargetPortLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Port (optional)'**
+  String get fixTargetPortLabel;
+
+  /// No description provided for @fixTargetHostInvalid.
+  ///
+  /// In en, this message translates to:
+  /// **'Lowercase letters, digits and dashes, e.g. atlas'**
+  String get fixTargetHostInvalid;
+
+  /// No description provided for @fixTargetSshInvalid.
+  ///
+  /// In en, this message translates to:
+  /// **'Use user@host (letters, digits, dot, dash, underscore)'**
+  String get fixTargetSshInvalid;
+
+  /// No description provided for @fixTargetPortInvalid.
+  ///
+  /// In en, this message translates to:
+  /// **'Port 1–65535 (SSH targets only)'**
+  String get fixTargetPortInvalid;
+
+  /// No description provided for @fixTargetDuplicate.
+  ///
+  /// In en, this message translates to:
+  /// **'This machine already has a target'**
+  String get fixTargetDuplicate;
+
+  /// No description provided for @fixTargetTooMany.
+  ///
+  /// In en, this message translates to:
+  /// **'At most {max} targets'**
+  String fixTargetTooMany(int max);
+
+  /// No description provided for @fixTargetCacheInvalid.
+  ///
+  /// In en, this message translates to:
+  /// **'The sudo password is remembered for 1–120 minutes'**
+  String get fixTargetCacheInvalid;
+
+  /// No description provided for @fixSudoCacheTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'sudo password'**
+  String get fixSudoCacheTitle;
+
+  /// No description provided for @fixSudoCacheLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Remember for (minutes)'**
+  String get fixSudoCacheLabel;
+
+  /// No description provided for @fixSudoCacheHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Only in the PC agent\'s memory, per session and machine; never written to disk.'**
+  String get fixSudoCacheHint;
+
+  /// No description provided for @fixBadgeFix.
+  ///
+  /// In en, this message translates to:
+  /// **'Security fix'**
+  String get fixBadgeFix;
+
+  /// No description provided for @fixBadgeInvestigate.
+  ///
+  /// In en, this message translates to:
+  /// **'Investigation'**
+  String get fixBadgeInvestigate;
+
+  /// No description provided for @fixToolHosts.
+  ///
+  /// In en, this message translates to:
+  /// **'Machines'**
+  String get fixToolHosts;
+
+  /// No description provided for @fixToolRead.
+  ///
+  /// In en, this message translates to:
+  /// **'Read file'**
+  String get fixToolRead;
+
+  /// No description provided for @fixToolRun.
+  ///
+  /// In en, this message translates to:
+  /// **'Run command'**
+  String get fixToolRun;
+
+  /// No description provided for @fixToolWrite.
+  ///
+  /// In en, this message translates to:
+  /// **'Write file'**
+  String get fixToolWrite;
+
+  /// No description provided for @fixToolValidate.
+  ///
+  /// In en, this message translates to:
+  /// **'Validate'**
+  String get fixToolValidate;
+
+  /// No description provided for @fixToolSafeApply.
+  ///
+  /// In en, this message translates to:
+  /// **'Apply with rollback timer'**
+  String get fixToolSafeApply;
+
+  /// No description provided for @fixToolConfirm.
+  ///
+  /// In en, this message translates to:
+  /// **'Confirm change'**
+  String get fixToolConfirm;
+
+  /// No description provided for @fixToolRollback.
+  ///
+  /// In en, this message translates to:
+  /// **'Roll back'**
+  String get fixToolRollback;
+
+  /// No description provided for @fixSudoTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'sudo password for {host}'**
+  String fixSudoTitle(String host);
+
+  /// No description provided for @fixSudoBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Claude needs root on this machine to continue. The password goes only to the agent\'s memory, is used for sudo and is never written to disk, logs or the chat.'**
+  String get fixSudoBody;
+
+  /// No description provided for @fixSudoInvestigateWarn.
+  ///
+  /// In en, this message translates to:
+  /// **'This machine may be compromised (these items look like an attack). A compromised account on it could capture the password you type, and a password you use elsewhere would then be exposed. Consider denying and using a one-off password.'**
+  String get fixSudoInvestigateWarn;
+
+  /// No description provided for @fixSudoLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Password'**
+  String get fixSudoLabel;
+
+  /// No description provided for @fixSudoWrong.
+  ///
+  /// In en, this message translates to:
+  /// **'That password was not accepted (attempt {attempt}). Try again.'**
+  String fixSudoWrong(int attempt);
+
+  /// No description provided for @fixSudoSend.
+  ///
+  /// In en, this message translates to:
+  /// **'Send'**
+  String get fixSudoSend;
+
+  /// No description provided for @fixSudoDeny.
+  ///
+  /// In en, this message translates to:
+  /// **'Deny'**
+  String get fixSudoDeny;
+
+  /// No description provided for @fixSudoLater.
+  ///
+  /// In en, this message translates to:
+  /// **'Later'**
+  String get fixSudoLater;
+
+  /// No description provided for @fixSudoCard.
+  ///
+  /// In en, this message translates to:
+  /// **'sudo password needed for {host}'**
+  String fixSudoCard(String host);
+
+  /// No description provided for @fixSudoEnter.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter password'**
+  String get fixSudoEnter;
+
+  /// No description provided for @fixSudoProvided.
+  ///
+  /// In en, this message translates to:
+  /// **'Password sent'**
+  String get fixSudoProvided;
+
+  /// No description provided for @fixSudoNotProvided.
+  ///
+  /// In en, this message translates to:
+  /// **'No password given'**
+  String get fixSudoNotProvided;
+
+  /// No description provided for @notifClaudeSudoTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Claude needs a sudo password'**
+  String get notifClaudeSudoTitle;
+
+  /// No description provided for @notifClaudeSudoBody.
+  ///
+  /// In en, this message translates to:
+  /// **'{title} · {host}'**
+  String notifClaudeSudoBody(String title, String host);
+
+  /// No description provided for @fixPanelTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Security session'**
+  String get fixPanelTitle;
+
+  /// No description provided for @fixPanelHosts.
+  ///
+  /// In en, this message translates to:
+  /// **'Machines'**
+  String get fixPanelHosts;
+
+  /// No description provided for @fixPanelNoHosts.
+  ///
+  /// In en, this message translates to:
+  /// **'No machine is pinned to this session.'**
+  String get fixPanelNoHosts;
+
+  /// No description provided for @fixPanelSudoCached.
+  ///
+  /// In en, this message translates to:
+  /// **'sudo password remembered'**
+  String get fixPanelSudoCached;
+
+  /// No description provided for @fixPanelTimers.
+  ///
+  /// In en, this message translates to:
+  /// **'Rollback timers'**
+  String get fixPanelTimers;
+
+  /// No description provided for @fixPanelTimersHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Claude applied a change with a timer: if it is not confirmed in time, the old state returns by itself.'**
+  String get fixPanelTimersHint;
+
+  /// No description provided for @fixTimerLeftSemantics.
+  ///
+  /// In en, this message translates to:
+  /// **'{time} left'**
+  String fixTimerLeftSemantics(String time);
+
+  /// No description provided for @fixPanelChanged.
+  ///
+  /// In en, this message translates to:
+  /// **'Changed files ({count})'**
+  String fixPanelChanged(int count);
+
+  /// No description provided for @fixPanelBackups.
+  ///
+  /// In en, this message translates to:
+  /// **'Backups ({count})'**
+  String fixPanelBackups(int count);
+
+  /// No description provided for @fixPanelNothing.
+  ///
+  /// In en, this message translates to:
+  /// **'Nothing yet.'**
+  String get fixPanelNothing;
+
+  /// No description provided for @fixBackupNew.
+  ///
+  /// In en, this message translates to:
+  /// **'new file (rolling back removes it)'**
+  String get fixBackupNew;
+
+  /// No description provided for @fixRollback.
+  ///
+  /// In en, this message translates to:
+  /// **'Roll back'**
+  String get fixRollback;
+
+  /// No description provided for @fixRollbackConfirm.
+  ///
+  /// In en, this message translates to:
+  /// **'Restore the backed-up files on {host}? The changes made in this session are reverted.'**
+  String fixRollbackConfirm(String host);
+
+  /// No description provided for @fixRollbackDone.
+  ///
+  /// In en, this message translates to:
+  /// **'Restored {restored} file(s)'**
+  String fixRollbackDone(int restored);
+
+  /// No description provided for @fixRollbackPartial.
+  ///
+  /// In en, this message translates to:
+  /// **'Restored {restored}, failed {failed}'**
+  String fixRollbackPartial(int restored, int failed);
+
+  /// No description provided for @fixForgetSudo.
+  ///
+  /// In en, this message translates to:
+  /// **'Forget sudo passwords'**
+  String get fixForgetSudo;
+
+  /// No description provided for @fixForgetConfirm.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete the sudo passwords the agent remembers for this session? Claude will ask again when it needs one.'**
+  String get fixForgetConfirm;
+
+  /// No description provided for @fixForgetDone.
+  ///
+  /// In en, this message translates to:
+  /// **'Sudo passwords forgotten'**
+  String get fixForgetDone;
+
+  /// No description provided for @fixAuditTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Check the result'**
+  String get fixAuditTitle;
+
+  /// No description provided for @fixAuditBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Run the audit again: a fix counts when the audit confirms it. Then accept the new state if the remaining changes are intended.'**
+  String get fixAuditBody;
+
+  /// No description provided for @fixAuditRun.
+  ///
+  /// In en, this message translates to:
+  /// **'Re-run audit'**
+  String get fixAuditRun;
+
+  /// No description provided for @fixAuditRunning.
+  ///
+  /// In en, this message translates to:
+  /// **'Auditing…'**
+  String get fixAuditRunning;
+
+  /// No description provided for @fixAuditDone.
+  ///
+  /// In en, this message translates to:
+  /// **'The audit is done. Open the machine to review what is left and accept the state.'**
+  String get fixAuditDone;
+
+  /// No description provided for @fixAuditOpen.
+  ///
+  /// In en, this message translates to:
+  /// **'Open {name}'**
+  String fixAuditOpen(String name);
+
+  /// No description provided for @fixErrOwnerOnly.
+  ///
+  /// In en, this message translates to:
+  /// **'Only the device that started this security session can answer it, change its mode or roll it back.'**
+  String get fixErrOwnerOnly;
+
+  /// No description provided for @fixErrTargetGone.
+  ///
+  /// In en, this message translates to:
+  /// **'This machine\'s fix target was removed or changed since the session started, so it cannot be rolled back from here.'**
+  String get fixErrTargetGone;
+
+  /// No description provided for @fixModeRootNote.
+  ///
+  /// In en, this message translates to:
+  /// **'Outside “Don\'t ask”, every step that runs as root asks you first, in every mode (reading as root too, even in plan mode).'**
+  String get fixModeRootNote;
+
+  /// No description provided for @fixRunsAsRoot.
+  ///
+  /// In en, this message translates to:
+  /// **'Runs as root'**
+  String get fixRunsAsRoot;
+
+  /// No description provided for @fixContentPreview.
+  ///
+  /// In en, this message translates to:
+  /// **'The file cannot be read as the normal user, so this is a preview of the new content, not a diff.'**
+  String get fixContentPreview;
+
+  /// No description provided for @fixErrSshConfig.
+  ///
+  /// In en, this message translates to:
+  /// **'The SSH destination of “{host}” cannot be used: {reason}. Use a direct destination (user@host) without ProxyCommand, ProxyJump, LocalCommand or KnownHostsCommand.'**
+  String fixErrSshConfig(String host, String reason);
 }
 
 class _AppLocalizationsDelegate

@@ -9,7 +9,7 @@ import 'surfaces.dart';
 
 /// Settings subpages: header with back button + scrollable content + optional save button.
 class SettingsPage extends StatelessWidget {
-  const SettingsPage({super.key, required this.title, required this.children, this.onSave, this.saving = false, this.actions, this.onRefresh, this.backEnabled = true});
+  const SettingsPage({super.key, required this.title, required this.children, this.onSave, this.saving = false, this.actions, this.onRefresh, this.backEnabled = true, this.bottomBar});
   final String title;
   final List<Widget> children;
   final Future<void> Function()? onSave;
@@ -22,11 +22,15 @@ class SettingsPage extends StatelessWidget {
   /// Pull to refresh (optional).
   final Future<void> Function()? onRefresh;
 
+  /// Pinned under the list (e.g. the action bar of a multi-select).
+  final Widget? bottomBar;
+
   @override
   Widget build(BuildContext context) {
     final l = AppLocalizations.of(context);
     return Scaffold(
       backgroundColor: Colors.transparent,
+      bottomNavigationBar: bottomBar,
       body: AmbientBackground(
         child: _refreshable(CustomScrollView(physics: onRefresh == null ? null : const AlwaysScrollableScrollPhysics(), slivers: [
           SliverAppBar(

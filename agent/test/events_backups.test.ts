@@ -123,6 +123,25 @@ describe("docker olayları", () => {
     expect(ev.map((e: { key: string }) => e.key)).toEqual(["docker.died", "docker.restarted", "docker.oom", "docker.died"]);
     await app.close();
   });
+  it("Tiphys'in kendi araç container'ları (Trivy, gitleaks, geri yükleme testi) bildirim ve olay üretmez", async () => {
+    expect(parseDockerEvent(line("die", "eager_banach", { exitCode: "1", "tiphys.tool": "trivy" }))).toMatchObject({ tool: true });
+    expect(parseDockerEvent(line("die", "web", { exitCode: "1" }))).not.toHaveProperty("tool");
+    const { app, auth, store, notifier, sent } = await testApp();
+    store.get().features.incidents = true;
+    const w = new DockerEventWatcher({ store, notifier });
+    const t0 = 1_800_000_000;
+    const feed = async (a: string, n: string, extra: Record<string, string> = {}, sec = t0) => w.handle(parseDockerEvent(line(a, n, extra, sec))!);
+    for (let i = 0; i < 4; i++) await feed("die", "eager_banach", { exitCode: "1", "tiphys.tool": "trivy" }, t0 + i);
+    await feed("oom", "eager_banach", { "tiphys.tool": "trivy" }, t0 + 5);
+    await feed("die", "brave_curie", { exitCode: "1", "tiphys.tool": "gitleaks" }, t0 + 6);
+    await feed("die", "tiphys-restore-x", { exitCode: "1", "tiphys.restore": "1" }, t0 + 7);
+    expect(sent).toEqual([]);
+    await feed("die", "web", { exitCode: "1" }, t0 + 8);
+    expect(keys(sent)).toEqual(["docker.died"]);
+    const ev = (await app.inject({ method: "GET", url: "/v1/events", headers: auth })).json().events;
+    expect(ev.map((e: { key: string }) => e.key)).toEqual(["docker.died"]);
+    await app.close();
+  });
 });
 
 describe("yedek durumu: ayrıştırma", () => {

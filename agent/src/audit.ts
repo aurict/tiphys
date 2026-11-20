@@ -34,9 +34,33 @@ export function auditDetailOf(d: AuditDetail | undefined): AuditDetail | undefin
   return out;
 }
 
+const chains = new Map<string, Promise<void>>();
+const auditFile = (ctx: Ctx) => join(dirname(ctx.store.path), "audit.jsonl");
+
+/**
+ * Hands the entry to the black box hook and appends it to audit.jsonl. Writes are serialized per file; a logging
+ * error is reported through `log` and never thrown. Also used for Claude security-fix tool records.
+ */
+export function recordAudit(ctx: Ctx, entry: AuditEntry, log: (msg: string, err: unknown) => void = () => {}): Promise<void> {
+  try {
+    ctx.onAudit?.(entry);
+  } catch (e) {
+    log("kara kutu kaydı alınamadı", e);
+  }
+  const file = auditFile(ctx);
+  const next = (chains.get(file) ?? Promise.resolve())
+    .then(async () => {
+      const size = await stat(file).then((s) => s.size, () => 0);
+      if (size > MAX_BYTES) await rename(file, `${file}.1`);
+      await appendFile(file, JSON.stringify(entry) + "\n", { mode: 0o600 });
+    })
+    .catch((e) => log("işlem kaydı yazılamadı", e));
+  chains.set(file, next);
+  return next;
+}
+
 export function auditRoutes(app: FastifyInstance, ctx: Ctx) {
-  const file = join(dirname(ctx.store.path), "audit.jsonl");
-  let chain = Promise.resolve();
+  const file = auditFile(ctx);
 
   app.addHook("onResponse", async (req, reply) => {
     if (req.method === "GET" || req.method === "HEAD" || req.method === "OPTIONS") return;
@@ -49,24 +73,12 @@ export function auditRoutes(app: FastifyInstance, ctx: Ctx) {
     };
     const detail = auditDetailOf(req.auditDetail);
     if (detail) entry.detail = detail;
-    try {
-      ctx.onAudit?.(entry);
-    } catch (e) {
-      req.log.warn({ err: e }, "kara kutu kaydı alınamadı");
-    }
-    // Writes are serialized; a logging error doesn't break the request.
-    chain = chain
-      .then(async () => {
-        const size = await stat(file).then((s) => s.size, () => 0);
-        if (size > MAX_BYTES) await rename(file, `${file}.1`);
-        await appendFile(file, JSON.stringify(entry) + "\n", { mode: 0o600 });
-      })
-      .catch((e) => req.log.warn({ err: e }, "işlem kaydı yazılamadı"));
+    void recordAudit(ctx, entry, (msg, err) => req.log.warn({ err }, msg));
   });
 
   app.get("/v1/audit", async (req) => {
     const { limit } = z.object({ limit: z.coerce.number().int().min(1).max(1000).default(200) }).parse(req.query);
-    await chain;
+    await chains.get(file);
     const text = await readFile(file, "utf8").catch(() => "");
     const entries = text
       .split("\n")

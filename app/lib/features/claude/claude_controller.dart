@@ -109,6 +109,33 @@ class ClaudeSessionController extends ChangeNotifier {
   /// "Use the PC" session (Claude uses the PC with screenshot + mouse/keyboard tools).
   bool get isPc => summary?['kind'] == 'pc';
 
+  /// Security fix session (kind "security"): Claude fixes audited machines over SSH with guarded tools.
+  bool get isSecurity => summary?['kind'] == 'security';
+
+  /// `summary.security.investigate`: a read-only investigation (plan mode only).
+  bool get securityInvestigate => (summary?['security'] as Map?)?['investigate'] == true;
+
+  /// Sudo password requests awaiting an answer (a `sudo` event without its `sudoResolved`).
+  List<ClaudeEvent> get pendingSudo {
+    final resolved = events.where((e) => e.kind == 'sudoResolved').map((e) => e.get<String>('requestId')).toSet();
+    return events.where((e) => e.kind == 'sudo' && !resolved.contains(e.get<String>('requestId'))).toList();
+  }
+
+  /// Hands the password to the agent and nothing else: it is not kept here, nor in any provider.
+  Future<void> answerSudo(String requestId, String password) => client.post('/v1/claude/sessions/$sessionId/sudo', {'requestId': requestId, 'password': password});
+
+  Future<void> denySudo(String requestId) => client.post('/v1/claude/sessions/$sessionId/sudo', {'requestId': requestId, 'deny': true});
+
+  /// Wipes the sudo passwords the agent holds for this session.
+  Future<void> forgetSudo() => client.delete('/v1/claude/sessions/$sessionId/sudo');
+
+  /// Pinned hosts, changed files, backups, rollback timers, cached sudo hosts.
+  Future<Map<String, dynamic>> securityInfo() => client.get('/v1/claude/sessions/$sessionId/security');
+
+  /// Restores the session's backups on [host]; may wait for a sudo password, so the timeout is long.
+  Future<Map<String, dynamic>> securityRollback(String host) async =>
+      Map<String, dynamic>.from(await client.request('POST', '/v1/claude/sessions/$sessionId/security/rollback', body: {'host': host}, timeout: const Duration(minutes: 12)) as Map);
+
   /// Is the PC session bound to a control session according to the agent (do the tools work)?
   bool get pcControlActive => (summary?['control'] as Map?)?['active'] == true;
 
@@ -403,6 +430,10 @@ List<(String, String)> toolDiff(String tool, Map<String, dynamic> input) {
       return lines('+', input['content'] as String?);
     case 'Edit':
       return [...lines('-', input['old_string'] as String?), ...lines('+', input['new_string'] as String?)];
+    case 'mcp__tiphys_sec__write_file' || 'write_file':
+      // The permission request carries the agent's diff; the tool call only the new content.
+      final diff = input['diff'];
+      return diff is String ? secDiffLines(diff) : lines('+', input['content'] as String?);
     case 'MultiEdit':
       return [
         for (final e in (input['edits'] as List? ?? const []).cast<Map>()) ...[
@@ -416,6 +447,36 @@ List<(String, String)> toolDiff(String tool, Map<String, dynamic> input) {
   }
 }
 
+/// Unified diff text (the security `write_file` result / permission) as (sign, text) lines; headers are dropped.
+List<(String, String)> secDiffLines(String diff) => [
+      for (final l in diff.split('\n'))
+        if (!l.startsWith('+++') && !l.startsWith('---') && l.isNotEmpty)
+          if (l.startsWith('+')) ('+', l.substring(1)) else if (l.startsWith('-')) ('-', l.substring(1)) else (' ', l.startsWith(' ') ? l.substring(1) : l),
+    ];
+
+const _secTools = {'hosts', 'read_file', 'run', 'write_file', 'validate', 'safe_apply', 'confirm_apply', 'rollback'};
+
+/// Name of a security fix tool ("mcp__tiphys_sec__run" → "run"); null if not one. Permission requests may carry the bare
+/// name: then the `host` input tells it apart.
+String? secToolName(String tool, [Map<String, dynamic>? input]) {
+  const prefix = 'mcp__tiphys_sec__';
+  if (tool.startsWith(prefix)) return tool.substring(prefix.length);
+  return _secTools.contains(tool) && input?['host'] is String ? tool : null;
+}
+
+/// "host · command" / "host · /path" of a security tool call.
+String secToolSummary(String name, Map<String, dynamic> input) {
+  String s(String k) => (input[k] ?? '').toString();
+  final host = s('host');
+  return switch (name) {
+    'hosts' => '',
+    'run' => '$host · ${input['sudo'] == true ? 'sudo ' : ''}${s('cmd')}',
+    'read_file' || 'write_file' => '$host · ${s('path')}',
+    'validate' || 'safe_apply' => '$host · ${s('kind')}${input['file'] == null ? '' : ' ${s('file')}'}',
+    _ => host,
+  };
+}
+
 /// Name of a PC tool ("mcp__tiphys_pc__click" → "click"); null if not a PC tool.
 String? pcToolName(String tool) => tool.startsWith('mcp__tiphys_pc__') ? tool.substring('mcp__tiphys_pc__'.length) : null;
 
@@ -426,6 +487,11 @@ String toolSummary(String tool, Map<String, dynamic> input, {String? result}) {
   final quoted = result == null ? null : RegExp(r'"([^"\n]+)"').firstMatch(result.split('\n').first)?.group(1);
   String named(String fallback) => quoted ?? fallback;
   String pt(Object? p) => p is Map ? '${(p['x'] as num?)?.round()}, ${(p['y'] as num?)?.round()}' : '';
+  final sec = secToolName(tool, input);
+  if (sec != null) {
+    final v = secToolSummary(sec, input);
+    return v.length > 200 ? '${v.substring(0, 200)}…' : v;
+  }
   final pc = pcToolName(tool);
   final v = switch (pc ?? tool) {
     'click' || 'double_click' || 'move' => '${pt(input)}${input['button'] != null && input['button'] != 'left' ? ' · ${s('button')}' : ''}',

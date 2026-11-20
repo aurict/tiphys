@@ -42,6 +42,9 @@ flips down↔up; the first state after connecting is recorded silently), `docker
 `health_status: unhealthy`) and `docker.restartLoop` (3 or more unexpected exits of one container in 10 minutes). With
 the feature off, existing notifications behave exactly as before.
 
+Containers the agent runs itself (Trivy and gitleaks scans with the label `tiphys.tool`, database restore tests with
+`tiphys.restore`) never produce Docker notifications or incidents; a failed scan shows on the security screen instead.
+
 Each signal has a fingerprint `kind|host|target`:
 
 - a signal whose fingerprint belongs to an open or acknowledged incident is added to it;

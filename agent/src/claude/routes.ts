@@ -4,7 +4,7 @@ import { dirname, join } from "node:path";
 import { listSessions, type SDKUserMessage } from "@anthropic-ai/claude-agent-sdk";
 import type { FastifyInstance, FastifyRequest } from "fastify";
 import { z } from "zod";
-import { expandHome } from "../config.ts";
+import { expandHome, securityFixSchema } from "../config.ts";
 import { AppError } from "../errors.ts";
 import type { Ctx } from "../server.ts";
 import { requireControlFeature, tokenOf } from "../control.ts";
@@ -12,8 +12,18 @@ import { realStreamIo } from "../routes/stream.ts";
 import { ClaudeManager, type ClaudeEvent, type ControlBinding, type QueryFn } from "./manager.ts";
 import { createPcSupport, type PcSupportOpts } from "./pc.ts";
 import { ClaudeScheduler, scheduleRoutes } from "./schedules.ts";
+import { createSecSupport, type SecSupportOpts } from "./security_fix.ts";
 import { stopTerminalSession, terminalSessions } from "./terminal.ts";
 import { findTranscript, transcriptPage } from "./transcript.ts";
+
+const hostId = z.string().regex(/^[a-z0-9][a-z0-9-]{0,62}$/);
+/** Security fix start (PLAN.md §16): the brief is untrusted data; origin is only stored and returned, never shown to Claude. */
+const securityStartSchema = z.strictObject({
+  brief: z.string().min(1).refine((b) => Buffer.byteLength(b) <= 120 * 1024, { message: "brief en çok 120 KB" }),
+  hosts: z.array(hostId).min(1).max(20),
+  investigate: z.boolean(),
+  origin: z.unknown().optional().refine((o) => o === undefined || Buffer.byteLength(JSON.stringify(o) ?? "") <= 4096, { message: "origin en çok 4 KB" }),
+});
 
 const startSchema = z.strictObject({
   cwd: z.string().min(1),
@@ -27,7 +37,9 @@ const startSchema = z.strictObject({
   /** Run the session in a separate git worktree (new branch); the main working tree is unaffected. */
   worktree: z.boolean().optional(),
   /** "pc": Claude uses the PC (desktop + control + X-Tiphys-Control control session token). */
-  kind: z.enum(["code", "pc"]).optional(),
+  /** "security": Claude fixes security items on pinned targets (securityFix feature; `security` required). */
+  kind: z.enum(["code", "pc", "security"]).optional(),
+  security: securityStartSchema.optional(),
 });
 
 /** Taking over a terminal session on the phone: session settings (same as for a new session) + explicit confirmation. */
@@ -79,6 +91,9 @@ export function claudeRoutes(
     onPc?: (pc: ReturnType<typeof createPcSupport>) => void;
     /** Tests: manager (pcTick is called manually with a fake clock; if given, no timer is set up). */
     onManager?: (m: ClaudeManager) => void;
+    /** Security fix sessions (fake ssh, PATH, clock and backup roots in tests). */
+    security?: SecSupportOpts;
+    onSec?: (sec: ReturnType<typeof createSecSupport>) => void;
   } = {},
 ) {
   return async (app: FastifyInstance, ctx: Ctx) => {
@@ -89,7 +104,9 @@ export function claudeRoutes(
       ? createPcSupport(ctx, { io: realStreamIo, shotsDir: join(dirname(ctx.store.path), "claude-shots"), ...opts.pc })
       : null;
     if (pc) opts.onPc?.(pc);
-    const mgr = new ClaudeManager(() => ctx.store.get(), ctx.notifier, queryFn, statePath, pc);
+    const sec = createSecSupport(ctx, opts.security);
+    opts.onSec?.(sec);
+    const mgr = new ClaudeManager(() => ctx.store.get(), ctx.notifier, queryFn, statePath, pc, sec);
     // When the control session ends (stop, expiry, agent shutdown), attached PC sessions stop immediately.
     const offControl = ctx.control?.onEnd((info) => mgr.controlEnded(info.device, info.reason));
     // "Extend" notification 2 min before control time runs out (PC sessions).
@@ -154,11 +171,16 @@ export function claudeRoutes(
     const pcOwner = (req: FastifyRequest, s: { kind: string; control: ControlBinding | null }) => {
       if (s.kind === "pc" && s.control && s.control.device !== req.device!.id) throw new AppError("agent.control.sessionRequired", 403);
     };
+    /** A security session's prompts, mode and rollback belong to the device that started it. */
+    const secOwner = (req: FastifyRequest, s: { kind: string; security: { device: string | null } | null }) => {
+      if (s.kind === "security" && s.security?.device && s.security.device !== req.device!.id) throw new AppError("agent.claude.securityOwnerOnly", 403);
+    };
 
     app.post("/v1/claude/sessions", async (req) => {
       const body = startSchema.parse(req.body);
+      if ((body.kind === "security") !== (body.security !== undefined)) throw new AppError("agent.claude.securityRequired", 400);
       const control = body.kind === "pc" ? await controlBinding(req) : undefined;
-      const s = await mgr.start({ ...body, control });
+      const s = await mgr.start({ ...body, control, device: req.device!.id });
       return s.summary();
     });
 
@@ -168,6 +190,64 @@ export function claudeRoutes(
       if (s.kind !== "pc") throw new AppError("agent.claude.notPcSession", 400);
       mgr.bindControl(s, await controlBinding(req));
       return s.summary();
+    });
+
+    // ---- security fix sessions (PLAN.md §16) ----
+    const secFeature = () => {
+      if (!ctx.store.get().features.securityFix) throw new AppError("agent.claude.securityFixDisabled", 403);
+    };
+    // Session routes work with the feature off too: a restored session with backups must stay rollbackable.
+    const secSession = (req: FastifyRequest) => {
+      const s = mgr.get((req.params as { id: string }).id);
+      const tools = sec.sessions.get(s.id);
+      if (s.kind !== "security" || !tools) throw new AppError("agent.claude.notSecuritySession", 400);
+      return { s, tools };
+    };
+    const targetsSchema = z.strictObject({ targets: securityFixSchema.shape.targets, sudoCacheMinutes: securityFixSchema.shape.sudoCacheMinutes });
+
+    app.get("/v1/claude/security/targets", async () => {
+      secFeature();
+      return ctx.store.get().securityFix;
+    });
+
+    app.put("/v1/claude/security/targets", async (req) => {
+      secFeature();
+      const b = targetsSchema.parse(req.body);
+      await ctx.store.update((c) => ((c.securityFix = b), c));
+      req.auditDetail = { targets: b.targets.map((t) => t.host) };
+      return ctx.store.get().securityFix;
+    });
+
+    app.get("/v1/claude/sessions/:id/security", async (req) => secSession(req).tools.info());
+
+    // Device-initiated rollback: works while the session is idle. Open permission/sudo requests are denied first so it
+    // doesn't queue behind them; a command already running is waited for.
+    app.post("/v1/claude/sessions/:id/security/rollback", async (req) => {
+      const { s, tools } = secSession(req);
+      secOwner(req, s);
+      const { host } = z.strictObject({ host: hostId }).parse(req.body);
+      if (!tools.state.targets.some((t) => t.host === host)) throw new AppError("agent.claude.securityHostNotPinned", 400, { host });
+      req.auditDetail = { host };
+      mgr.cancelPending(s);
+      return await tools.rollbackHost(host);
+    });
+
+    // sudo password for a pending "sudo" event. The body is never logged or audited (no auditDetail is set).
+    app.post("/v1/claude/sessions/:id/sudo", async (req) => {
+      const { s } = secSession(req);
+      secOwner(req, s);
+      const requestId = z.string().uuid();
+      const b = z.union([z.strictObject({ requestId, password: z.string().min(1).max(1024) }), z.strictObject({ requestId, deny: z.literal(true) })]).parse(req.body);
+      mgr.resolveSudo(s, b.requestId, "password" in b ? b.password : false);
+      return { ok: true };
+    });
+
+    // Panic button, open to any device: cancels open sudo prompts and forgets cached passwords.
+    app.delete("/v1/claude/sessions/:id/sudo", async (req) => {
+      const { s, tools } = secSession(req);
+      mgr.cancelSudo(s);
+      tools.clearSudo();
+      return { ok: true };
     });
 
     // Screenshots of the PC session (thumbnails in the chat; last 60 on disk).
@@ -203,6 +283,7 @@ export function claudeRoutes(
     app.post("/v1/claude/sessions/:id/messages", async (req) => {
       const s = mgr.get((req.params as { id: string }).id);
       pcOwner(req, s);
+      secOwner(req, s);
       const body = messageSchema.parse(req.body);
       const accepted = mgr.send(s, body.text, body.images, body.clientId);
       return { ok: true, duplicate: !accepted };
@@ -218,6 +299,7 @@ export function claudeRoutes(
       const body = z.strictObject({ allow: z.boolean(), message: z.string().max(2000).optional() }).parse(req.body);
       const s = mgr.get(p.id);
       pcOwner(req, s);
+      secOwner(req, s);
       mgr.resolvePermission(s, p.requestId, body.allow, body.message);
       return { ok: true };
     });
@@ -225,6 +307,7 @@ export function claudeRoutes(
     app.post("/v1/claude/sessions/:id/mode", async (req) => {
       const s = mgr.get((req.params as { id: string }).id);
       pcOwner(req, s);
+      secOwner(req, s);
       const { permissionMode } = z.object({ permissionMode: startSchema.shape.permissionMode.unwrap() }).parse(req.body);
       await mgr.setMode(s, permissionMode);
       return s.summary();

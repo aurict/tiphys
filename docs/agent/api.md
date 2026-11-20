@@ -189,6 +189,8 @@ Every error has the same envelope. The agent sends codes, never sentences; the a
 | `agent.security.scannerOff` | 409 | `POST /v1/security/vulns/scan` while `scanners.trivy` is off (`params.scanner`) |
 | `agent.security.scanBusy` | 409 | A scan of that kind is already running (images, secrets, outside view, Cloudflare run); also a scan of a single image while the image batch runs |
 | `agent.security.findingNotFound` | 404 | Unknown secret finding id |
+| `agent.security.briefRateLimited` | 429 | More than 10 `POST /v1/security/brief` per device per 10 minutes (`params.limit`, `params.windowSeconds`) |
+| `agent.security.itemNotFound` | 404 | `POST /v1/security/brief` where **no** item resolved. As a per-item `error` in a 200 answer: that finding, change, image CVE, secret or outside-view finding no longer exists |
 | `agent.security.imageTooLarge` | 502 | Image save over 3 GB (recorded as the image's `error`) |
 | `agent.security.scanFailed` | 502 | gitleaks on log data failed (recorded in `lastRun.loki`) |
 | `agent.security.lokiUnavailable` | 409 / 502 | No `scanners.loki` configured (409), or the Loki container has no address (502) |
@@ -269,6 +271,16 @@ Every error has the same envelope. The agent sends codes, never sentences; the a
 | `agent.claude.sessionStopped` | 409 | Session no longer running |
 | `agent.claude.bypassNeedsNewSession` | 400 | `bypassPermissions` can't be switched on in a running session |
 | `agent.claude.pcModeFixed` / `.notPcSession` / `.pcUnavailable` | 400 / 400 / 403 | PC session errors |
+| `agent.claude.securityFixDisabled` | 403 | Feature `securityFix` is off (start of a `security` session, `…/security/targets`) |
+| `agent.claude.securityRequired` | 400 | `kind: "security"` without `security`, or `security` without `kind: "security"` |
+| `agent.claude.securityNoTargets` | 400 | None of `security.hosts` is a configured fix target (`params.hosts`) |
+| `agent.claude.securitySshConfig` | 400 | A pinned target's SSH destination cannot be used: `ssh -G` failed, it sets `ProxyCommand`, `ProxyJump`, `LocalCommand` or `KnownHostsCommand`, or a resolved value is unusable (`params.host`, `params.reason`, at most 300 characters) |
+| `agent.claude.securityInvestigateReadOnly` | 400 | An investigate session started or switched to a mode other than `plan` |
+| `agent.claude.notSecuritySession` | 400 | A `…/security` or `…/sudo` route on a session that is not a security session |
+| `agent.claude.securityOwnerOnly` | 403 | A security session's message, permission answer, mode change, sudo answer or rollback from a device other than the one that started it |
+| `agent.claude.securityHostNotPinned` | 400 | Rollback of a host that is not pinned to the session (`params.host`) |
+| `agent.claude.securityTargetGone` | 409 | Rollback of a host whose fix target was removed or changed since the session started (`params.host`) |
+| `agent.claude.sudo.notFound` | 404 | No open sudo request with that id (`params.requestId`): already answered, timed out or cancelled |
 | `agent.claude.confirmRequired` | 400 | Takeover without confirmation |
 | `agent.claude.terminalNotFound` / `.terminalBusy` / `.terminalStuck` | 404 / 409 / 504 | Terminal takeover |
 | `agent.claude.historyNotFound` / `.shotNotFound` | 404 | Transcript / screenshot missing |
@@ -476,12 +488,12 @@ Feature `claude` (`claude/routes.ts`, `claude/schedules.ts`). See [Claude](../fe
 | Method | Path | Description |
 | --- | --- | --- |
 | GET | `/v1/claude/sessions?profileId=` | `{live: [summary], terminal: [...], history: [...]}`. `terminal` lists sessions running in a terminal outside Tiphys. |
-| POST | `/v1/claude/sessions` | Strict `{cwd, prompt?, images?: [{mediaType, data}] (≤10), profileId?, model?, effort?: low\|medium\|high\|xhigh\|max, permissionMode?: default\|acceptEdits\|plan\|bypassPermissions, resume?: uuid, worktree?, kind?: code\|pc}` → summary. `kind: "pc"` requires a control token. |
+| POST | `/v1/claude/sessions` | Strict `{cwd, prompt?, images?: [{mediaType, data}] (≤10), profileId?, model?, effort?: low\|medium\|high\|xhigh\|max, permissionMode?: default\|acceptEdits\|plan\|bypassPermissions, resume?: uuid, worktree?, kind?: code\|pc\|security, security?}` → summary. `kind: "pc"` requires a control token. `kind: "security"` goes with `security` (below). |
 | GET | `/v1/claude/sessions/:id?after=SEQ` | `{session, events}` |
 | POST | `/v1/claude/sessions/:id/messages` | Strict `{text, images?, clientId?}` → `{ok, duplicate}`. `clientId` makes retries idempotent. |
 | POST | `/v1/claude/sessions/:id/interrupt` | Stop the current turn |
 | POST | `/v1/claude/sessions/:id/permissions/:requestId` | Strict `{allow, message?}`. Answers a permission request; this is also what the notification action buttons call. |
-| POST | `/v1/claude/sessions/:id/mode` | `{permissionMode}` → summary |
+| POST | `/v1/claude/sessions/:id/mode` | `{permissionMode}` → summary. Security sessions: see [rules](#security-fix-sessions) below. |
 | POST | `/v1/claude/sessions/:id/control` | Rebind a PC session to the caller's current control token |
 | DELETE | `/v1/claude/sessions/:id` | Close the session |
 | GET | `/v1/claude/sessions/:id/stream?after=SEQ` | WebSocket, see [below](#claude-session-websocket) |
@@ -493,14 +505,57 @@ Feature `claude` (`claude/routes.ts`, `claude/schedules.ts`). See [Claude](../fe
 | GET / POST | `/v1/claude/schedules` | List / create. Body: strict `{name, cwd, prompt, when, permissionMode?, model?, effort?, profileId?, enabled?}`. |
 | PUT / DELETE | `/v1/claude/schedules/:id` | Update / delete |
 | POST | `/v1/claude/schedules/:id/run` | Run now → `{schedule, sessionId}` |
+| GET | `/v1/claude/security/targets` | Feature `securityFix`. `{targets: [{host, name, ssh: string\|null, port?}], sudoCacheMinutes}`: the [`securityFix`](configuration.md#securityfix) section. `403 agent.claude.securityFixDisabled`. |
+| PUT | `/v1/claude/security/targets` | Feature `securityFix`. Strict `{targets (≤20, unique `host`), sudoCacheMinutes (1–120, default 15)}`; **replaces** the section and returns it. Target: strict `{host: [a-z0-9][a-z0-9-]{0,62}, name: 1–80, ssh: string matching the ssh destination pattern \| null, port?: 1–65535}`. Audit `{targets: [host ids]}`. Same errors, plus `400 agent.request.invalid`. |
+| GET | `/v1/claude/sessions/:id/security` | State of a security session (below). `400 agent.claude.notSecuritySession`. Works with the feature off, so a restored session with backups can still be rolled back. |
+| POST | `/v1/claude/sessions/:id/security/rollback` | Strict `{host}` (id of a pinned machine). Restores every file the session changed on that host and reloads what `safe_apply` reloaded; no approval card. Open permission and sudo requests of the session are denied first so it does not queue behind them; a running command is waited for. Returns `{host, restored: [path], failed: [{path, error}], reloaded: ["sshd: ok", "nft: failed"…]}`. `400 agent.claude.securityHostNotPinned`, `403 agent.claude.securityOwnerOnly`, `409 agent.claude.securityTargetGone`. Audit `{host}`. |
+| POST | `/v1/claude/sessions/:id/sudo` | Answers a `sudo` event: strict `{requestId: uuid, password: 1–1024 chars}` or `{requestId, deny: true}` → `{ok: true}`. The body is never logged and no audit detail is set. `404 agent.claude.sudo.notFound`, `403 agent.claude.securityOwnerOnly`. |
+| DELETE | `/v1/claude/sessions/:id/sudo` | Open to any device. Cancels the session's open sudo prompts (the waiting tool gets no password), then forgets the cached sudo passwords and recorded denials → `{ok: true}`. Claude asks again when it needs root. |
 
 `when` takes one of three forms: `{kind: "daily", time: "HH:MM"}`, `{kind: "weekly", time, days: [1..7]}` (1 = Monday) or `{kind: "interval", everyMinutes: ≥15}`.
 
-A session summary has these fields: `{id, epoch, sdkSessionId, cwd, title, status: starting|running|waiting|idle|error|stopped, model, permissionMode, profileId, costUsd, contextTokens, contextWindow, createdAt, lastActivity, pendingPermissions, live, resumeCommand, kind, control?}`.
+A session summary has these fields: `{id, epoch, sdkSessionId, cwd, title, status: starting|running|waiting|idle|error|stopped, model, permissionMode, profileId, costUsd, contextTokens, contextWindow, createdAt, lastActivity, pendingPermissions, live, resumeCommand, kind: code\|pc\|security, control?, security?}`.
 
 **`resumeCommand`** ("Continue on the PC"): `cd '<cwd>' && claude --resume <sdkSessionId>`, ready to paste into a terminal on the PC, or `null` while the session has no `sdkSessionId` yet. `cwd` is single-quoted for a POSIX shell (a `'` inside it is written `'\''`). Close the session on the phone first so the conversation isn't open in two places. `claude --resume` without an id lists only the sessions of the *current folder*, and a session started from the phone is saved under the folder chosen on the phone, hence the `cd`. See [Claude › Continue on the PC](../features/claude.md#continue-on-the-pc).
 
 For PC sessions, only the device holding the bound control session may send messages, answer permissions or change the mode.
+
+#### Security fix sessions
+
+Feature `securityFix` (and `claude`). See [Security fix sessions](../features/claude.md#security-fix-sessions) and
+[Fixing findings with Claude](../features/security.md#fixing-findings-with-claude).
+
+**Start**: `POST /v1/claude/sessions` with `kind: "security"` and
+
+```json
+{
+  "cwd": "~", "prompt": "leave port 8080 open", "permissionMode": "default",
+  "kind": "security",
+  "security": { "brief": "# Tiphys security brief…", "hosts": ["atlas"], "investigate": false, "origin": { "agentHostId": "atlas", "refs": ["finding:atlas:ssh.passwordAuth"] } }
+}
+```
+
+- `security` is strict: `brief` (the `text` of [`POST /v1/security/brief`](#security), 1 byte to 120 KiB), `hosts` (1–20 host ids), `investigate: boolean`, `origin` (any JSON, at most 4096 bytes; optional).
+- `cwd` must still be present but is ignored (the working directory is the home folder). `prompt` is the user's own note (trusted, may be empty); the brief is put into a nonce-delimited data block. `images` and `worktree` are ignored.
+- The session pins the hosts that are in `security.hosts` **and** configured in [`securityFix.targets`](configuration.md#securityfix), copied at start. None: `400 agent.claude.securityNoTargets`. Each SSH destination is resolved once with `ssh -G` (10 s limit) and the result is stored with the session; every later connection uses `-F /dev/null` and only these values. A destination that uses `ProxyCommand`, `ProxyJump`, `LocalCommand` or `KnownHostsCommand` fails the start: `400 agent.claude.securitySshConfig {host, reason}`.
+- `permissionMode` defaults to `plan` when `investigate` is true and to `default` otherwise. `investigate: true` with any other mode: `400 agent.claude.securityInvestigateReadOnly`.
+- Errors: `403 agent.claude.securityFixDisabled`, `400 agent.claude.securityRequired`, `400 agent.claude.securitySshConfig`, `400 agent.request.invalid` (`security.brief` over 120 KB, `origin` over 4 KB, bad host ids).
+- The session starts working at once. Its `kind` is `security`, and its summary has an extra field `security: {hosts: [{host, name}], investigate, origin}` (`origin` as sent, `null` if none).
+
+**Mode changes** (`POST …/mode`) in a security session: an investigate session accepts only `plan` (`400 agent.claude.securityInvestigateReadOnly`); `bypassPermissions` can only be set when the session starts (`400 agent.claude.bypassNeedsNewSession`; a session that left bypass cannot return to it); every other switch is allowed and takes effect for the next tool call. The mode is enforced inside the tools, not by the SDK.
+
+**Owner**: messages (`…/messages`), permission answers (`…/permissions/:requestId`), mode changes, sudo answers and rollbacks must come from the device that started the session (`403 agent.claude.securityOwnerOnly`). Interrupting, reading the session and `DELETE …/sudo` (a panic button) are open to any device token.
+
+**`GET /v1/claude/sessions/:id/security`** returns `{hosts: [{host, name, ssh, port}], mode, investigate, origin, backups: [{host, path, backup, existed, sudo, at}], changed: [{host, path}], timers: [{host, unit, kind: "sshd"\|"nft", expiresAt}], sudoCached: [host ids]}`. `backups` holds one entry per file and session (the state before the first change; `existed: false` means rolling back deletes the file); `timers` lists the `safe_apply` rollback timers that have not expired; `sudoCached` names the hosts whose sudo password is in memory (never the password).
+
+**Session events** (WebSocket and `GET …/:id`), in addition to the list [below](#claude-session-websocket):
+
+- `sudo {requestId, host, attempt, investigate?: true}`: a tool needs the sudo password of `host`. `attempt` is 1 to 3 (2 and 3 after a wrong password); `investigate: true` is present when the session is an investigation (the app warns). The session status becomes `waiting`, and a `claude.sudo` notification is sent. Answer with `POST …/sudo`. A request that is not answered is cancelled after 10 minutes, on interrupt, and when the session closes.
+- `sudoResolved {requestId, provided}`: the request ended; `provided` is true when a password arrived (it is never in the event).
+- Permission cards of a security session use `permission` events as usual; `toolName` is `mcp__tiphys_sec__<tool>` and the notification is `claude.waiting` with `security: 1`. `input` is the tool's input; a step that runs as root (outside `bypassPermissions`, in every other mode, `plan` included) adds `asRoot: true` and its `reason` starts with `As root`. A `write_file` card carries `diff` (against the current file, at most 8000 characters) or, when the SSH user cannot read the current file, `content` (the new content, at most 8000 characters) instead.
+
+**Audit.** The routes above are audited like any other non-GET request. In addition each `run`, `write_file`, `safe_apply`, `confirm_apply` and `rollback` tool step (and each refused `run`) is written to `audit.jsonl` and the black box as `{at, device, method: "TOOL", path: "/v1/claude/sessions/<id>/security/<tool>", status: 200|500, detail: {session, host, tool, summary}}`, where `summary` is at most 160 characters (the command line or path, never contents or output) and `device` is the device that started the session.
+
 
 ### agy
 
@@ -814,6 +869,7 @@ Feature `security` (`security/*.ts`), device tokens only, except `GET /v1/securi
 | POST | `/v1/security/hosts` | Strict `{id, name (1–80), role?: server\|desktop (server), allowedPorts?: ["tcp/22", …] (≤100), source, traps?: boolean (false)}` → `201 {host}`. `source` is `{kind: "ssh", host, user, port? (22), keyPath}` (`keyPath`: the private key on this machine, `~` is expanded) or `{kind: "agent", url (https), token (tps_…)}`. `409 agent.security.hostExists` (also for `self`), `409 agent.security.tooManyHosts`, `400 agent.security.tokenRequired`. |
 | PATCH | `/v1/security/hosts/:id` | Strict, all optional: `{name?, role?, allowedPorts?, source?, traps?}` → `{host}`. `traps: true` makes the agent poll that SSH host's decoy-file events (see [traps](#traps-and-alerts)); it has no effect for other source kinds. For an `agent` source the token may be omitted while the URL stays the same (kept); with a new URL it is required (`agent.security.tokenRequired`), so a stored token never goes to a new address. For `self`: strict `{role?, allowedPorts?, sudo?: boolean}` → `{self}`. The stored report is re-evaluated at once with the new role/ports. |
 | DELETE | `/v1/security/hosts/:id` | `{ok: true}`; also deletes the host's stored report and baseline. `409 agent.security.selfPermanent` for `self`. |
+| POST | `/v1/security/brief` | Strict `{items: [item] (1–30), language?: tr\|en (tr)}`, where an item is `{type: "finding", host, id}`, `{type: "change", host, id}` (`id` is the change's `category\|item`), `{type: "vuln", image: "sha256:<64 hex>", cve}`, `{type: "secret", id: <24 hex>}` or `{type: "exposure", id}`. Device tokens only (`403 agent.auth.scopeDenied` for a service token); 10 per device per 10 minutes (`429 agent.security.briefRateLimited`). Returns the sanitized brief `{text, bytes, truncated, investigate, hosts: [{id, name, role, root: boolean\|null, source}], items: [{ref, type, host: string\|null, mode: "fix"\|"investigate"} \| {ref, type, error}]}`. `text` is at most 120 KB; items are kept in request order, duplicates dropped. A per-item `error` is `agent.security.hostNotFound`, `agent.security.itemNotFound` or `agent.security.briefTruncated`; the call fails with `404 agent.security.itemNotFound` only when **no** item resolved. `ref` is the raw item reference (`finding:<host>:<id>`, `vuln:<image>:<cve>`, …) and is data for the caller; it is never used in the text. `investigate` is true when any item has the mode `investigate`. Audit `{finding?, change?, vuln?, secret?, exposure?: counts per type, bytes}`. See [Fixing findings with Claude](../features/security.md#fixing-findings-with-claude). |
 | GET | `/v1/security/raw?mode=report\|report-full` | `{text}`: the raw audit output of **this** machine (the same text `audit.sh` prints, plus an `agentfiles` section with the modes of the agent's own files). It runs with this agent's `security.self.sudo` setting. For the monitoring server of another host. Device token or service token with scope `security-report`; 10 per 10 minutes per caller (device id or `service:<id>`). |
 
 Host settings live in their own routes, not in `GET`/`PATCH /v1/config` (the `security` section isn't part of the redacted config), so source tokens never travel back.
@@ -1033,7 +1089,7 @@ Every input event re-checks the control token and counts toward the 60/s limit. 
 
 `GET /v1/claude/sessions/:id/stream?after=SEQ`. The first message is `{kind:"hello", seq:0, epoch, lastSeq}`. If `epoch` differs from what the app remembers, the agent has restarted and the app reloads the session. After that come the buffered events with `seq > after`, then live events, each as one JSON text message `{seq, at, kind, …}`:
 
-`user`, `text`, `delta` (streaming text), `thinking`, `tool_use {id, name, input}`, `tool_result {toolUseId, text, isError, shot?}`, `init {model, cwd, permissionMode, slashCommands}`, `result {ok, subtype, text, costUsd, turns, durationMs, contextTokens, contextWindow}`, `permission {requestId, toolName, input, reason}`, `permissionResolved {requestId, allow}`, `control {active, expiresAt, reason}` (PC sessions), `status {status}`, `error {message}`, `restored`, `compacted`.
+`user`, `text`, `delta` (streaming text), `thinking`, `tool_use {id, name, input}`, `tool_result {toolUseId, text, isError, shot?}`, `init {model, cwd, permissionMode, slashCommands}`, `result {ok, subtype, text, costUsd, turns, durationMs, contextTokens, contextWindow}`, `permission {requestId, toolName, input, reason}`, `permissionResolved {requestId, allow}`, `sudo {requestId, host, attempt, investigate?}` and `sudoResolved {requestId, provided}` (security sessions), `control {active, expiresAt, reason}` (PC sessions), `status {status}`, `error {message}`, `restored`, `compacted`.
 
 The server pings every 25 s. An unknown session closes with code `4404`.
 

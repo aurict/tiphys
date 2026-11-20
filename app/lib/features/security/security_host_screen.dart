@@ -17,6 +17,8 @@ import '../incidents/host_picker.dart';
 import '../system/agent_providers.dart';
 import '../system/events.dart' show ChipRow, filterChip;
 import 'security_data.dart';
+import 'security_fix.dart';
+import 'security_fix_sheet.dart';
 import 'security_texts.dart';
 import 'security_widgets.dart';
 
@@ -37,6 +39,31 @@ class SecurityHostScreen extends ConsumerStatefulWidget {
 class _SecurityHostScreenState extends ConsumerState<SecurityHostScreen> {
   String _tab = 'ports';
   bool _busy = false;
+
+  /// Multi-select for "Send to Claude" (findings and baseline changes).
+  late final _sel = FixSelection()..addListener(_onSel);
+
+  void _onSel() {
+    if (mounted) setState(() {});
+  }
+
+  @override
+  void dispose() {
+    _sel.dispose();
+    super.dispose();
+  }
+
+  FixItem _findingItem(AppLocalizations l, SecurityDetail d, SecFinding f) => FixItem.finding(host: d.summary.id, id: f.id, label: securityRuleTitle(l, f.rule, f.params));
+  FixItem _changeItem(AppLocalizations l, SecurityDetail d, SecChange c) => FixItem.change(host: d.summary.id, category: c.category, item: c.item, label: '${securityCategoryName(l, c.category)} · ${c.item}');
+
+  List<FixItem> _allItems(AppLocalizations l, SecurityDetail d) => [
+        for (final f in d.findings) _findingItem(l, d, f),
+        for (final c in d.changes) _changeItem(l, d, c),
+      ];
+
+  Future<void> _sendToClaude(SecurityDetail d) async {
+    if (await sendToClaude(context, ref, agentId: d.agent.id, items: _sel.items) && mounted) _sel.done();
+  }
 
   SecurityRef get _key => (widget.hostId, widget.agentHint);
 
@@ -94,12 +121,14 @@ class _SecurityHostScreenState extends ConsumerState<SecurityHostScreen> {
     final d = async.value;
     return SettingsPage(
       title: d?.summary.name ?? l.secTitle,
+      bottomBar: d != null && _sel.selecting ? FixBar(selection: _sel, all: _allItems(l, d), onSend: () => _sendToClaude(d)) : null,
       onRefresh: () async {
         ref.invalidate(securityDetailProvider(_key));
         await ref.read(securityDetailProvider(_key).future).then((_) {}, onError: (_) {});
       },
       actions: [
         IconButton(tooltip: l.commonRefresh, icon: const Icon(LucideIcons.refreshCw), onPressed: () => ref.invalidate(securityDetailProvider(_key))),
+        if (d != null && (d.findings.isNotEmpty || d.changes.isNotEmpty)) FixSelectButton(selection: _sel),
         if (d != null)
           PopupMenuButton<String>(
             tooltip: MaterialLocalizations.of(context).showMenuTooltip,
@@ -146,7 +175,7 @@ class _SecurityHostScreenState extends ConsumerState<SecurityHostScreen> {
       _Header(detail: d, busy: _busy, onCheck: () => _check(d, full: false)),
       if (d.changes.isNotEmpty) ...[
         const SizedBox(height: 12),
-        _ChangesCard(detail: d, busy: _busy, onAccept: () => _accept(d)),
+        _ChangesCard(detail: d, busy: _busy, onAccept: () => _accept(d), selection: _sel, itemOf: (c) => _changeItem(l, d, c)),
       ],
       SectionLabel(l.secFindingsTitle),
       if (r == null)
@@ -155,7 +184,7 @@ class _SecurityHostScreenState extends ConsumerState<SecurityHostScreen> {
         TCard(child: Text(l.secNoFindings))
       else
         for (final s in securityFindingSeverities)
-          if (d.findingsOf(s).isNotEmpty) Padding(padding: const EdgeInsets.only(bottom: 10), child: _FindingsGroup(severity: s, findings: d.findingsOf(s))),
+          if (d.findingsOf(s).isNotEmpty) Padding(padding: const EdgeInsets.only(bottom: 10), child: _FindingsGroup(severity: s, findings: d.findingsOf(s), selection: _sel, itemOf: (f) => _findingItem(l, d, f))),
       if (r != null) ...[
         const SizedBox(height: 2),
         _FirewallCard(report: r),
@@ -264,10 +293,12 @@ class _Header extends ConsumerWidget {
 }
 
 class _ChangesCard extends StatelessWidget {
-  const _ChangesCard({required this.detail, required this.busy, required this.onAccept});
+  const _ChangesCard({required this.detail, required this.busy, required this.onAccept, required this.selection, required this.itemOf});
   final SecurityDetail detail;
   final bool busy;
   final VoidCallback onAccept;
+  final FixSelection selection;
+  final FixItem Function(SecChange) itemOf;
 
   @override
   Widget build(BuildContext context) {
@@ -289,16 +320,20 @@ class _ChangesCard extends StatelessWidget {
         for (final c in shown)
           Padding(
             padding: const EdgeInsets.symmetric(vertical: 5),
-            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Row(children: [
-                SecChip(securityKindName(l, c.kind), c.kind == 'removed' ? t.textSecondary : t.warning),
-                const SizedBox(width: 8),
-                Expanded(child: Text(securityCategoryName(l, c.category), style: tt.titleSmall, maxLines: 1, overflow: TextOverflow.ellipsis)),
+            child: FixPick(
+              selection: selection,
+              item: itemOf(c),
+              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Row(children: [
+                  SecChip(securityKindName(l, c.kind), c.kind == 'removed' ? t.textSecondary : t.warning),
+                  const SizedBox(width: 8),
+                  Expanded(child: Text(securityCategoryName(l, c.category), style: tt.titleSmall, maxLines: 1, overflow: TextOverflow.ellipsis)),
+                ]),
+                const SizedBox(height: 2),
+                Text(c.item, style: const TextStyle(fontFamily: monoFamily, fontSize: 12.5), maxLines: 3, overflow: TextOverflow.ellipsis),
+                if (c.firstSeenAt != null) Text(l.secFirstSeen(securityWhen(context, c.firstSeenAt!)), style: tt.bodySmall),
               ]),
-              const SizedBox(height: 2),
-              Text(c.item, style: const TextStyle(fontFamily: monoFamily, fontSize: 12.5), maxLines: 3, overflow: TextOverflow.ellipsis),
-              if (c.firstSeenAt != null) Text(l.secFirstSeen(securityWhen(context, c.firstSeenAt!)), style: tt.bodySmall),
-            ]),
+            ),
           ),
         if (detail.changes.length > shown.length) Text(l.secMore(detail.changes.length - shown.length), style: tt.bodySmall),
         const SizedBox(height: 8),
@@ -309,9 +344,11 @@ class _ChangesCard extends StatelessWidget {
 }
 
 class _FindingsGroup extends StatelessWidget {
-  const _FindingsGroup({required this.severity, required this.findings});
+  const _FindingsGroup({required this.severity, required this.findings, required this.selection, required this.itemOf});
   final String severity;
   final List<SecFinding> findings;
+  final FixSelection selection;
+  final FixItem Function(SecFinding) itemOf;
 
   @override
   Widget build(BuildContext context) {
@@ -326,7 +363,10 @@ class _FindingsGroup extends StatelessWidget {
         for (final f in findings)
           Padding(
             padding: const EdgeInsets.only(top: 10),
-            child: Semantics(
+            child: FixPick(
+              selection: selection,
+              item: itemOf(f),
+              child: Semantics(
               container: true,
               child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                 Text(securityRuleTitle(l, f.rule, f.params), style: tt.titleSmall),
@@ -340,6 +380,7 @@ class _FindingsGroup extends StatelessWidget {
                     ]), style: tt.bodySmall),
                   ),
               ]),
+            ),
             ),
           ),
         const SizedBox(height: 6),

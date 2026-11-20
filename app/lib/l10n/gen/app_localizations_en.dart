@@ -11095,4 +11095,423 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get secCardNoHosts => 'No machines are audited yet.';
+
+  @override
+  String get fixSelect => 'Select';
+
+  @override
+  String get fixSelectCancel => 'Cancel selection';
+
+  @override
+  String get fixSelectAll => 'Select all';
+
+  @override
+  String get fixSend => 'Send to Claude';
+
+  @override
+  String fixSelectedCount(int count) {
+    return '$count selected';
+  }
+
+  @override
+  String fixSelectedTooMany(int count, int max) {
+    return '$count selected (at most $max)';
+  }
+
+  @override
+  String get fixSendTitle => 'Send to Claude';
+
+  @override
+  String get fixSendIntro =>
+      'Claude connects to your machines over SSH and fixes these with guarded tools. You choose what it may do without asking.';
+
+  @override
+  String get fixBriefLoading => 'Preparing the brief…';
+
+  @override
+  String fixItemsTitle(int count) {
+    return 'Selected ($count)';
+  }
+
+  @override
+  String get fixModeFix => 'Fix';
+
+  @override
+  String get fixModeInvestigate => 'Investigate';
+
+  @override
+  String get fixBriefTruncated =>
+      'The brief was too long and was cut: some items were left out.';
+
+  @override
+  String get fixHostsTitle => 'Machines';
+
+  @override
+  String get fixHostsNone => 'No machine could be resolved for these items.';
+
+  @override
+  String get fixHostNoRoot => 'last audit ran without root';
+
+  @override
+  String get fixTargetSet => 'Target set';
+
+  @override
+  String get fixTargetSetNow => 'Set target';
+
+  @override
+  String get fixTargetsNoneHint =>
+      'Claude only works on machines that have a fix target. Set one for at least one machine.';
+
+  @override
+  String get fixModeTitle => 'Permissions';
+
+  @override
+  String get fixModeInvestigateNote =>
+      'These items may be traces of an attack. Claude only reads (plan mode), so nothing is changed or deleted before you have looked at it.';
+
+  @override
+  String get fixBypassWarning =>
+      'In this mode Claude can run any command on the selected machines without asking, including commands that reach the network. The tool rules (targets, backups) still apply, but the network command blocklist is only a heuristic, not a sandbox, and a mistake can lock you out.';
+
+  @override
+  String get fixBypassConfirm =>
+      'Start without asking for permission? Claude can run any command on the selected machines without asking you, including ones that reach the network.';
+
+  @override
+  String get fixBypassConfirmGo => 'Start without asking';
+
+  @override
+  String get fixNoteLabel => 'Your note (optional)';
+
+  @override
+  String get fixNoteHint => 'e.g. leave port 8080 open, it is expected';
+
+  @override
+  String fixPreview(int bytes) {
+    return 'Brief sent to Claude ($bytes bytes)';
+  }
+
+  @override
+  String get fixPreviewHint =>
+      'Data from the audited machines. Claude treats it as data, not as instructions.';
+
+  @override
+  String get fixStart => 'Start session';
+
+  @override
+  String fixErrRateLimited(int limit, int minutes) {
+    return 'Too many briefs: at most $limit every $minutes minutes. Try again later.';
+  }
+
+  @override
+  String get fixErrItemNotFound =>
+      'The item no longer exists (the audit may have moved on). Refresh and select again.';
+
+  @override
+  String get fixErrTruncated => 'Left out: the brief was too long.';
+
+  @override
+  String get fixErrHostNotFound => 'Machine not found';
+
+  @override
+  String get fixErrDisabled =>
+      'Security fixes are off on the PC agent. Turn on “Security fixes” in Settings › Hosts › Agent › Features.';
+
+  @override
+  String get fixErrRequired => 'The session needs the security brief.';
+
+  @override
+  String get fixErrNoTargets =>
+      'None of these machines has a fix target on the PC agent. Set one first.';
+
+  @override
+  String get fixErrInvestigateReadOnly =>
+      'Investigations are read-only: use plan mode.';
+
+  @override
+  String get fixErrBypassNew =>
+      '“Don\'t ask” can only be chosen when a session starts. Start a new session.';
+
+  @override
+  String get fixFeatureName => 'Security fixes (Claude over SSH)';
+
+  @override
+  String get fixTargetsTitle => 'Fix targets';
+
+  @override
+  String get fixTargetsLinkHint =>
+      'Machines Claude may reach over SSH when fixing security findings.';
+
+  @override
+  String get fixTargetsIntro =>
+      'Claude can only work on the machines listed here. The ID is the machine\'s ID in the security center; without an SSH address the machine is this PC.';
+
+  @override
+  String get fixTargetsEmpty => 'No fix targets yet.';
+
+  @override
+  String get fixTargetAdd => 'Add target';
+
+  @override
+  String fixTargetDeleteConfirm(String name) {
+    return 'Remove the fix target “$name”?';
+  }
+
+  @override
+  String get fixTargetPickHost => 'Machine from the security center';
+
+  @override
+  String get fixTargetHostLabel => 'Machine ID';
+
+  @override
+  String get fixTargetHostHelper =>
+      'The ID the security center uses for this machine';
+
+  @override
+  String get fixTargetNameLabel => 'Name';
+
+  @override
+  String get fixTargetThisPc => 'This PC';
+
+  @override
+  String get fixTargetThisPcHint => 'Runs locally, without SSH';
+
+  @override
+  String get fixTargetSshLabel => 'SSH address';
+
+  @override
+  String get fixTargetSshHelper =>
+      'user@host; the key and known_hosts of the PC are used';
+
+  @override
+  String get fixTargetPortLabel => 'Port (optional)';
+
+  @override
+  String get fixTargetHostInvalid =>
+      'Lowercase letters, digits and dashes, e.g. atlas';
+
+  @override
+  String get fixTargetSshInvalid =>
+      'Use user@host (letters, digits, dot, dash, underscore)';
+
+  @override
+  String get fixTargetPortInvalid => 'Port 1–65535 (SSH targets only)';
+
+  @override
+  String get fixTargetDuplicate => 'This machine already has a target';
+
+  @override
+  String fixTargetTooMany(int max) {
+    return 'At most $max targets';
+  }
+
+  @override
+  String get fixTargetCacheInvalid =>
+      'The sudo password is remembered for 1–120 minutes';
+
+  @override
+  String get fixSudoCacheTitle => 'sudo password';
+
+  @override
+  String get fixSudoCacheLabel => 'Remember for (minutes)';
+
+  @override
+  String get fixSudoCacheHint =>
+      'Only in the PC agent\'s memory, per session and machine; never written to disk.';
+
+  @override
+  String get fixBadgeFix => 'Security fix';
+
+  @override
+  String get fixBadgeInvestigate => 'Investigation';
+
+  @override
+  String get fixToolHosts => 'Machines';
+
+  @override
+  String get fixToolRead => 'Read file';
+
+  @override
+  String get fixToolRun => 'Run command';
+
+  @override
+  String get fixToolWrite => 'Write file';
+
+  @override
+  String get fixToolValidate => 'Validate';
+
+  @override
+  String get fixToolSafeApply => 'Apply with rollback timer';
+
+  @override
+  String get fixToolConfirm => 'Confirm change';
+
+  @override
+  String get fixToolRollback => 'Roll back';
+
+  @override
+  String fixSudoTitle(String host) {
+    return 'sudo password for $host';
+  }
+
+  @override
+  String get fixSudoBody =>
+      'Claude needs root on this machine to continue. The password goes only to the agent\'s memory, is used for sudo and is never written to disk, logs or the chat.';
+
+  @override
+  String get fixSudoInvestigateWarn =>
+      'This machine may be compromised (these items look like an attack). A compromised account on it could capture the password you type, and a password you use elsewhere would then be exposed. Consider denying and using a one-off password.';
+
+  @override
+  String get fixSudoLabel => 'Password';
+
+  @override
+  String fixSudoWrong(int attempt) {
+    return 'That password was not accepted (attempt $attempt). Try again.';
+  }
+
+  @override
+  String get fixSudoSend => 'Send';
+
+  @override
+  String get fixSudoDeny => 'Deny';
+
+  @override
+  String get fixSudoLater => 'Later';
+
+  @override
+  String fixSudoCard(String host) {
+    return 'sudo password needed for $host';
+  }
+
+  @override
+  String get fixSudoEnter => 'Enter password';
+
+  @override
+  String get fixSudoProvided => 'Password sent';
+
+  @override
+  String get fixSudoNotProvided => 'No password given';
+
+  @override
+  String get notifClaudeSudoTitle => 'Claude needs a sudo password';
+
+  @override
+  String notifClaudeSudoBody(String title, String host) {
+    return '$title · $host';
+  }
+
+  @override
+  String get fixPanelTitle => 'Security session';
+
+  @override
+  String get fixPanelHosts => 'Machines';
+
+  @override
+  String get fixPanelNoHosts => 'No machine is pinned to this session.';
+
+  @override
+  String get fixPanelSudoCached => 'sudo password remembered';
+
+  @override
+  String get fixPanelTimers => 'Rollback timers';
+
+  @override
+  String get fixPanelTimersHint =>
+      'Claude applied a change with a timer: if it is not confirmed in time, the old state returns by itself.';
+
+  @override
+  String fixTimerLeftSemantics(String time) {
+    return '$time left';
+  }
+
+  @override
+  String fixPanelChanged(int count) {
+    return 'Changed files ($count)';
+  }
+
+  @override
+  String fixPanelBackups(int count) {
+    return 'Backups ($count)';
+  }
+
+  @override
+  String get fixPanelNothing => 'Nothing yet.';
+
+  @override
+  String get fixBackupNew => 'new file (rolling back removes it)';
+
+  @override
+  String get fixRollback => 'Roll back';
+
+  @override
+  String fixRollbackConfirm(String host) {
+    return 'Restore the backed-up files on $host? The changes made in this session are reverted.';
+  }
+
+  @override
+  String fixRollbackDone(int restored) {
+    return 'Restored $restored file(s)';
+  }
+
+  @override
+  String fixRollbackPartial(int restored, int failed) {
+    return 'Restored $restored, failed $failed';
+  }
+
+  @override
+  String get fixForgetSudo => 'Forget sudo passwords';
+
+  @override
+  String get fixForgetConfirm =>
+      'Delete the sudo passwords the agent remembers for this session? Claude will ask again when it needs one.';
+
+  @override
+  String get fixForgetDone => 'Sudo passwords forgotten';
+
+  @override
+  String get fixAuditTitle => 'Check the result';
+
+  @override
+  String get fixAuditBody =>
+      'Run the audit again: a fix counts when the audit confirms it. Then accept the new state if the remaining changes are intended.';
+
+  @override
+  String get fixAuditRun => 'Re-run audit';
+
+  @override
+  String get fixAuditRunning => 'Auditing…';
+
+  @override
+  String get fixAuditDone =>
+      'The audit is done. Open the machine to review what is left and accept the state.';
+
+  @override
+  String fixAuditOpen(String name) {
+    return 'Open $name';
+  }
+
+  @override
+  String get fixErrOwnerOnly =>
+      'Only the device that started this security session can answer it, change its mode or roll it back.';
+
+  @override
+  String get fixErrTargetGone =>
+      'This machine\'s fix target was removed or changed since the session started, so it cannot be rolled back from here.';
+
+  @override
+  String get fixModeRootNote =>
+      'Outside “Don\'t ask”, every step that runs as root asks you first, in every mode (reading as root too, even in plan mode).';
+
+  @override
+  String get fixRunsAsRoot => 'Runs as root';
+
+  @override
+  String get fixContentPreview =>
+      'The file cannot be read as the normal user, so this is a preview of the new content, not a diff.';
+
+  @override
+  String fixErrSshConfig(String host, String reason) {
+    return 'The SSH destination of “$host” cannot be used: $reason. Use a direct destination (user@host) without ProxyCommand, ProxyJump, LocalCommand or KnownHostsCommand.';
+  }
 }

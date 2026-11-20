@@ -137,6 +137,8 @@ export interface DockerEvent {
   project?: string;
   service?: string;
   workingDir?: string;
+  /** A container Tiphys itself runs (scanner, restore test): its exits are never notified. */
+  tool?: true;
 }
 
 /** A `docker events --format '{{json .}}'` line → event; null if it isn't a container event. */
@@ -168,6 +170,7 @@ export function parseDockerEvent(line: string): DockerEvent | null {
     ...(project ? { project } : {}),
     ...(service ? { service } : {}),
     ...(workingDir ? { workingDir } : {}),
+    ...(attrs["tiphys.tool"] !== undefined || attrs["tiphys.restore"] !== undefined ? { tool: true as const } : {}),
   };
 }
 
@@ -199,6 +202,7 @@ export class DockerEventWatcher {
   }
 
   async handle(e: DockerEvent): Promise<void> {
+    if (e.tool) return; // Tiphys' own scanner/restore containers: their failures show on their own screens
     if (e.action === "kill" || e.action === "stop") {
       this.#lastKill.set(e.name, e.at);
       return;

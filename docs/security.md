@@ -35,6 +35,8 @@ To report a vulnerability, see [SECURITY.md](../SECURITY.md).
 - A compromised Tailscale account or coordination server.
 - Claude Code itself. Normal (`code`) Claude sessions run with Claude Code's own permission system and the
   permission mode you choose, in folders you allow. `bypassPermissions` means exactly that.
+- What a security fix session does on a machine in `bypassPermissions` mode. See
+  [Claude security fix sessions](#claude-security-fix-sessions).
 - Denial of service from inside the tailnet.
 
 ## Network exposure
@@ -70,7 +72,7 @@ To report a vulnerability, see [SECURITY.md](../SECURITY.md).
 Each area of functionality is a flag in `agent.json`. If a flag is off, its routes are not registered and heavy
 modules such as the Claude SDK are not even loaded. On a new configuration only `system`, `services`, `docker` and
 `power` are on. Everything that runs code on your behalf or touches the desktop (`claude`, `agy`, `git`, `desktop`,
-`control`, `ports`, `transcribe`, `wake`, `watch`, `uptime`, `alerts`, `backups`, `homepage`, `security`) must be enabled
+`control`, `ports`, `transcribe`, `wake`, `watch`, `uptime`, `alerts`, `backups`, `homepage`, `security`, `securityFix`) must be enabled
 explicitly. Enable only what a machine needs. A server usually needs no `claude`, `agy`, `desktop` or `control`.
 
 ## Path restrictions
@@ -157,6 +159,188 @@ code-enforced restrictions:
 action that is not named like one (for example an icon-only button outside a web page that Claude clicks by
 coordinates) will not be caught. Watch the session, keep it short, and stop it when in doubt. Screenshots are kept
 in `claude-shots/` (last 60) and in Claude Code's own transcript.
+
+## Claude security fix sessions
+
+A Claude session of kind `security` (feature `securityFix`, off by default, needs `claude`) changes real machines:
+it runs commands and writes files on the pinned hosts over SSH, or on the PC itself, to fix the findings you selected
+in the [security center](features/security.md#fixing-findings-with-claude). What it can do is described in
+[Claude](features/claude.md#security-fix-sessions). This section is about how it is fenced in, and where that stops.
+
+**Threat model.** The input of the session, the brief, comes from audited machines that **may be compromised**: a
+container name, a file name or a key comment can be written by an attacker. While it works, Claude also reads files and
+command output from those machines, which an attacker can write too. The main risk is **prompt injection**: text on a
+machine that makes Claude run something you did not ask for, on that machine or on another one in the same session.
+The second risk is plain over-reach or a mistake by Claude. The defences are layered, and the last layer is you.
+
+### Against prompt injection
+
+- **Sanitized brief.** The brief is built on the monitoring server from fixed templates plus parameters that pass a
+  per-rule allowlist of keys and patterns; anything else becomes `‹invalid:…›` or is dropped. No raw report text, CVE
+  titles, log lines or secret values. Attacker-controllable names cannot hold a space. See
+  [What the brief contains](features/security.md#what-the-brief-contains).
+- **Nonce-framed data.** The brief goes into the first message inside `<<<TIPHYS-DATA-{nonce}>>>` … `<<<END-{nonce}>>>`,
+  with a random nonce per session. Everything a tool returns about a machine (file contents, command output, error text)
+  is wrapped in `<<<TIPHYS-OUTPUT-{nonce}>>>` blocks. Text that imitates these delimiters is broken up (`<<<TIPHYS-`
+  and `<<<END-` become `<< <…`), so it cannot open or close a block. The system prompt says that everything inside
+  a block, and everything tools return, is data and never instructions, and that only the user's messages outside the
+  data block are instructions. This is a convention that the model follows, not a guarantee; the layers below do not
+  depend on it.
+- **Origin never in prompts.** The `origin` (monitoring host id and item references) is stored with the session and
+  shown to the app only. The raw `ref` of an item is never put in a prompt; the text carries a checked and redacted
+  version.
+- **No built-in tools, no user settings, no MCP.** The session runs with `tools: []`, no setting sources, a strict MCP
+  configuration with only the in-process `tiphys_sec` server, and the dangerous built-in tools on the disallowed list.
+  Any other tool request is denied. Your own hooks, plugins and MCP servers are not loaded. The Claude process itself
+  always runs in the SDK's `default` mode; the permission modes are implemented by our tools.
+- **The user's note is trusted** because it is yours (typed in the app); the brief is not.
+
+### Rules the code enforces in every mode
+
+These live in the tools, so *Don't ask* does not remove them.
+
+- **Host pinning.** A tool works only on the hosts pinned when the session started, and each call re-checks the
+  **current** configuration: a target that was removed, or whose SSH destination or port changed, is refused. Host
+  ids are matched to targets by the agent, not by Claude, and the SSH destination must match a strict pattern (no
+  options, no spaces, no leading `-`).
+- **SSH hardening and pinning.** When the session starts, each destination is resolved once with `ssh -G`. One that
+  uses `ProxyCommand`, `ProxyJump`, `LocalCommand` or `KnownHostsCommand` is refused
+  (`agent.claude.securitySshConfig`). Every connection afterwards is `ssh -F /dev/null -o BatchMode=yes -o
+  StrictHostKeyChecking=yes -o ConnectTimeout=10 -o ForwardAgent=no -o ClearAllForwardings=yes -o ForwardX11=no -o
+  PermitLocalCommand=no` plus the pinned host name, user, port, identity files, `known_hosts` file, host key alias and
+  certificates, `-- <host>`. No password prompts, no learning of host keys, no forwarding, and a later edit of
+  `~/.ssh/config` changes nothing. A `Match exec` in your ssh config runs once, at that resolution (see the limits).
+- **Remote command wrapper and timeout.** The remote command is `/bin/sh -c '…'` around a single-quoted base64 string
+  without quotes or backslashes, which every login shell (sh, bash, zsh, fish, csh) reads the same way. It is decoded
+  and run by `sh` under `/usr/bin/timeout -k 5 <n>`, with `PATH` set outright to `/usr/sbin:/usr/bin:/sbin:/bin` and
+  `sudo` called by its absolute path (`command -v` only if it is missing), so a dropped connection cannot leave a
+  command running and a planted binary earlier in a user's `PATH` is not picked up. The remote machine needs `/bin/sh`,
+  `base64` and `timeout`. A local target runs `/bin/sh -c` in `/` as the agent's user (no SSH and no remote timeout;
+  the command is killed when its time is up).
+- **Read-only classifier.** A command counts as a read only if its command word is on an allowlist and **every option
+  is on that command's exact allowlist** (for example `find` without `-exec`, `sed` only with simple print, delete,
+  line-number, substitute and quit scripts and no `-i`, `awk` without `system`, `getline`, pipes, redirects or `@`
+  includes, `systemctl status` and friends, `docker ps` and `inspect`, `nft list` only in a few fixed shapes with plain
+  words). A lexer dequotes the command first, so `-e''xec` or `-\exec` do not help. A variable, a `$( )` or backtick
+  substitution, a redirect (except `2>/dev/null` and `2>&1`), a background `&`, a newline, a comment, a brace
+  expansion, an assignment, a path under `/dev` (opening some device files has side effects) and a glob that does not
+  start with `/` or `./` (a file named like an option could expand into one) make it a change. Everything unclear is a
+  change, which asks or is refused by the mode.
+- **Network and interpreter denylist.** Applied to every `run`, in every mode: network tools (`curl`, `wget`, `nc`,
+  `socat`, `ssh`, `scp`, `rsync`, `dig`, `ping`…; the most common ones are refused wherever they appear as a word),
+  name lookups (`getent hosts`, `resolvectl query`), nested `ssh`, `git` remote operations and `git config` of
+  `core.*`, aliases, hooks and helpers, `openssl s_client`, `docker run`/`exec` and docker remote hosts, shells running
+  scripts or standard input (`sh -c '…'` is checked like a command line), interpreters (`python`, `perl`, `node`,
+  `ruby`, `php`, `lua`…), `eval`/`source`, command names built from variables, remote-host options of `systemctl` and
+  related tools, `/dev/tcp`, dangerous environment assignments such as `LD_PRELOAD`, things that run other commands
+  later or interactively (`at`, `batch`, `systemd-run`, editors and pagers such as `vim`, `less` and `man`, `crontab`
+  except `-l`, `-r` and `-u user`), `tar` options that run commands and `sed`'s `e` command. Wrappers (`sudo`, `env`,
+  `timeout`, `xargs`, `find -exec`, `su -c`, `watch`, `busybox`…) are followed to the command they run.
+- **Secret files and folders.** `read_file` returns only a masked answer for secret paths, `write_file` and `validate`
+  refuse them, and a `run` whose command names one (or a glob that could match one, or a `grep -r` over a folder that
+  holds some) gets its **whole output masked**. Paths are normalized first (`..`, `//`, `~`), and `--opt=value`
+  words are checked too. The list covers everything under `/root`, `/etc/shadow` and `gshadow`, `/etc/ssl/private`,
+  `/etc/letsencrypt`, `/etc/ssh` (except `sshd_config*`, `ssh_config*` and `moduli`), any `.ssh`, `.claude` and
+  `.gnupg` folder, `.config/tiphys` (the agent's config), `id_*` private keys, `*.key`, `*.pem`, `privkey*`, `*.p12`,
+  `*.pfx`, `*.jks`, `.env*`, `ssh_host_*_key`, `.credentials.json`, `.netrc`, `.pgpass`, `.git-credentials`, `.my.cnf`,
+  and anything under `.aws`, `.kube`, `.gnupg`, `.password-store` or `.docker/config.json`; on a local target the
+  agent's own folder as well. Symlinks are resolved on the machine before the check, so a link to a secret file does
+  not help.
+- **Masking in all output.** Whatever a tool returns passes through the agent's redaction and also hides shadow
+  password hashes, any line mentioning a private key, base64 runs of 40 characters or more (hex digests stay), lines
+  that look like a chunk of a key body (when the command named a key-like path) and every sudo password given in the
+  session together with its longer pieces (at least half of it, minimum 4 characters). Output is capped (64 KB per
+  stream, 256 KB per file read). This masking is a heuristic; see the limits.
+- **This PC is fenced.** On a local target `write_file` is refused in every mode under `~/.ssh`, `~/.config`,
+  `~/.claude`, `~/.local`, `~/.cache` (its own backups excepted), `~/.gnupg`, `~/.pki`, `~/.docker`, `~/.kube`,
+  `~/.aws`, the agent's config folder, `/etc/systemd/user`, `/usr/lib/systemd/user` and the shell and session startup
+  files in the home folder (`.bashrc`, `.profile`, `.zshrc`, `.xinitrc`, `.pam_environment`, `.gitconfig`, `.npmrc`…:
+  the exact list is in [Claude](features/claude.md#targets)). A `run` that names such a path is refused unless it is a
+  read, and a read that names one never runs automatically. This only sees paths written literally in the command.
+- **Backups and atomic writes.** `write_file` backs the file up before the first change of the session (created under
+  `umask 077`: directories `0700`, the copy keeps the original file's mode), writes a temporary file next to it and
+  renames it into place, keeping owner and mode. The mode Claude may set is exactly three octal digits, so no setuid,
+  setgid or sticky bit. When root is needed the content is first staged as the SSH user, then copied by root into its
+  own `0700` directory, **checked against the SHA-256 of what you approved**, and only then installed, so it cannot be
+  swapped between approval and write. Symlinks are followed: the real file is backed up and replaced.
+- **`safe_apply` only for what the session changed**, and a 5-minute rollback timer on the machine before any reload
+  (see [Claude](features/claude.md#applying-sshd-and-firewall-changes)).
+- **Modes.** `plan` is read-only, `default` asks for every change, `acceptEdits` automates only `write_file` that needs
+  no root. **Outside `bypassPermissions`, every step that runs as root asks the phone**, plan mode and investigations
+  included: `run` with `sudo: true` (even a read), the sudo retry of `read_file` and of `validate`, a `write_file`
+  that needs root, `safe_apply`, `confirm_apply` and a Claude-initiated rollback of root-owned files. The card says
+  `asRoot` and shows the diff, or the new content when the SSH user cannot read the old file. An investigate session
+  cannot leave `plan`; `bypassPermissions` cannot be switched on after the start.
+
+### The sudo password
+
+- You type it in the app (hidden field, no autofill, screen capture blocked while it is open, cleared on send and when
+  the app goes to the background). It travels to the agent like any other request over your tailnet connection.
+- The agent keeps it **in memory only**, per host and session, for `sudoCacheMinutes` (default 15, at most 120), then
+  wipes it with a timer. It is never in a command line, an environment variable, an event, the audit log, the black box,
+  the session file or what Claude sees; the route sets no audit detail and the body is never logged. It is also wiped when
+  the session closes, when the agent shuts down, on `DELETE …/sudo` (which also cancels open prompts, and is open to any
+  device as a panic button) and after three wrong tries.
+- It reaches `sudo -k -S -p ''` on stdin (SSH's stdin for a remote host). The command itself runs with its stdin
+  closed, so even a command that does not use sudo cannot read it. `sudo -k` forgets sudo's own timestamp, so a command
+  never rides on an earlier authentication.
+- **Deny** stops further prompts for that host for the session, and there is a ceiling of 6 prompts per host.
+- In an investigation the dialog warns that the machine may be compromised; do not type a password you use elsewhere.
+- Node.js cannot overwrite a string in memory, so the password can still sit in the agent's memory until it is
+  garbage-collected. Anyone who can read the agent's process memory (see the threat model above) can get it.
+
+### Owner-only control and records
+
+- A security session remembers the device that started it. **Messages, permission answers, mode changes, sudo answers
+  and rollbacks from another device are refused** (`agent.claude.securityOwnerOnly`). Interrupting, reading the
+  session and clearing the sudo cache are open to any paired device: stopping is safe, and every paired device has
+  full rights anyway (see [threat model](#threat-model)).
+- Approval notifications of security sessions and sudo requests are hidden on the lock screen; the sudo password is
+  never entered from a notification.
+- **Audit log and black box.** Every `run` (also reads and refused ones), `write_file`, `safe_apply`, `confirm_apply` and
+  `rollback` is written to `audit.jsonl` with the session id, the host, the tool and a summary of at most 160
+  characters (the command or the path, redacted; never file contents or outputs), and so reaches the
+  [black box](features/security.md#black-box) if you use it. Reads by `read_file`, `hosts` and `validate`, and steps you
+  denied, are not recorded. The brief endpoint records only item counts and bytes.
+
+### Limits: what this does **not** protect against
+
+- **The denylist is a heuristic over command text, not a sandbox.** It refuses the obvious ways to reach the network or
+  to run arbitrary code, but a determined command can get around text checks. Do not read "refused" as "isolated". The
+  real limits are host pinning, the mode, your approvals and the fact that you watch. Known ways around it:
+  - running a **file written in the same session** (for example a script saved with `write_file` and started by a
+    program that is not on the list);
+  - programs that open connections on their own: `docker compose up`, `docker pull`, `docker build`, package managers
+    and their hooks (`apt` maintainer scripts, `pip` and the like), `systemctl start` of a unit that does something;
+  - a **renamed or copied binary** (the denylist goes by the command's name).
+- **In `bypassPermissions` Claude can run any command that is not on the denylist on the pinned hosts without asking**,
+  including destructive ones (`rm`, `systemctl stop`, firewall changes with `nft` or `iptables`, `docker compose down`,
+  `crontab -r`, which is allowed), as the SSH user and, after you typed the sudo password, as root. Only `write_file`
+  changes are backed up, and the firewall and sshd protection only exists when Claude uses `safe_apply`; a mistake can
+  lock you out. Use *Don't ask* **only for hosts you trust**, and consider *Ask every time*, where every command, every
+  root step and every diff is on your phone first.
+- **The local-target fence only sees literal paths.** In `bypassPermissions`, a `run` that reaches `~/.ssh`,
+  `~/.config` or a shell startup file through a variable, a glob or a program's own logic is not noticed.
+- **`Match exec` runs once at the start.** Resolving a destination with `ssh -G` evaluates `Match exec` lines of your own
+  ssh config on the PC, once. Do not put such lines on destinations you use as targets if you do not trust what they
+  run. `ProxyCommand` and the like are refused outright.
+- **Masking is a heuristic.** It hides known secret paths, well-known patterns and the sudo password, but not a secret
+  stored under an odd file name or key name, and a password whose characters a command prints spread out (one per line,
+  or with other text in between) is not recognised.
+- **Rollback is partial.** Only files written with `write_file` are restored. Commands run with `run` are not undone.
+  Backups stay on the machine and are **never deleted automatically**.
+- **Reading is not free of risk.** Any file that is not on the secret list can be read, and what it holds goes to
+  Claude's model like any session's content (after redaction of known secret patterns). A root read needs your
+  approval, but a file the SSH user can read does not.
+- **Prompt injection is reduced, not eliminated.** The model can still be misled by text it reads. In *Ask every time* you
+  see each command; in *Plan first* and in investigations nothing is changed. A session pins several hosts together,
+  so text from one host can influence what happens on another; use separate sessions for hosts you suspect.
+- **Investigate sessions are read-only**, which protects the evidence and limits injection to reading. They can still read
+  files, and a root read asks for your approval and then for the sudo password.
+- **Known false positives:** the denylist refuses harmless commands that merely mention a network tool, such as
+  `apt install curl`, `dpkg -l curl` or `grep wget /etc/hosts`, and everything that needs an interpreter, an editor or
+  `docker run`. Claude is told to explain such a refusal and not to work around it.
+- The rollback timer is a transient systemd unit and does not survive a reboot.
 
 ## agy sessions
 
@@ -407,6 +591,8 @@ so you don't trust it for more than it does.
 
 - Set `--tailscale-login` on every agent and restrict port 7443 with Tailscale ACLs.
 - Keep `control`, `claude` and `ports` off where not needed. Narrow `allowedRoots`.
+- Keep `securityFix` off unless you use it. Give it targets only for hosts you want Claude to change, reach them with a
+  dedicated SSH key and a user with limited sudo rights, and use *Don't ask* only on hosts you trust.
 - Set an app lock. Revoke a phone right away if it is lost.
 - Keep Sunshine stopped when not in use.
 - Pin SSH host keys for the security audit yourself, install the audit script root-owned, and keep the audit key

@@ -25,6 +25,7 @@ import 'claude_controller.dart';
 import 'claude_screen.dart';
 import 'continue_on_pc.dart';
 import 'pc_panel.dart';
+import 'security_session.dart';
 
 /// Set to false in tests (no WebSocket is opened).
 final claudeStreamEnabledProvider = Provider<bool>((ref) => true);
@@ -66,6 +67,10 @@ class _ClaudeChatScreenState extends ConsumerState<ClaudeChatScreen> {
 
   /// Taken when the screen opens: ref can't be used inside dispose().
   late final ClaudeSeen _seen;
+
+  /// Security session: sudo requests the password dialog was already shown for, and whether it is open now.
+  final _sudoAsked = <String>{};
+  bool _sudoOpen = false;
 
   /// "While you were away" summary (shown once on returning to the session).
   AwayDigest? _away;
@@ -119,6 +124,7 @@ class _ClaudeChatScreenState extends ConsumerState<ClaudeChatScreen> {
       c.addListener(_onUpdate);
       setState(() => _c = c);
       await c.start();
+      _maybeAskSudo();
       // If returning to the session: a summary of what happened since the last viewed point.
       final seen = ref.read(claudeSeenProvider)[c.sessionId];
       if (mounted && c.isLive && seen != null && seen.$2 == c.summary?['epoch']) {
@@ -194,6 +200,24 @@ class _ClaudeChatScreenState extends ConsumerState<ClaudeChatScreen> {
     if (!mounted) return;
     // The list is reversed (newest at the bottom, position 0 = bottom): new content stays visible by itself.
     setState(() {});
+    _maybeAskSudo();
+  }
+
+  /// A security session asks for a sudo password: the dialog opens by itself (also when the screen was opened from the
+  /// notification), once per request; the card in the chat reopens it after "Later".
+  void _maybeAskSudo() {
+    final c = _c;
+    if (c == null || !c.isSecurity || _sudoOpen || !mounted) return;
+    final next = c.pendingSudo.where((e) => !_sudoAsked.contains(e.get<String>('requestId'))).firstOrNull;
+    if (next == null) return;
+    _sudoAsked.add(next.get<String>('requestId')!);
+    _sudoOpen = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      if (!mounted) return;
+      await askSudo(context, c, next);
+      _sudoOpen = false;
+      if (mounted) _maybeAskSudo();
+    });
   }
 
   @override
@@ -347,7 +371,10 @@ class _ClaudeChatScreenState extends ConsumerState<ClaudeChatScreen> {
                 ),
                 Expanded(
                   child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                    Text(title, maxLines: 1, overflow: TextOverflow.ellipsis, style: Theme.of(context).textTheme.titleMedium),
+                    Row(children: [
+                      Flexible(child: Text(title, maxLines: 1, overflow: TextOverflow.ellipsis, style: Theme.of(context).textTheme.titleMedium)),
+                      if (c != null && c.isSecurity) ...[const SizedBox(width: 8), SecuritySessionBadge(investigate: c.securityInvestigate)],
+                    ]),
                     if (c != null)
                       Row(children: [
                         StatusDot(color: c.connected || !c.isLive ? (c.busy ? t.accent : t.success) : t.warning, size: 7),
@@ -372,6 +399,8 @@ class _ClaudeChatScreenState extends ConsumerState<ClaudeChatScreen> {
                     ),
                     onPressed: () => _openChanges(c),
                   ),
+                if (c != null && c.isLive && c.isSecurity)
+                  IconButton(tooltip: l.fixPanelTitle, icon: const Icon(LucideIcons.shieldCheck), onPressed: () => showSecurityPanel(context, c)),
                 if (c != null && c.isLive && c.isPc)
                   IconButton(
                     tooltip: l.claudeEndSession,
@@ -405,10 +434,12 @@ class _ClaudeChatScreenState extends ConsumerState<ClaudeChatScreen> {
                       }
                     },
                     itemBuilder: (_) => [
-                      PopupMenuItem(value: 'acceptEdits', child: Text(l.claudeModeAcceptShort)),
-                      PopupMenuItem(value: 'default', child: Text(l.claudeModeDefaultShort)),
+                      // Security sessions: bypass is only chosen at the start, an investigation stays in plan mode.
+                      if (!c.securityInvestigate) PopupMenuItem(value: 'acceptEdits', child: Text(l.claudeModeAcceptShort)),
+                      if (!c.securityInvestigate) PopupMenuItem(value: 'default', child: Text(l.claudeModeDefaultShort)),
                       PopupMenuItem(value: 'plan', child: Text(l.claudeModePlan)),
-                      PopupMenuItem(value: 'pc', child: Text(l.continuePcMenu)),
+                      if (c.isSecurity && !c.securityInvestigate) PopupMenuItem(enabled: false, child: Text(l.fixModeRootNote, style: const TextStyle(fontSize: 12))),
+                      if (!c.isSecurity) PopupMenuItem(value: 'pc', child: Text(l.continuePcMenu)),
                       PopupMenuItem(value: 'close', child: Text(l.claudeEndSession)),
                     ],
                   ),
@@ -518,6 +549,8 @@ class _Messages extends StatelessWidget {
     final c = controller;
     final results = {for (final e in c.events.where((e) => e.kind == 'tool_result')) e.get<String>('toolUseId'): e};
     final resolved = {for (final e in c.events.where((e) => e.kind == 'permissionResolved')) e.get<String>('requestId'): e.get<bool>('allow') ?? false};
+    final sudoDone = {for (final e in c.events.where((e) => e.kind == 'sudoResolved')) e.get<String>('requestId'): e.get<bool>('provided') ?? false};
+    final lastResult = c.events.lastWhere((e) => e.kind == 'result', orElse: () => ClaudeEvent(const {'kind': 'none'}));
     final items = <Widget>[];
     for (final e in c.events) {
       switch (e.kind) {
@@ -531,8 +564,12 @@ class _Messages extends StatelessWidget {
           items.add(_ToolCard(event: e, result: results[e.get<String>('id')]));
         case 'permission':
           items.add(_PermissionCard(event: e, controller: c, decided: resolved[e.get<String>('requestId')]));
+        case 'sudo':
+          items.add(SudoCard(event: e, controller: c, provided: sudoDone[e.get<String>('requestId')]));
         case 'result':
           items.add(_ResultLine(event: e));
+          // A finished fix session: check the result with a new audit (an investigation changed nothing).
+          if (c.isSecurity && !c.securityInvestigate && identical(e, lastResult) && c.summary != null) items.add(SecurityAfterCard(summary: c.summary!));
         case 'error':
           items.add(_ErrorLine(text: e.get<String>('message') ?? ''));
         case 'restored':
@@ -674,13 +711,14 @@ class _ToolCardState extends State<_ToolCard> {
     final t = context.tokens;
     final rawName = widget.event.get<String>('name') ?? '?';
     final pc = pcToolName(rawName);
-    final name = (pc == null ? null : pcToolLabel(AppLocalizations.of(context), pc)) ?? pc ?? rawName;
+    final sec = secToolName(rawName, Map<String, dynamic>.from(widget.event.get<Map>('input') ?? {}));
+    final name = (sec == null ? null : secToolLabel(AppLocalizations.of(context), sec)) ?? (pc == null ? null : pcToolLabel(AppLocalizations.of(context), pc)) ?? pc ?? rawName;
     final input = Map<String, dynamic>.from((widget.event.get<Map>('input')) ?? {});
     final diff = toolDiff(rawName, input);
     final res = widget.result;
     final isError = res?.get<bool>('isError') ?? false;
     final shot = res?.get<String>('shot');
-    final icon = pc != null ? _pcIcon(pc) : switch (name) {
+    final icon = sec != null ? secToolIcon(sec) : pc != null ? _pcIcon(pc) : switch (name) {
       'Bash' => LucideIcons.terminal,
       'Read' => LucideIcons.fileText,
       'Write' || 'Edit' || 'MultiEdit' => LucideIcons.filePen,
@@ -832,6 +870,7 @@ class _PermissionCardState extends State<_PermissionCard> {
     final reason = widget.event.get<String>('reason');
     // PC session: Claude's confirm tool or a window-closing shortcut; the reason is the card's main text.
     final pc = pcToolName(tool) != null;
+    final sec = secToolName(tool, input);
     final decided = widget.decided;
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 6),
@@ -844,13 +883,26 @@ class _PermissionCardState extends State<_PermissionCard> {
             Row(children: [
               Icon(LucideIcons.shieldQuestion, color: t.warning, size: 20),
               const SizedBox(width: 8),
-              Expanded(child: Text(pc ? l.claudePcConfirmTitle : l.claudePermissionTitle(tool), style: const TextStyle(fontWeight: FontWeight.w700))),
+              Expanded(child: Text(pc ? l.claudePcConfirmTitle : l.claudePermissionTitle(sec == null ? tool : secToolLabel(l, sec)), style: const TextStyle(fontWeight: FontWeight.w700))),
             ]),
             const SizedBox(height: 6),
             if (pc)
               Text(reason ?? toolSummary(tool, input), style: const TextStyle(fontSize: 15, height: 1.35))
             else ...[
+              if (sec != null && input['asRoot'] == true)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 6),
+                  child: Semantics(
+                    label: l.fixRunsAsRoot,
+                    child: Row(children: [
+                      Icon(LucideIcons.triangleAlert, size: 16, color: t.danger),
+                      const SizedBox(width: 6),
+                      Expanded(child: Text(l.fixRunsAsRoot, style: TextStyle(color: t.danger, fontWeight: FontWeight.w800))),
+                    ]),
+                  ),
+                ),
               Text(toolSummary(tool, input), style: const TextStyle(fontFamily: 'JetBrainsMono', fontSize: 12)),
+              if (sec == 'write_file' && input['diff'] is! String && input['content'] is String) Padding(padding: const EdgeInsets.only(top: 6), child: Text(l.fixContentPreview, style: Theme.of(context).textTheme.bodySmall)),
               if (toolDiff(tool, input).isNotEmpty) ...[const SizedBox(height: 6), ToolDiffView(lines: toolDiff(tool, input).take(20).toList())],
               if (reason != null) Padding(padding: const EdgeInsets.only(top: 6), child: Text(reason, style: Theme.of(context).textTheme.bodySmall)),
             ],

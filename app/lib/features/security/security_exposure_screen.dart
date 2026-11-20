@@ -14,6 +14,7 @@ import '../../widgets/forms.dart';
 import '../../widgets/surfaces.dart';
 import '../claude/claude_screen.dart' show relativeTime;
 import 'security_data.dart' show securityCall, securityFindingSeverities;
+import 'security_fix.dart';
 import 'security_more_data.dart';
 import 'security_more_texts.dart';
 import 'security_section_widgets.dart';
@@ -22,27 +23,49 @@ import 'security_widgets.dart';
 
 const exposureListCap = 100;
 
-class SecurityExposureScreen extends ConsumerWidget {
+class SecurityExposureScreen extends ConsumerStatefulWidget {
   const SecurityExposureScreen({super.key, this.agentHint});
   final String? agentHint;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<SecurityExposureScreen> createState() => _SecurityExposureScreenState();
+}
+
+class _SecurityExposureScreenState extends ConsumerState<SecurityExposureScreen> {
+  /// Multi-select for "Send to Claude"; the blocks bind their agent and findings to it.
+  late final _sel = FixSelection()..addListener(_onSel);
+
+  String? get agentHint => widget.agentHint;
+
+  void _onSel() {
+    if (mounted) setState(() {});
+  }
+
+  @override
+  void dispose() {
+    _sel.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final l = AppLocalizations.of(context);
     return SettingsPage(
       title: l.secExposureTitle,
+      bottomBar: fixBarFor(context, ref, _sel),
       onRefresh: () async {
         ref.invalidate(securityAgentsProvider(agentHint));
         ref.invalidate(securityGetProvider);
       },
-      children: [SecurityAgentBlocks(hint: agentHint, builder: (c, a) => _ExposureBlock(agent: a))],
+      children: [SecurityAgentBlocks(hint: agentHint, builder: (c, a) => _ExposureBlock(agent: a, selection: _sel))],
     );
   }
 }
 
 class _ExposureBlock extends ConsumerStatefulWidget {
-  const _ExposureBlock({required this.agent});
+  const _ExposureBlock({required this.agent, required this.selection});
   final Host agent;
+  final FixSelection selection;
   @override
   ConsumerState<_ExposureBlock> createState() => _ExposureBlockState();
 }
@@ -141,10 +164,15 @@ class _ExposureBlockState extends ConsumerState<_ExposureBlock> {
             const SizedBox(height: 10),
             if (last.findings.isEmpty)
               TCard(child: Text(l.secExposureClean))
-            else
+            else ...[
+              FixSelectRow(selection: widget.selection, agentId: widget.agent.id, all: [for (final f in last.findings) _fixItem(l, f)]),
               for (final s in securityFindingSeverities)
                 if (last.findings.any((f) => f.severity == s))
-                  Padding(padding: const EdgeInsets.only(bottom: 10), child: _FindingsCard(severity: s, findings: [for (final f in last.findings) if (f.severity == s) f])),
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 10),
+                    child: _FindingsCard(severity: s, findings: [for (final f in last.findings) if (f.severity == s) f], selection: widget.selection, agentId: widget.agent.id, itemOf: (f) => _fixItem(l, f)),
+                  ),
+            ],
           ],
           if (d.history.length > 1) ...[
             SectionLabel(l.secExposureHistory),
@@ -169,10 +197,15 @@ class _ExposureBlockState extends ConsumerState<_ExposureBlock> {
   bool _expected(ExposureData d, ExposureRunTarget tg, int port) => d.targets.where((x) => x.id == tg.id).any((x) => x.expectedPorts.contains(port));
 }
 
+FixItem _fixItem(AppLocalizations l, ExposureFindingItem f) => FixItem.exposure(id: f.id, label: exposureRuleTitle(l, f.rule, f.target, f.params));
+
 class _FindingsCard extends StatelessWidget {
-  const _FindingsCard({required this.severity, required this.findings});
+  const _FindingsCard({required this.severity, required this.findings, required this.selection, required this.agentId, required this.itemOf});
   final String severity;
   final List<ExposureFindingItem> findings;
+  final FixSelection selection;
+  final String agentId;
+  final FixItem Function(ExposureFindingItem) itemOf;
 
   @override
   Widget build(BuildContext context) {
@@ -186,7 +219,11 @@ class _FindingsCard extends StatelessWidget {
         for (final f in findings.take(exposureListCap))
           Padding(
             padding: const EdgeInsets.only(top: 10),
-            child: Semantics(
+            child: FixPick(
+              selection: selection,
+              agentId: agentId,
+              item: itemOf(f),
+              child: Semantics(
               container: true,
               child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                 Text(exposureRuleTitle(l, f.rule, f.target, f.params), style: tt.titleSmall),
@@ -199,6 +236,7 @@ class _FindingsCard extends StatelessWidget {
                     ]), style: tt.bodySmall),
                   ),
               ]),
+            ),
             ),
           ),
         const SizedBox(height: 6),
