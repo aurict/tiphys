@@ -6,7 +6,9 @@ import { access, stat, statfs } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { expandHome, type AgentConfig } from "./config.ts";
-import { whichIn } from "./detect.ts";
+import { FEATURE_NAMES, whichIn } from "./detect.ts";
+import { dockerFallbacks } from "./platform/common.ts";
+import { isSupported } from "./platform/support.ts";
 import { defaultExec, servePorts, serveCommand, tailscaleState, type Exec } from "./tailscale.ts";
 import type { UpdateInfo } from "./update.ts";
 import { VERSION } from "./version.ts";
@@ -155,8 +157,21 @@ async function featureChecks(d: DoctorDeps): Promise<Check[]> {
     const helper = d.which("tiphys-desktop") || (await d.exists(join(d.helpersDir, d.platform === "win32" ? "tiphys-desktop.exe" : "tiphys-desktop")));
     if (!d.which("hyprctl") && !helper) missing("desktop", ["hyprctl", "tiphys-desktop"]);
   }
+  for (const feature of FEATURE_NAMES) {
+    if (f[feature] && !isSupported(feature, d.platform)) {
+      out.push(fail(`feature.${feature}`, "doctor.feature.unsupported", { feature, platform: d.platform }, `tiphys-agent init --disable ${feature}`));
+    }
+  }
+  const native = d.platform === "darwin" || d.platform === "win32";
+  if (f.docker && native && !process.env.DOCKER_HOST?.startsWith("unix://")) {
+    // Docker Desktop: a socket under ~/.docker or a named pipe; the daemon answering is what counts.
+    let bin: string | null = d.which("docker") ? "docker" : null;
+    for (const p of dockerFallbacks(d.platform)) if (!bin && (await d.exists(p))) bin = p;
+    if (!bin) missing("docker", ["docker"], "tiphys-agent init --disable docker");
+    else if ((await d.exec(bin, ["version", "--format", "{{.Server.Version}}"])).code !== 0) out.push(fail("feature.docker", "doctor.feature.dockerUnreachable", {}));
+  }
   // A TCP DOCKER_HOST (e.g. a socket proxy) is not checked here.
-  if (f.docker && !(process.env.DOCKER_HOST && !process.env.DOCKER_HOST.startsWith("unix://"))) {
+  else if (f.docker && !(process.env.DOCKER_HOST && !process.env.DOCKER_HOST.startsWith("unix://"))) {
     const sock = process.env.DOCKER_HOST?.startsWith("unix://") ? process.env.DOCKER_HOST.slice(7) : "/var/run/docker.sock";
     if (!(await d.exists(sock))) missing("docker", ["docker"], "tiphys-agent init --disable docker");
     else if (!(await d.canUse(sock))) out.push(fail("feature.docker", "doctor.feature.dockerDenied", { socket: sock }, "sudo usermod -aG docker $USER   # then log out and in"));
@@ -234,7 +249,9 @@ const TEXT: Record<string, string> = {
   "doctor.node.ok": "Node.js {node}.",
   "doctor.feature.toolsMissing": "Feature \"{feature}\" is on but needs: {tools}.",
   "doctor.feature.dockerDenied": "Feature \"docker\" is on but {socket} is not accessible to this user.",
-  "doctor.feature.transcribeMissing": "Feature \"transcribe\" is on but {command} does not exist.",
+  "doctor.feature.unsupported": "Feature \"{feature}\" is on but does not work on {platform}.",
+  "doctor.feature.dockerUnreachable": "Feature \"docker\" is on but the Docker daemon does not answer (is Docker Desktop running?).",
+  "doctor.feature.transcribeMissing":"Feature \"transcribe\" is on but {command} does not exist.",
   "doctor.push.ok": "Push notifications: {endpoints} device(s) registered.",
   "doctor.push.notConfigured": "No device registered for push notifications (set up ntfy in the app).",
   "doctor.version.unchecked": "Version {current}; latest release not reachable.",

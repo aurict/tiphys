@@ -14,6 +14,7 @@ import type { FastifyInstance, FastifyRequest } from "fastify";
 import { z } from "zod";
 import { RateLimit, requireControl, watchControl } from "../control.ts";
 import { AppError } from "../errors.ts";
+import { unsupportedRoutes } from "../platform/support.ts";
 import type { Ctx } from "../server.ts";
 import { OPEN_URL_MAX, checkOpenUrl, xdgOpen, type Opener } from "./desktop.ts";
 import { parseClients } from "./hypr.ts";
@@ -96,6 +97,8 @@ export function sseWriter(raw: Pick<ServerResponse, "write" | "writableLength" |
 }
 
 export function browserRoutes(app: FastifyInstance, ctx: Ctx, opts: BrowserOpts = {}) {
+  // The bridge is a Unix socket (Linux/macOS); `serve` doesn't open it on Windows.
+  if (process.platform === "win32") return unsupportedRoutes(app, "/v1/desktop/browser", "desktop.firefoxBridge");
   const limit = opts.limit ?? new RateLimit(20, 5000);
   const guard = (req: FastifyRequest) => {
     if (!ctx.control) throw new AppError("agent.control.disabled", 403);

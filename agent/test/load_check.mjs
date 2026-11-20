@@ -24,7 +24,7 @@ await store.update((c) => {
 });
 const app = await buildApp({ store, notifier: new Notifier(() => store.get(), () => {}) });
 await app.ready();
-const forbidden = ["/dist/doctor.js", "/dist/update.js", "/dist/detect.js", "/dist/tailscale.js", "/dist/routes/hypr.js", "/dist/routes/stream.js", "/dist/atspi.js", "/dist/routes/desktop.js", "/dist/routes/sunshine.js", "/dist/routes/docker.js", "/dist/claude/", "/node_modules/web-push/", "/node_modules/@anthropic-ai/"];
+const forbidden = ["/dist/doctor.js", "/dist/update.js", "/dist/detect.js", "/dist/tailscale.js", "/dist/routes/hypr.js", "/dist/routes/stream.js", "/dist/atspi.js", "/dist/routes/desktop.js", "/dist/routes/sunshine.js", "/dist/routes/docker.js", "/dist/claude/", "/dist/platform/darwin.js", "/dist/platform/win32.js", "/dist/platform/common.js", "/node_modules/web-push/", "/node_modules/@anthropic-ai/"];
 // claude/schedules.js only holds the schedule schema that config.ts validates with (no SDK).
 const allowed = ["/dist/claude/schedules.js"];
 const bad = [...loaded].filter((u) => forbidden.some((f) => u.includes(f)) && !allowed.some((a) => u.includes(a)));

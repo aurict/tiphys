@@ -226,7 +226,8 @@ async function main() {
       const runs = new RunLog(runLogPath({ store } as Ctx));
       await runs.begin();
       const ctx: Ctx = { store, notifier, extraRoutes: [], runs };
-      if (store.get().features.desktop) {
+      // Unix socket: Linux/macOS only (on Windows the bridge routes answer agent.feature.unsupported).
+      if (store.get().features.desktop && process.platform !== "win32") {
         // Firefox bridge socket (11.2); if it can't be opened (e.g. another agent listens) the bridge is skipped, agent runs.
         const { BrowserBridge } = await import("./browser_bridge.ts");
         const { defaultSocketPath } = await import("./firefox_host.ts");

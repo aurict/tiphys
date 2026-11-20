@@ -5,6 +5,7 @@ import { z } from "zod";
 import { run } from "../exec.ts";
 import { AppError } from "../errors.ts";
 import type { Ctx } from "../server.ts";
+import { tailscaleBin } from "../tailscale.ts";
 
 export interface Listen {
   port: number;
@@ -54,8 +55,17 @@ export function parseServe(json: string): Map<number, string> {
   return out;
 }
 
+/** Listening TCP sockets: `ss` on Linux; netstat+lsof on macOS, Get-NetTCPConnection on Windows (platform/). */
+async function listening(): Promise<Listen[]> {
+  if (process.platform === "darwin" || process.platform === "win32") {
+    const { platformImpl } = await import("../platform/support.ts");
+    return (await platformImpl()).listeningPorts();
+  }
+  return parseSs((await run("ss", ["-ltnpH"], { allowFail: true })).stdout);
+}
+
 async function dnsName(): Promise<string | null> {
-  const r = await run("tailscale", ["status", "--self", "--peers=false", "--json"], { allowFail: true, timeoutMs: 8000 });
+  const r = await run(tailscaleBin(), ["status", "--self", "--peers=false", "--json"], { allowFail: true, timeoutMs: 8000 });
   try {
     return ((JSON.parse(r.stdout) as { Self?: { DNSName?: string } }).Self?.DNSName ?? "").replace(/\.$/, "") || null;
   } catch {
@@ -67,15 +77,15 @@ const RESERVED = new Set([7443]);
 
 export function portRoutes(app: FastifyInstance, _ctx: Ctx) {
   app.get("/v1/ports", async () => {
-    const [ss, serve, dns] = await Promise.all([
-      run("ss", ["-ltnpH"], { allowFail: true }),
-      run("tailscale", ["serve", "status", "--json"], { allowFail: true, timeoutMs: 8000 }),
+    const [ports, serve, dns] = await Promise.all([
+      listening(),
+      run(tailscaleBin(), ["serve", "status", "--json"], { allowFail: true, timeoutMs: 8000 }),
       dnsName(),
     ]);
     const shared = parseServe(serve.stdout);
     return {
       host: dns,
-      ports: parseSs(ss.stdout).map((p) => {
+      ports: ports.map((p) => {
         const target = shared.get(p.port);
         const url = dns ? (target ? `https://${dns}:${p.port}` : p.localOnly ? null : `http://${dns}:${p.port}`) : null;
         return { ...p, shared: !!target, url, reserved: RESERVED.has(p.port) };
@@ -86,10 +96,10 @@ export function portRoutes(app: FastifyInstance, _ctx: Ctx) {
   app.post("/v1/ports/:port/share", async (req) => {
     const port = z.coerce.number().int().min(1).max(65535).parse((req.params as Record<string, string>).port);
     if (RESERVED.has(port)) throw new AppError("agent.ports.reserved", 400, { port });
-    const listening = parseSs((await run("ss", ["-ltnpH"], { allowFail: true })).stdout).find((p) => p.port === port);
-    if (!listening) throw new AppError("agent.ports.notListening", 404, { port });
-    if (!listening.localOnly) throw new AppError("agent.ports.alreadyPublic", 409, { port });
-    const r = await run("tailscale", ["serve", "--bg", `--https=${port}`, `http://127.0.0.1:${port}`], { allowFail: true, timeoutMs: 20000 });
+    const open = (await listening()).find((p) => p.port === port);
+    if (!open) throw new AppError("agent.ports.notListening", 404, { port });
+    if (!open.localOnly) throw new AppError("agent.ports.alreadyPublic", 409, { port });
+    const r = await run(tailscaleBin(), ["serve", "--bg", `--https=${port}`, `http://127.0.0.1:${port}`], { allowFail: true, timeoutMs: 20000 });
     if (r.code !== 0) throw new AppError("agent.ports.shareFailed", 502, { stderr: (r.stderr || r.stdout).slice(0, 1000) });
     const dns = await dnsName();
     return { ok: true, url: dns ? `https://${dns}:${port}` : null };
@@ -98,7 +108,7 @@ export function portRoutes(app: FastifyInstance, _ctx: Ctx) {
   app.delete("/v1/ports/:port/share", async (req) => {
     const port = z.coerce.number().int().min(1).max(65535).parse((req.params as Record<string, string>).port);
     if (RESERVED.has(port)) throw new AppError("agent.ports.reserved", 400, { port });
-    const r = await run("tailscale", ["serve", `--https=${port}`, "off"], { allowFail: true, timeoutMs: 20000 });
+    const r = await run(tailscaleBin(), ["serve", `--https=${port}`, "off"], { allowFail: true, timeoutMs: 20000 });
     if (r.code !== 0) throw new AppError("agent.ports.shareFailed", 502, { stderr: (r.stderr || r.stdout).slice(0, 1000) });
     return { ok: true };
   });
