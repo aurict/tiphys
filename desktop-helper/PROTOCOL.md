@@ -95,3 +95,50 @@ missing (message on stderr), 4 = monitor not found, 5 = unsupported here.
 | portal | GNOME Shell / KWin D-Bus where available, else not offered | RemoteDesktop portal (asks the user once) | ScreenCast portal (PipeWire) | |
 | windows | `EnumWindows`, `SetForegroundWindow`, `ShowWindow` | `SendInput` (Unicode for text) | Windows Graphics Capture, GDI fallback | `SendMessage(SC_MONITORPOWER)`, WASAPI/IMMDevice for audio |
 | macos | `CGWindowListCopyWindowInfo` + AX API | `CGEvent` (Accessibility permission) | ScreenCaptureKit / `CGWindowListCreateImage` (Screen Recording permission) | CoreAudio |
+
+## Clarifications (implementation of version 1)
+
+These pin down details the tables above leave open. They change no shape except the first point, which the table
+above can't be implemented as written.
+
+- **Target ids aren't called `id`.** A request's own `id` is its number, and a second `id` key in the same JSON
+  object would overwrite it (an object can't hold two). The ops listed with an `id` field take it under the name of
+  what it identifies, as `move-to-workspace` already does:
+  `{"id":7,"op":"window","window":"0x1a2b","action":"focus"}`, `{"id":8,"op":"workspace","workspace":"2"}`,
+  `{"id":9,"op":"launch","app":"firefox.desktop"}`, `{"id":10,"op":"set-output","output":"57"}`.
+  A request with a second `id` is answered with `id: null`, `badRequest`.
+- A line that isn't JSON, has no numeric `id`, or is longer than 64 KiB is answered with `"id": null` and
+  `badRequest`. Unknown extra fields are ignored.
+- `ping` always answers `{}`, even with backend `none`. Every other op that isn't in `capabilities` answers
+  `unsupported` without being tried. Validation comes first, so a malformed request is `badRequest` even then.
+- Ids of monitors, workspaces and outputs are strings. Monitor ids are output names where the platform has them
+  (`DP-1`, X11 RandR names, Windows `DISPLAY1`); on macOS they're the CGDirectDisplayID in decimal. The same id goes
+  to `screenshot.monitor` and `stream --monitor`.
+- `screenshot` with no target captures the primary monitor (the focused output on sway). `region` and
+  `stream --region` are global logical coordinates; given both `--monitor` and `--region`, the region is clipped to
+  that monitor. `width`/`height` in the answer are the encoded image's size: on HiDPI the capture has physical pixels
+  before `maxWidth` scales it down (never up). `quality` defaults to 80.
+- `scroll` takes integers: `dy > 0` scrolls down and `dx > 0` right (as in the agent's ydotool path). `0,0` is a
+  no-op.
+- `key`: zero or more modifiers followed by at most one other key. A combo of only modifiers (`["super"]`) is
+  allowed. Letters and digits need at least one modifier. Duplicates, more than 8 names or unknown names →
+  `badRequest`. A key the platform can't produce (e.g. media keys on macOS) → `unsupported`.
+- `text`: `\n` and `\t` are typed as Enter and Tab, and `\r` is dropped. `clipboard-set` has the same
+  4000-character limit.
+- Input requests (`pointer`, `click`, `button`, `scroll`, `key`, `text`) run strictly in the order they arrive.
+  Other requests run concurrently (at most 8 at a time, more → `busy`), which is why answers may arrive out of order.
+  The 60/s input budget is a token bucket (bursts up to 60).
+- `windows` lists the `focused` window first. `workspace` is null where the platform has no workspaces or the window
+  is on all of them; `pid` may be null.
+- `set-volume` above 100 is clamped where the platform has no boost (Windows, macOS).
+- `subscribe` needs the `windows` capability. Focus is polled every 250 ms, and an event is sent when the focused
+  window's id changes (`window` is null when nothing is focused).
+- Stream mode: `--monitor` may be omitted (primary monitor). Defaults are `--fps 15 --quality 8` with no
+  `--max-width`. Exit codes: 0 when stdin closed or the reader went away, 1 when capture kept failing, 2 for bad
+  arguments, and 3/4/5 as above.
+- Only the portal backend keeps state: the RemoteDesktop restore token in
+  `$XDG_STATE_HOME/tiphys/portal-restore-token` (mode 0600), so the permission dialog appears once.
+
+In some places the mechanism actually used differs from the platform table above: on sway the pointer goes through
+`seat - cursor` IPC commands, keys through `wtype` and capture through `grim`; the portal backend captures through
+the Screenshot portal; Windows uses GDI; macOS uses `CGWindowListCreateImage`. See README.md.

@@ -545,8 +545,12 @@ pub fn err_line(id: &Value, e: &Error) -> String {
 }
 
 pub fn hello_line(backend: &str, capabilities: &[&str]) -> String {
-    json!({"hello": {"protocol": PROTOCOL, "version": env!("CARGO_PKG_VERSION"), "backend": backend, "capabilities": capabilities}})
-        .to_string()
+    format!(
+        r#"{{"hello":{{"protocol":{PROTOCOL},"version":{},"backend":{},"capabilities":{}}}}}"#,
+        json!(env!("CARGO_PKG_VERSION")),
+        json!(backend),
+        json!(capabilities)
+    )
 }
 
 pub fn focus_event_line(window: Option<&Window>) -> String {
