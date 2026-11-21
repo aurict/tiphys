@@ -13873,7 +13873,22 @@ class AppLocalizationsEn extends AppLocalizations {
   String get slErrNotRunning => 'The sleep mode isn\'t running.';
 
   @override
-  String get slErrNotRinging => 'The alarm isn\'t ringing.';
+  String get slErrNotRinging => 'The alarm isn\'t ringing right now.';
+
+  @override
+  String slErrLeaderNotStarted(String leader) {
+    return 'Waiting for the leader ($leader), which didn\'t start.';
+  }
+
+  @override
+  String slAlarmLeaderClock(String leader, String time) {
+    return '$leader\'s clock · $time on this phone';
+  }
+
+  @override
+  String slAlarmBodyAgain(int count) {
+    return 'Ringing again ($count). Snooze or dismiss.';
+  }
 
   @override
   String get slEventStarted => 'Sleep mode started';

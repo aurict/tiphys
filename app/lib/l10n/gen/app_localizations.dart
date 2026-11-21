@@ -22985,8 +22985,26 @@ abstract class AppLocalizations {
   /// No description provided for @slErrNotRinging.
   ///
   /// In en, this message translates to:
-  /// **'The alarm isn\'t ringing.'**
+  /// **'The alarm isn\'t ringing right now.'**
   String get slErrNotRinging;
+
+  /// No description provided for @slErrLeaderNotStarted.
+  ///
+  /// In en, this message translates to:
+  /// **'Waiting for the leader ({leader}), which didn\'t start.'**
+  String slErrLeaderNotStarted(String leader);
+
+  /// No description provided for @slAlarmLeaderClock.
+  ///
+  /// In en, this message translates to:
+  /// **'{leader}\'s clock · {time} on this phone'**
+  String slAlarmLeaderClock(String leader, String time);
+
+  /// No description provided for @slAlarmBodyAgain.
+  ///
+  /// In en, this message translates to:
+  /// **'Ringing again ({count}). Snooze or dismiss.'**
+  String slAlarmBodyAgain(int count);
 
   /// No description provided for @slEventStarted.
   ///

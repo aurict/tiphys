@@ -1,6 +1,8 @@
-// Sleep mode data layer (PLAN.md §21 U): settings and status parsing, the next alarm, the ONE session object (leader
-// first, the S2 fallback), group start with a partial failure, stop/alarm on every machine, group-wide vs per-machine
-// writes, the phone's backup alarm and run record, the notification routes and texts, the morning summary, errors.
+// Sleep mode data layer (PLAN.md §21 U, S4 contract): settings and status parsing, the next alarm, the session object
+// (the leader first without a plan, its plan forwarded to the others, the S2 fallback), group start with a partial
+// failure and retries, stop on every machine, the alarm on one machine (notRinging), the alarm time across time zones,
+// group-wide vs per-machine writes, the phone's backup alarm and run record, the `sleep.alarm` push, the notification
+// routes and texts, the morning summary, errors.
 import 'dart:convert';
 import 'dart:math' as math;
 
@@ -11,6 +13,7 @@ import 'package:tiphys/core/agent/agent_client.dart';
 import 'package:tiphys/core/push/push_service.dart';
 import 'package:tiphys/core/push/sleep_notices.dart';
 import 'package:tiphys/core/profile/model.dart';
+import 'package:tiphys/core/secrets/secret_store.dart';
 import 'package:tiphys/features/screen/sleep/sleep_data.dart';
 import 'package:tiphys/features/screen/sleep/sleep_morning.dart';
 import 'package:tiphys/features/screen/sleep/sleep_sync.dart';
@@ -140,22 +143,66 @@ void main() {
   });
 
   group('grup', () {
-    test('Uykuya geç: tek oturum, önce lider, sonra diğerleri; hepsi aynı nesneyi alır', () async {
+    test('Uykuya geç: önce lidere plansız oturum; liderin yanıtındaki oturum (plan dahil) aynen diğerine', () async {
       FakeAgent.sleep.configured();
+      FakeAgent.sleep.hosts['argo']!.alarmNext = DateTime.now().add(const Duration(hours: 7)).millisecondsSinceEpoch;
       final c = _container();
       await _group(c);
       final r = await c.read(sleepGroupProvider.notifier).start();
       expect(r.ok, isTrue);
       final starts = _calls('/v1/sleep/start');
       expect(starts, hasLength(2));
-      final first = FakeAgent.calls.indexWhere((x) => x.$2 == '/v1/sleep/start');
-      expect(FakeAgent.sleep.hosts['argo']!.session, isNotNull);
-      expect((starts.first.$3 as Map)['session'], (starts.last.$3 as Map)['session']);
-      expect(((starts.first.$3 as Map)['session'] as Map)['leader'], 'theloth');
-      // The leader's request went out first.
-      expect(FakeAgent.calls[first].$3, starts.first.$3);
+      final first = (starts.first.$3 as Map)['session'] as Map;
+      final second = (starts.last.$3 as Map)['session'] as Map;
+      expect(first['leader'], 'theloth');
+      expect(first.containsKey('plan'), isFalse, reason: 'telefon planı kurmaz');
+      final leaderSession = FakeAgent.sleep.hosts['argo']!.session!;
+      expect(second, leaderSession, reason: 'liderin döndürdüğü oturum, plan dahil, değişmeden');
+      expect((second['plan'] as Map)['ringAt'], FakeAgent.sleep.hosts['argo']!.alarmNext);
+      expect(FakeAgent.sleep.hosts['atlas']!.session!['plan'], leaderSession['plan']);
       expect(FakeAgent.sleep.hosts.values.every((h) => h.running), isTrue);
+      expect(c.read(sleepGroupProvider.notifier).lastSession, leaderSession);
       expect(c.read(sleepGroupProvider).value!.running, isTrue);
+    });
+
+    test('lider başlamazsa üyeler başlatılmaz; yeniden dene önce lideri, sonra planı üyeye', () async {
+      FakeAgent.sleep.configured();
+      FakeAgent.sleep.hosts['argo']!.startError = const AgentError('net.unreachable');
+      final c = _container();
+      await _group(c);
+      final n = c.read(sleepGroupProvider.notifier);
+      final r = await n.start();
+      expect(r.started, isEmpty);
+      expect(r.failed['argo'], isA<AgentError>());
+      expect(r.failed['atlas'], isA<SleepLeaderNotStarted>());
+      expect(_calls('/v1/sleep/start'), hasLength(1), reason: 'üye kendi planıyla başlamasın');
+      expect(sleepActionError(_tr, c.read(sleepGroupProvider).value, r.failed['atlas']!), _tr.slErrLeaderNotStarted(exampleHost('argo').name));
+      FakeAgent.sleep.hosts['argo']!.startError = null;
+      FakeAgent.calls.clear();
+      final again = await n.start(only: r.failed.keys.toList(), session: n.lastSession);
+      expect(again.ok, isTrue);
+      final starts = _calls('/v1/sleep/start');
+      expect(((starts.first.$3 as Map)['session'] as Map).containsKey('plan'), isFalse);
+      expect((starts.last.$3 as Map)['session'], FakeAgent.sleep.hosts['argo']!.session);
+      expect(FakeAgent.sleep.hosts['atlas']!.session!['plan'], isNotNull);
+    });
+
+    test('Tek makineyle sür: lider hatalıysa bekleyen üye tek başına (kendi lideri)', () async {
+      FakeAgent.sleep.configured();
+      FakeAgent.sleep.hosts['argo']!.startError = const AgentError('net.unreachable');
+      final c = _container();
+      await _group(c);
+      final n = c.read(sleepGroupProvider.notifier);
+      final r = await n.start();
+      FakeAgent.calls.clear();
+      final alone = await n.startAlone(r);
+      expect(alone.started, ['atlas']);
+      final s = (_calls('/v1/sleep/start').single.$3 as Map)['session'] as Map;
+      expect(s['leader'], 'laptop');
+      expect(s['members'], [
+        {'host': 'laptop', 'side': 'right', 'distance': 'mid'},
+      ]);
+      expect(FakeAgent.sleep.hosts['atlas']!.session!['plan'], isNotNull, reason: 'tek üyede kendi planı');
     });
 
     test('kısmi hata: hangi host başlamadı; yeniden dene aynı oturumla yalnız onu dener', () async {
@@ -173,7 +220,7 @@ void main() {
       expect(again.ok, isTrue);
       final s = _calls('/v1/sleep/start').single;
       expect(FakeAgent.sleep.hosts['atlas']!.session!['id'], (FakeAgent.sleep.hosts['argo']!.session!)['id']);
-      expect(((s.$3 as Map)['session'] as Map)['id'], FakeAgent.sleep.hosts['argo']!.session!['id']);
+      expect((s.$3 as Map)['session'], FakeAgent.sleep.hosts['argo']!.session, reason: 'yeniden denemede de liderin planı');
     });
 
     test('S2 ajanı (yalnız kimlik listesi): 400 sonrası aynı oturum kimlik listesiyle gider', () async {
@@ -183,6 +230,7 @@ void main() {
       final r = await c.read(sleepGroupProvider.notifier).start();
       expect(r.ok, isTrue);
       expect(FakeAgent.sleep.hosts['argo']!.session!['members'], ['theloth', 'laptop']);
+      expect(sessionIdsOnly({'id': 'x', 'members': ['a'], 'plan': {}}).containsKey('plan'), isFalse);
     });
 
     test('Uyan hepsini durdurur; yedek alarm ve kayıt silinir', () async {
@@ -198,7 +246,7 @@ void main() {
       expect(_h.sleepAlarms.backups.last, isNull);
     });
 
-    test('alarm: Kapat her makineye gider ve yedeği iptal eder; Ertele yedeği taşır', () async {
+    test('alarm: Ertele/Kapat yalnız lidere (grup iletir); yedek taşınır/iptal edilir', () async {
       FakeAgent.sleep.sleeping(ringing: true);
       final c = _container();
       final g = await _group(c);
@@ -206,14 +254,48 @@ void main() {
       await c.read(sleepGroupProvider.notifier).alarm('snooze');
       expect(_calls('/v1/sleep/alarm').map((x) => x.$3), [
         {'action': 'snooze'},
-        {'action': 'snooze'},
       ]);
+      expect(FakeAgent.sleep.hosts.values.map((h) => h.phase), ['snoozed', 'snoozed']);
       expect(_h.sleepAlarms.backups.last, isNotNull);
+      await Future<void>.delayed(const Duration(milliseconds: 20)); // the re-read after the action
       FakeAgent.calls.clear();
       await c.read(sleepGroupProvider.notifier).alarm('dismiss');
-      expect(_calls('/v1/sleep/alarm'), hasLength(2));
+      await Future<void>.delayed(const Duration(milliseconds: 20));
+      expect(_calls('/v1/sleep/alarm'), hasLength(1));
       expect(_h.sleepAlarms.backups.last, isNull);
       expect(_h.sleepAlarms.cleared, greaterThan(0));
+    });
+
+    test('alarm: lidere ulaşılamazsa sıradaki çalışan makine', () async {
+      FakeAgent.sleep.sleeping(ringing: true);
+      final c = _container();
+      await _group(c);
+      FakeAgent.sleep.hosts['argo']!.error = const AgentError('net.unreachable');
+      await c.read(sleepGroupProvider.notifier).alarm('dismiss');
+      expect(_calls('/v1/sleep/alarm'), hasLength(2), reason: 'önce lider (ulaşılamadı), sonra laptop');
+      expect(FakeAgent.sleep.hosts['atlas']!.phase, 'morning');
+    });
+
+    test('alarm çalmıyorken: 409 notRinging tek çağrıda, metin "şu an çalmıyor"; yedek yeniden kurulur', () async {
+      FakeAgent.sleep.sleeping(phase: 'night');
+      final ring = DateTime.now().add(const Duration(hours: 6));
+      for (final h in FakeAgent.sleep.hosts.values) {
+        h.alarmNext = ring.millisecondsSinceEpoch;
+      }
+      final c = _container();
+      await _group(c);
+      Object? err;
+      try {
+        await c.read(sleepGroupProvider.notifier).alarm('dismiss');
+      } catch (e) {
+        err = e;
+      }
+      expect(err, isA<AgentError>().having((e) => e.code, 'code', 'agent.sleep.notRinging'));
+      expect(_calls('/v1/sleep/alarm'), hasLength(1));
+      expect(sleepActionError(_tr, null, err!), 'Alarm şu an çalmıyor.');
+      expect(sleepActionError(_en, null, err), "The alarm isn't ringing right now.");
+      await Future<void>.delayed(Duration.zero);
+      expect(_h.sleepAlarms.backups.last, DateTime.fromMillisecondsSinceEpoch(ring.millisecondsSinceEpoch).add(sleepBackupDelay), reason: 'iptal edilen yedek makinelerin durumuyla geri gelir');
     });
 
     test('grup ayarı her makineye, makine ayarı yalnız ona yazılır; katılım grubu yeniden yazar', () async {
@@ -307,6 +389,51 @@ void main() {
       expect(posts.single.$2, {'action': 'dismiss'});
     });
 
+    test('bildirimden Ertele/Kapat: önce lider, yalnız biri; ulaşılamayan atlanır, notRinging durdurur', () async {
+      final posts = <(String, Object?)>[];
+      final secrets = MemorySecretStore({'agent-argo': 'x', 'agent-atlas': 'x'});
+      Future<bool> send(Map<String, Object> answers) => sleepAlarmToAgents(
+        actionSleepSnooze,
+        profile: exampleProfile(),
+        secrets: secrets,
+        run: const SleepRun(hosts: ['argo', 'atlas']),
+        clientFor: (url, token) => _RecordingClient(url, posts, answers: answers),
+      );
+      expect(await send({}), isTrue);
+      expect(posts.map((p) => p.$1), ['https://argo.example.ts.net:7443/v1/sleep/alarm']);
+      posts.clear();
+      expect(await send({'argo': const AgentError('net.unreachable')}), isTrue);
+      expect(posts.map((p) => Uri.parse(p.$1).host.split('.').first), ['argo', 'atlas']);
+      posts.clear();
+      expect(await send({'argo': const AgentError('agent.sleep.notRinging', {'phase': 'night'}, 409)}), isTrue);
+      expect(posts, hasLength(1), reason: 'grup zaten yanıtladı: ikinci makineye gitmez');
+      posts.clear();
+      expect(await send({'argo': const AgentError('agent.screen.notRunning', {}, 409), 'atlas': const AgentError('net.timeout')}), isFalse);
+      expect(posts, hasLength(2));
+    });
+
+    test('push sleep.alarm alanları: ringing (at, ringAt, count), snoozed (snoozedUntil), dismissed/autoStopped', () {
+      final now = DateTime(2026, 11, 21, 7, 0);
+      final ringAt = DateTime(2026, 11, 21, 7, 30);
+      final at = DateTime(2026, 11, 21, 7, 48);
+      final ring = SleepAlarmPush.of({'state': 'ringing', 'at': at.millisecondsSinceEpoch, 'snoozeMin': 9, 'count': 2, 'ringAt': ringAt.millisecondsSinceEpoch}, now)!;
+      expect((ring.show, ring.title, ring.count, ring.backup, ring.ring, ring.snoozeMin), (at, ringAt, 2, at.add(sleepBackupDelay), at, 9));
+      final first = SleepAlarmPush.of({'state': 'ringing', 'at': ringAt.millisecondsSinceEpoch, 'snoozeMin': 9, 'count': 1, 'ringAt': ringAt.millisecondsSinceEpoch}, now)!;
+      expect((first.title, first.count), (ringAt, 1));
+      expect(sleepAlarmText(_tr, ringAt, count: 2), ('Alarm · 07:30', _tr.slAlarmBodyAgain(2)));
+      expect(sleepAlarmText(_tr, ringAt).$2, _tr.slAlarmBody);
+      final until = DateTime(2026, 11, 21, 7, 39);
+      final snoozed = SleepAlarmPush.of({'state': 'snoozed', 'at': ringAt.millisecondsSinceEpoch, 'snoozeMin': 9, 'snoozedUntil': until.millisecondsSinceEpoch}, now)!;
+      expect((snoozed.show, snoozed.backup, snoozed.ring), (null, until.add(sleepBackupDelay), until));
+      final noUntil = SleepAlarmPush.of({'state': 'snoozed', 'at': ringAt.millisecondsSinceEpoch, 'snoozeMin': 5}, now)!;
+      expect(noUntil.ring, ringAt.add(const Duration(minutes: 5)));
+      for (final st in ['dismissed', 'autoStopped']) {
+        final p = SleepAlarmPush.of({'state': st, 'at': at.millisecondsSinceEpoch, 'snoozeMin': 9}, now)!;
+        expect((p.state, p.show, p.backup, p.ring), (st, null, null, null), reason: '$st: bildirim ve yedek gider');
+      }
+      expect(SleepAlarmPush.of({'state': 'later'}, now), isNull, reason: 'bilinmeyen durum hiçbir şeyi değiştirmez');
+    });
+
     test('alarm bildirimi: tam ekran, alarm kategorisi, ısrarlı ses, Ertele/Kapat', () {
       final d = sleepAlarmDetails(_tr, snoozeMin: 9);
       expect(d.fullScreenIntent, isTrue);
@@ -330,6 +457,75 @@ void main() {
       final r = routeForPayload(jsonEncode({'link': 'tiphys://sleep', 'morning': m.toJson()}))!;
       expect(r, startsWith('/screen/sleep?morning='));
       expect(SleepMorning.fromJson(Uri.parse(r).queryParameters['morning']), m);
+    });
+  });
+
+  group('saat dilimi', () {
+    // The leader rings at 07:30 its own time; [phone] is the same instant on the phone's clock.
+    SleepGroup leaderAt(DateTime phone, {String hm = '07:30', String? edited, bool running = false}) {
+      final settings = SleepSettings(sleepDefaults()).apply({
+        'alarm': {'enabled': true, 'time': edited ?? hm, 'days': 'daily'},
+        'group': {
+          'members': ['theloth'],
+          'leader': 'theloth',
+        },
+      });
+      final ms = phone.millisecondsSinceEpoch;
+      return SleepGroup([
+        SleepMachine(
+          host: exampleHost('argo'),
+          agentId: 'theloth',
+          status: SleepStatus(
+            running: running,
+            alarmNext: ms,
+            alarmHm: hm,
+            settings: settings,
+            session: running ? {'t0': ms - 8 * 3600000, 'plan': fakePlan(ms - 8 * 3600000, ms)} : null,
+          ),
+        ),
+      ]);
+    }
+
+    test('alarm saati alarm.next ile telefonun saatinde; fark 15 dk adımlarıyla bulunur', () {
+      final same = leaderAt(DateTime(2026, 11, 21, 7, 30));
+      expect((same.leaderZoneMin, same.alarmHmLocal), (0, '07:30'));
+      // A leader 9 h behind the phone (e.g. CST vs +03): 07:30 there is 16:30 here.
+      final behind = leaderAt(DateTime(2026, 11, 21, 16, 30));
+      expect((behind.leaderZoneMin, behind.alarmHmLocal), (-540, '16:30'));
+      expect(sleepAlarmLine(_tr, behind), 'alarm 16:30 · 1 makine');
+      // Across midnight: 23:30 there, 01:30 here.
+      expect(leaderAt(DateTime(2026, 11, 22, 1, 30), hm: '23:30').leaderZoneMin, -120);
+      expect(leaderAt(DateTime(2026, 11, 21, 3, 15), hm: '22:30').leaderZoneMin, -285, reason: 'çeyrek saatlik dilim (4:45 geride)');
+      // Running: the plan's ring (the same instant).
+      expect(leaderAt(DateTime(2026, 11, 21, 16, 30), running: true).alarmHmLocal, '16:30');
+    });
+
+    test('bekleyen düzenleme: yeni saat liderin farkıyla telefona çevrilir', () {
+      final g = leaderAt(DateTime(2026, 11, 21, 16, 30), edited: '08:00');
+      expect(g.alarmLocal, isNull, reason: 'alarm.next eski saate ait');
+      expect(g.alarmHmLocal, '17:00');
+      expect(shiftHm('23:50', 20), '00:10');
+      expect(shiftHm('00:10', -20), '23:50');
+      expect(zoneDiffMin('07:30', DateTime(2026, 11, 21, 7, 39)), isNull, reason: 'erteleme halkası dilim değil');
+    });
+
+    test('alarm.next yokken (S4 öncesi) ayarın saati olduğu gibi', () {
+      final g = SleepGroup([SleepMachine(host: exampleHost('argo'), agentId: 'theloth', status: SleepStatus(settings: SleepSettings(sleepDefaults()).apply({'alarm': {'enabled': true, 'time': '06:45'}})))]);
+      expect((g.leaderZoneMin, g.alarmHmLocal), (null, '06:45'));
+    });
+
+    test('yedek alarm: plan.ringAt (alarm.next yoksa), dismissedAt varsa yok', () {
+      final now = DateTime(2026, 11, 21, 1, 0);
+      final ring = DateTime(2026, 11, 21, 7, 30).millisecondsSinceEpoch;
+      SleepGroup g({int? dismissed}) => SleepGroup([
+        SleepMachine(
+          host: exampleHost('argo'),
+          agentId: 'theloth',
+          status: SleepStatus(running: true, session: {'t0': 0, 'plan': {...fakePlan(0, ring), 'dismissedAt': dismissed}}, settings: SleepSettings(sleepDefaults())),
+        ),
+      ]);
+      expect(sleepRingAt(g(), now), DateTime.fromMillisecondsSinceEpoch(ring));
+      expect(sleepRingAt(g(dismissed: ring + 60000), now), isNull);
     });
   });
 
@@ -376,12 +572,17 @@ void main() {
 
 /// A client that records POSTs (the notification path builds its own clients from URL + token).
 class _RecordingClient extends AgentClient {
-  _RecordingClient(this.url, this.posts) : super(baseUrl: url, token: 'x');
+  _RecordingClient(this.url, this.posts, {this.answers = const {}}) : super(baseUrl: url, token: 'x');
   final String url;
   final List<(String, Object?)> posts;
+
+  /// host id → the error it answers with.
+  final Map<String, Object> answers;
   @override
   Future<dynamic> post(String path, [Object? body]) async {
     posts.add(('$url$path', body));
+    final e = answers[Uri.parse(url).host.split('.').first];
+    if (e != null) throw e;
     return {'ok': true};
   }
 }

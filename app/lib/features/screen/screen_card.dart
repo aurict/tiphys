@@ -179,7 +179,7 @@ class _ScreenModeHomeCardState extends ConsumerState<ScreenModeHomeCard> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          ringing ? l.slAlarmTitle(g.settings.alarmTime) : (src == null ? l.gmOn : sleepPhaseLine(l, src, now)),
+                          ringing ? l.slAlarmTitle(g.ringHmLocal) : (src == null ? l.gmOn : sleepPhaseLine(l, src, now)),
                           style: textStyle,
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,

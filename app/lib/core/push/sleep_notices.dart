@@ -42,7 +42,7 @@ const _flagInsistent = 4;
 class SleepRun {
   const SleepRun({required this.hosts, this.ringAt, this.snoozeMin = 9});
 
-  /// The app's host ids of the machines that sleep.
+  /// The app's host ids of the machines that sleep, the leader first.
   final List<String> hosts;
 
   /// The next ring (null: no alarm).
@@ -106,16 +106,61 @@ AndroidNotificationDetails sleepAlarmDetails(AppLocalizations l, {int snoozeMin 
   ],
 );
 
-/// "Alarm · 07:30" / "2 makine aydınlanıyor"; the backup says the machines didn't answer.
-(String, String) sleepAlarmText(AppLocalizations l, DateTime at, {bool backup = false}) =>
-    (l.slAlarmTitle(DateFormat.Hm().format(at)), backup ? l.slBackupBody : l.slAlarmBody);
+/// "Alarm · 07:30" / "2 makine aydınlanıyor" (a ring after a snooze: its count); the backup says the machines didn't
+/// answer. The time on the phone's clock.
+(String, String) sleepAlarmText(AppLocalizations l, DateTime at, {bool backup = false, int count = 1}) =>
+    (l.slAlarmTitle(DateFormat.Hm().format(at)), backup ? l.slBackupBody : (count > 1 ? l.slAlarmBodyAgain(count) : l.slAlarmBody));
+
+/// What the phone does for one `sleep.alarm` push (PLAN.md §21 S4: `params {state: ringing|snoozed|autoStopped|
+/// dismissed, at, snoozeMin, snoozedUntil (snoozed), count + ringAt (ringing)}`; epoch ms).
+@immutable
+class SleepAlarmPush {
+  const SleepAlarmPush({required this.state, this.show, this.title, this.count = 1, this.backup, this.ring, this.snoozeMin = 9});
+
+  /// ringing | snoozed | autoStopped | dismissed
+  final String state;
+
+  /// ringing: this ring's start (the alarm notification's payload); else null (the notification goes).
+  final DateTime? show;
+
+  /// ringing: the time in the title (the alarm's own time, `ringAt`).
+  final DateTime? title;
+  final int count;
+
+  /// The backup alarm (null: cancelled): this ring + 3 min, or the snooze end + 3 min.
+  final DateTime? backup;
+
+  /// The run record's next ring.
+  final DateTime? ring;
+  final int snoozeMin;
+
+  /// Null for a state this app doesn't know (nothing changes).
+  static SleepAlarmPush? of(Map<String, dynamic> params, DateTime now, {int snoozeMin = 9}) {
+    int? i(Object? v) => v is num ? v.toInt() : int.tryParse('${v ?? ''}');
+    DateTime? t(Object? v) => i(v) == null ? null : DateTime.fromMillisecondsSinceEpoch(i(v)!);
+    final min = i(params['snoozeMin']) ?? snoozeMin;
+    final at = t(params['at']);
+    switch ('${params['state'] ?? 'ringing'}') {
+      case 'snoozed':
+        final until = t(params['snoozedUntil']) ?? (at ?? now).add(Duration(minutes: min));
+        return SleepAlarmPush(state: 'snoozed', backup: until.add(sleepBackupDelay), ring: until, snoozeMin: min);
+      case final s && ('dismissed' || 'autoStopped'):
+        return SleepAlarmPush(state: s, snoozeMin: min);
+      case 'ringing':
+        final ring = at ?? now;
+        return SleepAlarmPush(state: 'ringing', show: ring, title: t(params['ringAt']) ?? ring, count: i(params['count']) ?? 1, backup: ring.add(sleepBackupDelay), ring: ring, snoozeMin: min);
+    }
+    return null;
+  }
+}
 
 /// The alarm is ringing on the machines (push `sleep.alarm`): Android full screen; elsewhere a plain notification.
-Future<void> showSleepAlarm(FlutterLocalNotificationsPlugin n, AppLocalizations l, DateTime at, {int snoozeMin = 9}) async {
-  final (title, body) = sleepAlarmText(l, at);
+/// [title]: the time in the title (default [at], this ring's start).
+Future<void> showSleepAlarm(FlutterLocalNotificationsPlugin n, AppLocalizations l, DateTime at, {int snoozeMin = 9, DateTime? title, int count = 1}) async {
+  final (heading, body) = sleepAlarmText(l, title ?? at, count: count);
   await n.show(
     id: sleepAlarmId,
-    title: title,
+    title: heading,
     body: body,
     payload: sleepAlarmPayload(at),
     notificationDetails: NotificationDetails(
@@ -177,28 +222,29 @@ Future<void> showSleepMorning(FlutterLocalNotificationsPlugin n, String title, S
   ),
 );
 
-/// Ertele / Kapat sent to every machine of the run (all agent hosts when the phone has no record: e.g. the mode was
-/// started on a machine). True when at least one machine took it.
+/// Ertele / Kapat to the machines of the run, one at a time, the leader first (the agents pass it to the whole group);
+/// the next is tried only when one can't be reached or doesn't sleep (all agent hosts when the phone has no record:
+/// e.g. the mode was started on a machine). True when a machine took it, or answered that the alarm isn't ringing
+/// (`agent.sleep.notRinging`: already answered elsewhere, or not yet).
 Future<bool> sleepAlarmToAgents(String action, {required Profile profile, required SecretStore secrets, SleepRun? run, AgentClient Function(String url, String token)? clientFor}) async {
   final hosts = run != null && run.hosts.isNotEmpty ? [for (final id in run.hosts) ?profile.host(id)] : profile.hosts.where((h) => h.agent != null).toList();
-  var ok = false;
-  await Future.wait([
-    for (final h in hosts.where((h) => h.agent != null))
-      () async {
-        final token = await secrets.read(secretIdOf(h.agent!.tokenRef));
-        if (token == null) return;
-        final c = (clientFor ?? (u, t) => AgentClient(baseUrl: u, token: t))(h.agent!.url, token);
-        try {
-          await c.post('/v1/sleep/alarm', {'action': action == actionSleepSnooze ? 'snooze' : 'dismiss'});
-          ok = true;
-        } catch (_) {
-          // Not sleeping there, unreachable, or an agent without the alarm: the others still get it.
-        } finally {
-          c.close();
-        }
-      }(),
-  ]);
-  return ok;
+  for (final h in hosts.where((h) => h.agent != null)) {
+    final token = await secrets.read(secretIdOf(h.agent!.tokenRef));
+    if (token == null) continue;
+    final c = (clientFor ?? (u, t) => AgentClient(baseUrl: u, token: t))(h.agent!.url, token);
+    try {
+      await c.post('/v1/sleep/alarm', {'action': action == actionSleepSnooze ? 'snooze' : 'dismiss'});
+      return true;
+    } on AgentError catch (e) {
+      if (e.code == 'agent.sleep.notRinging') return true;
+      // Not sleeping there, unreachable, or an agent without the alarm: the next one.
+    } catch (_) {
+      // The same.
+    } finally {
+      c.close();
+    }
+  }
+  return false;
 }
 
 /// Ertele / Kapat from the notification (also while the app is closed): the phone's own alarm follows at once (dismiss:

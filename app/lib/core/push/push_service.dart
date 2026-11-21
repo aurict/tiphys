@@ -1173,29 +1173,23 @@ class PushService {
     await showScreenSummary(notifications, title, body, jsonEncode({'link': 'tiphys://screen', if (host != null) 'host': host.id, 'summary': s.toJson()}));
   }
 
-  /// The sleep alarm (PLAN.md §21 U3; `params.state`: ringing (default) | snoozed | dismissed | autoStopped, `params.at`
-  /// the ring time, `params.snoozedUntil`, `params.snoozeMin`): ringing shows the full-screen alarm, the others take it
-  /// away; the backup alarm moves with a snooze and goes with a dismiss.
+  /// The sleep alarm (PLAN.md §21 S4, sent by the group's leader once per transition; [SleepAlarmPush]): ringing shows
+  /// the full-screen alarm and keeps the backup at this ring + 3 min; snoozed moves it to the snooze end + 3 min;
+  /// dismissed and autoStopped take the alarm and the backup away.
   Future<void> _sleepAlarm(AppLocalizations l, Map<String, dynamic> params, Map<String, dynamic>? data, DateTime now) async {
-    int? ms(Object? v) => v is num ? v.toInt() : int.tryParse('${v ?? ''}');
     final store = SleepRunStore(vault);
     final run = await store.read();
-    final snoozeMin = ms(params['snoozeMin']) ?? run?.snoozeMin ?? 9;
-    switch ('${params['state'] ?? 'ringing'}') {
-      case 'snoozed':
-        await notifications.cancel(id: sleepAlarmId);
-        final until = ms(params['snoozedUntil']);
-        final at = until == null ? now.add(Duration(minutes: snoozeMin)) : DateTime.fromMillisecondsSinceEpoch(until);
-        await sleepBackup(at.add(sleepBackupDelay), snoozeMin: snoozeMin);
-        if (run != null) await store.write(run.withRing(at));
-      case 'dismissed' || 'autoStopped' || 'stopped':
-        await notifications.cancel(id: sleepAlarmId);
-        await sleepBackup(null);
-        if (run != null) await store.write(run.withRing(null));
-      default:
-        final at = ms(params['at']);
-        await showSleepAlarm(notifications, l, at == null ? now : DateTime.fromMillisecondsSinceEpoch(at), snoozeMin: snoozeMin);
+    final p = SleepAlarmPush.of(params, now, snoozeMin: run?.snoozeMin ?? 9);
+    if (p == null) return;
+    if (p.show != null) {
+      await showSleepAlarm(notifications, l, p.show!, snoozeMin: p.snoozeMin, title: p.title, count: p.count);
+    } else {
+      await notifications.cancel(id: sleepAlarmId);
     }
+    final backup = p.backup;
+    // A ring's backup already due (an old push) isn't set again.
+    if (backup == null || backup.isAfter(now)) await sleepBackup(backup, snoozeMin: p.snoozeMin);
+    if (run != null) await store.write(run.withRing(p.ring));
   }
 
   /// The morning summary (S5): one notification; the alarm is over, so the backup goes too.

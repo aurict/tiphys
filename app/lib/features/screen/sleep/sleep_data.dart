@@ -2,7 +2,10 @@
 // agent (GET/PUT /v1/sleep, POST /v1/sleep/{start,stop,alarm,preview}); the phone keeps them together as one group:
 // group-wide settings (times, layers, Velour list, alarm, notifications, reminder, `group`) are written to every
 // machine with the same values, per-machine settings (join, side, distance, volume, brightness, extras) only to that
-// machine. "Uykuya geç" builds ONE session object and posts it to every member, the leader first; "Uyan" stops all.
+// machine. "Uykuya geç" builds ONE session object (no plan) and posts it to the leader first; the leader answers with
+// the session and its `plan` (the group's phases and alarm, PLAN.md §21 S4), which goes unchanged to every other member;
+// "Uyan" stops all. The alarm's clock time is the leader's local time; the app shows it from the leader's `alarm.next`
+// (epoch ms) in the phone's time zone.
 // An agent older than §21 (no /v1/sleep: 404) is listed as needing an update; a block the agent doesn't report yet
 // (alarm, notify, reminder) shows the same in its section. Nothing of a session is stored on the phone except the
 // small run record of sleep_notices.dart (members and alarm time, for the alarm buttons and the backup alarm).
@@ -151,6 +154,7 @@ class SleepStatus {
     this.skewMs = 0,
     this.groupLink,
     this.groupError,
+    this.alarmHm,
   });
 
   factory SleepStatus.fromJson(Map j, {DateTime? receivedAt}) {
@@ -178,6 +182,7 @@ class SleepStatus {
       skewMs: now == null ? 0 : now - (receivedAt ?? DateTime.now()).millisecondsSinceEpoch,
       groupLink: (j['group'] as Map?)?['link'] as String?,
       groupError: (j['group'] as Map?)?['error'] as String?,
+      alarmHm: validHm(((j['settings'] as Map?)?['alarm'] as Map?)?['time']),
     );
   }
 
@@ -188,6 +193,7 @@ class SleepStatus {
   final String? phase;
   final int? phaseStartedAt;
   final int? phaseEndsAt;
+  /// The next or current ring (agent ms; off: the next one the settings would ring).
   final int? alarmNext;
   final bool ringing;
   final int? snoozedUntil;
@@ -208,6 +214,15 @@ class SleepStatus {
 
   /// The agent's clock minus the phone's.
   final int skewMs;
+
+  /// `alarm.time` as the agent reported it with [alarmNext] (the shown settings may hold an edit not answered yet).
+  final String? alarmHm;
+
+  /// The group's plan (S4: the leader's, sent with the session); null before S4 or while off.
+  Map<String, dynamic>? get plan => session?['plan'] is Map ? Map<String, dynamic>.from(session!['plan'] as Map) : null;
+
+  /// The plan's first ring (agent ms), null without an alarm.
+  int? get planRingAt => (plan?['ringAt'] as num?)?.round();
 
   DateTime? local(int? agentMs) => agentMs == null ? null : DateTime.fromMillisecondsSinceEpoch(agentMs - skewMs);
   DateTime? get phaseEndsLocal => local(phaseEndsAt);
@@ -231,6 +246,7 @@ class SleepStatus {
     skewMs: skewMs,
     groupLink: groupLink,
     groupError: groupError,
+    alarmHm: alarmHm,
   );
 }
 
@@ -318,11 +334,47 @@ class SleepGroup {
     return runningMachines.firstOrNull?.status;
   }
 
+  /// Minutes the leader's clock time is ahead of the phone's (its time zone minus the phone's; 0 when the same), from
+  /// its `alarm.next` and the `alarm.time` it rang from; null when unknown (no alarm, an agent before S4).
+  int? get leaderZoneMin {
+    final s = leader?.status;
+    if (s == null || !s.settings.alarmEnabled) return null;
+    // Off: `alarm.next` comes from the settings. Running: the plan's first ring (set from the settings at the start).
+    final next = s.running ? s.planRingAt : s.alarmNext;
+    return next == null || s.alarmHm == null ? null : zoneDiffMin(s.alarmHm!, DateTime.fromMillisecondsSinceEpoch(next));
+  }
+
+  /// The alarm on the phone's clock: tonight's ring of the running group (the plan's, else `alarm.next`), else the
+  /// leader's next one; null when unknown.
+  DateTime? get alarmLocal {
+    final p = phaseSource;
+    if (p != null) return p.local(p.planRingAt ?? p.alarmNext);
+    final s = leader?.status;
+    if (s == null || !s.settings.alarmEnabled) return null;
+    // An edit not answered yet: the new time moved by the leader's zone.
+    if (s.alarmHm != s.settings.alarmTime) return null;
+    return s.local(s.alarmNext);
+  }
+
+  /// "07:30" on the phone's clock: [alarmLocal], else the setting moved by the leader's zone (as is when unknown).
+  String get alarmHmLocal {
+    final at = alarmLocal;
+    return at != null ? hmOf(at) : shiftHm(settings.alarmTime, -(leaderZoneMin ?? 0));
+  }
+
+  /// The ring sounding now (or next) on the phone's clock: `alarm.next` of the running group, else [alarmHmLocal].
+  String get ringHmLocal {
+    final p = phaseSource;
+    final at = p?.local(p.alarmNext);
+    return at != null ? hmOf(at) : alarmHmLocal;
+  }
+
   SleepGroup replace(SleepMachine m) => SleepGroup([for (final x in machines) x.host.id == m.host.id ? m : x]);
 }
 
-/// The next ring of [s]'s alarm after [from] (the agent's own `alarm.next` wins when it reports one): the time on the
-/// allowed days (`once`: the next time it comes round).
+/// The next ring of [s]'s alarm after [from] on the phone's clock (only for an agent before S4, which reports no
+/// `alarm.next`; it assumes the machine's time zone is the phone's): the time on the allowed days (`once`: the next
+/// time it comes round).
 DateTime? nextAlarm(SleepSettings s, DateTime from) {
   if (!s.hasAlarm || !s.alarmEnabled) return null;
   final parts = s.alarmTime.split(':');
@@ -344,14 +396,32 @@ DateTime? nextAlarm(SleepSettings s, DateTime from) {
   return null;
 }
 
+String hmOf(DateTime d) => '${d.hour.toString().padLeft(2, '0')}:${d.minute.toString().padLeft(2, '0')}';
+
+/// HH:MM moved by [minutes] round the clock.
+String shiftHm(String hm, int minutes) {
+  final p = hm.split(':');
+  final m = ((int.parse(p[0]) * 60 + int.parse(p[1]) + minutes) % 1440 + 1440) % 1440;
+  return '${(m ~/ 60).toString().padLeft(2, '0')}:${(m % 60).toString().padLeft(2, '0')}';
+}
+
+/// The clock time [hm] of a machine at the moment [at] minus the phone's clock time then, in minutes (-720, 720]; null
+/// when it isn't a time zone step (15 min): e.g. a snooze ring, or a time moved past a daylight saving gap.
+int? zoneDiffMin(String hm, DateTime at) {
+  final p = hm.split(':');
+  var d = ((int.parse(p[0]) * 60 + int.parse(p[1])) - (at.hour * 60 + at.minute)) % 1440;
+  if (d > 720) d -= 1440;
+  return d % 15 == 0 ? d : null;
+}
+
 /// A session id the agent accepts (`[A-Za-z0-9_-]{8,64}`).
 String newSessionId(math.Random r) {
   const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789_-';
   return String.fromCharCodes([for (var i = 0; i < 16; i++) chars.codeUnitAt(r.nextInt(chars.length))]);
 }
 
-/// The ONE session object every member gets: id, seed, t0 (the leader's clock when known), the members with their
-/// place in the room, the leader. The leader comes first in [members].
+/// The session object the leader gets: id, seed, t0 (the leader's clock when known), the members with their place in
+/// the room, the leader (listed first). No `plan`: the leader makes it, and the others get the leader's session.
 Map<String, Object> buildSession(SleepGroup g, List<SleepMachine> members, {required DateTime now, math.Random? random}) {
   final r = random ?? math.Random.secure();
   final leader = g.leader != null && members.contains(g.leader) ? g.leader! : members.first;
@@ -367,12 +437,18 @@ Map<String, Object> buildSession(SleepGroup g, List<SleepMachine> members, {requ
   };
 }
 
-/// The same session in the S2 agent's shape (members as an id list; the room layout comes from each machine's own
-/// settings there).
+/// The same session in the S2 agent's shape (members as an id list, no plan; the room layout comes from each machine's
+/// own settings there).
 Map<String, Object> sessionIdsOnly(Map<String, Object> s) => {
-  ...s,
-  'members': [for (final m in s['members'] as List) (m as Map)['host']],
+  for (final e in s.entries)
+    if (e.key != 'plan') e.key: e.value,
+  'members': [for (final m in s['members'] as List) m is Map ? m['host'] : m],
 };
+
+/// A member not started because the leader didn't start (members only ever get the leader's plan).
+class SleepLeaderNotStarted implements Exception {
+  const SleepLeaderNotStarted();
+}
 
 /// What a group start ended with: the hosts that failed and why.
 class SleepStartResult {
@@ -573,18 +649,20 @@ class SleepGroupNotifier extends AsyncNotifier<SleepGroup> {
     await writeGroup(leader: state.value?.byHost(leaderHost)?.agentId);
   }
 
-  /// Starts every member with one session, the leader first. A member that fails doesn't stop the others; the result
-  /// says which failed. With [only] just those hosts are (re)tried with [session] (the same session as before).
+  /// Starts the group: the leader first with [session] (default: a new one, without a plan); its answer's session (with
+  /// the leader's `plan`) then goes unchanged to the other members at once. A member that fails doesn't stop the
+  /// others; when the leader fails, the others aren't started ([SleepLeaderNotStarted]: they'd run a plan of their
+  /// own). With [only] just those hosts are (re)tried with [session] ([lastSession]: the leader's, when it started).
   Future<SleepStartResult> start({List<String>? only, Map<String, Object>? session}) async {
     final g = state.value;
     if (g == null) return const SleepStartResult({}, []);
     final members = g.members.isEmpty ? [?g.leader] : g.members;
     if (members.isEmpty) return const SleepStartResult({}, []);
-    final s = session ?? buildSession(g, members, now: ref.read(clockProvider)());
-    final order = [for (final m in s['members'] as List) g.byAgent('${(m as Map)['host']}')].whereType<SleepMachine>().where((m) => only == null || only.contains(m.host.id)).toList();
+    var s = session ?? buildSession(g, members, now: ref.read(clockProvider)());
+    final order = [for (final m in s['members'] as List) g.byAgent('${m is Map ? m['host'] : m}')].whereType<SleepMachine>().where((m) => only == null || only.contains(m.host.id)).toList();
     final failed = <String, Object>{};
     final started = <String>[];
-    Future<void> one(SleepMachine m) async {
+    Future<Map?> one(SleepMachine m) async {
       try {
         Map j;
         try {
@@ -596,28 +674,47 @@ class SleepGroupNotifier extends AsyncNotifier<SleepGroup> {
         }
         started.add(m.host.id);
         _apply(m.host.id, j);
+        return j;
       } catch (e) {
         failed[m.host.id] = e;
+        return null;
       }
     }
 
-    if (order.isNotEmpty) await one(order.first);
-    await Future.wait([for (final m in order.skip(1)) one(m)]);
+    final leader = order.where((m) => m.agentId == s['leader']).firstOrNull;
+    var rest = order;
+    if (leader != null && s['plan'] == null) {
+      rest = order.where((m) => m != leader).toList();
+      final j = await one(leader);
+      if (j == null) {
+        for (final m in rest) {
+          failed[m.host.id] = const SleepLeaderNotStarted();
+        }
+        rest = const [];
+      } else if (j['session'] is Map && (j['session'] as Map)['plan'] is Map) {
+        // The leader's session, plan included, as it answered it (an agent before S4 has no plan: the same session).
+        s = Map<String, Object>.from(j['session'] as Map);
+      }
+    }
+    await Future.wait([for (final m in rest) one(m)]);
     if (failed.isNotEmpty && !_closed) unawaited(_poll());
     _lastSession = s;
     return SleepStartResult(failed, started);
   }
 
-  /// The session of the last start (a retry sends the same one).
+  /// The session of the last start (a retry sends the same one): the leader's, with its plan, once it started.
   Map<String, Object>? get lastSession => _lastSession;
   Map<String, Object>? _lastSession;
 
-  /// Only the leader, with a one-member session ("tek makineyle sür" when nothing started).
-  Future<SleepStartResult> startLeaderAlone() async {
+  /// "Tek makineyle sür" when nothing started: one machine with a one-member session (it leads itself). The leader,
+  /// unless it failed itself and another member only waited for it.
+  Future<SleepStartResult> startAlone([SleepStartResult? last]) async {
     final g = state.value;
     final l = g?.leader;
     if (g == null || l == null) return const SleepStartResult({}, []);
-    return start(only: [l.host.id], session: buildSession(g, [l], now: ref.read(clockProvider)()));
+    final leaderFailed = last != null && last.failed.containsKey(l.host.id) && last.failed[l.host.id] is! SleepLeaderNotStarted;
+    final m = leaderFailed ? (g.members.where((x) => x != l && last.failed[x.host.id] is SleepLeaderNotStarted).firstOrNull ?? l) : l;
+    return start(only: [m.host.id], session: buildSession(g, [m], now: ref.read(clockProvider)()));
   }
 
   /// Stops every machine that runs it (and every member, in case a status is stale).
@@ -629,14 +726,38 @@ class SleepGroupNotifier extends AsyncNotifier<SleepGroup> {
     await _all(ids, (id) async => _apply(id, await _call(id, 'POST', '/v1/sleep/stop', const {}, timeout: const Duration(seconds: 30))));
   }
 
-  /// Ertele / Kapat on every running machine; a dismiss also cancels the phone's backup alarm.
+  /// Ertele / Kapat: the phone's own alarm follows at once, then ONE running machine is told (the agents pass it to
+  /// the whole group), the leader first; the next is tried only when one can't be reached or no longer sleeps.
+  /// `409 agent.sleep.notRinging` (nothing to snooze or dismiss now) is thrown after the state is read again (the
+  /// phone's backup follows the machines' state then).
   Future<void> alarm(String action) async {
     final g = state.value;
     if (g == null) return;
-    final ids = {for (final m in g.runningMachines) m.host.id};
+    final l = g.leader;
+    final order = [if (l != null && l.running) l, ...g.runningMachines.where((m) => m != l)];
     if (action == 'dismiss') await ref.read(sleepSyncProvider).dismissed();
     if (action == 'snooze') await ref.read(sleepSyncProvider).snoozed(g.settings.snoozeMin);
-    await _all(ids, (id) async => _apply(id, await _call(id, 'POST', '/v1/sleep/alarm', {'action': action})));
+    final failed = <String, Object>{};
+    for (final m in order) {
+      try {
+        _apply(m.host.id, await _call(m.host.id, 'POST', '/v1/sleep/alarm', {'action': action}));
+        // The others took it from the group: their state is read again now, not at the next poll.
+        if (!_closed) unawaited(_poll());
+        return;
+      } on AgentError catch (e) {
+        if (e.code == 'agent.sleep.notRinging') {
+          if (!_closed) await _poll();
+          rethrow;
+        }
+        failed[m.host.id] = e;
+      } catch (e) {
+        failed[m.host.id] = e;
+      }
+    }
+    if (failed.isNotEmpty) {
+      if (!_closed) unawaited(_poll());
+      throw SleepPartialError(failed);
+    }
   }
 
   /// 5 s at [brightness] on that machine (the hardware, and the page when running).

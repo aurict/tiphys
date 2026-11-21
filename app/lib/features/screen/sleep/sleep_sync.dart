@@ -63,8 +63,10 @@ final sleepRunStoreProvider = Provider<SleepRunStore?>((ref) {
 
 final sleepSyncProvider = Provider<SleepSync>(SleepSync.new);
 
-/// The ring the phone backs up: the snooze end, the agent's next alarm, else the first time of the group's alarm after
-/// the session started (one that already passed in this session was answered: none). After the alarm (morning): none.
+/// The ring the phone backs up (epoch times of the running group, the leader's first): the snooze end, the agent's
+/// next ring (`alarm.next`), the plan's ring; an agent before S4 (none of them): the first time of the group's alarm
+/// after the session started on the phone's clock (one that already passed in this session was answered: none). After
+/// the alarm (morning): none.
 DateTime? sleepRingAt(SleepGroup g, DateTime now) {
   final s = g.phaseSource;
   if (s == null || s.phase == 'morning') return null;
@@ -72,6 +74,10 @@ DateTime? sleepRingAt(SleepGroup g, DateTime now) {
   if (snoozed != null) return snoozed;
   final next = s.local(s.alarmNext);
   if (next != null) return next;
+  if (s.plan case final plan?) {
+    final ring = plan['dismissedAt'] == null ? s.local(s.planRingAt) : null;
+    return ring == null || ring.isBefore(now) ? null : ring;
+  }
   final t0 = (s.session?['t0'] as num?)?.toInt();
   final ring = nextAlarm(g.settings, t0 == null ? now : DateTime.fromMillisecondsSinceEpoch(t0 - s.skewMs));
   return ring == null || ring.isBefore(now) ? null : ring;
@@ -114,7 +120,8 @@ class SleepSync {
     }
     // Ringing: the backup set for this ring stays until the alarm is answered (dismissed / snoozed).
     if (g.ringing) return;
-    final hosts = [for (final m in g.runningMachines) m.host.id];
+    final l = g.leader;
+    final hosts = [if (l != null && l.running) l.host.id, for (final m in g.runningMachines) if (m != l) m.host.id];
     final ring = sleepRingAt(g, t);
     final key = '${hosts.join(',')}|${ring?.millisecondsSinceEpoch}|${s.snoozeMin}';
     if (key == _key) return;

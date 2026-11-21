@@ -202,11 +202,12 @@ class _SleepHeroState extends ConsumerState<SleepHero> {
     ref.read(sleepStartFailureProvider.notifier).set(again.ok ? null : SleepStartResult(again.failed, [...r.started, ...again.started]));
   });
 
-  /// "Tek makineyle sür": what started keeps running; when nothing did, the leader starts alone.
+  /// "Tek makineyle sür": what started keeps running; when nothing did, one machine starts alone (the leader, else a
+  /// member that only waited for it).
   Future<void> _alone(SleepStartResult r) => _run(() async {
     ref.read(sleepStartFailureProvider.notifier).set(null);
     if (r.started.isEmpty) {
-      final again = await ref.read(sleepGroupProvider.notifier).startLeaderAlone();
+      final again = await ref.read(sleepGroupProvider.notifier).startAlone(r);
       ref.read(sleepStartFailureProvider.notifier).set(again);
     }
   });
@@ -624,13 +625,22 @@ class _AlarmSection extends ConsumerWidget {
     Future<void> save(Map<String, Object?> p) => saveSleepGroup(context, ref, {'alarm': p});
     final on = s.alarmEnabled;
     final days = s.alarmDays;
+    // The time is the leader's clock time; in another time zone the phone's own is shown next to it.
+    final zone = group.leaderZoneMin;
     return GroupedSection(
       title: l.slSectionAlarm,
       footer: l.slAlarmFooter,
       children: [
-        SwitchRow(title: l.slAlarm, subtitle: on ? '${s.alarmTime} · ${sleepDaysText(l, days)}' : null, icon: LucideIcons.alarmClock, iconBackground: sleepSunColor(t), value: on, onChanged: (v) => save({'enabled': v})),
+        SwitchRow(title: l.slAlarm, subtitle: on ? '${group.alarmHmLocal} · ${sleepDaysText(l, days)}' : null, icon: LucideIcons.alarmClock, iconBackground: sleepSunColor(t), value: on, onChanged: (v) => save({'enabled': v})),
         if (on) ...[
-          SleepTimeRow(title: l.slAlarmTime, value: s.alarmTime, icon: LucideIcons.clock, iconBackground: const Color(0xFF0A84FF), onChanged: (v) => save({'time': v})),
+          SleepTimeRow(
+            title: l.slAlarmTime,
+            value: s.alarmTime,
+            subtitle: zone != null && zone != 0 ? l.slAlarmLeaderClock(group.leader?.host.name ?? '–', shiftHm(s.alarmTime, -zone)) : null,
+            icon: LucideIcons.clock,
+            iconBackground: const Color(0xFF0A84FF),
+            onChanged: (v) => save({'time': v}),
+          ),
           _DaysRow(days: days, onChanged: (v) => save({'days': v})),
           StepperRow(title: l.slSunriseMin, value: s.sunriseMin, min: 10, max: 45, unit: min, icon: LucideIcons.sunrise, iconBackground: const Color(0xFFFF9F0A), onChanged: (v) => save({'sunriseMin': v})),
           SegRow<String>(

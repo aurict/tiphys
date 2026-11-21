@@ -1,9 +1,9 @@
 // Sleep mode (PLAN.md §21 U, S6): the home card (sleeping / alarm / the morning summary under a closed card), the
-// chooser's fourth option, the sleep screen (off, sleeping, a partial start failure, every section), the setup wizard,
-// the alarm screen and the morning summary card; and the flows behind them (group start leader first and the same
-// session everywhere, retry / one machine, Uyan stops all, Ertele / Kapat on every machine, group-wide vs per-machine
-// writes, the live brightness preview, the wizard's writes, the alarm screen over the app lock). Light/dark × TR/EN
-// at 375 px. To update: flutter test test/goldens/sleep_test.dart --update-goldens
+// chooser's fourth option, the sleep screen (off, sleeping, a partial start failure, every section, the alarm time of a
+// leader in another time zone), the setup wizard, the alarm screen and the morning summary card; and the flows behind
+// them (group start leader first and its plan to the others, retry / one machine, Uyan stops all, Ertele / Kapat to one
+// machine for the group, group-wide vs per-machine writes, the live brightness preview, the wizard's writes, the alarm
+// screen over the app lock). Light/dark × TR/EN at 375 px. To update: flutter test test/goldens/sleep_test.dart --update-goldens
 import 'dart:convert';
 import 'dart:io';
 
@@ -133,8 +133,8 @@ void main() {
       await _load(tester);
       expect(_calls('POST', '/v1/sleep/alarm').map((c) => c.$3), [
         {'action': 'dismiss'},
-        {'action': 'dismiss'},
       ]);
+      expect(FakeAgent.sleep.hosts.values.map((h) => h.phase), ['morning', 'morning'], reason: 'grup iletir');
       expect(h.sleepAlarms.backups.last, isNull, reason: 'telefonun yedeği iptal');
       await tester.tap(find.bySemanticsLabel(_tr.slWake));
       await _load(tester);
@@ -160,7 +160,7 @@ void main() {
       });
     }
 
-    _widgets('Uykuya geç: tek oturum, önce lider (Velour olan), sonra diğeri', (tester) async {
+    _widgets('Uykuya geç: önce lider (Velour olan), sonra liderin planıyla diğeri', (tester) async {
       FakeAgent.sleep.configured();
       await _home(tester, h: 812);
       await tester.tap(find.bySemanticsLabel(_tr.gmStart));
@@ -174,7 +174,8 @@ void main() {
       final session = (starts.first.$3 as Map)['session'] as Map;
       expect(session['leader'], 'theloth');
       expect((session['members'] as List).first, {'host': 'theloth', 'side': 'left', 'distance': 'mid'});
-      expect((starts.last.$3 as Map)['session'], session);
+      expect(session.containsKey('plan'), isFalse);
+      expect((starts.last.$3 as Map)['session'], FakeAgent.sleep.hosts['argo']!.session, reason: 'liderin oturumu, plan dahil');
       expect(FakeAgent.sleep.hosts['argo']!.session!['id'], FakeAgent.sleep.hosts['atlas']!.session!['id']);
       expect(find.byType(ScreenSheet), findsNothing);
       expect(find.text(_tr.smModeSleep), findsOneWidget, reason: 'kart uykuya döndü');
@@ -234,7 +235,7 @@ void main() {
       await golden('png/sleep_screen_ringing_dark_tr.png');
       await tester.tap(find.text(_tr.slSnoozeFor(9)));
       await _load(tester);
-      expect(_calls('POST', '/v1/sleep/alarm').map((c) => (c.$3 as Map)['action']), ['snooze', 'snooze']);
+      expect(_calls('POST', '/v1/sleep/alarm').map((c) => (c.$3 as Map)['action']), ['snooze']);
     });
 
     _widgets('kısmi hata: hangi host başlamadı; yeniden dene / tek makineyle sür (açık, TR)', (tester) async {
@@ -257,22 +258,22 @@ void main() {
       expect(find.text(_tr.slStartFailedSome), findsNothing);
     });
 
-    _widgets('hiçbiri başlamazsa "tek makineyle sür" lideri tek başına başlatır', (tester) async {
+    _widgets('lider başlamazsa üye beklenir; "tek makineyle sür" bekleyen üyeyi tek başına başlatır', (tester) async {
       FakeAgent.sleep.configured();
       FakeAgent.sleep.hosts['argo']!.startError = const AgentError('agent.sleep.noGroup', {}, 409);
-      FakeAgent.sleep.hosts['atlas']!.startError = const AgentError('agent.sleep.noGroup', {}, 409);
       await _open(tester, h: 1100);
       await tester.tap(find.text(_tr.slStart));
       await _load(tester);
       expect(find.text(_tr.slStartFailedAll), findsOneWidget);
-      expect(find.textContaining(_tr.slErrNoGroup), findsNWidgets(2));
-      FakeAgent.sleep.hosts['argo']!.startError = null;
+      expect(find.textContaining(_tr.slErrNoGroup), findsOneWidget);
+      expect(find.textContaining(_tr.slErrLeaderNotStarted('argo (PC)')), findsOneWidget);
+      expect(_calls('POST', '/v1/sleep/start'), hasLength(1), reason: 'üye lidersiz başlatılmaz');
       FakeAgent.calls.clear();
       await tester.tap(find.text(_tr.slStartAlone));
       await _load(tester);
       final s = _calls('POST', '/v1/sleep/start').single;
-      expect((((s.$3 as Map)['session'] as Map)['members'] as List).single, {'host': 'theloth', 'side': 'left', 'distance': 'mid'});
-      expect(FakeAgent.sleep.hosts['argo']!.running, isTrue);
+      expect((((s.$3 as Map)['session'] as Map)['members'] as List).single, {'host': 'laptop', 'side': 'right', 'distance': 'mid'});
+      expect(FakeAgent.sleep.hosts['atlas']!.running, isTrue);
     });
 
     _widgets('grup ayarı iki makineye, makine ayarı yalnız ona; parlaklık canlı önizlenir', (tester) async {
@@ -329,6 +330,25 @@ void main() {
       expect(FakeAgent.sleep.hosts.values.map((h) => h.settings['alarm']['sound']), ['chime', 'chime']);
       expect(find.text(_tr.slNeedsUpdate), findsOneWidget, reason: 'Bildirimler bloğu yok');
     });
+
+    for (final (theme, dark, lang) in [('light', false, 'tr'), ('dark', true, 'en')]) {
+      _widgets('başka saat dilimindeki lider: alarm telefonun saatiyle, ayarda liderin saati + telefondaki $theme $lang', (tester) async {
+        FakeAgent.sleep.configured();
+        // The leader's 07:30 is 16:30 on the phone (9 h behind).
+        FakeAgent.sleep.hosts['argo']!.alarmNext = DateTime(2026, 11, 23, 16, 30).millisecondsSinceEpoch;
+        await _open(tester, dark: dark, lang: lang, h: 1700);
+        final l = _l(lang);
+        expect(find.text('${l.slAlarmAt('16:30')} · ${l.slMachines(2)}'), findsOneWidget, reason: 'kahraman telefonun saatiyle');
+        await tester.scrollUntilVisible(find.text(l.slAlarmDays), 300);
+        await tester.drag(find.byType(Scrollable).first, const Offset(0, 400));
+        await settle(tester);
+        expect(find.text('16:30 · ${l.slDaysWeekdays}'), findsOneWidget);
+        expect(find.text('07:30'), findsOneWidget, reason: 'düzenlenen saat liderin');
+        expect(find.text(l.slAlarmLeaderClock('argo (PC)', '16:30')), findsOneWidget);
+        expect(tester.takeException(), isNull);
+        await golden('png/sleep_alarm_zone_${theme}_$lang.png');
+      });
+    }
 
     for (final (theme, dark, lang) in [('light', false, 'tr'), ('dark', true, 'en')]) {
       _widgets('sabah özeti kartı $theme $lang', (tester) async {
@@ -414,12 +434,13 @@ void main() {
       });
     }
 
-    _widgets('Kapat: iki makine, yedek iptal, ekran kapanır', (tester) async {
+    _widgets('Kapat: lidere bir kez (grup iletir), yedek iptal, ekran kapanır', (tester) async {
       FakeAgent.sleep.sleeping(ringing: true);
       final h = await _open(tester, h: 812, route: '/screen/sleep/alarm');
       await tester.tap(find.text(_tr.slDismiss));
       await _load(tester);
-      expect(_calls('POST', '/v1/sleep/alarm'), hasLength(2));
+      expect(_calls('POST', '/v1/sleep/alarm'), hasLength(1));
+      expect(FakeAgent.sleep.hosts['atlas']!.phase, 'morning');
       expect(h.sleepAlarms.backups.last, isNull);
       expect(find.byType(SleepAlarmScreen), findsNothing);
     });
@@ -437,7 +458,7 @@ void main() {
       expect(find.byType(LockScreen), findsNothing);
       await tester.tap(find.text(_tr.slSnoozeFor(9)));
       await _load(tester);
-      expect(_calls('POST', '/v1/sleep/alarm'), hasLength(2));
+      expect(_calls('POST', '/v1/sleep/alarm'), hasLength(1));
       expect(find.byType(LockScreen), findsOneWidget, reason: 'sonra uygulama kilitli kalır');
     });
   });

@@ -13535,7 +13535,22 @@ class AppLocalizationsTr extends AppLocalizations {
   String get slErrNotRunning => 'Uyku modu açık değil.';
 
   @override
-  String get slErrNotRinging => 'Alarm çalmıyor.';
+  String get slErrNotRinging => 'Alarm şu an çalmıyor.';
+
+  @override
+  String slErrLeaderNotStarted(String leader) {
+    return 'Lider ($leader) başlamadı; onu bekliyor.';
+  }
+
+  @override
+  String slAlarmLeaderClock(String leader, String time) {
+    return '$leader saatiyle · telefonda $time';
+  }
+
+  @override
+  String slAlarmBodyAgain(int count) {
+    return '$count. kez çalıyor. Ertele ya da kapat.';
+  }
 
   @override
   String get slEventStarted => 'Uyku modu başladı';

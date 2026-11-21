@@ -1,6 +1,8 @@
-// Fake sleep mode routes (PLAN.md §21 contract + the S2 additions): every display host (argo, atlas) answers
-// GET/PUT /v1/sleep, POST /v1/sleep/{start,stop,alarm,preview} and GET /v1/sleep/summary on its own state. Hosts in
-// [FakeSleepState.unsupported] are agents older than §21 (404). Sample data is synthetic; nothing leaves the test.
+// Fake sleep mode routes (PLAN.md §21 contract + the S2/S4 additions): every display host (argo, atlas) answers
+// GET/PUT /v1/sleep, POST /v1/sleep/{start,stop,alarm,preview} and GET /v1/sleep/summary on its own state. A leader
+// started without a plan answers with one (S4); an alarm action on any member reaches every running member of the
+// session (the agents' group link). Hosts in [FakeSleepState.unsupported] are agents older than §21 (404). Sample data
+// is synthetic; nothing leaves the test.
 import 'package:tiphys/core/agent/agent_client.dart';
 import 'package:tiphys/features/screen/sleep/sleep_sync.dart';
 
@@ -51,6 +53,8 @@ class FakeSleepHost {
   int phaseLeftMs = 18 * 60000;
   bool ringing = false;
   int? snoozedUntil;
+
+  /// `alarm.next` (also while off: the settings' next ring).
   int? alarmNext;
   String? warning;
 
@@ -128,7 +132,7 @@ class FakeSleepState {
       'phase': h.running ? h.phase : null,
       'phaseStartedAt': h.running ? _now - 60000 : null,
       'phaseEndsAt': h.running && !open ? _now + h.phaseLeftMs : null,
-      'alarm': {'next': h.running ? h.alarmNext : null, 'ringing': h.ringing, 'snoozedUntil': h.snoozedUntil},
+      'alarm': {'next': h.alarmNext, 'ringing': h.ringing, 'snoozedUntil': h.snoozedUntil},
       'members': h.running
           ? [
               for (final m in (h.session!['members'] as List))
@@ -169,6 +173,8 @@ class FakeSleepState {
           h.running = true;
           h.phase = 'settle';
           h.session = s == null ? null : Map<String, dynamic>.from(s);
+          // S4: the leader makes the group's plan (a member without one would make its own).
+          if (h.session != null && h.session!['plan'] == null && h.session!['leader'] == h.name) h.session!['plan'] = fakePlan(h.session!['t0'] as int, h.alarmNext);
         }
         return status(hostId);
       case '/v1/sleep/stop':
@@ -177,14 +183,19 @@ class FakeSleepState {
         h.session = null;
         return status(hostId);
       case '/v1/sleep/alarm':
-        if (!h.running) throw const AgentError('agent.sleep.notRunning', {}, 409);
+        if (!h.running) throw const AgentError('agent.screen.notRunning', {}, 409);
         final a = (body as Map)['action'];
-        h.ringing = false;
-        if (a == 'snooze') {
-          h.phase = 'snoozed';
-          h.snoozedUntil = _now + 9 * 60000;
-        } else {
-          h.phase = 'morning';
+        final ok = a == 'snooze' ? h.ringing : const ['sunrise', 'ring', 'snoozed'].contains(h.phase);
+        if (!ok) throw AgentError('agent.sleep.notRinging', {'phase': h.phase}, 409);
+        for (final x in hosts.values.where((x) => x.running && x.session?['id'] == h.session?['id'])) {
+          x.ringing = false;
+          if (a == 'snooze') {
+            x.phase = 'snoozed';
+            x.snoozedUntil = _now + 9 * 60000;
+          } else {
+            x.phase = 'morning';
+            x.snoozedUntil = null;
+          }
         }
         return status(hostId);
       case '/v1/sleep/preview':
@@ -201,6 +212,24 @@ class FakeSleepState {
     throw const AgentError('agent.route.notFound', {}, 404);
   }
 }
+
+/// The plan a leader makes (S4 shape; the lengths of the defaults).
+Map<String, dynamic> fakePlan(int t0, int? ringAt) => {
+  't0': t0,
+  'settleMs': 3 * 60000,
+  'fadeMs': 30 * 60000,
+  'soundFadeMs': 45 * 60000,
+  'nightSound': 'hum',
+  'sunriseAt': ringAt == null ? null : ringAt - 25 * 60000,
+  'ringAt': ringAt,
+  'rampMs': 3 * 60000,
+  'alarmSound': 'birds',
+  'snoozeMs': 9 * 60000,
+  'autoStopMs': 20 * 60000,
+  'morningMs': 0,
+  'snoozes': <int>[],
+  'dismissedAt': null,
+};
 
 /// Records what the app asked of the phone's alarm surface.
 class FakeSleepAlarms implements SleepAlarms {

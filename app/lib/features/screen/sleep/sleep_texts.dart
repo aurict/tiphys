@@ -24,7 +24,11 @@ String sleepPartialText(AppLocalizations l, SleepGroup? g, SleepPartialError e) 
     [for (final x in e.failed.entries) '${g?.byHost(x.key)?.host.name ?? x.key}: ${agentErrorText(l, x.value)}'].join('\n');
 
 /// Any error of a sleep action.
-String sleepActionError(AppLocalizations l, SleepGroup? g, Object e) => e is SleepPartialError ? sleepPartialText(l, g, e) : agentErrorText(l, e);
+String sleepActionError(AppLocalizations l, SleepGroup? g, Object e) => switch (e) {
+  SleepPartialError() => sleepPartialText(l, g, e),
+  SleepLeaderNotStarted() => l.slErrLeaderNotStarted(g?.leader?.host.name ?? '–'),
+  _ => agentErrorText(l, e),
+};
 
 String sleepPhaseName(AppLocalizations l, String? phase) => switch (phase) {
   'settle' => l.slPhaseSettle,
@@ -82,11 +86,11 @@ String sleepDaysText(AppLocalizations l, Object days) => switch (days) {
   _ => l.slDaysOnce,
 };
 
-/// The card's and hero's line: "alarm 07:30 · 2 makine" (no alarm: "alarm yok").
+/// The card's and hero's line: "alarm 07:30 · 2 makine" (no alarm: "alarm yok"); the time on the phone's clock.
 String sleepAlarmLine(AppLocalizations l, SleepGroup g) {
   final s = g.settings;
   final n = g.running ? g.runningMachines.length : g.members.length;
-  return [s.hasAlarm && s.alarmEnabled ? l.slAlarmAt(s.alarmTime) : l.slNoAlarm, l.slMachines(n)].join(' · ');
+  return [s.hasAlarm && s.alarmEnabled ? l.slAlarmAt(g.alarmHmLocal) : l.slNoAlarm, l.slMachines(n)].join(' · ');
 }
 
 /// `sleep.*` events and pushes for the event list (no content: the agent logs only that it happened).

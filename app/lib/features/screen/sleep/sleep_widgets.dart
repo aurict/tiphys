@@ -143,9 +143,10 @@ class _SleepSliderRowState extends State<SleepSliderRow> {
 
 /// A row with a time (HH:MM) that opens the time picker.
 class SleepTimeRow extends StatelessWidget {
-  const SleepTimeRow({super.key, required this.title, required this.value, required this.onChanged, this.icon, this.iconBackground, this.enabled = true});
+  const SleepTimeRow({super.key, required this.title, required this.value, required this.onChanged, this.subtitle, this.icon, this.iconBackground, this.enabled = true});
   final String title;
   final String value;
+  final String? subtitle;
   final ValueChanged<String> onChanged;
   final IconData? icon;
   final Color? iconBackground;
@@ -169,11 +170,12 @@ class SleepTimeRow extends StatelessWidget {
     final t = context.tokens;
     return Semantics(
       button: true,
-      label: title,
+      label: subtitle == null ? title : '$title, $subtitle',
       value: value,
       child: ExcludeSemantics(
         child: GroupedRow(
           title: title,
+          subtitle: subtitle,
           icon: icon,
           iconBackground: iconBackground,
           showChevron: false,
