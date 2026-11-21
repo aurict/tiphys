@@ -22,6 +22,17 @@ body { cursor: none; font-family: var(--font); }
 .sleep[data-phase="ring"] .sl-msg, .sleep[data-phase="sunrise"] .sl-msg { color: #5A2408; }
 @keyframes sl-in { from { opacity: 0; } to { opacity: 1; } }
 
+/* Snoozed: one quiet line low on the bright screen (dark brown on the warm light: AA). */
+.sl-snooze {
+  position: absolute; left: 50%; bottom: 14%; transform: translateX(-50%);
+  padding: 10px 22px; border-radius: 999px; background: rgba(255, 236, 210, 0.55);
+  color: #3A1C08; font-size: clamp(18px, 1.6vw, 26px); font-weight: 600; pointer-events: none;
+  animation: sl-in 600ms ease-out;
+}
+.sl-snooze[hidden] { display: none; }
+.sleep[data-phase="snoozed"] .sl-hint { color: #4A1A04; }
+.sleep[data-phase="snoozed"] .sl-msg { color: #5A2408; }
+
 /* Morning: warm light background, big clock + date, the short summary. Dark brown text on warm cream: AA. */
 .sl-morning {
   position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center;
@@ -38,4 +49,4 @@ body { cursor: none; font-family: var(--font); }
 .sl-m-sum b { font-weight: 600; text-align: right; }
 .sl-m-note { margin-top: 14px; font-size: 14px; color: #8A5A36; }
 
-@media (prefers-reduced-motion: reduce) { .sl-hint, .sl-morning { animation: none; } }
+@media (prefers-reduced-motion: reduce) { .sl-hint, .sl-morning, .sl-snooze { animation: none; } }

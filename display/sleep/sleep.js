@@ -1,23 +1,28 @@
-// Sleep mode view (PLAN.md §21 E, S1 draft). Shaped like a kiosk card (cards/*.js) so S2/S3 can mount it from the
-// mode shell: mount(el, ctx, opts) → {update, pause, resume, destroy}.
+// Sleep mode view (PLAN.md §21 E; S1 draft, S4 alarm). Shaped like a kiosk card (cards/*.js); the mode shell's card
+// (cards/sleep.js) mounts it: mount(el, ctx, opts) → {update, setPlan(plan), setAlarm(gain), pause, resume, destroy}.
 //   opts: {session {seed, t0, members}, plan (timeline.js), me (member id), now() (shared clock, ms),
-//          brightness 0..1, audio (bool), volume 0..100, layers, onStop(), onAlarm(action), trace(line) (test only:
-//          ['v', id, eventT, wall] for the first frame that draws a crackle, and audio.js's ['a', …] lines)}
+//          brightness 0..1, audio (bool), volume 0..100, layers, alarmGain 0..1, onStop(), onAlarm(action),
+//          trace(line) (test only: ['v', id, eventT, wall] for the first frame that draws a crackle, and audio.js's
+//          ['a', …] lines)}
+// The phases come from the plan alone (the agent's plan, with its snoozes and dismiss): sunrise light rising, ring
+// (light at its peak, breathing; bird chirps each with a light mote), snoozed (bright and quiet, "Ertelendi · yeniden HH:MM"),
+// morning (warm screen, clock and date; the morning summary is S5's: a placeholder line).
 // Frames (its own loop, like the Game scenes: one timer then one rAF, nothing pending between frames): settle 30 fps →
 // fade 20 fps at 1/3 resolution; night 1/6 resolution at 5 fps while a flare glows, 2 fps when nothing happens;
 // sunrise 10 fps, ring 15; morning: no canvas at all (a DOM clock once a minute). A frame is also placed on the next
 // event's time, so a crackle's pop is drawn with its sound, not up to a frame interval later. Timers are measured from
 // the frame's start (performance.now()), not from the rAF timestamp: that one is the vsync that may be most of a frame
 // earlier, and sched.js's breath measured from it ran this loop at ~41 fps instead of 30 (measured headless).
-// Keys (cursor hidden): any key/mouse → a dim clock and "Uyku modu açık · Esc basılı tut: kapat" for 5 s; in ring:
-// Space = ertele, Esc held 1 s = kapat → morning; at other times Esc held 1 s = stop (the agent will do it; here UI).
+// Keys (cursor hidden; the agent focuses the kiosk window when the page connects): any key/mouse → a dim clock and
+// "Uyku modu açık · Esc basılı tut: kapat" for 5 s; in ring: Space = snooze; in ring or snoozed: Esc held 1 s =
+// dismiss (the agent answers with the new plan: morning, or the mode ends); at other times Esc held 1 s = stop.
 import { everyMinute } from '../sched.js';
 import { createTimeline } from './timeline.js';
 import { createEmbers } from './embers.js';
 import { createAudio } from './audio.js';
 
-const FPS = { settle: 30, fade: 20, night: 5, sunrise: 10, ring: 15 };
-const SCALE = { settle: 1 / 3, fade: 1 / 3, night: 1 / 6, sunrise: 1 / 3, ring: 1 / 3 };
+const FPS = { settle: 30, fade: 20, night: 5, sunrise: 10, ring: 15, snoozed: 10 };
+const SCALE = { settle: 1 / 3, fade: 1 / 3, night: 1 / 6, sunrise: 1 / 3, ring: 1 / 3, snoozed: 1 / 3 };
 const NIGHT_IDLE_MS = 500;
 const HINT_MS = 5000, HOLD_MS = 1000;
 
@@ -36,29 +41,26 @@ export function mount(el, ctx, opts) {
       <div class="sl-clock"></div>
       <div class="sl-msg"></div>
     </div>
+    <div class="sl-snooze" role="status" aria-live="polite" hidden></div>
     <section class="sl-morning" hidden aria-label="Sabah">
       <div class="sl-m-date"></div>
       <div class="sl-m-clock" role="timer"></div>
       <ul class="sl-m-sum" aria-label="Sabah özeti">
         <li><span>Uyku</span><b class="sl-m-dur"></b></li>
-        <li><span>Gece biten işler</span><b>2 iş · ikisi başarılı</b></li>
-        <li><span>Yedekler</span><b>Başarılı</b></li>
-        <li><span>Bekletilen bildirimler</span><b>3</b></li>
       </ul>
-      <p class="sl-m-note">Taslak: özet örnek verilerle.</p>
+      <p class="sl-m-note">Gecenin özeti telefonunda.</p>
     </section>`;
   el.append(root);
   const $ = (s) => root.querySelector(s);
   const canvas = $('.sl-embers'), hint = $('.sl-hint'), hintClock = $('.sl-clock'), hintMsg = $('.sl-msg');
-  const morning = $('.sl-morning');
+  const morning = $('.sl-morning'), snoozeLine = $('.sl-snooze');
 
   const embers = createEmbers(canvas, tl);
   embers.setBrightness(opts.brightness ?? 1);
-  const audio = opts.audio === false ? null : createAudio(tl, { now, offsetMs: opts.offsetMs, volume: opts.volume ?? 35, layers: opts.layers, trace: opts.trace });
+  const audio = opts.audio === false ? null : createAudio(tl, { now, offsetMs: opts.offsetMs, volume: opts.volume ?? 35, layers: opts.layers, trace: opts.trace, alarmGain: opts.alarmGain ?? 1 });
   audio?.start();
 
   let phase = null, morningOn = false, minute = null, paused = false;
-  let snoozed = false;
   const stats = { frames: 0, phase: null };
   let lastT = null; // trace: the shared time up to which crackles were reported
 
@@ -93,10 +95,17 @@ export function mount(el, ctx, opts) {
     else arm(gap - spent);
   }
   function enterPhase(p) {
+    const was = phase;
     phase = p; stats.phase = p;
     root.dataset.phase = p;
+    if (p === 'morning') return showMorning();
     embers.setScale(SCALE[p] ?? 1 / 3);
     audio?.tick();
+    // Snoozed: one quiet line until it rings again.
+    const sp = tl.phase(now());
+    snoozeLine.hidden = p !== 'snoozed';
+    if (p === 'snoozed') snoozeLine.textContent = `Ertelendi · yeniden ${clock(new Date(sp.end - (opts.offsetMs?.() ?? 0)))}`;
+    if (p === 'ring' && was !== null && was !== 'ring') showHint();
   }
 
   // ---- interaction
@@ -104,8 +113,8 @@ export function mount(el, ctx, opts) {
   function showHint(msg) {
     hintClock.textContent = clock(new Date(now()));
     hintMsg.textContent = msg ?? (phase === 'ring'
-      ? (snoozed ? 'Ertelendi · 9 dk sonra yeniden' : 'Günaydın · Boşluk: ertele · Esc basılı tut: kapat')
-      : 'Uyku modu açık · Esc basılı tut: kapat');
+      ? 'Günaydın · Boşluk: ertele · Esc basılı tut: kapat'
+      : phase === 'snoozed' ? 'Esc basılı tut: alarmı kapat' : 'Uyku modu açık · Esc basılı tut: kapat');
     hint.hidden = false;
     clearTimeout(hintTimer);
     hintTimer = setTimeout(() => { hint.hidden = true; }, HINT_MS);
@@ -114,7 +123,7 @@ export function mount(el, ctx, opts) {
     morningOn = true;
     stop();
     audio?.destroy();
-    canvas.hidden = true; hint.hidden = true;
+    canvas.hidden = true; hint.hidden = true; snoozeLine.hidden = true;
     morning.hidden = false;
     root.dataset.phase = 'morning';
     const slept = Math.max(0, now() - plan.t0) / 60000;
@@ -124,18 +133,20 @@ export function mount(el, ctx, opts) {
   function onKey(e) {
     if (morningOn) return;
     audio?.unlock();
+    const alarming = phase === 'ring' || phase === 'snoozed';
     if (e.key === 'Escape') {
       e.preventDefault();
       if (e.repeat || holdTimer) return;
-      showHint(phase === 'ring' ? 'Alarmı kapatmak için basılı tut…' : 'Kapatmak için basılı tut…');
+      showHint(alarming ? 'Alarmı kapatmak için basılı tut…' : 'Kapatmak için basılı tut…');
       holdTimer = setTimeout(() => {
         holdTimer = 0;
-        if (phase === 'ring') { opts.onAlarm?.('dismiss'); showMorning(); }
+        // The agent answers with the new plan (morning) or ends the mode.
+        if (alarming) { showHint('Alarm kapatıldı'); opts.onAlarm?.('dismiss'); }
         else { showHint('Uyku modu kapatılıyor…'); opts.onStop?.(); }
       }, HOLD_MS);
       return;
     }
-    if (e.key === ' ' && phase === 'ring') { e.preventDefault(); snoozed = true; opts.onAlarm?.('snooze'); showHint(); return; }
+    if (e.key === ' ' && phase === 'ring') { e.preventDefault(); if (!e.repeat) opts.onAlarm?.('snooze'); return; }
     showHint();
   }
   function onKeyUp(e) { if (e.key === 'Escape' && holdTimer) { clearTimeout(holdTimer); holdTimer = 0; showHint(); } }
@@ -150,8 +161,16 @@ export function mount(el, ctx, opts) {
 
   return {
     stats, timeline: tl, audio,
-    /** Agent messages (S2): a phase or plan change. The draft has none. */
-    update() {},
+    /** Agent `phase` messages: the plan already says it; a frame now picks it up. */
+    update() { if (!paused && !morningOn && !raf) { stop(); raf = requestAnimationFrame(frame); } },
+    /** A new plan (snooze, dismiss, the leader's): events and levels from now on follow it. */
+    setPlan(next) {
+      tl.setPlan(next, now());
+      audio?.replan();
+      phase = null; // re-enter (the snooze line, the morning)
+      if (!paused && !morningOn) { stop(); raf = requestAnimationFrame(frame); }
+    },
+    setAlarm(gain) { audio?.setAlarmGain(gain); },
     pause() { if (paused) return; paused = true; stop(); audio?.pause(); minute?.pause(); },
     resume() { if (!paused) return; paused = false; if (!morningOn) raf = requestAnimationFrame(frame); audio?.resume(); minute?.resume(); },
     destroy() {

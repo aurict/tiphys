@@ -116,6 +116,8 @@ export function setupEscHold(el, onStop) {
     raf = requestAnimationFrame(step);
   };
   addEventListener('keydown', (e) => {
+    // The sleep view handles Esc itself (while the alarm rings Esc held = dismiss, not stop; PLAN.md §21 S4).
+    if (document.body.classList.contains('sleep-view')) return;
     if (e.key !== 'Escape' || e.repeat || start || done) return;
     e.preventDefault();
     start = performance.now();

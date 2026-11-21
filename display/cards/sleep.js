@@ -9,8 +9,9 @@
 // host's Date.now() + `offsetMs` (the leader's clock, measured by the agent; 0 unless it's off by more than 20 ms). A
 // new offset changes the clock in place (no rebuild: the sound keeps playing). Test only (`syncLog` in the message,
 // TIPHYS_SLEEP_SYNCLOG on the agent): the scheduled and drawn crackles go back as `syncLog` lines.
-// TODO(S4): the view taking `phase` messages for snooze / dismiss; a brightness setter on the view instead of the
-// layer opacity.
+// Alarm (S4): a snooze or dismiss changes the plan (`sleep` again): the view takes the new plan in place (no rebuild,
+// the sound goes on); `alarm.gain` is this machine's share of the birds/chime (0 while Velour plays on the leader).
+// The view's keys go to the agent as `{type:"alarm", action:"snooze"|"dismiss"}`.
 // mount(el, ctx) → { update(msg), pause(), resume(), destroy() }.
 const HEARTBEAT_MS = 10_000;
 const PHASE_TR = { settle: 'Yerleşme', fade: 'Sönüş', night: 'Gece', sunrise: 'Gün doğumu', ring: 'Alarm', snoozed: 'Ertelendi', morning: 'Sabah' };
@@ -56,9 +57,15 @@ export function mount(el, ctx) {
     placeholder.textContent = `Uyku · ${PHASE_TR[msg.phase] ?? msg.phase} · parlaklık %${Math.round(content * 100)}`;
   }
 
+  let built = null;      // the plan the view has
   async function build() {
-    const k = JSON.stringify([msg.session, msg.plan, msg.me, msg.settings, msg.syncLog === true]);
-    if (k === key) return;
+    // The plan is not part of the key: a changed plan (snooze, dismiss) goes into the running view.
+    const k = JSON.stringify([msg.session, msg.plan.t0, msg.me, msg.settings, msg.syncLog === true]);
+    if (k === key) {
+      if (view && JSON.stringify(msg.plan) !== built) { built = JSON.stringify(msg.plan); view.setPlan(msg.plan); }
+      view?.setAlarm(msg.alarm?.gain ?? 1);
+      return;
+    }
     key = k;
     const mod = await loadView();
     if (destroyed || k !== key) return;
@@ -77,6 +84,7 @@ export function mount(el, ctx) {
     }
     document.body.classList.add('sleep-view');
     placeholder.hidden = true;
+    built = JSON.stringify(msg.plan);
     view = mod.mount(layer, ctx, {
       session: { seed: msg.session.seed, t0: msg.session.t0, members: msg.session.layout },
       plan: msg.plan,
@@ -87,8 +95,9 @@ export function mount(el, ctx) {
       audio: true,
       volume: msg.settings?.volume ?? 35,
       layers: msg.settings?.layers ?? {},
+      alarmGain: msg.alarm?.gain ?? 1,
       onStop: () => send({ type: 'stop' }),
-      onAlarm: () => {}, // S4
+      onAlarm: (action) => send({ type: 'alarm', action }),
       trace: msg.syncLog === true ? (line) => { if (trace.length < 2000) trace.push(line); } : null,
     });
     if (paused) view.pause();

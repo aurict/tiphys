@@ -15,8 +15,12 @@
 //    screen. A spark keeps its own path in scene space, so it leaves one screen's edge and enters the next one's at
 //    the shared time; each screen draws only what falls inside its span.
 //
-// Plan (phases; built by the agent in S2, here by the demo): {t0, settleMs, fadeMs, soundFadeMs, nightSound,
-//   sunriseAt|null, ringAt|null, rampMs, alarmSound: "birds"|"chime"}; times are shared-clock epoch ms.
+// Plan (phases; built by the agent, agent/src/screen/sleep.ts planOf; here also by the demo): {t0, settleMs, fadeMs,
+//   soundFadeMs, nightSound, sunriseAt|null, ringAt|null, rampMs, alarmSound: "birds"|"chime"|"velour", snoozeMs,
+//   autoStopMs, morningMs, snoozes: [ms], dismissedAt|null}; times are shared-clock epoch ms. S4: after the ring,
+//   each snooze is a quiet bright pause of snoozeMs, then it rings again (its ramp from that ring's start); a ring goes
+//   quiet by itself autoStopMs after its start; a dismiss ends it (morning for morningMs if set). A velour alarm draws
+//   the birds' motes (the song plays on the leader; the page's gain says how loud the birds are here).
 
 export const SLOT_MS = 125;
 export const GAP = 0.4;
@@ -89,19 +93,41 @@ export function spatial(layout, id, x) {
 }
 
 // ---- phases and levels
-export const PHASES = ['settle', 'fade', 'night', 'sunrise', 'ring'];
+export const PHASES = ['settle', 'fade', 'night', 'sunrise', 'ring', 'snoozed', 'morning'];
 
-/** Phase boundaries of a plan: [{phase, start, end}] (end Infinity for the last). */
+/**
+ * Phase boundaries of a plan: [{phase, start, end}] (end Infinity when open-ended). The same function as the agent's
+ * (agent/src/screen/sleep.ts phasesOf): everything before the ring is cut at ringAt, each snooze turns the ring into
+ * `snoozed` for snoozeMs, a dismiss ends the list (+ morning).
+ */
 export function phasesOf(plan) {
-  const out = [];
   const settleEnd = plan.t0 + plan.settleMs, fadeEnd = settleEnd + plan.fadeMs;
-  out.push({ phase: 'settle', start: plan.t0, end: settleEnd });
-  out.push({ phase: 'fade', start: settleEnd, end: fadeEnd });
-  if (plan.ringAt == null) { out.push({ phase: 'night', start: fadeEnd, end: Infinity }); return out; }
-  const sunStart = Math.max(fadeEnd, plan.sunriseAt ?? plan.ringAt);
-  out.push({ phase: 'night', start: fadeEnd, end: sunStart });
-  out.push({ phase: 'sunrise', start: sunStart, end: plan.ringAt });
-  out.push({ phase: 'ring', start: plan.ringAt, end: Infinity });
+  let out;
+  if (plan.ringAt == null) {
+    out = [{ phase: 'settle', start: plan.t0, end: settleEnd }, { phase: 'fade', start: settleEnd, end: fadeEnd }, { phase: 'night', start: fadeEnd, end: Infinity }];
+  } else {
+    const R = Math.max(plan.ringAt, plan.t0);
+    const cut = (x) => Math.min(x, R);
+    const sun = Math.min(R, Math.max(fadeEnd, plan.sunriseAt ?? R));
+    out = [
+      { phase: 'settle', start: plan.t0, end: cut(settleEnd) },
+      { phase: 'fade', start: cut(settleEnd), end: cut(fadeEnd) },
+      { phase: 'night', start: cut(fadeEnd), end: sun },
+      { phase: 'sunrise', start: sun, end: R },
+    ];
+    let cur = R;
+    for (const s of plan.snoozes ?? []) {
+      if (s < cur) continue;
+      out.push({ phase: 'ring', start: cur, end: s }, { phase: 'snoozed', start: s, end: s + (plan.snoozeMs ?? 0) });
+      cur = s + (plan.snoozeMs ?? 0);
+    }
+    out.push({ phase: 'ring', start: cur, end: Infinity });
+    const D = plan.dismissedAt;
+    if (D != null) {
+      out = out.filter((p) => p.start < D).map((p) => (p.end > D ? { ...p, end: D } : p));
+      if (plan.morningMs > 0) out.push({ phase: 'morning', start: D, end: D + plan.morningMs });
+    }
+  }
   return out.filter((p) => p.end > p.start);
 }
 
@@ -112,7 +138,8 @@ export function phaseAt(plan, t) {
   for (const p of list) {
     if (t < p.end) return { ...p, k: p.end === Infinity ? 0 : (t - p.start) / (p.end - p.start) };
   }
-  return { ...list[list.length - 1], k: 0 };
+  // After a dismiss (the run ends there or after the morning): the last span, finished.
+  return { ...list[list.length - 1], k: 1 };
 }
 
 const NIGHT_FIRE = 0.14;   // the bed's heat at night (a few clusters only)
@@ -134,10 +161,12 @@ export function levelsAt(plan, t) {
   const nightSound = plan.nightSound === 'off' ? 0 : NIGHT_HUM;
   const fireSound = t < sStart ? 1 : lerp(1, nightSound, easeOut(sk));
   if (p.phase === 'settle' || p.phase === 'fade') {
-    const f = p.phase === 'settle' ? 0 : 1 - (1 - p.k) * (1 - p.k); // ease-out, gentler than the sound
+    // Progress over the planned fade (an early alarm cuts the span, never changes its curve: the past stays as it was).
+    const fk = p.phase === 'settle' ? 0 : clamp01((t - sStart) / plan.fadeMs);
+    const f = 1 - (1 - fk) * (1 - fk); // ease-out, gentler than the sound
     L.fire = lerp(1, NIGHT_FIRE, f);
-    L.night = p.phase === 'settle' ? 0 : smooth(clamp01((p.k - 0.45) / 0.55));
-    L.shimmer = p.phase === 'settle' ? 1 : clamp01(1 - p.k * 2);
+    L.night = p.phase === 'settle' ? 0 : smooth(clamp01((fk - 0.45) / 0.55));
+    L.shimmer = p.phase === 'settle' ? 1 : clamp01(1 - fk * 2);
     L.sound = fireSound;
     const live = (L.fire - NIGHT_FIRE) / (1 - NIGHT_FIRE); // 1 → 0 over the fade
     L.crackle = 1.7 * live * live + 0.05 * live;
@@ -149,16 +178,23 @@ export function levelsAt(plan, t) {
     L.fire = NIGHT_FIRE; L.night = 1; L.sound = fireSound;
     L.flare = 0.03; // the clusters brighten now and then; no sparks, no crackles
   } else if (p.phase === 'sunrise') {
-    L.sun = easeIn(p.k) * 0.55 + p.k * 0.45; // starts gently, reaches 1 at the alarm
-    L.fire = lerp(NIGHT_FIRE, 1, smooth(clamp01(p.k * 1.6)));
-    L.night = 1 - smooth(clamp01(p.k * 2.5));
-    L.flare = 0.08 + 0.3 * p.k;
+    // Progress toward the alarm (a dismiss during sunrise cuts the span, not the curve).
+    const k = clamp01((t - p.start) / Math.max(1, Math.max(plan.ringAt, plan.t0) - p.start));
+    L.sun = easeIn(k) * 0.55 + k * 0.45; // starts gently, reaches 1 at the alarm
+    L.fire = lerp(NIGHT_FIRE, 1, smooth(clamp01(k * 1.6)));
+    L.night = 1 - smooth(clamp01(k * 2.5));
+    L.flare = 0.08 + 0.3 * k;
   } else if (p.phase === 'ring') {
     L.sun = 1; L.fire = 1; L.flare = 0.3;
-    const rk = clamp01((t - plan.ringAt) / plan.rampMs);
-    L.alarm = 0.08 + 0.92 * smooth(rk);
-    if (plan.alarmSound === 'chime') L.chime = 1 / 9;
-    else L.chirp = 0.25 + 2.2 * rk * rk;
+    // The ramp starts again with every ring (after a snooze); quiet after autoStopMs (the light stays).
+    if (t < p.start + (plan.autoStopMs ?? Infinity)) {
+      const rk = clamp01((t - p.start) / plan.rampMs);
+      L.alarm = 0.08 + 0.92 * smooth(rk);
+      if (plan.alarmSound === 'chime') L.chime = 1 / 9;
+      else L.chirp = 0.25 + 2.2 * rk * rk;
+    }
+  } else if (p.phase === 'snoozed' || p.phase === 'morning') {
+    L.sun = 1; L.fire = 0.8; L.flare = 0.1; // bright and quiet
   }
   return L;
 }
@@ -314,6 +350,15 @@ export function createTimeline(session, plan, me) {
     mine: layout.find((m) => m.id === me),
     levels: (t) => levelsAt(plan, t),
     phase: (t) => phaseAt(plan, t),
+    /**
+     * A new plan (a snooze, a dismiss, the leader's plan): events from `from` on are made again from it; earlier ones
+     * stay (they're the same in both plans).
+     */
+    setPlan(next, from) {
+      plan = next; this.plan = next;
+      const first = Math.floor((from - plan.t0) / WIN);
+      for (const i of [...cache.keys()]) if (i >= first) cache.delete(i);
+    },
     spatial: (x) => spatial(layout, me, x),
     coals: nightCoals(session.seed, layout),
     /** Events in [a, b) from the cache (sorted). */

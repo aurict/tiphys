@@ -15,7 +15,12 @@
 // time through getOutputTimestamp() (the context time leaving the speaker at a performance.now() instant; latency
 // included), else currentTime − outputLatency.
 //
-// createAudio(tl, {now, offsetMs, volume, layers, trace}) → {start(), tick(), unlock(), pause(), resume(), destroy(), state}
+// Alarm (S4): the plan's ring spans give the alarm bus its level (ramp from each ring's start, quiet after the
+// auto-stop); `alarmGain` scales the birds/chime on this machine (0 while Velour plays the song on the leader, 0.4 on
+// the other members of a Velour alarm). A plan change (snooze, dismiss) re-plans at once: the alarm bus follows the
+// new plan within 0.3 s, so chirps already scheduled past a snooze are not heard.
+// createAudio(tl, {now, offsetMs, volume, layers, trace, alarmGain}) → {start(), tick(), replan(), setAlarmGain(g),
+//   unlock(), pause(), resume(), destroy(), state}
 // trace (test only, S3 sync measurement): every crackle's planned onset is reported once it has played as
 // ['a', id, eventT, wall, outputLatencyMs]: `wall` = when it left the speaker on this host's Date.now() clock, from a
 // fresh getOutputTimestamp() (else currentTime + outputLatency), so a stale clock mapping shows up as an error.
@@ -173,7 +178,7 @@ function buildGraph(ac, { volume = 35, layers = {} }) {
     return { src, g };
   };
   const L = { hum: true, crackle: true, logs: true, wind: false, rain: false, ...layers };
-  const g = { ac, rate, master, fire, alarm, L, nodes: [], chimes: new Map() };
+  const g = { ac, rate, master, fire, alarm, L, nodes: [], chimes: new Map(), alarmGain: 1 };
   if (L.hum) {
     const lp = ac.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 170; lp.Q.value = 0.5;
     g.hum = loop(loopNoise('brown', rate, 8, 0x4a11), lp, 0.22);
@@ -245,13 +250,15 @@ function playEvent(g, tl, ev, c) {
   if (ev.kind === 'chirp') {
     const rate = g.rate;
     const b = g.buf(chirpSamples(ev, rate));
-    voice(g, b, c, EV_GAIN.chirp * ev.amp * Math.max(gain, 0.15), pan, g.alarm);
+    if (!(g.alarmGain > 0)) return false;
+    voice(g, b, c, EV_GAIN.chirp * ev.amp * Math.max(gain, 0.15) * g.alarmGain, pan, g.alarm);
     return true;
   }
   if (ev.kind === 'chime') {
+    if (!(g.alarmGain > 0)) return false;
     let b = g.chimes.get(ev.f0);
     if (!b) { b = g.buf(chimeSamples(ev.f0, g.rate)); g.chimes.set(ev.f0, b); }
-    voice(g, b, c, EV_GAIN.chime * ev.amp * Math.max(gain, 0.3), pan, g.alarm);
+    voice(g, b, c, EV_GAIN.chime * ev.amp * Math.max(gain, 0.3) * g.alarmGain, pan, g.alarm);
     return true;
   }
   return false;
@@ -265,8 +272,9 @@ function rampLevels(g, tl, T, c) {
   return L;
 }
 
-export function createAudio(tl, { now, offsetMs = () => 0, volume = 35, layers = {}, trace = null } = {}) {
+export function createAudio(tl, { now, offsetMs = () => 0, volume = 35, layers = {}, trace = null, alarmGain = 1 } = {}) {
   let ac = null, g = null, timer = 0, paused = false, suspended = false, blocked = false;
+  let gainNow = alarmGain;
   const done = new Set();
   let traced = []; // trace: [{id, t, c}] scheduled crackles not reported yet
 
@@ -340,13 +348,26 @@ export function createAudio(tl, { now, offsetMs = () => 0, volume = 35, layers =
       if (ac) return;
       ac = new AudioContext({ latencyHint: 'playback' });
       g = buildGraph(ac, { volume, layers });
+      g.alarmGain = gainNow;
       if (ac.state !== 'running') ac.resume().then(() => { blocked = false; tick(); }, () => { blocked = true; });
       blocked = ac.state !== 'running';
       tick();
     },
     unlock() { if (ac && ac.state !== 'running' && !suspended) ac.resume().then(() => { blocked = false; tick(); }); },
-    /** Re-plans at once (phase change / plan change): drops nothing already scheduled. */
+    /** Re-plans at once (phase change): drops nothing already scheduled. */
     tick,
+    /** The plan changed (tl.setPlan): the alarm bus jumps to the new level (a snooze silences what was scheduled). */
+    replan() {
+      if (ac && g && ac.state === 'running') {
+        const c = ac.currentTime, L = tl.levels(now());
+        g.alarm.gain.cancelScheduledValues(c); g.alarm.gain.setValueAtTime(g.alarm.gain.value, c); g.alarm.gain.linearRampToValueAtTime(L.alarm, c + 0.3);
+        g.fire.gain.cancelScheduledValues(c); g.fire.gain.setValueAtTime(g.fire.gain.value, c); g.fire.gain.linearRampToValueAtTime(L.sound, c + 0.3);
+      }
+      horizon = 0;
+      tick();
+    },
+    /** This machine's share of the birds/chime (0..1). */
+    setAlarmGain(v) { gainNow = Number.isFinite(v) ? Math.max(0, Math.min(1, v)) : 1; if (g) g.alarmGain = gainNow; },
     pause() { paused = true; clearTimeout(timer); if (ac?.state === 'running') ac.suspend(); },
     resume() { if (!paused) return; paused = false; horizon = 0; if (ac) ac.resume().then(tick); },
     destroy() { paused = true; clearTimeout(timer); ac?.close(); ac = null; },
@@ -357,9 +378,10 @@ export function createAudio(tl, { now, offsetMs = () => 0, volume = 35, layers =
  * Test hook: renders [from, from + seconds) of the timeline offline. Returns {buffer, events: [{id, kind, t, at}]}
  * where `at` is the planned onset in seconds from the start of the render.
  */
-export async function renderOffline(tl, { from, seconds = 30, sampleRate = 48000, volume = 100, layers = {} }) {
+export async function renderOffline(tl, { from, seconds = 30, sampleRate = 48000, volume = 100, layers = {}, alarmGain = 1 }) {
   const ac = new OfflineAudioContext(2, Math.round(seconds * sampleRate), sampleRate);
   const g = buildGraph(ac, { volume, layers });
+  g.alarmGain = alarmGain;
   const map = (t) => (t - from) / 1000;
   const L0 = tl.levels(from);
   g.fire.gain.setValueAtTime(L0.sound, 0); g.alarm.gain.setValueAtTime(L0.alarm, 0);
