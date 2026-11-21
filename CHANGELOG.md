@@ -9,6 +9,8 @@ extension is `0.1.0`.
 
 ## [Unreleased]
 
+## [0.6.0] - 2026-11-21
+
 ### Added
 
 **Screen modes: Work and Focus** (see [docs/features/screen-modes.md](docs/features/screen-modes.md))

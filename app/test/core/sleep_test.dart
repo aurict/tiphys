@@ -278,7 +278,7 @@ void main() {
 
     test('alarm çalmıyorken: 409 notRinging tek çağrıda, metin "şu an çalmıyor"; yedek yeniden kurulur', () async {
       FakeAgent.sleep.sleeping(phase: 'night');
-      final ring = DateTime.now().add(const Duration(hours: 6));
+      final ring = DateTime.fromMillisecondsSinceEpoch(DateTime.now().add(const Duration(hours: 6)).millisecondsSinceEpoch); // whole ms: the fake agent stores epoch ms
       for (final h in FakeAgent.sleep.hosts.values) {
         h.alarmNext = ring.millisecondsSinceEpoch;
       }

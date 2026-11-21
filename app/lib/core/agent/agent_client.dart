@@ -9,7 +9,7 @@ import '../profile/model.dart';
 import '../secrets/secret_store.dart';
 
 /// Agent version this app version expects; an "out of date" warning is shown for an older agent.
-const kExpectedAgentVersion = '0.5.0';
+const kExpectedAgentVersion = '0.6.0';
 
 /// Compares x.y.z with [kExpectedAgentVersion]: <0 older, 0 same, >0 newer; null if either isn't numeric x.y.z.
 int? compareAgentVersion(String? version) {
