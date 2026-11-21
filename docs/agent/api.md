@@ -1215,7 +1215,8 @@ Lifecycle: as described for Game mode below, with the unit, app id, rule and tmp
 Topics (`screen/topics.ts`): `music` (messages `music`, `lyrics`), `spectrum` (binary frames, only while Velour plays;
 dropped while the kiosk is hidden), `truck` (`truck`, `event`). Card kinds → topics: `map`, `cockpit` → truck;
 `lyrics` → music; `music` → music (+ spectrum in Game mode when `spectrum` is on); `system`, `jobs`, `git`,
-`servers`, `city` → the topic of the same name. Templates: `game` (map, cockpit, music, lyrics), `work` (city, day,
+`servers` → the topic of the same name; `city` → city, claude and (with `modes.work.diff` on) diff. A `gamemode`
+token never gets `claude` or `diff`. Templates: `game` (map, cockpit, music, lyrics), `work` (city, day,
 system, jobs, git, music, servers), `focus` (focus, task, day, music, servers). This version's page draws everything
 but the Focus timer/task (W5); those subscribe nothing yet. `system` is dropped while the kiosk is hidden; while it is
 hidden the display host also drops `touch` events (the city state keeps following).
@@ -1247,6 +1248,21 @@ Work topics (`screen/producers/*.ts`; each starts with its first subscriber, sto
   to a new page; a `city` message may be up to 16 MB (others 1 MB).
 - `servers` (uptime bridge + incident room, compared every 5 s in memory): `{type:"servers", available, hosts:[{name,
   up, since|null}], incidents}`.
+- `claude` (Tiphys `code` sessions from the manager's events; terminal sessions from one non-recursive `fs.watch` per
+  `<claude config dir>/sessions/` (the pid checked against `/proc` on every change and every 10 s) and only the
+  appended bytes of their transcript): `{type:"claude", sessions:[{id (8), name (≤40), project (basename)|null,
+  status: idle|running|waiting, origin: tiphys|terminal, recent:[{tool, path|null, kind: read|edit|null, at}] (≤5),
+  waiting:{tool|null, path|null, since}|null, pending:[requestId]}]}` (sent when it changes, ≤ every 150 ms). Paths
+  are relative to the subscriber's project root (same selection as `git`); outside it `null`; without
+  `screen.share.code` they are the city's masked tokens (or `null` without a city). A city `touch` after a session's
+  Edit/Write/MultiEdit/NotebookEdit of that file (≤ 30 s) carries `by: <session id>`.
+- `diff` (only with `screen.share.code` on the source, only Tiphys sessions; terminal sessions never get one):
+  `{type:"diff", sessionId, session, requestId, tool, at, path, lang, added, removed, hunks:[{oldStart, newStart,
+  lines}], truncated, more, binary, created}` for Edit/MultiEdit/Write/NotebookEdit of a file inside the project
+  (unified, context 3, ≤ 400 lines / 64 KB, `more` = lines left out, redacted), `{…, tool:"Bash", command, reason}`,
+  or `{…, tool, summary}` (non-secret scalar input fields, redacted); `{type:"diffResolved", requestId, allow}` when
+  the permission is answered or the session ends. The display host replays pending diffs to a new page. Approval
+  stays on the phone; the kiosk page has no approval route.
 
 **Compatibility (one release):** `/v1/gamemode`, `/v1/gamemode/{start,stop,live,art,feed,source,plugin}` and
 `/gamemode/*` keep the 0.5 shapes and `agent.gamemode.*` error codes; their "source" is `screen.sources.main`
