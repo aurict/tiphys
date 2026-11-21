@@ -66,7 +66,8 @@ void main(){
     cm += co[i].w * exp(-dot(d, d) / (co[i].z * co[i].z));
   }
   cm = min(cm, 1.0);
-  if (y < top + 0.06) {
+  // At night only the clusters glow: skip the coal pattern (6 fBm + Worley) wherever no cluster reaches (S7).
+  if (y < top + 0.06 && (night < 0.999 || cm > 0.002)) {
     // Coals: cells of a warped Worley pattern. The gaps between them glow hot, the crusts glow dim and mottled, each
     // coal at its own heat, breathing at its own phase.
     // Perspective: coals are smaller toward the back (top) of the bed.

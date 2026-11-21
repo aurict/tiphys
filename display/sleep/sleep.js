@@ -15,7 +15,9 @@
 // Not a CSS transition on a layer over the canvas: S7 measured that one recomposited the full screen at the display's
 // refresh rate for the whole fade (it gets a new value every 2 s), ~57 % of a laptop core instead of the canvas' 20 fps.
 // Frames (its own loop, like the Game scenes: one timer then one rAF, nothing pending between frames): settle 30 fps →
-// fade 20 fps at 1/3 resolution; night 1/6 resolution at 5 fps while a flare glows, 2 fps when nothing happens;
+// fade 20 fps at 1/3 resolution; night 1/6 resolution at 2 fps while a flare glows, 1 fps when nothing happens (S7:
+// the clusters breathe at 0.05 Hz; each frame also costs Firefox's compositor and the Wayland round trip, which
+// dominated the night once the sound was off); content brightness 0: no frames at all until it rises;
 // sunrise 10 fps, ring 15; morning: no canvas at all (a DOM clock once a minute). A frame is also placed on the next
 // event's time, so a crackle's pop is drawn with its sound, not up to a frame interval later. Timers are measured from
 // the frame's start (performance.now()), not from the rAF timestamp: that one is the vsync that may be most of a frame
@@ -29,9 +31,10 @@ import { createEmbers } from './embers.js';
 import { createAudio } from './audio.js';
 import { morningView } from './morning.js';
 
-const FPS = { settle: 30, fade: 20, night: 5, sunrise: 10, ring: 15, snoozed: 10 };
+const FPS = { settle: 30, fade: 20, night: 2, sunrise: 10, ring: 15, snoozed: 10 };
 const SCALE = { settle: 1 / 3, fade: 1 / 3, night: 1 / 6, sunrise: 1 / 3, ring: 1 / 3, snoozed: 1 / 3 };
-const NIGHT_IDLE_MS = 500;
+const NIGHT_IDLE_MS = 1000;
+const DARK_MS = 1000; // content brightness 0: look again this often (one black frame was drawn)
 const BRIGHT_MS = 2000;
 const HINT_MS = 5000, HOLD_MS = 1000;
 
@@ -65,7 +68,7 @@ export function mount(el, ctx, opts) {
 
   const embers = createEmbers(canvas, tl);
   // Content brightness: from `bFrom` at `bAt` (performance.now) linearly to `bTo` over BRIGHT_MS.
-  let bFrom = opts.brightness ?? 1, bTo = bFrom, bAt = 0;
+  let bFrom = opts.brightness ?? 1, bTo = bFrom, bAt = 0, dark = false;
   const brightAt = (t) => bFrom + (bTo - bFrom) * Math.min(1, Math.max(0, (t - bAt) / BRIGHT_MS));
   const dimText = (b) => { for (const e of [hint, snoozeLine, morning]) e.style.opacity = String(b); };
   embers.setBrightness(bTo);
@@ -93,7 +96,11 @@ export function mount(el, ctx, opts) {
     const L = tl.levels(T);
     if (L.phase !== phase) enterPhase(L.phase);
     if (morningOn) return;
-    embers.setBrightness(brightAt(start));
+    const b = brightAt(start);
+    // Fully dark content (a night light of 0): one black frame, then nothing to draw until the brightness rises.
+    if (b === 0 && bTo === 0 && dark) return arm(DARK_MS - (performance.now() - start));
+    dark = b === 0 && bTo === 0;
+    embers.setBrightness(b);
     const s = embers.draw(T);
     stats.frames++;
     if (opts.trace) {
