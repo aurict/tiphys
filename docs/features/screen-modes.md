@@ -1,13 +1,14 @@
 # Screen modes
 
 A laptop next to your PC (or the PC itself) becomes a second screen that you pick, start, adjust and stop from the
-phone. Three modes share one kiosk framework:
+phone. Four modes share one kiosk framework:
 
 | Mode | What it shows |
 |---|---|
 | **Work** (*Çalışma*) | The **code city** of the project you are working on, with the **Claude brain** floating over it, and cards for the day (clock), PC resources, long-running jobs, git, music and servers. When a Tiphys Claude session asks to edit a file, a **diff card** shows the change on the big screen before you approve it on the phone. |
 | **Focus** (*Odak*) | A big focus timer (pomodoro rounds and breaks), one line "what I'm doing now", a small clock and music, optional synthesized ambient noise. Only critical notices. |
 | **Game** (*Oyun*) | The ETS2 cockpit, live map, the Velour song and lyrics while you play. See [Game mode](game-mode.md) for everything Game-specific (ETS2 plugin, map data, route line). |
+| **Sleep** (*Uyku*) | Fireplace embers on the bedroom screens, spatial sound, a sunrise alarm and a morning summary; both machines as one group. See [Sleep mode](sleep-mode.md). |
 
 Switching between modes happens on the page (about 0.6 s), without restarting the browser. When a mode stops, no
 process, file, window rule, keybind or setting is left behind on any machine.
@@ -121,56 +122,14 @@ With *Battery saver* on (default), a display host running on battery below 30 % 
 flat 2D city and shows a small *Battery saver* chip; on mains or at 35 % it returns to your settings. The battery is
 read from `/sys/class/power_supply` every 30 s (no process).
 
-## Sleep mode (in progress)
+## Sleep mode
 
-A fourth mode, started with `POST /v1/sleep/start` (the app comes later): very dim fireplace embers and synthesized
-crackles on the bedroom screens, a slow fade to a night light. It always runs full screen on its own workspace
-(`uyku`). The agent dims the **hardware** along the curve, the laptop backlight with `brightnessctl` (at most every 2 s)
-or a desktop monitor over **DDC/CI** with `ddcutil` (at most every 15 s), and the page dims the **content** in
-between. Every previous value (brightness, and the optional power profile, system volume and LEDs) is saved before
-it is changed and put back exactly at stop or after a crash. API: [api.md › Sleep mode](../agent/api.md#sleep-mode).
-
-**Two screens, one scene:** the phone sends the same session (seed, start time, the members with their place in the
-room, the leader) to every machine. Each computes the same sparks and crackles by itself, so a spark leaving one
-screen's edge enters the other's, and its sound moves with it. The laptop talks to the leader over its existing
-source connection (no new token): it measures the clock difference (lowest round-trip pings; corrected only above
-20 ms) and passes stops both ways, so Esc held on either machine, or a stop from the phone, ends both. The laptop
-needs a source for the leader (named like it, or whose address starts with its name), else the start fails with
-`agent.sleep.noGroup`. If the link drops, each machine carries on alone and the phone sees `agent.sleep.memberDown`.
-
-**Alarm (sunrise):** with `alarm.enabled`, the screens brighten like a sunrise for `sunriseMin` (25) before the
-alarm time, from the night light up to the morning brightness, then the alarm rings: birds (or a soft chime) whose
-every chirp is a small point of light on the screen, its volume rising over `rampMin` (3). **Space** snoozes it
-(`snoozeMin`, 9: the screens stay bright and quiet), **Esc held 1 second** turns it off; the same from the phone
-(`POST /v1/sleep/alarm`). Either acts on both machines. Nobody answers: the sound stops after `autoStopMin` (20),
-the screens stay bright and the phone is told. After turning it off, an optional morning screen (clock and date) for
-10 minutes, then the mode ends by itself. With `sound: "velour"` the leader plays the chosen song on Velour (the
-other screen adds quiet birds). If Firefox crashed during the night, the agent plays a short alarm sound itself
-(`pw-play`) and starts the kiosk again. The alarm only exists while the sleep mode runs; the phone keeps its own
-backup alarm. The alarm time is the machine's local time; the leader's settings decide for the group.
-
-**Night notifications and the morning summary:** while the mode runs, each machine sends only the kinds chosen as
-critical (`notify.critical`: a host down, a security trap, a new incident, a full disk); the rest wait. The waiting
-ones are kept in memory only (count and three short titles) and still appear in the event history as usual. When
-the alarm is turned off (or the mode is stopped, if there was no alarm) every machine reports its night to the
-leader, and the leader sends **one** morning notification: how long the night was, the jobs that finished, backups
-(ok / failed), new incidents, and how many notifications waited with the first three. The phone opens it as a
-summary card (`GET /v1/sleep/summary`, kept 12 hours); the morning screen shows the same. A machine that was
-unreachable is counted as missing. Notifications on the PC desktop itself (Quickshell bubbles) are not touched.
-
-**Velour sleep playlist:** with a playlist chosen (`velour.playlistId`), the leader starts it on Velour at the
-beginning (unless Velour is already playing something: then it is left alone), at `velour.volume`, fades it out over
-`velour.fadeMin` and lets Velour's own sleep timer stop it; the fireplace sounds sit 12 dB lower while it plays. The
-Velour alarm and the playlist share one saved volume: whatever Velour's volume was before the night is what it gets
-back, once, at the end (also after a crash). Needs the "desktop" feature on the leader; otherwise the playlist is
-skipped and the sleep status says so.
-
-**DDC/CI on a desktop monitor:** install `ddcutil` (its udev rule gives the logged-in user the I²C device) and turn
-DDC/CI on in the monitor's own menu. `tiphys-agent doctor` warns with `doctor.sleep.ddcUnavailable` when `ddcutil
-detect` finds no working display; the mode still runs and the page dims alone. With the NVIDIA proprietary driver the
-hardware I²C often fails ("DDC communication failed"); the usual fix is the driver's software I²C, set in
-`/etc/modprobe.d/nvidia-ddc.conf` as `options nvidia NVreg_RegistryDwords=RMUseSwI2c=0x01;RMI2cSpeed=100`, then
-`sudo update-initramfs -u` and a reboot.
+The fourth mode, for the bedroom: very dim fireplace embers across the PC and the laptop as one scene, synthesized
+crackles that move between the machines with the sparks, a slow fade to a night light, a sunrise alarm with snooze
+and dismiss from the phone or the keyboard (and the phone's own backup alarm), a night filter that holds non-critical
+notifications, and one morning summary. It always runs full screen on its own workspace (`uyku`) with no cards and no
+producers, dims the hardware (laptop backlight, desktop monitor over DDC/CI) and the content, and has its own phone
+screen. Everything about it: [Sleep mode](sleep-mode.md).
 
 ## Stopping leaves nothing behind
 
@@ -200,7 +159,7 @@ Measured (2026-11-21):
 | Display (laptop, Firefox + agent) | Work, idle (steady state) | 1.0–1.6 % + 0.9 % of one core | < 5 % |
 | Display (laptop) | Work, the first minute after start (page load, first layout) | ~15 % + 1 % | |
 | Display (laptop) | Work, one edit (glow + camera, 14 s window) | 18.0 % + 1.2 % | < 20 % |
-| Display (laptop) | Work, an edit every 3 s plus commits, sustained | 32.7 % + 1.9 % | over budget, see below |
+| Display (laptop) | Work, an edit every 3 s plus commits, sustained | 26.6–27.1 % + 2.3 % (before the frame-pacing fix: 32.7 % + 1.9 %) | over budget (< 20 %), see below |
 | Display (laptop) | Work, a Claude session running / waiting for approval | 2.2 % / 3.2 % + 1.0 % | < 5 % |
 | Display (laptop) | Focus ready / counting / paused / veiled / ambient sound on | 1.3 / 3.0 / 0.5 / 0.1 / ~10.7 % | |
 | Display (laptop) | Firefox memory (8 processes, PSS) | 530–590 MB | < 700 MB |

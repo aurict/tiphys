@@ -592,6 +592,45 @@ drive. Every paired device can stop the mode, and so can the laptop's own keyboa
   phone: the Focus quiet-filter record (host, round end, held count; no content); the last summary is kept only
   in the notification and the app's memory (12 hours).
 
+### Sleep mode
+
+The fourth screen mode ([Sleep mode](features/sleep-mode.md), [api.md](agent/api.md#sleep-mode)) runs overnight on
+every member of the sleep group. The kiosk rules above apply unchanged (tmpfs profile, display token, no control
+session); in addition:
+
+- **No screen lock, by decision.** The mode keeps an idle/sleep inhibitor all night and does not start `hyprlock`.
+  The keyboard of a sleeping machine can do exactly three things: Space snoozes a ringing alarm, Esc held 1 s turns
+  the alarm off or stops the mode (for the whole group). Anyone in the room can do that; the desktop behind the
+  kiosk is as reachable as on an unlocked unattended PC. Lock the session yourself if that matters.
+- **Fixed commands only.** `brightnessctl` (the `backlight` class device, validated name, integer percent),
+  `ddcutil` (VCP 0x10, integer bus and value), `powerprofilesctl`, `wpctl` (`@DEFAULT_AUDIO_SINK@`), `pw-play` (a
+  WAV the agent wrote itself) and LED `brightness` files (only writable LEDs with trigger `none`). Values read back
+  from the state file are validated again before use. No outside text reaches a command line.
+- **Group link.** A member reaches the leader only over its existing source connection (`WS /v1/screen/feed`, a
+  `screen` service token; a 0.5 `gamemode` token cannot send group messages). The leader accepts group messages only
+  for the session it is running (`stop`, `snooze`, `dismiss`, a member's keepalive and its night counts) and never
+  connects to a member. Clock pings carry timestamps only.
+- **What is stored where.** Settings, including the alarm time and the room layout, are configuration
+  (`screen.modes.sleep` in `agent.json`). On the tmpfs (`$XDG_RUNTIME_DIR/tiphys-screen/`, 0700, removed at stop):
+  `sleep.json` (0600: the session — id, seed, start, members, plan —, every hardware value to restore, the last alarm
+  transition, Velour's saved volume) and, only while the WAV fallback plays, `alarm.wav` (0600). A brightness preview
+  outside a run keeps the previous value in `$XDG_RUNTIME_DIR/tiphys-sleep-preview.json` (0600) until restored. In
+  memory only: the held-notification count and three titles, the night's jobs/backups/incidents counts, the morning
+  summary (12 h) and the leader's list of stopped session ids (12 h). The event log gets `sleep.started`,
+  `sleep.stopped` and `sleep.alarm {state}` without content.
+- **Night filter and the event log.** A notification held by the night filter is not sent, but it is still written to
+  the event log (`events.jsonl`) exactly as a sent one would be (unless it is sensitive or transient, as always): that
+  is the regular notification history. Only the held list (count, first three titles) stays in memory. Notifications
+  from a separate `tiphys-agent run …` process bypass the filter (they don't go through the running agent).
+- **Push content.** `sleep.alarm` carries the alarm state, its times and the snooze length; `sleep.morning` carries
+  numbers (minutes slept, jobs, backups, incidents, held notifications, members) and up to three titles of held
+  notifications as `key · subject` (the subject — a container, unit, mount or host name — passed through the same
+  redaction as logs; a sensitive notification contributes its key only). Both are transient: not recorded in the event
+  log, the black box or any file, and they travel through the configured push channel like every other notification.
+  On the phone: the alarm record (`app:sleepRun`: hosts, ring time, snooze length) in secure storage so the
+  notification buttons work with the app closed, and the summary in the notification and the app's memory (12 h).
+- **Desktop notifications** (Quickshell popups) are not touched, by decision: they show over the sleep screen.
+
 ## Sunshine / Moonlight
 
 - Sunshine's web credentials are stored only in `agent.json`. The app never gets the password back. TLS to Sunshine
