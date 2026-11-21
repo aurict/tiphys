@@ -15,7 +15,7 @@ Source of truth: `agent/src/server.ts` (registration), `agent/src/routes/*.ts`, 
   - [Always available](#always-available)
   - [system](#system) · [services](#services) · [docker](#docker) · [power](#power) · [wake](#wake) · [ports](#ports) · [transcribe](#transcribe) · [git](#git) · [homepage](#homepage)
   - [desktop](#desktop): [clipboard, screenshot, open](#clipboard-screenshot-open) · [media](#media) · [windows and apps](#windows-and-apps) · [Sunshine](#sunshine) · [Firefox bridge](#firefox-bridge) · [mobile view](#mobile-view-at-spi) · [live screen](#live-screen)
-  - [claude](#claude) · [agy](#agy) · [watch](#watch) · [alerts](#alerts) · [backups](#backups) · [uptime](#uptime) · [research](#research) · [analysis](#analysis) · [telegram](#telegram) · [incidents](#incidents) · [configfiles](#configfiles) · [databases](#databases) · [security](#security) · [gamemode](#gamemode)
+  - [claude](#claude) · [agy](#agy) · [watch](#watch) · [alerts](#alerts) · [backups](#backups) · [uptime](#uptime) · [research](#research) · [analysis](#analysis) · [telegram](#telegram) · [incidents](#incidents) · [configfiles](#configfiles) · [databases](#databases) · [security](#security) · [screen](#screen) · [gamemode](#gamemode)
 - [Protocols](#protocols)
   - [Live screen WebSocket](#live-screen-websocket)
   - [Claude session WebSocket](#claude-session-websocket)
@@ -37,9 +37,9 @@ Source of truth: `agent/src/server.ts` (registration), `agent/src/routes/*.ts`, 
 
 | Mechanism | Applies to | Details |
 | --- | --- | --- |
-| Service token | only routes that declare its scope (today: `research` → `POST /v1/research/jobs`, `GET`/`DELETE /v1/research/jobs/:id`; `analysis` → `POST /v1/analysis/jobs`, `GET`/`DELETE /v1/analysis/jobs/:id`; `security-report` → `GET /v1/security/raw`; `blackbox` → `POST /v1/blackbox/append`; `lockdown` → `POST /v1/security/lockdown/remote`; `gamemode` → `WS /v1/gamemode/feed`) | `Authorization: Bearer tps_…` (header only, never `?token=`). Issued for another agent with `tiphys-agent service-token create` or `POST /v1/service-tokens`; shown once, stored as a SHA-256 hash. Any other route, including unknown paths, returns `403 agent.auth.scopeDenied`. The Tailscale identity check applies as for devices. The audit log records the caller as `service:<id>`. A request with an unknown `tps_`/`tph_` token on any route is the same `401 agent.auth.invalidToken`, and if the token is a security-center decoy it also raises an alarm (see [traps](#traps-and-alerts)). |
+| Service token | only routes that declare its scope (today: `research` → `POST /v1/research/jobs`, `GET`/`DELETE /v1/research/jobs/:id`; `analysis` → `POST /v1/analysis/jobs`, `GET`/`DELETE /v1/analysis/jobs/:id`; `security-report` → `GET /v1/security/raw`; `blackbox` → `POST /v1/blackbox/append`; `lockdown` → `POST /v1/security/lockdown/remote`; `screen` → `WS /v1/screen/feed` (every topic); `gamemode` → `WS /v1/screen/feed` (music, spectrum and truck topics only) and `WS /v1/gamemode/feed`) | `Authorization: Bearer tps_…` (header only, never `?token=`). Issued for another agent with `tiphys-agent service-token create` or `POST /v1/service-tokens`; shown once, stored as a SHA-256 hash. Any other route, including unknown paths, returns `403 agent.auth.scopeDenied`. The Tailscale identity check applies as for devices. The audit log records the caller as `service:<id>`. A request with an unknown `tps_`/`tph_` token on any route is the same `401 agent.auth.invalidToken`, and if the token is a security-center decoy it also raises an alarm (see [traps](#traps-and-alerts)). |
 | None (own credential) | `POST /v1/security/lockdown` only (route config `public`) | Needs no token, because the phone and its token are lost: the body's recovery code is the credential (see [lost phone](#lost-phone-and-lockdown)). The Tailscale-login check **still applies** (`403 agent.auth.tailnetUserNotAllowed` when `requireTailscaleLogin` is set and the header differs). Rate limited per address and in total, see the error table. |
-| Display token (Game mode kiosk) | `WS /v1/gamemode/live`, `GET /v1/gamemode/art`, static `GET /gamemode/*` (route config `kiosk`) | The local kiosk Firefox reaches the agent on `127.0.0.1` without Tailscale headers, so these routes skip the device-token **and** Tailscale-identity checks. Static files hold no secrets. The live socket and the art proxy need `?t=<display token>`: 32 random bytes (hex), made at each start, in memory only, invalid after stop. See [gamemode](#gamemode). |
+| Display token (screen mode kiosk) | `WS /v1/screen/live`, `GET /v1/screen/art`, static `GET /screen/*` and their `/v1/gamemode/live`, `/v1/gamemode/art`, `/gamemode/*` aliases (route config `kiosk`) | The local kiosk Firefox reaches the agent on `127.0.0.1` without Tailscale headers, so these routes skip the device-token **and** Tailscale-identity checks. Static files hold no secrets. The live socket and the art proxy need `?t=<display token>`: 32 random bytes (hex), made at each start, in memory only, invalid after stop. See [screen](#screen). |
 | Device token | every route except `GET /v1/health` | `Authorization: Bearer tph_…`. Created by `tiphys-agent pair`; only its SHA-256 hash is stored, and comparison is constant-time. For WebSockets the token may also be sent as the `?token=` query parameter. |
 | Tailscale identity | every route except `GET /v1/health` | When `requireTailscaleLogin` is set, the `Tailscale-User-Login` header (added by `tailscale serve`) must equal it. Otherwise `403 agent.auth.tailnetUserNotAllowed`. |
 | Control token | mutating desktop routes, live screen, Firefox tabs, mobile view, Sunshine actions, Claude PC sessions | `X-Tiphys-Control: tpc_…`, obtained from `POST /v1/desktop/control/session`. It must belong to the calling device and not be expired, and the `control` feature must be on. |
@@ -170,6 +170,20 @@ Every error has the same envelope. The agent sends codes, never sentences; the a
 | `agent.db.countChanged` | 409 | Write commit: the statement now affects a different number of rows than previewed (`params.expected`, `actual`); rolled back |
 | `agent.db.failed` | 502 | Unexpected driver/child failure (`params.reason` or `message`) |
 | `agent.research.busy` | 429 | Research queue full (1 running + 5 waiting) |
+| `agent.screen.noSource` | 409 | Start or mode switch whose layout reads a source that isn't configured (`params.sources`) |
+| `agent.screen.noDisplay` | 503 | Screen mode start without a Hyprland session |
+| `agent.screen.startFailed` | 502 | `systemd-run` could not start the kiosk unit (`params.stderr`) |
+| `agent.screen.bindTaken` | 409 | `scratch` placement: `screen.scratchBind` is already bound in Hyprland (`params.bind`); nothing was changed |
+| `agent.screen.notFocus` | 409 | `POST /v1/screen/focus` while the Focus mode isn't running |
+| `agent.screen.notRunning` | 409 | `POST /v1/screen/veil` while no screen mode runs |
+| `agent.screen.badLayout` | 400 | A layout whose template doesn't belong to the mode, or a card kind the template can't hold or twice (`params.mode`, `template`, `kind`) |
+| `agent.screen.noArt` | 404 | As `agent.gamemode.noArt`, on `/v1/screen/art` |
+| `agent.sleep.running` | 409 | `POST /v1/screen/start` or `/v1/screen/mode` while the sleep mode runs (stop it first) |
+| `agent.sleep.noGroup` | 409 | `POST /v1/sleep/start` with a group session this host can't join: `params.reason` `notMember` (`host`: this host's id is not in `members`) or `noLeaderSource` (`leader`: a non-leader has no `screen.sources` entry reaching the leader) |
+| `agent.sleep.memberDown` | — | Not a response: `GET /v1/sleep` `group.error` while a member (on a member: the leader link) is down; the scene goes on |
+| `agent.sleep.notRinging` | 409 | `POST /v1/sleep/alarm` with nothing to snooze/dismiss now (`params.phase`): snooze only while it rings, dismiss during sunrise, ring or snooze |
+| `agent.sleep.velourUnavailable` | — | Not a response: `GET /v1/sleep` `velour.warning` on the leader when the sleep playlist was skipped (no "desktop" feature, Velour unreachable or failing) |
+| `agent.sleep.ddcUnavailable` | 409 | `POST /v1/sleep/preview` with the mode off on a host with nothing to dim (`params.reason`: `missing` = no backlight and no `ddcutil`, `failed` = no working DDC/CI display). Also `GET /v1/sleep` `warning` while the page dims alone |
 | `agent.gamemode.noSource` | 409 | Game mode start without a source agent configured |
 | `agent.gamemode.noDisplay` | 503 | Game mode start without a Hyprland session |
 | `agent.gamemode.startFailed` | 502 | `systemd-run` could not start the kiosk unit (`params.stderr`) |
@@ -1149,9 +1163,289 @@ Device tokens only. Behaviour: [Outside view](../features/security.md#outside-vi
 
 Overview of the keys above, all sent by the monitoring server's agent (or whichever agent runs the feature): `security.vulns`, `security.secretFound`, `security.trap`, `security.exposure`, `security.attack`, `blackbox.broken`, `security.lockdown`. `security.trap`, `security.secretFound`, `blackbox.broken`, `security.lockdown` and `security.change` with `severity: critical` are relayed to the owner's Telegram as a title only (`🚨 Tiphys güvenlik · <host> · <title>`, Turkish text). Notices that are not `sensitive` are also appended to the black box as `event` records.
 
+### screen
+
+Feature `screen` (`screen/*.ts`; Linux only; was `gamemode`, PLAN.md §20). One kiosk framework for the screen modes
+`game`, `work` and `focus`, plus `sleep` (its own routes, [below](#sleep-mode)). A **display host** shows a mode in a Firefox kiosk; a **source host**
+produces the data. One host can be both: its display reads its own producer in-process as the source `self` (no
+network, no token). Nothing runs until a mode is started (display) or a topic is subscribed (source).
+
+**Display host**
+
+| Method | Path | Auth | Description |
+| --- | --- | --- | --- |
+| GET | `/v1/screen` | device | `{running, mode\|null, startedAt\|null, placement, visible\|null, settings: {placement, scratchBind, lastMode, batterySaver, share, modes}, sources: [{name, url\|null, state: off\|connecting\|ok\|down, topics}], veil, power: {saver}, backlight: true\|false\|null, lastStop: {at, summary}\|null, focus: {phase: idle\|focus\|short\|long, endsAt\|null, pausedLeft\|null, total\|null, round, longEvery, task\|null, now}, map: {present}, live: {music\|null, truck\|null, claude: {sessions, waiting}\|null, jobs\|null}}`. `sources` starts with `self`. `live.claude`/`live.jobs`: counts from the latest relayed `claude`/`jobs` messages (summed over sources; null when no source sent one), for the phone's one-line summary. `visible` is whether the kiosk is on screen (false = the page is paused). `veil`: the privacy veil is on. `power.saver`: the battery saver is on (below). `backlight`: whether this host has a backlight for the modes' `brightness` setting (`brightnessctl -m -c backlight`; looked up once in the background on the first GET and again at each start, `null` until then); `false` (a desktop monitor): the setting does nothing — it never writes another device (a plain `brightnessctl` picks a keyboard LED on a desktop). `lastStop` (memory only, null until a stop): when the last mode stopped and whether it sent a `screen.summary` push (the phone then leaves its held-notification count to that push). `focus`: the Focus timer (idle unless the Focus mode runs); times in ms since the epoch (`now` = the agent's clock, for skew), `pausedLeft`/`total` in ms, `round` = the current focus round (in a break the one just finished; 0 idle). Tokens are never returned. |
+| PUT | `/v1/screen` | device | Strict `{settings?: {placement?, scratchBind?, lastMode?, batterySaver?, share?: {code}, modes?: {game?, work?, focus?: partial settings incl. layout}}, sources?: {<name>: {url, token}\|null}}` → same as GET. Only the fields sent change; `null` removes a source. A layout is checked (`400 agent.screen.badLayout`). While running: the page gets `settings` (or `layout`), the backlight follows, a changed source reconnects, subscriptions follow. |
+| POST | `/v1/screen/start` | device | `{mode?}` (default `lastMode`) → same as GET. Idempotent; while running a different mode is a switch. `409 agent.screen.noSource`, `409 agent.screen.bindTaken`, `503 agent.screen.noDisplay`, `502 agent.screen.startFailed` (everything done so far is undone). |
+| POST | `/v1/screen/mode` | device | `{mode}` → same as GET. Hot switch: the page gets a `layout` message (and the latest data again), the source subscriptions and the backlight follow; Firefox is not restarted. Not running: only `lastMode` is stored. |
+| POST | `/v1/screen/stop` | device | Idempotent → same as GET. |
+| POST | `/v1/screen/focus` | device | Strict `{action?: start\|pause\|resume\|skip\|reset, task?: string(≤ 80, one line)\|null}` (at least one) → `{focus}` (as in GET). Only while the Focus mode runs (`409 agent.screen.notFocus`). `start`: idle → focus round 1, in a break → the next round now, a paused round → resume; `pause`/`resume` keep the time left; `skip`: focus → short (or every `longEvery`-th round long) break, break → next round; `reset`: idle. A phase that ends starts the next one by itself. `task` alone sets the task line; `""`/`null` clears it. A phase change sends the page `focus` and records/pushes `screen.focus.phase {phase, from, round, cause: timer\|action}` (never the task); the push's `data` (sent, never recorded) has `agent` (this agent's name), `quiet` (`"1"` when `modes.focus.quietPhone`) and `endsAt` (ms, while ticking), for the phone's ongoing notification and its quiet filter. When the mode stops or switches away with a running timer, one more push `{phase: idle, from, round, cause: stop}`; its `data.summary` is `"1"` when a `screen.summary` push follows (the phone ends its quiet and leaves the held count to that one). |
+| POST | `/v1/screen/veil` | device | `{on}` → same as GET. Privacy veil: the page drops its view for a dim clock at once; until it is lifted the agent sends the page no layout or topic message (their state is kept and replayed when it lifts). Kept across an agent restart, gone with the mode. `409 agent.screen.notRunning` when no mode runs. |
+| WS | `/v1/screen/live?t=<display token>` | display token | Kiosk page socket. On connect: `layout`, every source's `source` state, the latest relayed messages, `focus` in Focus mode, `sleep` in sleep mode, `pause` if hidden (veiled: only `veil` and `pause`). Then relayed messages and binary spectrum frames. Page → agent: `{"type":"stop"}`, `{"type":"heartbeat"}` (sleep view, every 10 s), `{"type":"alarm", action: "snooze"\|"dismiss"}` (sleep view: Space while it rings, Esc held 1 s while it rings or is snoozed; as `POST /v1/sleep/alarm`, errors ignored), `{"type":"syncLog", lines}` (test only, `TIPHYS_SLEEP_SYNCLOG`). Closed with `4410` on stop, `1012` when the agent restarts (the page reconnects with the same token). |
+| GET | `/v1/screen/art?t=…&id=…` | display token | Cover proxy, as `/v1/gamemode/art` below. |
+| GET | `/screen/`, `/screen/<file>`, `/screen/map/<file>` | none (kiosk) | The kiosk page and map data, as `/gamemode/…` below. |
+
+Kiosk messages (agent → page): `{type:"layout", mode, template, cards:[{kind, source, enabled}], settings}`,
+`{type:"settings", ...}`, `{type:"source", name, state, retryInSec?}`, `{type:"pause"}`, `{type:"resume"}`,
+`{type:"focus", ...GET's focus, cause: "timer"\|"action"\|null}` (`timer`: the phase ended by itself → chime),
+`{type:"veil", on}`, `{type:"power", saver}` (battery saver on/off; also sent on connect while on), and relayed
+topic messages with their source added as `src` (`{"src":"main","type":"music",…}`); spectrum frames are binary.
+
+Lifecycle: as described for Game mode below, with the unit, app id, rule and tmpfs dir `tiphys-screen`
+(`$XDG_RUNTIME_DIR/tiphys-screen/`), `--why=Tiphys Ekran Modu`, the page at `/screen/`, and these additions:
+- **Light Firefox profile:** one content process, no Fission, no process prelaunch, 32 MB memory cache and no disk
+  cache (the profile is on tmpfs), no prefetching, telemetry/updates/studies off.
+- **Placement** (`screen.placement`, read at start): `fullscreen` puts the window on the mode's named workspace
+  (`yol` / `is` / `odak` for the mode it was started in) and focuses it; `scratch` sends it silently to `special:tiphys`
+  (rule `workspace special:tiphys silent`) and binds `screen.scratchBind` to `togglespecialworkspace tiphys`
+  (classic: `hyprctl keyword bind MODS,key,togglespecialworkspace,tiphys`; Lua: `hyprctl eval 'hl.bind("MODS + key",
+  hl.dsp.workspace.toggle_special("tiphys"))'`) after checking `hyprctl -j binds` (taken → `409 agent.screen.bindTaken`).
+  When the page first connects the window is moved there if needed (`movetoworkspacesilent special:tiphys,address:…`)
+  and the workspace is shown once. Stop: unbind (`keyword unbind MODS,key` / `hl.unbind("MODS + key")`), rule off.
+- **Visibility:** while running, the Hyprland event socket is watched (workspace, special workspace and monitor
+  events → `hyprctl -j monitors`). Not on screen (scratch hidden, another workspace in front, DPMS off) → `pause` to
+  the page, which stops all drawing, timers and CSS animations, and the pausable topics (spectrum) are unsubscribed;
+  `resume` when shown again.
+- **State file:** every side effect (unit, work dir, rule, keybind, previous workspace, backlight) is written before it
+  is made; stop and the next agent start after a crash undo it. A 0.5 Game mode left in `tiphys-gamemode/` is cleaned
+  up the same way. Events: `screen.started {mode}`, `screen.stopped` and `screen.focus.phase` (above).
+- **Session summary (W7):** while a mode runs the agent counts, in memory only, what the messages it relays say:
+  focus rounds that ran out (Focus), `commit` messages, `jobDone` (and those with a non-zero exit code), Claude
+  sessions seen and permission waits (new `pending` request ids; a terminal session turning `waiting`). A stop after a
+  run of ≥ 2 min sends ONE push `screen.summary {minutes, modes ("work,focus"), rounds, commits, jobs, failed, sessions,
+  waits}` with `data: {agent}`: numbers and mode names only (no file name, task, commit subject or session name), never
+  recorded (not in the event log, the black box or any file). Counters follow only the cards' topics (e.g. no commit
+  count without a city card). An agent restart (adoption) starts the counters again; the duration still counts from
+  the mode's start.
+- **Battery saver (W7, `screen.batterySaver`):** while running, the display host's first battery
+  (`/sys/class/power_supply/*` with `type` Battery) is read every 30 s (no process) and from the `self` source's
+  `system` messages. On battery below 30 % → `{type:"power", saver:true}`: the page forces motion `low` and the flat
+  city (other settings unchanged) and shows a small "Pil tasarrufu" chip; back on mains or at ≥ 35 % (or the setting
+  off) → `saver:false`. Test only: `TIPHYS_SCREEN_POWER_DIR` (see configuration.md).
+- **Agent restart:** when the agent's own systemd unit is being restarted (a `restart` job in `systemctl list-jobs`
+  for the unit named in `/proc/self/cgroup`), a running mode is left as it is and the next agent adopts it from the
+  state file (which also holds the display token, 0600 on tmpfs like `start.html`) if `tiphys-screen.service` is
+  still active; the page reconnects with the same token. The same adoption follows a crash while Firefox still runs.
+  Any other stop of the agent stops the mode. The Focus timer's times (not the task) are in `focus.json` in the work
+  dir; a phase that ended meanwhile is caught up. The task line is memory only and is lost on a restart.
+- **Autoplay:** the kiosk profile allows media/WebAudio autoplay (`media.autoplay.default=0`,
+  `media.autoplay.blocking_policy=0`, `media.autoplay.block-webaudio=false`) for the Focus ambient sound and chime.
+- **Sources:** for the running mode's layout the display sums the topics of the enabled cards the page draws, per
+  source, and keeps one connection per remote source with a non-empty topic set (none for `self`, which subscribes
+  in-process). On open, and whenever the set changes, it sends `{"type":"subscribe","topics":[…]}`. A source that
+  never opens `/v1/screen/feed` (an older agent) is tried on `/v1/gamemode/feed` next (all Game topics, no subscribe).
+  Reconnect after 1, 2, 4, 8, 15, 30 s; a feed silent for 15 s is reconnected. Messages of topics not subscribed are
+  dropped.
+
+**Source host**
+
+| Method | Path | Auth | Description |
+| --- | --- | --- | --- |
+| WS | `/v1/screen/feed` | service (`screen`; `gamemode` = music, spectrum, truck only) or device | Client → source: `{"type":"subscribe","topics":[…],"project"?:"auto"\|<absolute path>,"ci"?:bool}` replaces the topic set (`project`/`ci` only matter for `git` and `city`; a fixed path must be inside `allowedRoots`) (unknown or not allowed topics are dropped; ≤ 4 KB). Starts with no topics. A topic's producer starts with its first subscriber and stops with its last; a subscriber adding a topic gets its latest messages at once. `{"type":"hb"}` every 5 s. |
+| GET | `/v1/screen/game/source` | device | As `/v1/gamemode/source`. |
+| POST | `/v1/screen/game/plugin` | device | As `/v1/gamemode/plugin`. |
+
+Topics (`screen/topics.ts`): `music` (messages `music`, `lyrics`), `spectrum` (binary frames, only while Velour plays;
+dropped while the kiosk is hidden), `truck` (`truck`, `event`). Card kinds → topics: `map`, `cockpit` → truck;
+`lyrics` → music; `music` → music (+ spectrum in Game mode when `spectrum` is on); `system`, `jobs`, `git`,
+`servers` → the topic of the same name; `city` → city, claude and (with `modes.work.diff` on) diff. A `gamemode`
+token never gets `claude` or `diff`. Templates: `game` (map, cockpit, music, lyrics), `work` (city, day,
+system, jobs, git, music, servers), `focus` (focus, task, day, music, servers). `focus` → claude and servers (only
+for its critical pills: Claude waiting for approval, a server down), plus music while `modes.focus.ambient` is on (the
+noise stays off while Velour plays, also without a Music card); `task` → nothing (the task comes with `focus`).
+`system` is dropped while the kiosk is hidden; while it is
+hidden the display host also drops `touch` events (the city state keeps following).
+
+Work topics (`screen/producers/*.ts`; each starts with its first subscriber, stops with its last, sends only changes):
+- `system` (every 2 s from `/proc` and `/sys`, no process per sample; NVIDIA through one long-lived
+  `nvidia-smi -lms 2000`, Intel from the GT idle residency): `{type:"system", cpu (0..1), cores, mem:{used,total}
+  (bytes), temp|null (°C), gpu:{util, temp|null, memUsed|null, memTotal|null}|null, battery:{level, charging}|null}`.
+- `jobs` (every 3 s: `run-*.scope` user cgroups, `tools/limited.sh` jobs and known build/test processes older than
+  30 s; environments are never read): `{type:"jobs", running:[{id, name, cmd (≤120, paths cut to their last part,
+  redacted), dir (basename)|null, startedAt (ms), cpu (cores), mem (bytes), kind: scope|proc|limited}]}`;
+  `{type:"jobDone", id, name, cmd, dir, kind, durationSec, exitCode: null}`.
+- `git` (non-recursive `fs.watch` on the git dir and refs, 500 ms debounce, one `git status` + `git log -3`; working
+  tree changes come from the `city` watchers of the same project (≤ 1 s), without a city a 60 s refresh;
+  `gh run list --limit 1 --json status,conclusion,createdAt --branch <branch>` every 5 min (10 s timeout) only with
+  `ci`; no `gh`, not logged in, no GitHub run access or a timeout → `ci: null`, and `doctor` reports
+  `doctor.screen.ciUnavailable {reason: missing|loggedOut}` as an info line): `{type:"git", root (basename), branch|null, head, upstream,
+  ahead, behind, changed, untracked, conflicts, commits:[{hash7, subject (≤80), at}], ci:{state, at}|null}` or
+  `{type:"git", root|null, none: noProject|notRepo|notAllowed}`. `auto` = the most recently active Claude session's
+  working directory (Tiphys or terminal), else the focused terminal's shell, walked up to the git root.
+- `city` (same project selection as `git`; `git ls-files -t --cached --others --exclude-standard` + a streamed line
+  count per file, binaries/> 2 MB/symlinks skipped; above 20 000 files aggregated per folder with lines estimated
+  from size; one non-recursive `fs.watch` per directory holding listed files, at most 5000, never `.git`,
+  `node_modules`, `build`, `dist`, `.dart_tool`, `target`; all closed with the last subscriber):
+  `{type:"city", root (basename), files:[[path, lines, kind]], truncated, total? (with truncated), masked}` or
+  `{type:"city", root|null, none: noProject|notRepo|notAllowed}`; then `{type:"cityPatch", upsert:[[path, lines,
+  kind]], remove:[path]}`, `{type:"touch", path, kind: edit|create|delete, by: null}` (≤ 1 per file per second, ≤ 50
+  per second) and `{type:"commit", hash7, subject}` (a new HEAD whose parent was the old one). `kind`: code, dart,
+  docs, config, web, other. Paths are relative to the project root; without `screen.share.code` on the source every
+  path segment is an opaque 8-hex token (`masked: true`). The display host folds `cityPatch` into the `city` it replays
+  to a new page; a `city` message may be up to 16 MB (others 1 MB).
+- `servers` (uptime bridge + incident room, compared every 5 s in memory): `{type:"servers", available, hosts:[{name,
+  up, since|null}], incidents}`.
+- `claude` (Tiphys `code` sessions from the manager's events; terminal sessions from one non-recursive `fs.watch` per
+  `<claude config dir>/sessions/` (the pid checked against `/proc` on every change and every 10 s) and only the
+  appended bytes of their transcript): `{type:"claude", sessions:[{id (8), name (≤40), project (basename)|null,
+  status: idle|running|waiting, origin: tiphys|terminal, recent:[{tool, path|null, kind: read|edit|null, at}] (≤5),
+  waiting:{tool|null, path|null, since}|null, pending:[requestId]}]}` (sent when it changes, ≤ every 150 ms). Paths
+  are relative to the subscriber's project root (same selection as `git`); outside it `null`; without
+  `screen.share.code` they are the city's masked tokens (or `null` without a city). A city `touch` after a session's
+  Edit/Write/MultiEdit/NotebookEdit of that file (≤ 30 s) carries `by: <session id>`. The session file the SDK's own `claude` process writes for a Tiphys session is not a terminal session: it is skipped (or dropped as soon as the manager learns the session id), so each Tiphys session appears once.
+- `diff` (only with `screen.share.code` on the source, only Tiphys sessions; terminal sessions never get one):
+  `{type:"diff", sessionId, session, requestId, tool, at, path, lang, added, removed, hunks:[{oldStart, newStart,
+  lines}], truncated, more, binary, created}` for Edit/MultiEdit/Write/NotebookEdit of a file inside the project
+  (unified, context 3, ≤ 400 lines / 64 KB, `more` = lines left out, redacted), `{…, tool:"Bash", command, reason}`,
+  or `{…, tool, summary}` (non-secret scalar input fields, redacted); `{type:"diffResolved", requestId, allow}` when
+  the permission is answered or the session ends. The display host replays pending diffs to a new page. Approval
+  stays on the phone; the kiosk page has no approval route.
+
+#### Sleep mode
+
+PLAN.md §21 (`screen/sleep.ts`, `screen/sleep_hw.ts`, `screen/sleep_group.ts`, `screen/sleep_alarm.ts`, `screen/sleep_night.ts`, `screen/sleep_velour.ts`; S2: one host; S3: the group; S4: the alarm; S5: night notifications, the morning summary, the Velour sleep playlist). A fourth run mode of
+the same kiosk: always `fullscreen` on the workspace `uyku` (whatever `screen.placement` says), a fixed view (no
+layout cards, no topic subscription: no producer runs while sleeping), settings in `screen.modes.sleep`
+(configuration.md).
+
+| Method | Path | Auth | Description |
+| --- | --- | --- | --- |
+| GET | `/v1/sleep` | device | `{running, session\|null, phase: settle\|fade\|night\|sunrise\|ring\|snoozed\|morning\|null, phaseStartedAt\|null, phaseEndsAt\|null (ms; null = open-ended), alarm: {next (ms: the next or current ring start; off: the next one the settings would ring)\|null, sunriseAt\|null, ringing (sounding now), silenced (rang past its auto-stop), snoozedUntil\|null, snoozes (count), dismissedAt\|null, gain (this page's share of the birds/chime, 0..1), fallback (the WAV plays)}, members: [{host, side, distance, leader, state: running\|connecting\|down\|stopped\|unknown}] (off: `[{host, state: "off"}]`), group: {role: leader\|member, link: connecting\|ok\|down\|null (leader), offsetMs (leader − this clock)\|null, appliedOffsetMs, rttMs\|null, syncedAt\|null, error: "agent.sleep.memberDown"\|null}\|null (alone or off), brightness: {dimming: backlight\|ddc\|content, hardware (percent)\|null, content (0..1), preview\|null}\|null, warning: "agent.sleep.ddcUnavailable"\|null, velour: {state: off\|starting\|playing\|done\|busy\|unavailable, endsAt (ms, the fade's end)\|null, warning: "agent.sleep.velourUnavailable"\|null}\|null (the leader's sleep playlist; null on a member or off; `busy` = Velour was already playing, left alone), music (the pages duck: the leader's playlist plays), night: {held (notifications held by the night filter), filtering}\|null, page: {heartbeatAt\|null}\|null, scale, settings, now}`. |
+| PUT | `/v1/sleep` | device | Strict `{settings: <partial screen.modes.sleep>}` → same as GET. Nested blocks merge field by field; arrays and `group` are replaced whole; unknown keys and out-of-range values → 400. While running the page gets a new `sleep` message and a changed brightness curve applies at once; `times` apply at the next start. |
+| POST | `/v1/sleep/start` | device | Strict `{session?: {id ([A-Za-z0-9_-]{8,64}), seed (uint32), t0 (ms, within 12 h before / 10 min after the agent's clock), members: [{host (host id), side: left\|right\|foot\|head, distance: near\|mid\|far (default mid)}] (1–4, distinct hosts; a bare host id is accepted: first left, last right, others foot), leader (a member), plan? (the group's plan, see Phases; its `t0` must be the session's)}}` → same as GET; the response's `session.plan` is the plan this host runs. The phone starts the **leader first** with the session without `plan` (the leader computes it from its own settings: times, alarm), then sends the leader's returned `session` (with `plan`) to every other member, so all members run the same phases and alarm. A member started without `plan` (an older phone) computes its own and takes the leader's from the leader's `hello` as soon as its link is up. Without `session` the agent makes one (this host alone with its own `side`/`distance`, `t0` = now). This host (its config `name`, as a host id) not in `members` → `409 agent.sleep.noGroup {reason: "notMember"}`; a non-leader without a source to the leader → `409 agent.sleep.noGroup {reason: "noLeaderSource", leader}`. Already sleeping: the status (idempotent). A running Game/Work/Focus mode is stopped first (with its own events). Kiosk errors as `POST /v1/screen/start`. |
+| POST | `/v1/sleep/stop` | device | → same as GET. Stops the sleep mode only (a layout mode running instead is left alone); `POST /v1/screen/stop` also stops it. In a group it stops every member (see Group). |
+| POST | `/v1/sleep/alarm` | device | Strict `{action: "snooze"\|"dismiss"}` → same as GET. `snooze` while it rings (also after its auto-stop): quiet and bright for `snoozeMin`, then it rings again; `dismiss` during sunrise, ring or snooze: the morning screen for 10 min if `alarm.morningScreen`, then the mode ends on every member by itself (without it: at once). Goes to the whole group (any member may be asked). Not running → `409 agent.screen.notRunning`; nothing to snooze/dismiss now (before sunrise, already dismissed, snooze while snoozed) → `409 agent.sleep.notRinging {phase}`. |
+| GET | `/v1/sleep/summary` | device | `{summary: {at (ms, made), session, t0, end (the dismiss, else the stop), minutes, jobs, jobsFailed, backups, backupsFailed, incidents, held, titles: [≤ 3 strings], jobList: [{name, durationSec, exitCode\|null, host}] (≤ 10), members (group size), missing (members whose counts didn't arrive)}\|null}`: the last morning summary, memory only, for 12 h (null before / after). Made by the leader; a member keeps the copy the leader relayed. |
+| POST | `/v1/sleep/preview` | device | `{brightness: 0..100}` → same as GET (+ `preview: {dimming, until}` when not running). Running: hardware and page at that level for 5 s, then the curve. Not running: the hardware alone for 5 s (each call extends it), then the previous value; the value is kept in `$XDG_RUNTIME_DIR/tiphys-sleep-preview.json` (0600) until restored, also across a crash. Nothing to dim → `409 agent.sleep.ddcUnavailable {reason: missing\|failed}`. |
+
+While sleep runs, `POST /v1/screen/start {mode}` and `POST /v1/screen/mode` → `409 agent.sleep.running`. `GET
+/v1/screen` shows `mode: "sleep"`.
+
+- **Plan and phases** (computed once at start from `t0`, `modes.sleep.times` and `modes.sleep.alarm`; afterwards only
+  the user's snooze/dismiss moments are added; one timeout to the next boundary): `plan = {t0, settleMs, fadeMs,
+  soundFadeMs, nightSound: hum|off, sunriseAt|null, ringAt|null, rampMs, alarmSound: birds|chime|velour, snoozeMs,
+  autoStopMs, morningMs (0 = no morning screen), snoozes: [ms], dismissedAt|null}` (ms since the epoch / ms; lengths
+  divided by `TIPHYS_SLEEP_SCALE`, the alarm's clock time is not). `settle` (`settleMin`, default 3) → `fade`
+  (`fadeMin`, 30) → `night` → `sunrise` (from `ringAt − sunriseMin`, default 25) → `ring` → (`snoozed` → `ring`)* →
+  `morning` (after a dismiss, `morningMs`) → the mode ends (`sleep.stopped`). Without an alarm (`alarm.enabled`
+  false) the night is open-ended. `ringAt` is the next `alarm.time` on an allowed `alarm.days` day strictly after
+  `t0`, in the machine's local time zone (a time in the spring DST gap rings at the first valid minute after it, an
+  autumn doubled time at its first occurrence); a `once` alarm switches itself off (`alarm.enabled: false`) at its
+  first ring. An alarm too close to `t0` cuts the night, then the sunrise, then the fade (the curves are not
+  compressed). Each ring sounds for `autoStopMin` (default 20; the screens stay bright, the phase stays `ring`, the
+  phone gets `autoStopped`), its sound ramps over `rampMin` (3) from its own start. The alarm exists only while the mode
+  runs (PLAN.md Karar 5): a rebooted machine has none (the phone's own backup alarm covers it, S6).
+- **Brightness:** a target level in percent: `brightness.start` in settle, eased out (`1−(1−k)²`) to
+  `brightness.night` over the fade, flat at night, eased in (`k²`) to `brightness.morning` during sunrise, at
+  `brightness.morning` from the ring on (also snoozed and morning). Hardware:
+  the backlight (`brightnessctl -m -c backlight` read once; `brightnessctl -q -d <device> set N%`, at most one call per
+  2 s, only on a change, never below 1 %) or, without a backlight, DDC/CI (`ddcutil getvcp 10 --bus B --terse` read
+  once; `ddcutil setvcp 10 N --bus B --noverify`, at most one step per 15 s, never below `ddc.min`; the bus from
+  `ddc.bus` or `ddcutil detect --terse` once, then stored in `ddc.bus`). The hardware step is the level rounded up; the
+  page's content multiplier (level ÷ hardware, 0..1) fills between the steps and does the darkest part. Without
+  hardware dimming (no backlight; no `ddcutil`; no working DDC display; a `setvcp` failing mid-run) the page dims
+  alone (level ÷ 100) and `warning` is `agent.sleep.ddcUnavailable`.
+- **Extras** (each off by default; previous value saved first, restored at stop): `quietPower` →
+  `powerprofilesctl set power-saver`; `holdVolume` → `wpctl set-volume @DEFAULT_AUDIO_SINK@ N/100` and unmute;
+  `leds` → lit LEDs under `/sys/class/leds` that are writable and have trigger `none` are switched off (an LED with a
+  trigger is skipped: writing it drops the trigger, and the trigger file is root's; keyboard lock LEDs are skipped).
+  Heavy jobs are never touched.
+- **State and traces:** `sleep.json` (0600) next to `state.json` in the tmpfs work dir holds the session, the plan and
+  every previous hardware value, written whole before each change. Stop restores them all and removes it; after a crash
+  the next agent adopts the run (Firefox still up: same session, no new reads, restored at its stop) or restores the
+  values from the file. Events: `sleep.started` / `sleep.stopped`, and `sleep.alarm {state: rang|autoStopped|dismissed}`
+  on every member (no content; no `screen.*` event, no session summary). The state file also keeps the last alarm
+  transition handled (an adopting agent doesn't push it again) and Velour's held state (`velour: {volume, users:
+  [playlist|alarm], started: [...], playlistEnds}`: the volume before the mode took it, who holds it, who started
+  playback); a crash is undone from it (playlist timer cancelled, paused if the mode started playback, volume back).
+- **Alarm effects** (`sleep_alarm.ts`): push `sleep.alarm` (transient, never recorded or stored), `params: {state:
+  ringing|snoozed|autoStopped|dismissed, at (ms: ringing = this ring's start; snoozed = the snooze; autoStopped = when
+  the sound stopped; dismissed = the dismiss), snoozeMin, snoozedUntil (snoozed only), count + ringAt (ringing only)}`,
+  `data: {agent, session}`; `ringing` and `autoStopped` high priority. One push per transition, whoever caused it
+  (the phone, a PC's keyboard, the timer), sent by the leader only (one per group); a member sends it only while its
+  link to the leader is down. Sound: the page synthesizes the birds or the chime (each chirp with a light
+  mote). `sound: "velour"` with `velourTrack` (a Velour `videoId`): the leader plays the track on Velour
+  (`play-target`), volume ramped from 4 % to the sleep `volume` over `rampMin`; snooze pauses it, the next ring plays on;
+  dismiss / auto-stop / stop pause it and let go of Velour's volume (S5: one owner for the run, see Velour below). The leader's page is silent meanwhile (`alarm.gain`
+  0); other members play the birds at 0.4 (a member still wakes the room if the leader's machine is down); Velour
+  unreachable or no track → birds at 1. **WAV fallback:** at a ring, if the page's heartbeat is older than 30 s
+  (Firefox crashed), the agent writes a 3 s synthesized WAV (birds/chime, 16-bit mono) to `alarm.wav` (0600) in the
+  tmpfs work dir and plays it with `pw-play --volume V` in a loop with 2.5 s pauses (V ramped like the page's), until
+  snooze / dismiss / auto-stop / stop or the page's heartbeat is back; the file is deleted at stop. While sleeping a
+  dead kiosk doesn't end the mode: at sunrise and at the ring (heartbeat missing) the kiosk unit is started again
+  (`systemctl --user reset-failed` + the same `systemd-run`, same token; at most once a minute). When the page connects
+  (and at each ring) the kiosk window gets the keyboard focus (`hyprctl dispatch focuswindow address:…` / Lua
+  `hl.dsp.focus`).
+- **Night filter** (S5, `sleep_night.ts`, every member for its own notifications): while a run is on and before its
+  dismiss, a notification goes out only if it is one of the sleep mode's own (`sleep.*`), `push.test`, or of a kind in
+  `modes.sleep.notify.critical`: `hostDown` (`host.offline`, `uptime.down`), `securityTrap` (`security.trap`,
+  `security.secretFound`, `security.lockdown`, `blackbox.broken`, critical `security.change`), `incident` (an incident
+  opener the incident room attached an incident to), `diskFull` (`disk.full`). The rest is held: recorded in the event
+  stream as always (unless sensitive/transient), not sent; the run keeps only the count and the first 3 titles (the
+  key and its subject — name/container/unit/mount/… — run through redact(); a sensitive one: the key only) in memory.
+  Nothing of it is written anywhere; an agent restart loses the counts; the stop drops them. The filter lifts at the
+  dismiss.
+- **Morning summary** (S5): each member counts its night in memory — jobs finished (the `jobs` producer every 30 s:
+  name, duration, exit code when known), backups (checks whose last run fell in the night: ok / failed; backup failure
+  notices), incidents opened in the night (the incident room's list), held notifications. At the dismiss (or at a user
+  stop of a run that had none) a member sends its counts to the leader (`night` group message); the leader waits up to
+  5 s for every member, merges (sums; titles leader first, ≤ 3) and sends ONE push `sleep.morning` (transient: never
+  recorded), `params: {minutes, jobs, jobsFailed, backups, backupsFailed, incidents, held, titles (one per line),
+  members, missing, at}`, `data: {agent, session}`, unless `notify.morningSummary` is off; it keeps the summary 12 h
+  for `GET /v1/sleep/summary` and the morning screens (its page's `sleep` message `morning`, relayed to the members).
+  A member down at that time is counted in `missing`; a member that ends locally (agent exit) sends nothing.
+- **Velour** (S5, `sleep_velour.ts`, the leader): one owner of Velour's volume for the run — the first user (the sleep
+  playlist or the Velour alarm) saves the volume as it was, later users share that value, it is put back once when the
+  last one lets go (or at the stop / crash recovery / by the adopting agent's stop). **Sleep playlist** (`velour.playlistId`,
+  the "desktop" feature on): at the start, if Velour isn't already playing (then it is left alone, `busy`), the
+  playlist plays (`play-target {kind:"watch", playlistId}`) at `velour.volume`, Velour's sleep timer is set to
+  `velour.fadeMin` (rounded up to whole minutes) and the volume fades linearly to 0 over `fadeMin` (scaled by
+  `TIPHYS_SLEEP_SCALE`); at the end (or at sunrise/ring, or the stop) the timer is cancelled, Velour paused (the mode
+  started it) and the volume let go. Velour unreachable or the feature off → skipped, `velour.warning`. While it plays
+  every page ducks its ember sounds −12 dB (back up over 20 s after).
+- **Group** (S3, more than one member): the scene needs no network (every member computes the same timeline from
+  `seed` and `t0`); the leader (normally theloth) never connects to a member. A non-leader uses its source connection
+  to the leader (`WS /v1/screen/feed` with a `screen` token; the source is the one named like the leader, else the one
+  whose URL host starts with the leader's id) with no topics, and both sides send group messages on it:
+  `{type:"sleepGroup", sessionId, action:"hello"|"state", host}` (member → leader; `state` every 5 s as a keepalive),
+  `{type:"sleepGroup", sessionId, action:"hello"|"members", host, members:[{host, state}], plan}` (leader → member;
+  `plan` is the leader's; the member merges it with its own: the leader's base, both sides' snoozes/dismiss replayed
+  in time order),
+  `{type:"sleepGroup", sessionId, action:"unknown"}` (the leader doesn't run that session), S5:
+  `{type:"sleepGroup", sessionId, action:"night", host, night:{jobs, jobsFailed, backups, backupsFailed, incidents, held,
+  titles, jobList}}` (member → leader, at the dismiss / a user stop; also accepted a few seconds after the leader's run
+  stopped), `{…, action:"music", host, on}` (leader → member; `music` also on hello/members) and `{…, action:"summary",
+  host, summary}` (leader → member, the merged summary), and both ways
+  `{type:"sleepGroup", sessionId, action:"stop"|"snooze"|"dismiss"|"phase", host, at}` (snooze/dismiss: every member
+  applies the same `at`, the sender's shared clock; the leader relays a member's to the others; `phase` is not sent). Clock: `{type:"clockPing", t}` → `{type:"clockPong", t, peer}` (answered at once by the source
+  side); 8 pings 150 ms apart on every (re)connect and every 10 min; offset = `peer − (t_send + t_recv)/2` averaged
+  over the lowest-RTT quarter of the samples (1–3; none if the best RTT is over 150 ms); the page gets it only when
+  `|offset| > 20 ms`. A user stop (`/v1/sleep/stop`, `/v1/screen/stop`, the page's Esc hold) on any member stops all:
+  the leader relays a member's stop to the others, and a member whose link comes back after the leader was stopped
+  that way stops too (the leader remembers stopped session ids for 12 h, memory only). A local end (the kiosk died,
+  the agent exits) is not a group stop. A member that loses the link keeps running on its own timeline: `group.error`
+  `agent.sleep.memberDown`, the leader marks a member `down` after 15 s without its keepalive; the link reconnects
+  with the source backoff and the messages resume. Nothing of the group is written to disk beyond the session in
+  `sleep.json`.
+- **Kiosk messages** (agent → page): `{type:"layout", mode:"sleep", template:"sleep", cards:[], settings:{}}`, then
+  `{type:"sleep", session:{id, seed, t0, leader, members (ids), layout:[{id, side, distance}]}, me, offsetMs (shared time = this clock + offsetMs; sent again when it changes),
+  plan (as above), alarm:{gain}, music (S5: duck the ember sounds), morning (S5: the summary of this session or null),
+  phase, phaseStartedAt, phaseEndsAt, brightness (content), settings:{volume, layers, nightSound}, scale}` (on connect, on a settings change and on a plan change: snooze, dismiss, the leader's plan), `{type:"phase", phase, phaseStartedAt, phaseEndsAt}` and `{type:"brightness", content}` (while
+  the curve moves at most every 2 s; in a flat phase the exact value).
+- **Test-only time scale:** `TIPHYS_SLEEP_SCALE` (configuration.md) divides every phase length; the hardware rate
+  limits stay.
+
+**Compatibility (one release):** `/v1/gamemode`, `/v1/gamemode/{start,stop,live,art,feed,source,plugin}` and
+`/gamemode/*` keep the 0.5 shapes and `agent.gamemode.*` error codes; their "source" is `screen.sources.main`
+(`PUT /v1/gamemode {source}` also points the Game cards at it). `/v1/health` and `GET /v1/config` report
+`features.gamemode` (= `screen`); `PATCH /v1/config` and `init --features` accept `gamemode` for `screen`.
+
 ### gamemode
 
-Feature `gamemode` (`gamemode/*.ts`; Linux only). The laptop next to the PC becomes an ambient second screen: the
+> The routes below are the 0.5 Game mode API, kept as aliases for one release; the feature is now `screen` (see
+> [screen](#screen)). Where this section says `gamemode` unit/dir/events, read `tiphys-screen` / `screen.*`.
+
+Feature `gamemode` (now `screen`, `screen/*.ts`; Linux only). The laptop next to the PC becomes an ambient second screen: the
 song playing in Velour (cover colours, spectrum, synced lyrics), the ETS2 cockpit and the truck's position. Both sides
 load with the flag; which one a machine plays depends on use: the **source** (PC) serves the feed, the **display**
 (laptop) runs the kiosk and relays the feed. Nothing runs until a feed subscriber connects (source) or the mode is
@@ -1183,8 +1477,8 @@ session restore, telemetry, updates, first-run pages or fullscreen warning; WebR
 and a state file; a leftover `tiphys-gamemode` unit is stopped first; the active workspace is remembered; the named
 window rule `tiphys-gamemode` for the app id `tiphys-gamemode` (workspace `name:yol`, fullscreen, border 0, no shadow,
 rounding 0, no animation) is set with `hyprctl keyword windowrule[tiphys-gamemode]:…` (classic config) or
-`hyprctl eval 'hl.window_rule({…})'` (Lua config); the backlight is saved and set (`brightnessctl`; no permission =
-untouched); workspace `name:yol` is focused; then:
+`hyprctl eval 'hl.window_rule({…})'` (Lua config); the backlight is saved and set (the `backlight` class device only:
+`brightnessctl -m -c backlight`, then `-d <device>`; no backlight or no permission = untouched); workspace `name:yol` is focused; then:
 
 ```
 systemd-run --user --unit=tiphys-gamemode --collect -p StandardOutput=null -p StandardError=null \

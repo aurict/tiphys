@@ -1,6 +1,6 @@
-// Game mode (PLAN.md §19): config, feed scope, secrets, display token lifecycle, static path sanitising, art proxy,
-// kiosk start/stop command construction (fake exec), crash cleanup, FFT/bands, ETS2 telemetry parser and events.
-// No real Velour, PipeWire, Hyprland, Firefox or game is touched.
+// Game mode (PLAN.md §19) through the /v1/gamemode aliases of the screen modes (§20): config, feed scope, secrets,
+// display token lifecycle, static path sanitising, art proxy, kiosk start/stop command construction (fake exec), crash
+// cleanup, FFT/bands, ETS2 telemetry parser and events. No real Velour, PipeWire, Hyprland, Firefox or game is touched.
 import { EventEmitter } from "node:events";
 import { mkdir, mkdtemp, readdir, stat, symlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
@@ -9,10 +9,10 @@ import { PassThrough } from "node:stream";
 import { afterEach, describe, expect, it } from "vitest";
 import { agentConfigSchema, defaultConfig } from "../src/config.ts";
 import type { ExecResult } from "../src/exec.ts";
-import { displayRoutes, kioskArgs, parseRange, safeSegments, workspaceTarget, type DisplayIo, type Upstream } from "../src/gamemode/display.ts";
-import { LAYOUT_REVISION, OFF, parseLibraryFolders, parseTelemetry, READ_BYTES, TruckEvents, unzipSingle } from "../src/gamemode/ets2.ts";
-import { lyricsMessage, musicMessage, nextTracks, sourceRoutes, type Child, type SourceIo } from "../src/gamemode/source.ts";
-import { BANDS, bandBins, fft, FFT_N, parseSinkName, RATE, SpectrumAnalyzer } from "../src/gamemode/spectrum.ts";
+import { displayRoutes, kioskArgs, parseRange, safeSegments, workspaceTarget, type DisplayIo, type Upstream } from "../src/screen/display.ts";
+import { LAYOUT_REVISION, OFF, parseLibraryFolders, parseTelemetry, READ_BYTES, TruckEvents, unzipSingle } from "../src/screen/ets2.ts";
+import { lyricsMessage, musicMessage, nextTracks, sourceRoutes, type Child, type SourceIo } from "../src/screen/source.ts";
+import { BANDS, bandBins, fft, FFT_N, parseSinkName, RATE, SpectrumAnalyzer } from "../src/screen/spectrum.ts";
 import { createServiceToken } from "../src/service_tokens.ts";
 import { testApp } from "./helpers.ts";
 
@@ -31,22 +31,23 @@ const until = async (f: () => boolean, ms = 3000) => {
 
 // ---------------------------------------------------------------- config
 
-describe("gamemode config", () => {
+describe("gamemode config (now screen.modes.game)", () => {
   it("defaults and validation", () => {
     const c = defaultConfig("x");
-    expect(c.features.gamemode).toBe(false);
-    expect(c.gamemode).toEqual({
-      source: null,
-      display: { scene: "auto", lyrics: true, spectrum: true, motion: "normal", brightness: null, clock24: true, dimIdleMinutes: 10 },
-    });
+    expect(c.features.screen).toBe(false);
+    expect(c.screen.sources).toEqual({});
+    const { layout, ...game } = c.screen.modes.game;
+    expect(game).toEqual({ scene: "auto", lyrics: true, spectrum: true, motion: "normal", brightness: null, clock24: true, dimIdleMinutes: 10 });
+    expect(layout.template).toBe("game");
     const base = { version: 1, name: "x", listen: {}, features: {} };
-    expect(agentConfigSchema.safeParse({ ...base, gamemode: { display: { brightness: 4 } } }).success).toBe(false);
-    expect(agentConfigSchema.safeParse({ ...base, gamemode: { display: { brightness: 101 } } }).success).toBe(false);
-    expect(agentConfigSchema.safeParse({ ...base, gamemode: { display: { dimIdleMinutes: 121 } } }).success).toBe(false);
-    expect(agentConfigSchema.safeParse({ ...base, gamemode: { display: { scene: "map" } } }).success).toBe(false);
-    expect(agentConfigSchema.safeParse({ ...base, gamemode: { source: { url: "ftp://a", token: "tps_x" } } }).success).toBe(false);
-    const ok = agentConfigSchema.parse({ ...base, gamemode: { source: { url: "https://argo.example.com:7443", token: "tps_x" }, display: { brightness: 40 } } });
-    expect(ok.gamemode.display).toMatchObject({ brightness: 40, scene: "auto" });
+    const game_ = (g: object) => ({ ...base, screen: { modes: { game: g } } });
+    expect(agentConfigSchema.safeParse(game_({ brightness: 4 })).success).toBe(false);
+    expect(agentConfigSchema.safeParse(game_({ brightness: 101 })).success).toBe(false);
+    expect(agentConfigSchema.safeParse(game_({ dimIdleMinutes: 121 })).success).toBe(false);
+    expect(agentConfigSchema.safeParse(game_({ scene: "map" })).success).toBe(false);
+    expect(agentConfigSchema.safeParse({ ...base, screen: { sources: { main: { url: "ftp://a", token: "tps_x" } } } }).success).toBe(false);
+    const ok = agentConfigSchema.parse({ ...base, screen: { sources: { main: { url: "https://argo.example.com:7443", token: "tps_x" } }, modes: { game: { brightness: 40 } } } });
+    expect(ok.screen.modes.game).toMatchObject({ brightness: 40, scene: "auto" });
   });
 });
 
@@ -58,7 +59,7 @@ interface Call {
   env?: NodeJS.ProcessEnv;
 }
 
-function fakeExec(o: { lua?: boolean; unitActive?: () => boolean; fail?: (c: Call) => ExecResult | null } = {}) {
+function fakeExec(o: { lua?: boolean; unitActive?: () => boolean; fail?: (c: Call) => ExecResult | null; backlight?: boolean } = {}) {
   const calls: Call[] = [];
   const exec = async (cmd: string, args: string[], opts: { env?: NodeJS.ProcessEnv } = {}): Promise<ExecResult> => {
     const c = { cmd, args, env: opts.env };
@@ -74,7 +75,9 @@ function fakeExec(o: { lua?: boolean; unitActive?: () => boolean; fail?: (c: Cal
       }
       return ok("ok");
     }
-    if (cmd === "brightnessctl" && args[0] === "-m") return ok("intel_backlight,backlight,96000,100%,96000\n");
+    // A plain `brightnessctl -m` lists an LED first (a desktop's keyboard LED, PLAN.md §21 S0); only the class finds the backlight.
+    if (cmd === "brightnessctl" && args.join(" ") === "-m -c backlight") return ok(o.backlight === false ? "Failed to read any devices of class 'backlight'.\n" : "intel_backlight,backlight,96000,100%,96000\n");
+    if (cmd === "brightnessctl" && args[0] === "-m") return ok("input24::compose,leds,0,0%,1\n");
     if (cmd === "systemctl" && args[1] === "is-active") return { stdout: o.unitActive?.() === false ? "inactive\n" : "active\n", stderr: "", code: 0 };
     if (cmd === "wpctl") return ok('id 57\n  * media.class = "Audio/Sink"\n  * node.name = "alsa_output.test"\n');
     return ok("");
@@ -90,11 +93,15 @@ class FakeUpstream implements Upstream {
   onclose: (() => void) | null = null;
   onerror: (() => void) | null = null;
   closed = false;
+  sent: string[] = [];
   readonly url: string;
   readonly token: string;
   constructor(url: string, token: string) {
     this.url = url;
     this.token = token;
+  }
+  send(d: string) {
+    this.sent.push(d);
   }
   close() {
     this.closed = true;
@@ -102,12 +109,12 @@ class FakeUpstream implements Upstream {
   }
 }
 
-async function displayApp(o: { lua?: boolean; fetch?: typeof fetch; fail?: (c: Call) => ExecResult | null; hypr?: boolean } = {}) {
+async function displayApp(o: { lua?: boolean; fetch?: typeof fetch; fail?: (c: Call) => ExecResult | null; hypr?: boolean; backlight?: boolean } = {}) {
   const runtime = await mkdtemp(join(tmpdir(), "tiphys-gm-run-"));
   const displayDir = await mkdtemp(join(tmpdir(), "tiphys-gm-display-"));
   const mapDir = await mkdtemp(join(tmpdir(), "tiphys-gm-map-"));
   let active = true;
-  const x = fakeExec({ lua: o.lua, unitActive: () => active, fail: o.fail });
+  const x = fakeExec({ lua: o.lua, unitActive: () => active, fail: o.fail, backlight: o.backlight });
   const ups: FakeUpstream[] = [];
   const io: DisplayIo = {
     exec: x.exec,
@@ -136,7 +143,7 @@ async function displayApp(o: { lua?: boolean; fetch?: typeof fetch; fail?: (c: C
 /** The display token from the work dir's start page (the only place it is written). */
 async function tokenOf(runtime: string): Promise<string> {
   const { readFile } = await import("node:fs/promises");
-  const html = await readFile(join(runtime, "tiphys-gamemode", "start.html"), "utf8");
+  const html = await readFile(join(runtime, "tiphys-screen", "start.html"), "utf8");
   return /#t=([a-f0-9]{64})/.exec(html)![1]!;
 }
 
@@ -177,7 +184,7 @@ describe("gamemode display", () => {
     const s = await t.req("POST", "/v1/gamemode/start");
     expect(s.statusCode).toBe(200);
     expect(s.json()).toMatchObject({ running: true, source: { state: "connecting" } });
-    const work = join(t.runtime, "tiphys-gamemode");
+    const work = join(t.runtime, "tiphys-screen");
     expect((await stat(work)).mode & 0o777).toBe(0o700);
     expect((await readdir(work)).sort()).toEqual(["profile", "start.html", "state.json"]);
     const { readFile } = await import("node:fs/promises");
@@ -185,41 +192,47 @@ describe("gamemode display", () => {
 
     // Commands: rules (legacy keywords), workspace remembered + switched, backlight, one systemd-run unit.
     const hypr = t.calls.filter((c) => c.cmd === "hyprctl").map((c) => c.args.join(" "));
-    expect(hypr).toContain("keyword windowrule[tiphys-gamemode]:match:class ^(tiphys-gamemode)$");
-    expect(hypr).toContain("keyword windowrule[tiphys-gamemode]:workspace name:yol");
-    expect(hypr).toContain("keyword windowrule[tiphys-gamemode]:fullscreen on");
-    expect(hypr).toContain("keyword windowrule[tiphys-gamemode]:enable true");
+    expect(hypr).toContain("keyword windowrule[tiphys-screen]:match:class ^(tiphys-screen)$");
+    expect(hypr).toContain("keyword windowrule[tiphys-screen]:workspace name:yol");
+    expect(hypr).toContain("keyword windowrule[tiphys-screen]:fullscreen on");
+    expect(hypr).toContain("keyword windowrule[tiphys-screen]:enable true");
     expect(hypr).toContain("dispatch workspace name:yol");
-    expect(t.calls.filter((c) => c.cmd === "brightnessctl").map((c) => c.args.join(" "))).toEqual(["-m", "-q set 40%"]);
+    // The backlight class is looked up (on the first GET and at the start), then only its device is written.
+    const bl = t.calls.filter((c) => c.cmd === "brightnessctl").map((c) => c.args.join(" "));
+    expect(bl.filter((a) => a.includes(" set "))).toEqual(["-q -d intel_backlight set 40%"]);
+    expect(bl.every((a) => a === "-m -c backlight" || a.startsWith("-q -d intel_backlight "))).toBe(true);
     const runs = t.calls.filter((c) => c.cmd === "systemd-run");
     expect(runs).toHaveLength(1);
     const args = runs[0]!.args;
-    expect(args.slice(0, 7)).toEqual(["--user", "--unit=tiphys-gamemode", "--collect", "-p", "StandardOutput=null", "-p", "StandardError=null"]);
+    expect(args.slice(0, 7)).toEqual(["--user", "--unit=tiphys-screen", "--collect", "-p", "StandardOutput=null", "-p", "StandardError=null"]);
     expect(args).toContain("--setenv=MOZ_ENABLE_WAYLAND=1");
     expect(args).toContain("--setenv=WAYLAND_DISPLAY=wayland-1");
     expect(args).toContain("--setenv=HYPRLAND_INSTANCE_SIGNATURE=sig");
     const tail = args.slice(args.indexOf("--"));
-    expect(tail).toEqual(["--", "systemd-inhibit", "--what=idle:sleep", "--why=Tiphys Oyun Modu", "firefox", "--kiosk", "--no-remote", "--name", "tiphys-gamemode", "--profile", join(work, "profile"), `file://${join(work, "start.html")}`]);
+    expect(tail).toEqual(["--", "systemd-inhibit", "--what=idle:sleep", "--why=Tiphys Ekran Modu", "firefox", "--kiosk", "--no-remote", "--name", "tiphys-screen", "--profile", join(work, "profile"), `file://${join(work, "start.html")}`]);
     // The display token is not on any command line.
     const token = await tokenOf(t.runtime);
     expect(JSON.stringify(t.calls)).not.toContain(token);
 
     // Upstream: feed URL + service token; relayed verbatim to the page.
     const up = t.ups[0]!;
-    expect([up.url, up.token]).toEqual(["wss://argo.example.com:7443/v1/gamemode/feed", "tps_secretsecret"]);
+    expect([up.url, up.token]).toEqual(["wss://argo.example.com:7443/v1/screen/feed", "tps_secretsecret"]);
     await expect(t.app.injectWS("/v1/gamemode/live?t=" + "0".repeat(64))).rejects.toThrow();
     const got: string[] = [];
     const ws = await t.app.injectWS(`/v1/gamemode/live?t=${token}`, {}, { onInit: (w) => w.on("message", (d: Buffer, binary: boolean) => got.push(binary ? `bin:${d.length}` : d.toString())) });
     await until(() => got.length >= 2);
-    expect(JSON.parse(got[0]!)).toMatchObject({ type: "settings", brightness: 40 });
-    expect(JSON.parse(got[1]!)).toEqual({ type: "source", state: "connecting" });
+    expect(JSON.parse(got[0]!)).toMatchObject({ type: "layout", mode: "game", settings: { brightness: 40 } });
+    expect(JSON.parse(got[1]!)).toEqual({ type: "source", name: "main", state: "connecting" });
+    up.readyState = 1;
     up.onopen!();
+    // The source gets only the game cards' topics.
+    expect(JSON.parse(up.sent[0]!)).toEqual({ type: "subscribe", topics: ["truck", "music", "spectrum"] });
     const music = JSON.stringify({ type: "music", playing: true, title: "Song", artist: "Band", album: null, artId: null, duration: 200, position: 3, at: 1, next: [] });
     up.onmessage!({ data: music });
     up.onmessage!({ data: JSON.stringify({ type: "evil" }) });
     up.onmessage!({ data: new Uint8Array([1, ...new Array(24).fill(9)]).buffer });
     await until(() => got.includes("bin:25"));
-    expect(got).toContain(music);
+    expect(got).toContain(JSON.stringify({ src: "main", ...JSON.parse(music) }));
     expect(got.some((m) => m.includes("evil"))).toBe(false);
     expect((await t.req("GET", "/v1/gamemode")).json()).toMatchObject({ source: { state: "ok" }, live: { music: { title: "Song", artist: "Band", playing: true } } });
     // Settings reach the page at once.
@@ -231,12 +244,12 @@ describe("gamemode display", () => {
     const closed = new Promise((r) => ws.on("close", r));
     ws.send(JSON.stringify({ type: "stop" }));
     await closed;
-    await until(() => t.calls.some((c) => c.cmd === "brightnessctl" && c.args.join(" ") === "-q set 96000"));
+    await until(() => t.calls.some((c) => c.cmd === "brightnessctl" && c.args.join(" ") === "-q -d intel_backlight set 96000"));
     expect((await t.req("GET", "/v1/gamemode")).json()).toMatchObject({ running: false, source: { state: "off" }, live: { music: null } });
     expect(await stat(work).catch(() => null)).toBeNull();
     const after = t.calls.map((c) => `${c.cmd} ${c.args.join(" ")}`);
-    expect(after).toContain("systemctl --user stop tiphys-gamemode.service");
-    expect(after).toContain("hyprctl keyword windowrule[tiphys-gamemode]:enable false");
+    expect(after).toContain("systemctl --user stop tiphys-screen.service");
+    expect(after).toContain("hyprctl keyword windowrule[tiphys-screen]:enable false");
     expect(after).toContain("hyprctl dispatch workspace 3");
     expect(up.closed).toBe(true);
     // The token is dead.
@@ -244,7 +257,7 @@ describe("gamemode display", () => {
     // Idempotent.
     expect((await t.req("POST", "/v1/gamemode/stop")).json().running).toBe(false);
     const events = await (await import("node:fs/promises")).readFile(join(t.dir, "events.jsonl"), "utf8");
-    expect(events.match(/gamemode\.(started|stopped)/g)).toEqual(["gamemode.started", "gamemode.stopped"]);
+    expect(events.match(/screen\.(started|stopped)/g)).toEqual(["screen.started", "screen.stopped"]);
     expect(events).not.toContain("Song");
   });
 
@@ -254,13 +267,51 @@ describe("gamemode display", () => {
     const r = await t.req("POST", "/v1/gamemode/start");
     expect([r.statusCode, r.json().error.code]).toEqual([502, "agent.gamemode.startFailed"]);
     const hypr = t.calls.filter((c) => c.cmd === "hyprctl").map((c) => c.args.join(" "));
-    expect(hypr.some((h) => h.startsWith('eval hl.window_rule({ name = "tiphys-gamemode"') && h.includes("enabled = true"))).toBe(true);
-    expect(hypr.some((h) => h.startsWith('eval hl.window_rule({ name = "tiphys-gamemode"') && h.includes("enabled = false"))).toBe(true);
-    expect(await stat(join(t.runtime, "tiphys-gamemode")).catch(() => null)).toBeNull();
+    expect(hypr.some((h) => h.startsWith('eval hl.window_rule({ name = "tiphys-screen"') && h.includes("enabled = true"))).toBe(true);
+    expect(hypr.some((h) => h.startsWith('eval hl.window_rule({ name = "tiphys-screen"') && h.includes("enabled = false"))).toBe(true);
+    expect(await stat(join(t.runtime, "tiphys-screen")).catch(() => null)).toBeNull();
     expect((await t.req("GET", "/v1/gamemode")).json().running).toBe(false);
   });
 
-  it("crash recovery: a state file left in the work dir is cleaned up on start", async () => {
+  it("brightness: the backlight class only; none (a desktop monitor) → nothing written, GET says backlight:false", async () => {
+    const t = await displayApp({ backlight: false });
+    await t.setSource();
+    await t.req("PUT", "/v1/gamemode", { settings: { brightness: 40 } });
+    expect((await t.req("POST", "/v1/gamemode/start")).statusCode).toBe(200);
+    const backlightOf = async (x: typeof t) => (await x.req("GET", "/v1/screen")).json().backlight as boolean | null;
+    const settle = async (x: typeof t, want: boolean) => {
+      for (let i = 0; i < 150 && (await backlightOf(x)) !== want; i++) await new Promise((r) => setTimeout(r, 20));
+      return backlightOf(x);
+    };
+    expect(await settle(t, false)).toBe(false);
+    expect((await t.req("POST", "/v1/gamemode/stop")).json().running).toBe(false);
+    // Only lookups, never a write (a plain `brightnessctl set` would have dimmed the keyboard LED).
+    const used = t.calls.filter((c) => c.cmd === "brightnessctl").map((c) => c.args.join(" "));
+    expect(used.length).toBeGreaterThan(0);
+    expect(used.every((a) => a === "-m -c backlight")).toBe(true);
+
+    const l = await displayApp();
+    expect(await backlightOf(l)).toBeNull(); // looked up in the background
+    expect(await settle(l, true)).toBe(true);
+  });
+
+  it("crash recovery: a state file from before the backlight device was saved restores on the backlight class", async () => {
+    const runtime = await mkdtemp(join(tmpdir(), "tiphys-gm-run-"));
+    const work = join(runtime, "tiphys-screen");
+    await mkdir(join(work, "profile"), { recursive: true });
+    await writeFile(join(work, "state.json"), JSON.stringify({ startedAt: "x", mode: "game", hypr: "legacy", placement: "fullscreen", ws: "yol", rules: false, bind: null, workspace: null, brightness: "50000", token: null, veil: false }));
+    const x = fakeExec({ unitActive: () => false });
+    const io: DisplayIo = {
+      exec: x.exec, runtimeDir: runtime, hyprEnv: async () => ({ HYPRLAND_INSTANCE_SIGNATURE: "sig" }), waylandEnv: async () => ({}),
+      busEnv: () => ({}), which: () => true, connect: () => new FakeUpstream("", ""), fetch,
+    };
+    const t = await testApp((c) => c, [async (a, ctx) => void (await displayRoutes(a, ctx, { io, displayDir: null, mapDir: runtime }))]);
+    cleanups.push(() => t.app.close());
+    await until(() => x.calls.some((c) => c.cmd === "brightnessctl"));
+    expect(x.calls.filter((c) => c.cmd === "brightnessctl").map((c) => c.args.join(" "))).toEqual(["-q -c backlight set 50000"]);
+  });
+
+  it("crash recovery: a 0.5 Game mode state file left in the work dir is cleaned up on start", async () => {
     const runtime = await mkdtemp(join(tmpdir(), "tiphys-gm-run-"));
     const work = join(runtime, "tiphys-gamemode");
     await mkdir(join(work, "profile"), { recursive: true });

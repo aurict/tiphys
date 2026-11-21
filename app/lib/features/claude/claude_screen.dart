@@ -427,9 +427,12 @@ class _NewSessionSheetState extends ConsumerState<_NewSessionSheet> {
 
 /// Folder picker under the agent's allowed roots (new session and scheduled task).
 class ClaudeFolderPicker extends ConsumerStatefulWidget {
-  const ClaudeFolderPicker({super.key, required this.hostId, required this.start});
+  const ClaudeFolderPicker({super.key, required this.hostId, required this.start, this.absolute = false});
   final String hostId;
   final String start;
+
+  /// Return the full path (not "~/…"): for settings an agent reads as an absolute path (the screen mode's project).
+  final bool absolute;
   @override
   ConsumerState<ClaudeFolderPicker> createState() => _ClaudeFolderPickerState();
 }
@@ -471,7 +474,7 @@ class _ClaudeFolderPickerState extends ConsumerState<ClaudeFolderPicker> {
         title: Text(path == null ? l.claudeFolder : _pretty(path), style: const TextStyle(fontFamily: 'JetBrainsMono', fontSize: 14)),
         actions: [
           if (path != null)
-            TextButton(onPressed: () => Navigator.pop(context, _pretty(path)), child: Text(l.claudeChooseFolder)),
+            TextButton(onPressed: () => Navigator.pop(context, widget.absolute ? path : _pretty(path)), child: Text(l.claudeChooseFolder)),
         ],
       ),
       body: _err != null

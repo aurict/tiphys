@@ -18,6 +18,8 @@ export interface Notice {
    * with a WebPush key (end-to-end encrypted); plain text never goes to ntfy.
    */
   sensitive?: boolean;
+  /** Not written to the event stream either, but sent to every endpoint (e.g. the screen mode summary: numbers only). */
+  transient?: boolean;
   /**
    * Local hints for observers only (e.g. a container's compose project and service); never sent, never recorded.
    */
@@ -29,6 +31,12 @@ export interface Notice {
  * and data.incidentId). Synchronous so delivery isn't delayed; an observer that throws is logged and skipped.
  */
 export type NoticeObserver = (n: Notice) => Notice | void;
+
+/**
+ * Sleep mode's night filter (screen/sleep_night.ts): sees each notification after the observers; true = held (still
+ * recorded in the event stream like any other, but not sent; the sleep run keeps its count and title in memory).
+ */
+export type NoticeGate = (n: Notice) => boolean;
 
 export function payloadOf(n: Notice) {
   return JSON.stringify({ v: 1, key: n.key, params: n.params ?? {}, link: n.link ?? null, ...(n.data ? { data: n.data } : {}), at: new Date().toISOString() });
@@ -50,6 +58,7 @@ export class Notifier {
   /** Every notification is also written to the event stream (created next to the settings file if there's no buildApp). */
   events: EventLog | null;
   #observers: NoticeObserver[] = [];
+  #gate: NoticeGate | null = null;
 
   constructor(getConfig: () => AgentConfig, log: (msg: string, err?: unknown) => void, events: EventLog | null = null) {
     this.#getConfig = getConfig;
@@ -65,6 +74,11 @@ export class Notifier {
     };
   }
 
+  /** Sets (or with null removes) the night filter; one at a time (the running sleep mode's). */
+  setGate(fn: NoticeGate | null) {
+    this.#gate = fn;
+  }
+
   /** Records an event (if not sensitive) and sends to all registered endpoints; returns the number of successful sends. */
   async send(notice: Notice): Promise<number> {
     let n = notice;
@@ -75,9 +89,19 @@ export class Notifier {
         this.#log("bildirim gözlemcisi hata verdi", err);
       }
     }
+    let held = false;
+    try {
+      held = this.#gate?.(n) === true;
+    } catch (err) {
+      this.#log("gece süzgeci hata verdi", err);
+    }
     const { endpoints, token } = this.#getConfig().push;
     const body = payloadOf(n);
-    const recorded = n.sensitive ? undefined : this.events?.record({ key: n.key, params: eventParams(n), link: n.link }, (e) => this.#log("olay yazılamadı", e));
+    const recorded = n.sensitive || n.transient ? undefined : this.events?.record({ key: n.key, params: eventParams(n), link: n.link }, (e) => this.#log("olay yazılamadı", e));
+    if (held) {
+      await recorded;
+      return 0;
+    }
     const results = await Promise.all(
       endpoints.map(async (e) => {
         if (n.sensitive && !(e.pubKey && e.auth)) return false;

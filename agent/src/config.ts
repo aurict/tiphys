@@ -20,8 +20,9 @@ export const deviceSchema = z.object({
 /** "analysis": incident analysis jobs on the PC (PLAN.md §13.1 I-3, /v1/analysis/jobs). */
 /** "security-report": another agent (the monitoring server) pulls this host's raw audit report (PLAN.md §15). */
 /** "blackbox": an agent appends its records to this agent's black box; "lockdown": this agent revokes all access on request. */
-/** "gamemode": the laptop's agent reads this PC's Game mode feed (PLAN.md §19, WS /v1/gamemode/feed). */
-export const SERVICE_SCOPES = ["research", "analysis", "security-report", "blackbox", "lockdown", "gamemode"] as const;
+/** "screen": a display host's agent reads this host's feed (PLAN.md §20, WS /v1/screen/feed, every topic). */
+/** "gamemode": the older Game mode scope (PLAN.md §19); kept for one release, it opens only the music/spectrum/truck topics. */
+export const SERVICE_SCOPES = ["research", "analysis", "security-report", "blackbox", "lockdown", "gamemode", "screen"] as const;
 
 export const serviceTokenSchema = z.object({
   id,
@@ -189,8 +190,8 @@ export const dbConnectionSchema = z
     path: ["readCredential"],
   });
 
-/** Game mode display settings (PLAN.md §19 contract); pushed to the kiosk page as the `settings` message. */
-export const gamemodeDisplaySchema = z.object({
+/** Game mode kiosk settings (PLAN.md §19 contract); pushed to the kiosk page as the `settings` message. */
+export const gameSettingsSchema = z.object({
   scene: z.enum(["auto", "drive", "music"]).default("auto"),
   lyrics: z.boolean().default(true),
   spectrum: z.boolean().default(true),
@@ -201,8 +202,144 @@ export const gamemodeDisplaySchema = z.object({
   /** Dim the idle scene after this many minutes; 0 = never. */
   dimIdleMinutes: z.number().int().min(0).max(120).default(10),
 });
-export type GamemodeDisplay = z.infer<typeof gamemodeDisplaySchema>;
-export const GAMEMODE_DISPLAY_DEFAULTS: GamemodeDisplay = gamemodeDisplaySchema.parse({});
+export type GameSettings = z.infer<typeof gameSettingsSchema>;
+
+// ---- screen modes (PLAN.md §20) ----
+
+export const SCREEN_MODES = ["game", "work", "focus"] as const;
+export type ScreenMode = (typeof SCREEN_MODES)[number];
+export const CARD_KINDS = ["city", "day", "system", "jobs", "git", "music", "servers", "focus", "task", "map", "cockpit", "lyrics"] as const;
+export type CardKind = (typeof CARD_KINDS)[number];
+/** A source agent's name; "self" (this host, in-process) is reserved. */
+export const sourceName = z.string().regex(/^[a-z0-9-]{1,32}$/);
+export const cardSchema = z.strictObject({ kind: z.enum(CARD_KINDS), source: sourceName.default("self"), enabled: z.boolean().default(true) });
+export const layoutSchema = z.strictObject({ template: z.string().regex(/^[a-z0-9-]{1,32}$/), cards: z.array(cardSchema).max(16) });
+export type Layout = z.infer<typeof layoutSchema>;
+
+const cards = (kinds: CardKind[], source = "self") => kinds.map((kind) => ({ kind, source, enabled: true }));
+/** Default layouts; every card reads this host (`self`) until the phone picks a source. */
+export function defaultLayout(mode: ScreenMode, source = "self"): Layout {
+  if (mode === "game") return { template: "game", cards: cards(["map", "cockpit", "music", "lyrics"], source) };
+  if (mode === "work") return { template: "work", cards: cards(["city", "day", "system", "jobs", "git", "music", "servers"], source) };
+  return { template: "focus", cards: cards(["focus", "task", "day", "music"], source) };
+}
+
+const motion = z.enum(["low", "normal", "high"]).default("normal");
+const brightness = z.number().int().min(5).max(100).nullable().default(null);
+export const workSettingsSchema = z.object({
+  /** Git (later city) project: "auto" = the last active Claude session's / focused terminal's repo; a path must be absolute. */
+  project: z.union([z.literal("auto"), z.strictObject({ path: z.string().min(1).max(1024).regex(/^\//) })]).default("auto"),
+  city: z.enum(["3d", "2d"]).default("3d"),
+  diff: z.boolean().default(true),
+  ci: z.boolean().default(false),
+  motion,
+  brightness,
+  dimIdleMinutes: z.number().int().min(0).max(120).default(10),
+  clock24: z.boolean().default(true),
+});
+export const focusSettingsSchema = z.object({
+  focusMin: z.number().int().min(5).max(120).default(25),
+  shortMin: z.number().int().min(5).max(120).default(5),
+  longMin: z.number().int().min(5).max(120).default(15),
+  /** A long break after every this many focus rounds. */
+  longEvery: z.number().int().min(2).max(8).default(4),
+  ambient: z.enum(["off", "brown", "pink", "rain"]).default("off"),
+  ambientVolume: z.number().int().min(0).max(100).default(30),
+  chime: z.boolean().default(true),
+  quietPhone: z.boolean().default(true),
+  motion,
+  brightness,
+  clock24: z.boolean().default(true),
+});
+/** Per-mode settings without the layout (what the kiosk page gets as `settings`). */
+export const MODE_SETTINGS = { game: gameSettingsSchema, work: workSettingsSchema, focus: focusSettingsSchema } as const;
+export type WorkSettings = z.infer<typeof workSettingsSchema>;
+export type FocusSettings = z.infer<typeof focusSettingsSchema>;
+export type ModeSettings = z.infer<(typeof MODE_SETTINGS)[ScreenMode]>;
+/** Per-mode settings with the layout (config.screen.modes.<mode>). */
+export const MODE_SCHEMAS = {
+  game: gameSettingsSchema.extend({ layout: layoutSchema.default(() => defaultLayout("game")) }),
+  work: workSettingsSchema.extend({ layout: layoutSchema.default(() => defaultLayout("work")) }),
+  focus: focusSettingsSchema.extend({ layout: layoutSchema.default(() => defaultLayout("focus")) }),
+} as const;
+
+// ---- sleep mode (PLAN.md §21 Sözleşme) ----
+
+/** A mode the display can run: the layout modes above, and sleep (fixed view, own routes /v1/sleep/*). */
+export type RunMode = ScreenMode | "sleep";
+export const HHMM = /^(?:[01]\d|2[0-3]):[0-5]\d$/;
+/** A sleep group member: an agent's name (config `name` as the phone knows it). */
+export const hostId = z.string().regex(/^[A-Za-z0-9_.-]{1,64}$/);
+export const SLEEP_CRITICAL = ["hostDown", "securityTrap", "incident", "diskFull"] as const;
+const pct = (min: number, max: number, d: number) => z.number().int().min(min).max(max).default(d);
+/**
+ * config.screen.modes.sleep: per machine (placement in the room, volume, brightness curve, hardware extras) and the
+ * group-wide blocks (the phone writes the same values to every member). S2 uses the machine part, `times` and the
+ * page's `volume`/`layers`; group (S3), alarm (S4), velour/notify (S5) and reminder (S6) are stored for later phases.
+ */
+export const sleepSettingsSchema = z.object({
+  join: z.boolean().default(true),
+  side: z.enum(["left", "right", "foot", "head"]).default("left"),
+  distance: z.enum(["near", "mid", "far"]).default("mid"),
+  volume: pct(0, 100, 35),
+  /** Percent of full brightness: at the start, at night (the floor of the fade) and in the morning (sunrise end). */
+  brightness: z.object({ start: pct(1, 100, 25), night: pct(0, 30, 3), morning: pct(10, 100, 70) }).prefault({}),
+  /** DDC/CI monitor (no backlight): I²C bus (null = detect once and store it here) and the lowest VCP 0x10 percent used. */
+  ddc: z.object({ bus: z.number().int().min(0).max(255).nullable().default(null), min: pct(0, 100, 0) }).prefault({}),
+  quietPower: z.boolean().default(false),
+  holdVolume: z.number().int().min(0).max(100).nullable().default(null),
+  leds: z.boolean().default(false),
+  group: z
+    .strictObject({ members: z.array(hostId).min(1).max(4), leader: hostId })
+    .refine((g) => g.members.includes(g.leader), { message: "leader must be a member" })
+    .nullable()
+    .default(null),
+  times: z
+    .object({ settleMin: pct(1, 30, 3), fadeMin: pct(10, 120, 30), soundFadeMin: pct(10, 180, 45), nightSound: z.enum(["hum", "off"]).default("off") })
+    .prefault({}),
+  layers: z
+    .object({ hum: z.boolean().default(true), crackle: z.boolean().default(true), logs: z.boolean().default(true), wind: z.boolean().default(false), rain: z.boolean().default(false) })
+    .prefault({}),
+  velour: z.object({ playlistId: z.string().min(1).max(200).nullable().default(null), volume: pct(0, 100, 30), fadeMin: pct(5, 120, 30) }).prefault({}),
+  alarm: z
+    .object({
+      enabled: z.boolean().default(false),
+      time: z.string().regex(HHMM).default("07:00"),
+      days: z.union([z.enum(["once", "weekdays", "daily"]), z.array(z.number().int().min(0).max(6)).min(1).max(7)]).default("weekdays"),
+      sunriseMin: pct(10, 45, 25),
+      sound: z.enum(["birds", "chime", "velour"]).default("birds"),
+      velourTrack: z.string().min(1).max(200).nullable().default(null),
+      rampMin: pct(1, 10, 3),
+      snoozeMin: pct(1, 30, 9),
+      autoStopMin: pct(5, 60, 20),
+      morningScreen: z.boolean().default(false),
+    })
+    .prefault({}),
+  notify: z.object({ critical: z.array(z.enum(SLEEP_CRITICAL)).max(4).default(() => [...SLEEP_CRITICAL]), morningSummary: z.boolean().default(true) }).prefault({}),
+  reminder: z.object({ enabled: z.boolean().default(false), time: z.string().regex(HHMM).default("22:30") }).prefault({}),
+});
+export type SleepSettings = z.infer<typeof sleepSettingsSchema>;
+
+/** Key of a Hyprland bind in classic form "MODS,key" (mods space/underscore separated), e.g. "SUPER,grave". */
+export const SCRATCH_BIND = /^(?:(?:SUPER|SHIFT|CTRL|CONTROL|ALT|MOD2|MOD3|MOD5)(?:[ _](?:SUPER|SHIFT|CTRL|CONTROL|ALT|MOD2|MOD3|MOD5)){0,3})?,[A-Za-z0-9_]{1,32}$/;
+
+export const screenSchema = z.object({
+  /** Remote source agents: URL and a service token with the "screen" (or older "gamemode") scope; never returned. */
+  sources: z
+    .record(sourceName, z.object({ url: z.url({ protocol: /^https?$/ }), token: z.string().min(1).max(200) }))
+    .refine((r) => !("self" in r), { message: "self is reserved" })
+    .default({}),
+  /** This host as a source: send diffs and file paths (W4). */
+  share: z.object({ code: z.boolean().default(false) }).prefault({}),
+  placement: z.enum(["fullscreen", "scratch"]).default("fullscreen"),
+  scratchBind: z.string().regex(SCRATCH_BIND).default("SUPER,grave"),
+  lastMode: z.enum(SCREEN_MODES).default("work"),
+  modes: z
+    .object({ game: MODE_SCHEMAS.game.prefault({}), work: MODE_SCHEMAS.work.prefault({}), focus: MODE_SCHEMAS.focus.prefault({}), sleep: sleepSettingsSchema.prefault({}) })
+    .prefault({}),
+  batterySaver: z.boolean().default(true),
+});
+export type ScreenConfig = z.infer<typeof screenSchema>;
 
 export const agentConfigSchema = z.object({
   version: z.literal(1),
@@ -251,8 +388,11 @@ export const agentConfigSchema = z.object({
     securityFix: z.boolean().default(false),
     /** Self-update from signed GitHub releases (only installs made by install.sh; see update.ts). */
     update: z.boolean().default(false),
-    /** Game mode (PLAN.md §19): the source feed (Velour, spectrum, ETS2) and/or the kiosk display on this machine. */
-    gamemode: z.boolean().default(false),
+    /**
+     * Screen modes (PLAN.md §20, was "gamemode" §19): the source feed (Velour, spectrum, ETS2, …) and/or the kiosk
+     * display (Game, Work, Focus) on this machine.
+     */
+    screen: z.boolean().default(false),
   }),
   devices: z.array(deviceSchema).default([]),
   /** Scoped service tokens (tps_…): they open only routes that declare one of their scopes. */
@@ -369,16 +509,8 @@ export const agentConfigSchema = z.object({
     .object({ url: z.url({ protocol: /^https?$/ }), token: z.string().min(1).max(200), wakeHostId: id.optional() })
     .nullable()
     .default(null),
-  /**
-   * Game mode ("gamemode" feature). source: the agent that serves WS /v1/gamemode/feed (its URL and a service token
-   * with the "gamemode" scope; the token is never returned by any API). display: the kiosk page settings.
-   */
-  gamemode: z
-    .object({
-      source: z.object({ url: z.url({ protocol: /^https?$/ }), token: z.string().min(1).max(200) }).nullable().default(null),
-      display: gamemodeDisplaySchema.default(GAMEMODE_DISPLAY_DEFAULTS),
-    })
-    .default({ source: null, display: GAMEMODE_DISPLAY_DEFAULTS }),
+  /** Screen modes ("screen" feature): sources, placement and the per-mode settings and layouts. */
+  screen: screenSchema.prefault({}),
   /**
    * Compose stacks (PLAN.md §13.0): every directory directly under a root holding a compose file is a stack.
    * Separate from allowedRoots: stack actions (compose recreate) only touch files inside these roots.
@@ -578,6 +710,37 @@ export function defaultConfig(name: string): AgentConfig {
   return agentConfigSchema.parse({ version: 1, name, listen: {}, features: {} });
 }
 
+const isObj = (v: unknown): v is Record<string, unknown> => !!v && typeof v === "object" && !Array.isArray(v);
+
+/**
+ * Forward-only, idempotent settings migration applied to the raw file before validation (PLAN.md §20 A-1):
+ * features.gamemode → features.screen, gamemode.source → screen.sources.main (the game layout's cards then read
+ * "main", as Game mode did), gamemode.display → screen.modes.game. The old keys are read (this release only) and never
+ * written back; values already under `screen` win. `changed` = the file still holds old keys.
+ */
+export function migrateConfig(raw: unknown): { raw: unknown; changed: boolean } {
+  if (!isObj(raw)) return { raw, changed: false };
+  const out: Record<string, unknown> = { ...raw };
+  let changed = false;
+  if (isObj(raw.features) && "gamemode" in raw.features) {
+    const { gamemode, ...rest } = raw.features;
+    out.features = rest.screen === undefined && gamemode === true ? { ...rest, screen: true } : rest;
+    changed = true;
+  }
+  if ("gamemode" in raw) {
+    delete out.gamemode;
+    changed = true;
+    const g = raw.gamemode;
+    if (out.screen === undefined && isObj(g)) {
+      const source = isObj(g.source) ? g.source : null;
+      const game: Record<string, unknown> = { ...(isObj(g.display) ? g.display : {}) };
+      if (source) game.layout = defaultLayout("game", "main");
+      out.screen = { ...(source ? { sources: { main: source } } : {}), modes: { game }, lastMode: "game" };
+    }
+  }
+  return { raw: out, changed };
+}
+
 export class ConfigStore {
   readonly path: string;
   #config: AgentConfig;
@@ -590,8 +753,11 @@ export class ConfigStore {
   static async load(path = defaultConfigPath()): Promise<ConfigStore> {
     const st = await stat(path);
     const raw = await readFile(path, "utf8");
-    const store = new ConfigStore(path, agentConfigSchema.parse(JSON.parse(raw)));
+    const m = migrateConfig(JSON.parse(raw));
+    const store = new ConfigStore(path, agentConfigSchema.parse(m.raw));
     store.#seen = fileId(st);
+    // Written back at once, so the old keys are gone from the file after the first start of this version.
+    if (m.changed) await store.save();
     return store;
   }
 
@@ -661,7 +827,7 @@ export class ConfigStore {
     const id = fileId(st);
     if (id === this.#seen) return false;
     const raw = await readFile(this.path, "utf8");
-    const parsed = agentConfigSchema.safeParse((() => { try { return JSON.parse(raw); } catch { return null; } })());
+    const parsed = agentConfigSchema.safeParse((() => { try { return migrateConfig(JSON.parse(raw)).raw; } catch { return null; } })());
     if (!parsed.success || this.#pending > 0) return false;
     this.#config = parsed.data;
     this.#seen = id;

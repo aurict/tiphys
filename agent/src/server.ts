@@ -52,6 +52,14 @@ export interface Ctx {
    * mode; one queue per agent (tests supply their own).
    */
   analysis?: AnalysisQueue;
+  /** Claude sessions (set by claudeRoutes; the screen feed's project auto-selection reads their cwd). */
+  claude?: import("./claude/manager.ts").ClaudeManager;
+  /** Uptime Kuma bridge (set by uptimeRoutes; the screen feed's `servers` topic reads it). */
+  uptime?: import("./uptime/bridge.ts").UptimeBridge;
+  /** Incident room (set by incidentRoutes; the screen feed's `servers` topic counts the open ones). */
+  incidents?: import("./incidents/service.ts").IncidentService;
+  /** Backup monitor (set by backupRoutes; the sleep mode's morning summary reads its checks). */
+  backups?: import("./backups.ts").BackupMonitor;
 }
 
 declare module "fastify" {
@@ -63,12 +71,12 @@ declare module "fastify" {
     auditDetail?: AuditDetail;
   }
   interface FastifyContextConfig {
-    /** Service tokens holding this scope may call the route (devices may call every route). */
-    scope?: string;
+    /** Service tokens holding this scope (or one of these) may call the route (devices may call every route). */
+    scope?: string | readonly string[];
     /** No token needed: the route checks its own credential (only the recovery-code lockdown). */
     public?: boolean;
     /**
-     * Game mode kiosk page (PLAN.md §19): no device token and no Tailscale identity check, because the local Firefox
+     * Screen mode kiosk page (PLAN.md §19, §20): no device token and no Tailscale identity check, because the local Firefox
      * reaches the agent on 127.0.0.1 without Tailscale headers. Static files hold no secrets; the live WS and the art
      * proxy check the in-memory display token themselves.
      */
@@ -83,7 +91,7 @@ export async function buildApp(ctx: Ctx, opts: { logger?: boolean; logStream?: {
       ? {
           level: "info",
           redact: ["req.headers.authorization"],
-          // The game mode display token travels as ?t= (kiosk WS and art proxy): keep it out of the log.
+          // The screen mode display token travels as ?t= (kiosk WS and art proxy): keep it out of the log.
           serializers: {
             req: (req: { method: string; url: string; hostname?: string; ip?: string; socket?: { remotePort?: number } }) => ({
               method: req.method,
@@ -159,7 +167,8 @@ export async function buildApp(ctx: Ctx, opts: { logger?: boolean; logStream?: {
   app.get("/v1/health", async () => {
     const c = ctx.store.get();
     // unsupported: features or feature parts this OS can't do (platform/support.ts); their routes answer 501.
-    return { name: c.name, version: VERSION, features: c.features, unsupported };
+    // features.gamemode: the old name of "screen", reported for one release (app 1.2 shows Game mode by it).
+    return { name: c.name, version: VERSION, features: { ...c.features, gamemode: c.features.screen }, unsupported };
   });
 
   auditRoutes(app, ctx);
@@ -214,9 +223,11 @@ export async function buildApp(ctx: Ctx, opts: { logger?: boolean; logStream?: {
   if (f.wake) (await import("./routes/wake.ts")).wakeRoutes(app, ctx);
   if (f.research) await (await import("./routes/research.ts")).researchRoutes(app, ctx);
   if (f.analysis) await (await import("./analysis/routes.ts")).analysisRoutes(app, ctx);
-  if (f.gamemode) {
-    if (!isSupported("gamemode")) unsupportedRoutes(app, "/v1/gamemode", "gamemode");
-    else await (await import("./gamemode/routes.ts")).gamemodeRoutes(app, ctx);
+  if (f.screen) {
+    if (!isSupported("screen")) {
+      unsupportedRoutes(app, "/v1/screen", "screen");
+      unsupportedRoutes(app, "/v1/gamemode", "screen");
+    } else await (await import("./screen/routes.ts")).screenRoutes(app, ctx);
   }
   for (const register of ctx.extraRoutes ?? []) await register(app, ctx);
 

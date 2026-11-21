@@ -14,7 +14,8 @@
 #
 # Bundle tiphys-agent-<version>-<platform>.tar.gz (win: .zip) holds tiphys-agent-<version>-<platform>/ with dist/,
 # production node_modules for that OS/CPU (incl. the matching Claude Agent SDK binary package), helpers/,
-# display/ (the Game mode kiosk page with its vendor/ and fonts/; the agent serves it from ../display next to dist/),
+# display/ (the screen mode kiosk page with its vendor/ and fonts/, without draft/; the agent serves it from ../display
+# next to dist/),
 # package.json and node/ (the official Node.js 24 runtime, checked against nodejs.org's SHASUMS256.txt).
 # Env: TIPHYS_NODE_VERSION (default: newest 24.x), SOURCE_DATE_EPOCH (default: last commit time).
 set -euo pipefail
@@ -44,10 +45,12 @@ die() { echo "release: $*" >&2; exit 1; }
 # ---- preconditions -------------------------------------------------------------------------------------------------
 src_version=$(sed -n 's/^export const VERSION = "\(.*\)";/\1/p' "$ROOT/agent/src/version.ts")
 pkg_version=$(node -p 'require(process.argv[1]).version' "$ROOT/agent/package.json")
-[ "$src_version" = "$VERSION" ] && [ "$pkg_version" = "$VERSION" ] ||
+if ! { [ "$src_version" = "$VERSION" ] && [ "$pkg_version" = "$VERSION" ]; }; then
   die "agent/src/version.ts ($src_version) and agent/package.json ($pkg_version) must both be $VERSION — bump them (and kExpectedAgentVersion in the app if needed) and commit first"
-[ -f "$ROOT/display/index.html" ] && [ -d "$ROOT/display/vendor" ] && [ -d "$ROOT/display/fonts" ] ||
-  die "display/ (Game mode kiosk page with vendor/ and fonts/) is incomplete"
+fi
+if ! { [ -f "$ROOT/display/index.html" ] && [ -d "$ROOT/display/vendor" ] && [ -d "$ROOT/display/fonts" ]; }; then
+  die "display/ (screen mode kiosk page with vendor/ and fonts/) is incomplete"
+fi
 if [ -z "$UNSIGNED" ]; then
   [ -f "$KEY" ] || die "no signing key at $KEY — run tools/release-keygen.sh once (or use --unsigned for a build check)"
   grep -q "BEGIN PUBLIC KEY" "$ROOT/agent/src/update_key.ts" || die "agent/src/update_key.ts still holds the placeholder key (tools/release-keygen.sh writes it)"
@@ -107,7 +110,7 @@ node_runtime() { # <platform> <dest dir> — official runtime, checksum-verified
   local want got
   want=$(awk -v f="$file" '$2 == f { print $1 }' "$SUMS")
   got=$(sha256sum "$CACHE/$file" | cut -d' ' -f1)
-  [ -n "$want" ] && [ "$want" = "$got" ] || { rm -f "$CACHE/$file"; die "checksum mismatch for $file"; }
+  if ! { [ -n "$want" ] && [ "$want" = "$got" ]; }; then rm -f "$CACHE/$file"; die "checksum mismatch for $file"; fi
   local x; x=$(mktemp -d)
   case $file in
     *.zip) python3 -I -m zipfile -e "$CACHE/$file" "$x" ;;
@@ -139,7 +142,8 @@ for p in "${PLATS[@]}"; do
   echo "==> $name"
   mkdir -p "$dir"
   cp -r "$ROOT/agent/dist" "$ROOT/agent/helpers" "$ROOT/agent/package.json" "$ROOT/agent/package-lock.json" "$dir/"
-  cp -r "$ROOT/display" "$dir/display"  # Game mode kiosk page (defaultDisplayDir(): ../display next to dist/)
+  cp -r "$ROOT/display" "$dir/display"  # screen mode kiosk page (defaultDisplayDir(): ../display next to dist/)
+  rm -rf "$dir/display/draft"  # W0 design mock-ups: kept in the repo, never shipped or served
   find "$dir" -name '*.map' -delete
   find "$dir/helpers" -name __pycache__ -prune -exec rm -rf {} +
   # Production dependencies for the target OS/CPU: npm picks the optional packages (the Claude Agent SDK's native

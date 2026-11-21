@@ -130,7 +130,7 @@ rely on the package manager's own checks plus the checksums copied from the sign
 Each area of functionality is a flag in `agent.json`. If a flag is off, its routes are not registered and heavy
 modules such as the Claude SDK are not even loaded. On a new configuration only `system`, `services`, `docker` and
 `power` are on. Everything that runs code on your behalf or touches the desktop (`claude`, `agy`, `git`, `desktop`,
-`control`, `ports`, `transcribe`, `wake`, `watch`, `uptime`, `alerts`, `backups`, `homepage`, `security`, `securityFix`, `gamemode`) must be enabled
+`control`, `ports`, `transcribe`, `wake`, `watch`, `uptime`, `alerts`, `backups`, `homepage`, `security`, `securityFix`, `screen`) must be enabled
 explicitly. Enable only what a machine needs. A server usually needs no `claude`, `agy`, `desktop` or `control`.
 
 ## Path restrictions
@@ -509,10 +509,18 @@ validated operation to the Velour player's local socket, `$XDG_RUNTIME_DIR/velou
   Velour remote has been opened in this app run and can be turned off in the PC panel. While the remote screen is
   open, the phone's volume buttons change Velour's volume instead of the phone's.
 
-## Game mode
+## Screen modes
 
-The `gamemode` flag (off by default, never turned on by `init --detect`) turns a laptop into a second screen for the PC
-(see [api.md](agent/api.md#gamemode)). Two agents take part; each side's rules:
+<a id="game-mode"></a>
+The `screen` flag (was `gamemode`; off by default, never turned on by `init --detect`) turns a laptop into a second
+screen for the PC: the Work, Focus and Game modes (see [Screen modes](features/screen-modes.md) and
+[api.md](agent/api.md#screen)). Two agents take part; each side's rules below were written for Game mode and hold for
+every screen mode (the Work and Focus additions follow in [Work and Focus](#work-and-focus)): the routes are now `/v1/screen/*` and `/screen/*` (the `/v1/gamemode/*` and
+`/gamemode/*` ones stay for one release), the unit, app id and work dir are `tiphys-screen`, the events
+`screen.started {mode}` / `screen.stopped`. The `scratch` placement adds a temporary Hyprland keybind (fixed
+dispatcher `togglespecialworkspace tiphys`, key from the validated `screen.scratchBind`, refused if already bound,
+recorded in the state file and unbound on stop or after a crash). A `gamemode` service token opens only the Game mode
+topics of `WS /v1/screen/feed`.
 
 **No control session.** Starting the mode shows a fullscreen window, holds an idle/sleep inhibitor and may change the
 backlight on the display host, which is the kind of desktop change a control session normally guards. It is not
@@ -551,6 +559,77 @@ drive. Every paired device can stop the mode, and so can the laptop's own keyboa
   game (MIT, [truckermudgeon/scs-sdk-plugin](https://github.com/truckermudgeon/scs-sdk-plugin)); the game shows its
   "SDK features" notice on start. The agent only reads the plugin's shared memory, at fixed offsets, and checks its
   layout revision.
+
+### Work and Focus
+
+- **Scopes.** A source opens `WS /v1/screen/feed` to a service token with the `screen` scope (or a device token).
+  A `gamemode` token from 0.5 gets only `music`, `spectrum` and `truck`, never `claude` or `diff`. The feed accepts
+  only a topic list (≤ 4 KB) and, for `git`/`city`, a project: `auto` or an absolute path that must be inside the
+  source's `allowedRoots` (`notAllowed` otherwise). Subscribers cannot send anything else.
+- **Code sharing is the source's decision (`screen.share.code`, off by default).** Without it the source sends no
+  file name (every path segment becomes an opaque HMAC token with a random key per city, made at start and kept in
+  memory) and never a `diff`. Paths outside the project root are never sent. The app turns it on only on the source's
+  own API, after a confirmation that says who will be able to read the code; cancelling sends nothing.
+- **No approvals on the display.** The diff card is a preview. The kiosk page and the display token have no route
+  that answers a Claude permission; approval stays on the phone (device token), as for any other Claude session.
+  Terminal Claude Code sessions never yield a diff (their transcript is not read for it, no hook is installed and
+  `~/.claude/settings.json` is not touched); for them only "waiting + tool + file" is shown.
+- **What is read.** `/proc` and `/sys` (no environment variables of other processes; a job's command line is cut to
+  120 characters, paths to their last part, and passed through the same secret redaction as logs), `git` in the
+  project, the project's files (line counts only, binaries/symlinks/FIFOs/files over 2 MB skipped, `O_NOFOLLOW`),
+  Claude Code's `sessions/` files and only the appended part of a session's transcript (tool names and file paths,
+  never content), and `gh run list` only with the CI setting on. A diff is redacted and limited to 400 lines / 64 KB.
+- **Privacy veil.** `POST /v1/screen/veil` stops every layout and topic message to the page until it is lifted (the
+  page keeps nothing to show but a clock); it survives an agent restart and ends with the mode.
+- **What is stored where.** Nothing about the work is written to disk: city, diffs, paths, Claude activity, jobs and
+  the session-summary counters live in memory only (source while subscribed, display while the mode runs, page while
+  open). The Focus task line is memory only (never in a file, event, push or log). On the display host's tmpfs
+  (`$XDG_RUNTIME_DIR/tiphys-screen/`, `0700`, removed on stop): the state file (side effects, and the display token
+  so a restarted agent can adopt the mode, `0600`), `start.html`, the Firefox profile and `focus.json` (the timer's
+  times only). The event log gets `screen.started {mode}`, `screen.stopped` and `screen.focus.phase {phase, from,
+  round, cause}`. The `screen.summary` push holds numbers and mode names only and is not recorded (not in the event
+  log, the black box or any file). Settings and source tokens are in `agent.json` (tokens never returned). On the
+  phone: the Focus quiet-filter record (host, round end, held count; no content); the last summary is kept only
+  in the notification and the app's memory (12 hours).
+
+### Sleep mode
+
+The fourth screen mode ([Sleep mode](features/sleep-mode.md), [api.md](agent/api.md#sleep-mode)) runs overnight on
+every member of the sleep group. The kiosk rules above apply unchanged (tmpfs profile, display token, no control
+session); in addition:
+
+- **No screen lock, by decision.** The mode keeps an idle/sleep inhibitor all night and does not start `hyprlock`.
+  The keyboard of a sleeping machine can do exactly three things: Space snoozes a ringing alarm, Esc held 1 s turns
+  the alarm off or stops the mode (for the whole group). Anyone in the room can do that; the desktop behind the
+  kiosk is as reachable as on an unlocked unattended PC. Lock the session yourself if that matters.
+- **Fixed commands only.** `brightnessctl` (the `backlight` class device, validated name, integer percent),
+  `ddcutil` (VCP 0x10, integer bus and value), `powerprofilesctl`, `wpctl` (`@DEFAULT_AUDIO_SINK@`), `pw-play` (a
+  WAV the agent wrote itself) and LED `brightness` files (only writable LEDs with trigger `none`). Values read back
+  from the state file are validated again before use. No outside text reaches a command line.
+- **Group link.** A member reaches the leader only over its existing source connection (`WS /v1/screen/feed`, a
+  `screen` service token; a 0.5 `gamemode` token cannot send group messages). The leader accepts group messages only
+  for the session it is running (`stop`, `snooze`, `dismiss`, a member's keepalive and its night counts) and never
+  connects to a member. Clock pings carry timestamps only.
+- **What is stored where.** Settings, including the alarm time and the room layout, are configuration
+  (`screen.modes.sleep` in `agent.json`). On the tmpfs (`$XDG_RUNTIME_DIR/tiphys-screen/`, 0700, removed at stop):
+  `sleep.json` (0600: the session — id, seed, start, members, plan —, every hardware value to restore, the last alarm
+  transition, Velour's saved volume) and, only while the WAV fallback plays, `alarm.wav` (0600). A brightness preview
+  outside a run keeps the previous value in `$XDG_RUNTIME_DIR/tiphys-sleep-preview.json` (0600) until restored. In
+  memory only: the held-notification count and three titles, the night's jobs/backups/incidents counts, the morning
+  summary (12 h) and the leader's list of stopped session ids (12 h). The event log gets `sleep.started`,
+  `sleep.stopped` and `sleep.alarm {state}` without content.
+- **Night filter and the event log.** A notification held by the night filter is not sent, but it is still written to
+  the event log (`events.jsonl`) exactly as a sent one would be (unless it is sensitive or transient, as always): that
+  is the regular notification history. Only the held list (count, first three titles) stays in memory. Notifications
+  from a separate `tiphys-agent run …` process bypass the filter (they don't go through the running agent).
+- **Push content.** `sleep.alarm` carries the alarm state, its times and the snooze length; `sleep.morning` carries
+  numbers (minutes slept, jobs, backups, incidents, held notifications, members) and up to three titles of held
+  notifications as `key · subject` (the subject — a container, unit, mount or host name — passed through the same
+  redaction as logs; a sensitive notification contributes its key only). Both are transient: not recorded in the event
+  log, the black box or any file, and they travel through the configured push channel like every other notification.
+  On the phone: the alarm record (`app:sleepRun`: hosts, ring time, snooze length) in secure storage so the
+  notification buttons work with the app closed, and the summary in the notification and the app's memory (12 h).
+- **Desktop notifications** (Quickshell popups) are not touched, by decision: they show over the sleep screen.
 
 ## Sunshine / Moonlight
 

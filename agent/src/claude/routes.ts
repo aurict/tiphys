@@ -107,6 +107,7 @@ export function claudeRoutes(
     const sec = createSecSupport(ctx, opts.security);
     opts.onSec?.(sec);
     const mgr = new ClaudeManager(() => ctx.store.get(), ctx.notifier, queryFn, statePath, pc, sec);
+    ctx.claude = mgr;
     // When the control session ends (stop, expiry, agent shutdown), attached PC sessions stop immediately.
     const offControl = ctx.control?.onEnd((info) => mgr.controlEnded(info.device, info.reason));
     // "Extend" notification 2 min before control time runs out (PC sessions).

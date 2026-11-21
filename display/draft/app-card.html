@@ -1,0 +1,131 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="referrer" content="no-referrer">
+<title>Tiphys · Ekran modu kartı ve mod seçimi (taslak)</title>
+<link rel="stylesheet" href="../tokens.css">
+<link rel="stylesheet" href="app-card.css">
+<script type="module">
+  import { fillIcons } from './icons.js';
+  fillIcons();
+</script>
+</head>
+<!-- W0 visual draft of the app side (Flutter, dark theme: app/lib/theme/tokens.dart). Four 375×812 phones:
+     home card closed / Çalışma running / Odak running, and the mode chooser sheet. Static: no script beyond icons. -->
+<body>
+<main class="row">
+
+  <!-- 1. Closed -->
+  <figure class="phone-wrap">
+    <div class="phone">
+      <div class="amb"></div>
+      <div class="status"><span>9:41</span><span class="si"><i></i><i></i><i></i></span></div>
+      <header class="hd"><div class="ov">CUMARTESİ, 21 KASIM</div><h1>Tiphys</h1></header>
+      <section class="bento">
+        <div class="tile claude"><div class="tk"><span data-icon="sparkle" data-size="16"></span>Claude</div><div class="big">2</div><div class="tsub">oturum çalışıyor</div></div>
+        <div class="tile glass"><div class="tk2">Sistem</div><div class="hosts"><span><i style="background:var(--host-1)"></i>masaüstü</span><span><i style="background:var(--host-2)"></i>laptop</span><span><i style="background:var(--host-3)"></i>sunucu</span></div></div>
+      </section>
+      <article class="mode-card" aria-label="Ekran modu">
+        <div class="mc-l">
+          <div class="mc-k"><span data-icon="monitor" data-size="16"></span>Ekran modu</div>
+          <div><div class="mc-h">Kapalı</div><div class="mc-s">Son kullanılan: Çalışma · laptop</div></div>
+        </div>
+        <button class="mc-btn start" aria-label="Başlat"><span data-icon="play" data-size="26"></span></button>
+      </article>
+      <div class="sec">Altyapı</div>
+      <div class="list"><div class="li"><span class="lic" data-icon="server" data-size="18"></span><span>Uptime</span><span class="ok">Hepsi ayakta</span></div><div class="li"><span class="lic" data-icon="terminal" data-size="18"></span><span>Terminal</span><span data-icon="chevron" data-size="18" class="chev"></span></div></div>
+      <nav class="tabbar"><i class="on" data-icon="home" data-size="22"></i><i data-icon="terminal" data-size="22"></i><i data-icon="sparkle" data-size="22"></i><i data-icon="sliders" data-size="22"></i></nav>
+    </div>
+    <figcaption>Ana sayfa · kapalı</figcaption>
+  </figure>
+
+  <!-- 2. Çalışma running -->
+  <figure class="phone-wrap">
+    <div class="phone">
+      <div class="amb"></div>
+      <div class="status"><span>9:41</span><span class="si"><i></i><i></i><i></i></span></div>
+      <header class="hd"><div class="ov">CUMARTESİ, 21 KASIM</div><h1>Tiphys</h1></header>
+      <section class="bento">
+        <div class="tile claude"><div class="tk"><span data-icon="sparkle" data-size="16"></span>Claude</div><div class="big">2</div><div class="tsub">oturum çalışıyor</div></div>
+        <div class="tile glass"><div class="tk2">Sistem</div><div class="hosts"><span><i style="background:var(--host-1)"></i>masaüstü</span><span><i style="background:var(--host-2)"></i>laptop</span><span><i style="background:var(--host-3)"></i>sunucu</span></div></div>
+      </section>
+      <article class="mode-card on" aria-label="Ekran modu">
+        <div class="mc-l">
+          <div class="mc-k"><span data-icon="code" data-size="16"></span>Çalışma · laptop<span class="live"></span></div>
+          <div><div class="mc-h">2 Claude oturumu · 1 iş</div><div class="mc-s">theloth'u yansıtıyor · 1 sa 42 dk</div></div>
+        </div>
+        <button class="mc-btn stop" aria-label="Kapat"><span data-icon="square" data-size="24"></span></button>
+      </article>
+      <div class="sec">Altyapı</div>
+      <div class="list"><div class="li"><span class="lic" data-icon="server" data-size="18"></span><span>Uptime</span><span class="ok">Hepsi ayakta</span></div><div class="li"><span class="lic" data-icon="terminal" data-size="18"></span><span>Terminal</span><span data-icon="chevron" data-size="18" class="chev"></span></div></div>
+      <nav class="tabbar"><i class="on" data-icon="home" data-size="22"></i><i data-icon="terminal" data-size="22"></i><i data-icon="sparkle" data-size="22"></i><i data-icon="sliders" data-size="22"></i></nav>
+    </div>
+    <figcaption>Ana sayfa · Çalışma açık</figcaption>
+  </figure>
+
+  <!-- 3. Odak running -->
+  <figure class="phone-wrap">
+    <div class="phone">
+      <div class="amb"></div>
+      <div class="status"><span>9:41</span><span class="si"><i></i><i></i><i></i></span></div>
+      <header class="hd"><div class="ov">CUMARTESİ, 21 KASIM</div><h1>Tiphys</h1></header>
+      <section class="bento">
+        <div class="tile claude"><div class="tk"><span data-icon="sparkle" data-size="16"></span>Claude</div><div class="big">1</div><div class="tsub">oturum çalışıyor</div></div>
+        <div class="tile glass"><div class="tk2">Sistem</div><div class="hosts"><span><i style="background:var(--host-1)"></i>masaüstü</span><span><i style="background:var(--host-2)"></i>laptop</span><span><i style="background:var(--host-3)"></i>sunucu</span></div></div>
+      </section>
+      <article class="mode-card on focus" aria-label="Ekran modu">
+        <div class="mc-l">
+          <div class="mc-k"><span data-icon="target" data-size="16"></span>Odak · laptop<span class="live"></span></div>
+          <div><div class="mc-h">14:32 kaldı <span class="rd">· 2/4</span></div><div class="mc-s">Ekran modları W0 taslağını bitir</div></div>
+        </div>
+        <button class="mc-btn stop" aria-label="Kapat">
+          <svg class="mc-ring" viewBox="0 0 72 72" aria-hidden="true"><circle cx="36" cy="36" r="33" pathLength="100"/></svg>
+          <span data-icon="square" data-size="24"></span>
+        </button>
+      </article>
+      <div class="sec">Altyapı</div>
+      <div class="list"><div class="li"><span class="lic" data-icon="server" data-size="18"></span><span>Uptime</span><span class="ok">Hepsi ayakta</span></div><div class="li"><span class="lic" data-icon="terminal" data-size="18"></span><span>Terminal</span><span data-icon="chevron" data-size="18" class="chev"></span></div></div>
+      <nav class="tabbar"><i class="on" data-icon="home" data-size="22"></i><i data-icon="terminal" data-size="22"></i><i data-icon="sparkle" data-size="22"></i><i data-icon="sliders" data-size="22"></i></nav>
+    </div>
+    <figcaption>Ana sayfa · Odak açık</figcaption>
+  </figure>
+
+  <!-- 4. Mode chooser sheet -->
+  <figure class="phone-wrap">
+    <div class="phone">
+      <div class="amb"></div>
+      <div class="status"><span>9:41</span><span class="si"><i></i><i></i><i></i></span></div>
+      <header class="hd"><div class="ov">CUMARTESİ, 21 KASIM</div><h1>Tiphys</h1></header>
+      <div class="scrim"></div>
+      <section class="sheet" role="dialog" aria-label="Ekran modu seç">
+        <div class="grab"></div>
+        <div class="sh-t">Ekran modu</div>
+        <div class="sh-s">Mod seç; ekranı ve verinin nereden geleceğini belirle.</div>
+
+        <div class="opts" role="radiogroup" aria-label="Mod">
+          <div class="opt sel" role="radio" aria-checked="true"><span class="oi" data-icon="code" data-size="22"></span><div><div class="on">Çalışma</div><div class="od">Kod şehri, Claude, işler ve git</div></div><span class="rad"></span></div>
+          <div class="opt" role="radio" aria-checked="false"><span class="oi focus" data-icon="target" data-size="22"></span><div><div class="on">Odak</div><div class="od">Sayaç ve görev, sessiz bildirimler</div></div><span class="rad"></span></div>
+          <div class="opt" role="radio" aria-checked="false"><span class="oi game" data-icon="gamepad" data-size="22"></span><div><div class="on">Oyun</div><div class="od">ETS2 haritası, kokpit ve müzik</div></div><span class="rad"></span></div>
+        </div>
+
+        <div class="lbl">Ekran</div>
+        <div class="seg" role="radiogroup" aria-label="Ekran hostu"><span class="sel"><span data-icon="laptop" data-size="16"></span>laptop</span><span><span data-icon="monitor" data-size="16"></span>theloth</span></div>
+
+        <div class="lbl">Nereden</div>
+        <div class="chips" role="radiogroup" aria-label="Veri kaynağı">
+          <span class="ch sel"><span data-icon="mirror" data-size="15"></span>theloth'u yansıt</span>
+          <span class="ch">bu makinenin kendisi</span>
+          <span class="ch"><span data-icon="sliders" data-size="15"></span>Özel</span>
+        </div>
+
+        <button class="go"><span data-icon="play" data-size="18"></span>Başlat</button>
+      </section>
+    </div>
+    <figcaption>Mod seçme sayfası</figcaption>
+  </figure>
+
+</main>
+</body>
+</html>

@@ -66,7 +66,7 @@ void main() {
   group('doktor', () {
     test('rapor gruplanır, metinler iki dilde, bilinmeyen kod olduğu gibi', () {
       final r = DoctorReport.fromJson(sampleDoctor());
-      expect(r.version, '0.5.0');
+      expect(r.version, '0.6.0');
       expect(r.withStatus(DoctorStatus.fail).map((c) => c.id), ['tailscale.serve']);
       expect(r.withStatus(DoctorStatus.warn).map((c) => c.id), ['disk', 'push']);
       expect(r.problems, 3);

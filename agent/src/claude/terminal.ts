@@ -10,8 +10,10 @@ export interface TerminalSession {
   sdkSessionId: string;
   cwd: string | null;
   name: string | null;
-  /** Status reported by Claude Code: busy | idle | … */
+  /** Status reported by Claude Code: busy | idle | waiting | … */
   status: string | null;
+  /** With status "waiting": what it waits for (a permission/dialog description, "input needed", …). */
+  waitingFor: string | null;
   startedAt: string | null;
   updatedAt: string | null;
 }
@@ -31,6 +33,33 @@ export async function procStart(procRoot: string, pid: number): Promise<string |
 const iso = (v: unknown) => (typeof v === "number" && Number.isFinite(v) ? new Date(v).toISOString() : null);
 const str = (v: unknown) => (typeof v === "string" && v.length > 0 ? v : null);
 
+/** One `<pid>.json` (null: not a session file, unreadable, or its process is gone / is another process now). */
+export async function readTerminalSession(file: string, procRoot = "/proc"): Promise<TerminalSession | null> {
+  let j: Record<string, unknown>;
+  try {
+    j = JSON.parse(await readFile(file, "utf8")) as Record<string, unknown>;
+  } catch {
+    return null; // read while being written, or corrupt: skip this round
+  }
+  if (!j || typeof j !== "object") return null;
+  const pid = Number(j.pid);
+  const sessionId = str(j.sessionId);
+  if (!Number.isInteger(pid) || pid <= 0 || !sessionId) return null;
+  const started = await procStart(procRoot, pid);
+  if (started === null) return null; // no process
+  if (j.procStart !== undefined && String(j.procStart) !== started) return null; // pid moved to another process
+  return {
+    pid,
+    sdkSessionId: sessionId,
+    cwd: str(j.cwd),
+    name: str(j.name),
+    status: str(j.status),
+    waitingFor: str(j.waitingFor),
+    startedAt: iso(j.startedAt),
+    updatedAt: iso(j.updatedAt),
+  };
+}
+
 export async function terminalSessions(configDir: string, procRoot = "/proc"): Promise<TerminalSession[]> {
   const dir = join(configDir, "sessions");
   let names: string[];
@@ -41,27 +70,8 @@ export async function terminalSessions(configDir: string, procRoot = "/proc"): P
   }
   const out: TerminalSession[] = [];
   for (const n of names.filter((n) => /^\d+\.json$/.test(n))) {
-    let j: Record<string, unknown>;
-    try {
-      j = JSON.parse(await readFile(join(dir, n), "utf8")) as Record<string, unknown>;
-    } catch {
-      continue; // read while being written, or corrupt: skip this round
-    }
-    const pid = Number(j.pid);
-    const sessionId = str(j.sessionId);
-    if (!Number.isInteger(pid) || pid <= 0 || !sessionId) continue;
-    const started = await procStart(procRoot, pid);
-    if (started === null) continue; // no process
-    if (j.procStart !== undefined && String(j.procStart) !== started) continue; // pid moved to another process
-    out.push({
-      pid,
-      sdkSessionId: sessionId,
-      cwd: str(j.cwd),
-      name: str(j.name),
-      status: str(j.status),
-      startedAt: iso(j.startedAt),
-      updatedAt: iso(j.updatedAt),
-    });
+    const t = await readTerminalSession(join(dir, n), procRoot);
+    if (t) out.push(t);
   }
   return out.sort((a, b) => (b.updatedAt ?? "").localeCompare(a.updatedAt ?? ""));
 }

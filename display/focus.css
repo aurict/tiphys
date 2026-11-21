@@ -1,0 +1,87 @@
+/* Odak layout (PLAN.md §20 E-3, W5) from the W0 draft (display/draft/focus.css): one big ring in the middle; everything
+   else small and dimmer while focusing; a warm tone in the breaks. The background is a quarter-resolution canvas
+   repainted every 10 s (cards/focus.js), no CSS animation anywhere. Plus the privacy veil (a dim clock). */
+
+.tpl-focus { --phase: var(--accent); --phase-rgb: 165, 180, 252; background: #000; }
+.tpl-focus[data-phase="break"] { --phase: #F4B89B; --phase-rgb: 244, 184, 155; }
+.f-bg { position: absolute; inset: 0; width: 100%; height: 100%; z-index: 0; }
+.tpl-focus > :not(.f-bg) { z-index: 1; }
+
+.f-corner { position: absolute; top: 40px; }
+.f-tl { left: 48px; }
+.f-tr { right: 48px; text-align: right; }
+.f-round { font-size: 22px; font-weight: 700; color: var(--text); margin-top: 6px; }
+.tpl-focus[data-phase="focus"] .f-corner, .tpl-focus[data-phase="focus"] .f-bl, .tpl-focus[data-phase="focus"] .f-quiet { opacity: .6; }
+
+/* Day card in the corner: clock over the date, no glass. */
+.day-card.corner { padding: 0; flex-direction: column-reverse; align-items: flex-end; gap: 6px; background: transparent; border-color: transparent; backdrop-filter: none; overflow: visible; }
+.day-card.corner::before { display: none; }
+.day-card.corner .day-clock { font-size: 44px; letter-spacing: -0.03em; }
+.day-card.corner .day-suffix { font-size: 18px; margin-left: 6px; }
+.day-card.corner .overline { font-size: 17px; letter-spacing: 0; text-transform: none; }
+
+.f-center { position: absolute; left: 0; right: 0; top: 96px; display: flex; flex-direction: column; align-items: center; }
+/* Without the timer the big clock sits in the middle of the screen. */
+.f-center:not(:has(.f-timer)) { top: 0; bottom: 0; justify-content: center; }
+.f-timer { display: contents; }
+.f-ring { position: relative; width: 600px; height: 600px; }
+.f-ring .ring { width: 100%; height: 100%; }
+.f-ring circle { stroke-width: 7; }
+.f-ring .track { stroke: rgba(255, 255, 255, .08); }
+.f-ring .arc { opacity: 1; stroke: var(--phase); transition: none; }
+.f-ring::before { content: ""; position: absolute; inset: -40px; border-radius: 50%; pointer-events: none;
+  background: radial-gradient(closest-side, transparent 80%, rgba(var(--phase-rgb), .10) 89%, transparent 100%); }
+.f-inner { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+.f-phase { font-size: 20px; font-weight: 700; letter-spacing: .18em; color: var(--phase); }
+.f-time { font-size: 168px; font-weight: 800; letter-spacing: -0.05em; line-height: 1; margin: 10px 0 8px; font-variant-numeric: tabular-nums; }
+.f-sub { font-size: 20px; font-weight: 600; color: var(--label); }
+/* Idle and paused: the ring and the time rest. */
+.tpl-focus[data-phase="idle"] .f-ring .arc { stroke: rgba(var(--phase-rgb), .35); }
+.tpl-focus[data-phase="idle"] .f-time, .tpl-focus.f-paused .f-time { color: #C7C7CC; }
+.tpl-focus.f-paused .f-ring .arc { opacity: .45; }
+
+.f-dots { display: flex; gap: 16px; margin-top: 30px; }
+.f-dots i { width: 14px; height: 14px; border-radius: 14px; background: rgba(255, 255, 255, .12); }
+.f-dots i.done { background: var(--phase); }
+.f-dots i.cur { background: transparent; box-shadow: inset 0 0 0 3px var(--phase); }
+
+.f-task { margin-top: 34px; text-align: center; max-width: 1100px; padding: 0 48px; }
+.f-task[hidden] { display: none; }
+.f-task .overline { letter-spacing: .14em; }
+.f-task-t { font-size: 38px; font-weight: 800; letter-spacing: -0.02em; margin-top: 8px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+.f-break { display: flex; margin-top: 30px; align-items: center; gap: 22px; padding: 24px 32px 24px 24px; width: 640px; max-width: calc(100% - 96px);
+  border-radius: var(--radius-hero); background: linear-gradient(rgba(244, 184, 155, .10), rgba(244, 184, 155, .10)), rgba(0, 0, 0, .3);
+  border-color: rgba(244, 184, 155, .28); backdrop-filter: none; }
+.f-break[hidden] { display: none; }
+.fb-ic { width: 72px; height: 72px; border-radius: 22px; flex: none; display: flex; align-items: center; justify-content: center;
+  background: rgba(244, 184, 155, .18); color: #F4B89B; }
+.fb-txt { min-width: 0; }
+.fb-t { font-size: 34px; font-weight: 800; letter-spacing: -0.02em; }
+.fb-s { font-size: 19px; font-weight: 600; color: #D1D1D6; margin-top: 4px; }
+.fb-next { font-size: 16px; font-weight: 600; color: var(--label); margin-top: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.fb-next[hidden] { display: none; }
+.fb-next span { color: #D1D1D6; }
+
+.f-bl { position: absolute; left: 48px; bottom: 40px; width: 420px; }
+.f-bl .mu-card { padding: 14px 18px; backdrop-filter: none; }
+.f-bl .mu-card .mc-cover { width: 58px; height: 58px; border-radius: 14px; }
+.f-bl .mu-card .card-body { gap: 16px; }
+.f-bl .mu-card .np-label, .f-bl .mu-card .times { display: none; }
+.f-bl .mu-card .mu-t { font-size: 18px; margin-top: 0; }
+.f-bl .mu-card .mu-a { font-size: 15px; }
+.f-bl .mu-card .progress { margin-top: 9px; }
+.f-bl .mu-card .progress .bar { height: 3px; }
+.f-br { position: absolute; right: 48px; bottom: 48px; display: flex; flex-direction: column; align-items: flex-end; gap: 14px; width: 460px; }
+.f-br .srv-card { width: 100%; backdrop-filter: none; }
+/* Sunucular: only when something is wrong. */
+.f-br .srv-card.line:not([data-state="down"]) { display: none; }
+.f-quiet .ic { color: var(--label); width: 16px; height: 16px; }
+
+/* ---------- privacy veil ---------- */
+#veil { position: fixed; inset: 0; z-index: 50; background: #000; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px; }
+#veil[hidden] { display: none; }
+.veil-clock { font-size: 200px; font-weight: 800; letter-spacing: -0.045em; line-height: 1; color: rgba(245, 245, 247, .38); font-variant-numeric: tabular-nums; }
+.veil-suffix { font-size: 40px; margin-left: 16px; letter-spacing: 0; }
+.veil-date { font-size: 24px; font-weight: 600; letter-spacing: .07em; color: rgba(174, 174, 178, .45); }
+body.veiled #pill { visibility: hidden; }

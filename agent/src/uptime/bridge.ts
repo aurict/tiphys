@@ -377,6 +377,7 @@ function monitorDefaults(i: MonitorInput): Record<string, unknown> {
 
 export function uptimeRoutes(app: FastifyInstance, ctx: Ctx) {
   const bridge = new UptimeBridge(() => ctx.store.get(), ctx.notifier);
+  ctx.uptime = bridge;
   bridge.start();
   app.addHook("onClose", async () => bridge.stop());
   const idParam = (req: { params: unknown }) => z.coerce.number().int().positive().parse((req.params as { id: string }).id);

@@ -17,7 +17,7 @@ export const FEATURE_NAMES = Object.keys(agentConfigSchema.shape.features.shape)
 /** Never enabled by --detect: they run code, drive the desktop, cut power, read secrets or reach other machines. */
 export const RISKY_FEATURES: readonly FeatureName[] = [
   "control", "claude", "power", "securityFix", "databases", "research", "agy", "analysis", "configfiles",
-  "security", "telegram", "incidents", "wake", "homepage", "uptime", "watch", "alerts", "backups", "gamemode",
+  "security", "telegram", "incidents", "wake", "homepage", "uptime", "watch", "alerts", "backups", "screen",
 ];
 
 export interface Detected {
@@ -161,7 +161,8 @@ export class FeatureError extends Error {}
 
 function parseList(v: string | undefined): FeatureName[] {
   if (v === undefined) return [];
-  const names = v.split(",").map((s) => s.trim()).filter(Boolean);
+  // "gamemode" is the old name of "screen" (one release).
+  const names = v.split(",").map((s) => s.trim()).filter(Boolean).map((n) => (n === "gamemode" ? "screen" : n));
   const bad = names.filter((n) => !(FEATURE_NAMES as string[]).includes(n));
   if (bad.length) throw new FeatureError(`unknown feature(s): ${bad.join(", ")} (known: ${FEATURE_NAMES.join(", ")})`);
   return names as FeatureName[];

@@ -121,6 +121,26 @@ class TiphysNativePlugin :
                 applySecure()
                 result.success(null)
             }
+            "setShowWhenLocked" -> {
+                // The sleep alarm screen over the lock screen: only while it is open (never the rest of the app).
+                val on = call.argument<Boolean>("on") ?: false
+                val a = activity
+                if (a == null) {
+                    result.success(null)
+                    return
+                }
+                a.runOnUiThread {
+                    if (Build.VERSION.SDK_INT >= 27) {
+                        a.setShowWhenLocked(on)
+                        a.setTurnScreenOn(on)
+                    } else {
+                        @Suppress("DEPRECATION")
+                        val flags = WindowManager.LayoutParams.FLAG_SHOW_WHEN_LOCKED or WindowManager.LayoutParams.FLAG_TURN_SCREEN_ON
+                        if (on) a.window.addFlags(flags) else a.window.clearFlags(flags)
+                    }
+                }
+                result.success(null)
+            }
             "isPackageInstalled" -> {
                 // Android 11+ only sees packages named in the app's AndroidManifest <queries> section.
                 val pkg = call.argument<String>("package")

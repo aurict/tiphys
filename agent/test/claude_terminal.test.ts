@@ -35,6 +35,7 @@ describe("terminal oturumları", () => {
         cwd: "/home/x",
         name: "x-1",
         status: "busy",
+        waitingFor: null,
         startedAt: new Date(1_700_000_000_000).toISOString(),
         updatedAt: new Date(1_700_000_100_000).toISOString(),
       },

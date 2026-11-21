@@ -24,6 +24,9 @@ class TiphysNative {
   /// Adds/removes FLAG_SECURE on the window: blocks screenshots, screen recording and the recent-apps preview.
   static Future<void> setSecureWindow(bool secure) => _channel.invokeMethod<void>('setSecureWindow', {'secure': secure});
 
+  /// Shows the app over the lock screen and turns the screen on (the sleep alarm screen, only while it is open).
+  static Future<void> setShowWhenLocked(bool on) => _channel.invokeMethod<void>('setShowWhenLocked', {'on': on});
+
   /// Is the package installed on the phone? Android 11+ only sees packages named in AndroidManifest `<queries>`.
   static Future<bool> isPackageInstalled(String package) async =>
       await _channel.invokeMethod<bool>('isPackageInstalled', {'package': package}) ?? false;

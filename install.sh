@@ -169,7 +169,7 @@ rm -rf "$NEW"
 mkdir -p "$NEW"
 tar -xzf "$TMP/$FILE" -C "$NEW"
 TOP="$NEW/tiphys-agent-$VERSION-$OS-$ARCH"
-[ -f "$TOP/dist/cli.js" ] && [ -x "$TOP/node/bin/node" ] || die "bundle content is not what was expected"
+if ! { [ -f "$TOP/dist/cli.js" ] && [ -x "$TOP/node/bin/node" ]; }; then die "bundle content is not what was expected"; fi
 OLD=
 if [ -L "$PREFIX/current" ]; then OLD=$(basename "$(readlink "$PREFIX/current")"); fi
 if [ "$OLD" = "$VERSION" ]; then stop_service; fi

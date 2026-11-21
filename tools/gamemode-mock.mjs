@@ -361,7 +361,7 @@ function broadcast(obj) { for (const c of clients) sendText(c, obj); }
 
 function onUpgrade(req, sock) {
   const url = new URL(req.url, 'http://x');
-  if (url.pathname !== '/v1/gamemode/live' || url.searchParams.get('t') !== TOKEN || !req.headers['sec-websocket-key']) {
+  if (!['/v1/screen/live', '/v1/gamemode/live'].includes(url.pathname) || url.searchParams.get('t') !== TOKEN || !req.headers['sec-websocket-key']) {
     sock.end('HTTP/1.1 401 Unauthorized\r\nConnection: close\r\n\r\n');
     return;
   }
@@ -396,8 +396,10 @@ function onUpgrade(req, sock) {
   sock.on('close', bye); sock.on('error', bye);
 
   // Contract: on connect the server sends the latest settings, source, music, lyrics, truck.
-  sendText(sock, { type: 'settings', ...settings });
-  sendText(sock, args['source-down'] ? { type: 'source', state: 'down', retryInSec: 15 } : { type: 'source', state: 'ok' });
+  // The screen mode page (PLAN.md §20) builds its view from `layout`; the game cards read the source "main".
+  const cards = ['map', 'cockpit', 'music', 'lyrics'].map((kind) => ({ kind, source: 'main', enabled: true }));
+  sendText(sock, { type: 'layout', mode: 'game', template: 'game', cards, settings });
+  sendText(sock, args['source-down'] ? { type: 'source', name: 'main', state: 'down', retryInSec: 15 } : { type: 'source', name: 'main', state: 'ok' });
   if (args['source-down']) return;
   sendText(sock, musicMsg());
   if (!args['no-music']) sendText(sock, lyricsMsg());
@@ -406,6 +408,7 @@ function onUpgrade(req, sock) {
 
 // ------------------------------------------------------------------ settings + stdin control
 // Type on stdin while it runs:  set scene=music | set motion=low | set lyrics=false | event fine | source down | source ok
+//   | mode work|focus|game (hot switch: a `layout` message) | pause | resume
 const settings = { scene: String(args.scene ?? 'auto'), lyrics: !args['no-lyrics-setting'], spectrum: !args['no-spectrum'],
   motion: String(args.motion ?? 'normal'), brightness: null, clock24: !args.clock12, dimIdleMinutes: Number(args['dim-idle'] ?? 10) };
 let stdinBuf = '';
@@ -420,8 +423,12 @@ process.stdin.on('data', (d) => {
       settings[k] = v === 'true' ? true : v === 'false' ? false : /^\d+$/.test(v) ? Number(v) : v;
       broadcast({ type: 'settings', ...settings });
     } else if (cmd === 'event' && EVENTS[arg]) broadcast({ type: 'event', ...EVENTS[arg] });
-    else if (cmd === 'source') broadcast(arg === 'down' ? { type: 'source', state: 'down', retryInSec: 15 } : { type: 'source', state: 'ok' });
-    else if (cmd) console.log('[mock] commands: set key=value | event <kind> | source down|ok');
+    else if (cmd === 'source') broadcast(arg === 'down' ? { type: 'source', name: 'main', state: 'down', retryInSec: 15 } : { type: 'source', name: 'main', state: 'ok' });
+    else if (cmd === 'mode' && ['game', 'work', 'focus'].includes(arg)) {
+      const kinds = { game: ['map', 'cockpit', 'music', 'lyrics'], work: ['day'], focus: ['day'] }[arg];
+      broadcast({ type: 'layout', mode: arg, template: arg, cards: kinds.map((kind) => ({ kind, source: 'main', enabled: true })), settings });
+    } else if (cmd === 'pause' || cmd === 'resume') broadcast({ type: cmd });
+    else if (cmd) console.log('[mock] commands: set key=value | event <kind> | source down|ok | mode game|work|focus | pause | resume');
   }
 });
 process.stdin.on('error', () => {});
@@ -501,7 +508,7 @@ async function fetchImage(url) {
 
 const server = http.createServer(async (req, res) => {
   const url = new URL(req.url, 'http://x');
-  if (url.pathname === '/v1/gamemode/art') {
+  if (url.pathname === '/v1/screen/art' || url.pathname === '/v1/gamemode/art') {
     const img = url.searchParams.get('t') === TOKEN ? await artFor(url.searchParams.get('id') ?? '') : null;
     if (!img) { res.writeHead(404).end(); return; }
     res.writeHead(200, { 'content-type': img.type, 'cache-control': 'no-store' }).end(img.body);

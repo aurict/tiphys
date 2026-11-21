@@ -179,7 +179,7 @@ async function main() {
     }
 
     case "gamemode": {
-      const { pluginCli } = await import("./gamemode/ets2.ts");
+      const { pluginCli } = await import("./screen/ets2.ts");
       console.log(await pluginCli(positionals[0]));
       return;
     }

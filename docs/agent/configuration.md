@@ -55,7 +55,7 @@ The file is validated with a zod schema (`agent/src/config.ts`) when it loads. I
 | `requireTailscaleLogin` | string or `null` | `null` | If set, every authenticated request must carry a `Tailscale-User-Login` header equal to this value. `tailscale serve` adds that header. `null` disables the check. |
 | `features` | object | see below | Feature flags. Routes for a disabled feature are not registered at all. |
 | `devices` | array | `[]` | Paired devices: `{id, name, tokenHash, createdAt}`. Only the SHA-256 hash of each token is stored. Managed by `pair`/`revoke`. Do not edit by hand. |
-| `serviceTokens` | array | `[]` | Scoped tokens for other agents: `{id, name, scopes: ["research" | "analysis" | "security-report" | "blackbox" | "lockdown" | "gamemode"], tokenHash, createdAt, lastUsedAt?}`. Only the hash is stored; `lastUsedAt` is updated at most hourly. Managed by `service-token` and the app. A service token can call only routes of its scopes (see [api.md](api.md#authentication)). |
+| `serviceTokens` | array | `[]` | Scoped tokens for other agents: `{id, name, scopes: ["research" | "analysis" | "security-report" | "blackbox" | "lockdown" | "gamemode" | "screen"], tokenHash, createdAt, lastUsedAt?}`. Only the hash is stored; `lastUsedAt` is updated at most hourly. Managed by `service-token` and the app. A service token can call only routes of its scopes (see [api.md](api.md#authentication)). |
 | `allowedRoots` | string[] | `["~"]` | Directories that path-based features may touch: git, the Claude working directory and the folder picker. Paths are resolved with `realpath` (symlinks followed) before the check. `~` is expanded. |
 | `claude` | object | see [claude](#claude) | Claude Code profiles. |
 | `securityFix` | object | `{"targets": [], "sudoCacheMinutes": 15}` | Machines Claude may fix security findings on, and the sudo password cache time. See [securityFix](#securityfix). |
@@ -71,7 +71,7 @@ The file is validated with a zod schema (`agent/src/config.ts`) when it loads. I
 | `transcribe` | object | see [transcribe](#transcribe) | Voice-to-text command. |
 | `telegram` | object or `null` | `null` | Telegram bot (`{botToken, botUsername, botId}`). Set with `PUT /v1/telegram/bot`; the token is never returned. See [telegram](#telegram-and-research). |
 | `research` | object or `null` | `null` | The PC agent that runs research jobs for the `telegram` feature. See [telegram](#telegram-and-research). |
-| `gamemode` | object | `{source: null, display: {…}}` | Game mode: the source agent (URL + `gamemode` service token, never returned) and the kiosk settings. See [gamemode](#gamemode). |
+| `screen` | object | see [screen](#screen) | Screen modes (Game, Work, Focus): source agents (URL + `screen` service token, never returned), placement and per-mode settings and layouts. Was `gamemode` (moved automatically, see [screen](#screen)). |
 | `stacks` | object | `{roots: ["~/stack"]}` | Where compose stacks are discovered. See [stacks](#stacks). |
 | `incidents` | object | `{links: [], analysis: {mode: "off", language: "tr"}}` | Incident room options (links, AI analysis). See [incidents](#incidents). |
 | `configFiles` | object | `{extraPaths: []}` | Extra `.env` files for the config editor. See [configFiles](#configfiles). |
@@ -118,7 +118,7 @@ Risk levels below are a guide to how much a holder of a device token can do with
 | `analysis` | `false` | Incident analysis jobs (`/v1/analysis/jobs`) for another agent holding an `analysis` service token (a server's incident room in `remote` mode): a tool-less `claude -p` (no built-in tools, no MCP, no user settings) reads the redacted bundle; output is schema-checked. Turn on only where Claude Code is installed. See [Incidents › AI analysis](../features/incidents.md#ai-analysis-i-3). | low (spends the user's Claude subscription; the model can't act) |
 | `update` | `false` | Self-update from signed GitHub releases: `POST /v1/update/apply` (`GET /v1/update` and `GET /v1/doctor` are always on). Works only for installs made by `install.sh` / `install.ps1` (the `versions/<v>` + `current` layout); `init --detect` turns it on there. A git checkout, a package or the Docker image never updates itself. See [Security › Releases](../security.md#releases-installer-and-self-update). | medium (replaces the agent's code, but only with a release signed by the release key) |
 | `research` | `false` | Web research jobs (`/v1/research/jobs`) run with `agy` (Gemini) and `claude` for another agent holding a `research` service token. The tools may only use the searxng/firecrawl MCP servers and write in the job's work directory; shell commands are denied. See [Research](../features/research.md). | medium (spends the user's AI subscriptions) |
-| `gamemode` | `false` | Game mode (Linux): as a **source**, `WS /v1/gamemode/feed` for another agent holding a `gamemode` service token (Velour state and lyrics, a `pw-record` spectrum of the default output while music plays, ETS2 telemetry from shared memory) plus the ETS2 plugin installer; as a **display**, a Firefox kiosk in one transient `systemd-run --user` unit with temporary Hyprland window rules, an idle/sleep inhibitor and the backlight setting, started and stopped from the phone. No control session (see [Security](../security.md#game-mode)). Starts no process until a feed subscriber connects or the mode is started. See [api.md](api.md#gamemode). | medium (shows a fullscreen window and changes the backlight on the display host; reads music and game state on the source) |
+| `screen` | `false` | Screen modes (Linux; was `gamemode`, the old name is still accepted by `init --features` and `PATCH /v1/config` and reported by `/v1/health` for one release): as a **source**, `WS /v1/screen/feed` for another agent holding a `screen` (or older `gamemode`) service token, producing only the subscribed topics (Velour state and lyrics, a `pw-record` spectrum of the default output while music plays, ETS2 telemetry; for Work and Focus: system, jobs, git, code city, Claude sessions, approval diffs only with `screen.share.code`, servers) plus the ETS2 plugin installer; as a **display**, a Firefox kiosk in one transient `systemd-run --user` unit with temporary Hyprland window rules (and for the `scratch` placement a temporary keybind), an idle/sleep inhibitor and the backlight setting, started, switched and stopped from the phone. No control session (see [Security](../security.md#screen-modes)). Guide: [Screen modes](../features/screen-modes.md), [Sleep mode](../features/sleep-mode.md). Starts no process until a topic is subscribed or a mode is started. See [api.md](api.md#screen). | medium (shows a fullscreen window, binds a key while running and changes the backlight on the display host; reads music and game state, and for Work the project's file names (masked unless `share.code`), Claude activity and jobs on the source) |
 
 Endpoints that are always on, whatever the flags: health, config, devices, push endpoint registration, events, audit log and agent status. See [api.md](api.md#always-available).
 
@@ -289,29 +289,47 @@ Used by the `telegram` feature (the agent that sends the newsletters, e.g. atlas
 
 Example: `"research": {"url": "https://pc.my-tailnet.ts.net", "token": "tps_…", "wakeHostId": "pc"}`.
 
-### gamemode
+### screen
 
 ```json
-"gamemode": {
-  "source": { "url": "https://pc.my-tailnet.ts.net", "token": "tps_…" },
-  "display": { "scene": "auto", "lyrics": true, "spectrum": true, "motion": "normal", "brightness": null, "clock24": true, "dimIdleMinutes": 10 }
+"screen": {
+  "sources": { "main": { "url": "https://pc.my-tailnet.ts.net", "token": "tps_…" } },
+  "placement": "fullscreen", "scratchBind": "SUPER,grave", "lastMode": "work",
+  "share": { "code": false }, "batterySaver": true,
+  "modes": {
+    "game":  { "scene": "auto", "lyrics": true, "spectrum": true, "motion": "normal", "brightness": null, "clock24": true, "dimIdleMinutes": 10,
+               "layout": { "template": "game", "cards": [{ "kind": "map", "source": "main", "enabled": true }, …] } },
+    "work":  { "project": "auto", "city": "3d", "diff": true, "ci": false, "motion": "normal", "brightness": null, "dimIdleMinutes": 10, "clock24": true, "layout": { … } },
+    "focus": { "focusMin": 25, "shortMin": 5, "longMin": 15, "longEvery": 4, "ambient": "off", "ambientVolume": 30, "chime": true, "quietPhone": true, "motion": "normal", "brightness": null, "clock24": true, "layout": { … } }
+    "sleep": { "join": true, "side": "left", "distance": "mid", "volume": 35,
+               "brightness": { "start": 25, "night": 3, "morning": 70 }, "ddc": { "bus": null, "min": 0 },
+               "quietPower": false, "holdVolume": null, "leds": false, "group": null,
+               "times": { "settleMin": 3, "fadeMin": 30, "soundFadeMin": 45, "nightSound": "off" }, "layers": { … },
+               "velour": { … }, "alarm": { … }, "notify": { … }, "reminder": { … } }
+  }
 }
 ```
 
 | Field | Default | Meaning |
 | --- | --- | --- |
-| `source` | `null` | Set on the **display** host (the laptop): the source agent's base URL (`http`/`https`) and a service token with the `gamemode` scope from it (`tiphys-agent service-token create --name laptop --scope gamemode`). Set with `PUT /v1/gamemode`; never returned by any API (only `configured` and `url`). `POST /v1/gamemode/start` needs it. |
-| `display.scene` | `"auto"` | `auto` (drive while ETS2 is played, music otherwise), `drive` or `music`. |
-| `display.lyrics` | `true` | Show synced lyrics. |
-| `display.spectrum` | `true` | Spectrum frames are relayed to the page only when on. |
-| `display.motion` | `"normal"` | Animation level: `low`, `normal`, `high`. |
-| `display.brightness` | `null` | Backlight percent (5–100) while the mode runs, set with `brightnessctl` and restored on stop; `null` leaves it alone. Without permission on the backlight the mode runs without changing it. |
-| `display.clock24` | `true` | 24-hour clock. |
-| `display.dimIdleMinutes` | `10` | Dim the idle scene after this many minutes (0–120, 0 = never). |
+| `sources` | `{}` | Named source agents (`[a-z0-9-]{1,32}`; `self` = this host, reserved): base URL (`http`/`https`) and a service token with the `screen` scope from it (`tiphys-agent service-token create --name laptop --scope screen`; an older `gamemode` token gets only the Game mode topics). Set with `PUT /v1/screen`; the token is never returned. |
+| `placement` | `"fullscreen"` | `fullscreen`: the mode's own named workspace (`yol` / `is` / `odak`), focused at start. `scratch`: the Hyprland special workspace `special:tiphys`, shown and hidden with `scratchBind` while the mode runs. Read at start. |
+| `scratchBind` | `"SUPER,grave"` | Temporary keybind of the `scratch` placement in classic form `MODS,key`. A combination already bound refuses the start (`409 agent.screen.bindTaken`). |
+| `lastMode` | `"work"` | Mode of a start without one; updated on each start/switch. |
+| `modes.game` | | The Game mode kiosk settings: `scene` (`auto`/`drive`/`music`), `lyrics`, `spectrum` (frames relayed only when on), `motion` (`low`/`normal`/`high`), `brightness` (5–100 while running, restored on stop; `null` = untouched), `clock24`, `dimIdleMinutes` (0–120). |
+| `modes.work` | | `project`: `"auto"` (the last active Claude session's repo, else the focused terminal's) or `{path}` (absolute, inside `allowedRoots` on the source); `ci` (`false`): CI dot from `gh run list` every 5 min on the source (needs `gh`, logged in; otherwise no dot, see `doctor`). `city` (`"3d"`): the code city drawn in WebGL or as a flat 2D map (also the fallback without WebGL). `diff` (`true`): the approval preview (diff card) on the kiosk; off = only the "waiting" banner. Plus `motion`, `brightness`, `dimIdleMinutes`, `clock24`. |
+| `modes.focus` | | Timer (`POST /v1/screen/focus`): `focusMin` (25), `shortMin` (5), `longMin` (15), each 5–120 minutes; `longEvery` (4, 2–8): a long break after every this many rounds; changes apply from the next phase. `ambient` (`"off"`, `brown`, `pink`, `rain`): noise synthesized in the kiosk page (no files, no network), playing only while a focus round runs and the page is shown, unveiled and Velour isn't playing; `ambientVolume` (30, 0–100). `chime` (`true`): a soft synthesized bell when a phase ends by itself. `quietPhone` (`true`): read by the app (only critical Tiphys notifications during Focus). Plus `motion` (`low`: the background is repainted only on a phase change), `brightness`, `clock24`. |
+| `modes.sleep` | | Sleep mode (guide: [Sleep mode](../features/sleep-mode.md); [api.md](api.md#sleep-mode); set with `PUT /v1/sleep`, not `PUT /v1/screen`). Per machine: `join` (`true`), `side` (`left`/`right`/`foot`/`head`), `distance` (`near`/`mid`/`far`), `volume` (35, 0–100), `brightness.start` (25, 1–100) / `.night` (3, 0–30) / `.morning` (70, 10–100) in percent of full brightness, `ddc.bus` (`null` = detect once with `ddcutil detect` and store it here) and `ddc.min` (0, the lowest VCP 0x10 percent used), `quietPower` (`false`: `powerprofilesctl set power-saver` while sleeping), `holdVolume` (`null` or 0–100: system volume while sleeping, unmuted), `leds` (`false`: plain lit LEDs off). Group-wide (the phone writes the same values to every member): `group` (`null` or `{members, leader}`; S3), `times.settleMin` (3, 1–30), `fadeMin` (30, 10–120), `soundFadeMin` (45, 10–180), `nightSound` (`off`/`hum`; default `off`: the hum keeps the audio stack running all night, measured +11 % of a laptop core in Firefox and +5 % in PipeWire, against ~2 % for the whole night without it), `layers` (`hum`, `crackle`, `logs` on; `wind`, `rain` off), `velour` (`playlistId` (a Velour playlist id, played on the leader at the start if Velour isn't already playing; needs the "desktop" feature), `volume` 30 (its start volume), `fadeMin` 30 (5–120: the volume fades to 0 over it and Velour's sleep timer stops it); S5), `alarm` (`enabled` false, `time` `"07:00"` (local time of the machine), `days` `once`/`weekdays`/`daily`/`[0..6]` (0 = Sunday; `once` switches `enabled` off at its first ring), `sunriseMin` 25 (10–45), `sound` `birds`/`chime`/`velour`, `velourTrack` (a Velour `videoId`, played on the leader only), `rampMin` 3 (1–10), `snoozeMin` 9 (1–30), `autoStopMin` 20 (5–60), `morningScreen` false (10 min); rings only while the sleep mode runs), `notify` (`critical`: the kinds sent at once during the night (`hostDown`, `securityTrap`, `incident`, `diskFull`; each member filters its own notifications, the rest are held in memory and counted), `morningSummary` true (the leader's `sleep.morning` push at the dismiss / stop; off: no push, the summary is still kept for `GET /v1/sleep/summary`); S5), `reminder` (`enabled` false, `time` `"22:30"`; S6). Brightness and `volume`/`layers` changes apply while running; `times` at the next start. Test only: `TIPHYS_SLEEP_SCALE=N` (1–1000, unset = 1) in the agent's environment divides every sleep phase length by N (e.g. 60: settle 3 s, fade 30 s); hardware rate limits are not scaled, nor the alarm's clock time (its sunrise, ramp, snooze, auto-stop and morning lengths are). In a group the leader's `times` and `alarm` count: its plan travels with the session to the other members (api.md › Sleep mode). Test only: `TIPHYS_SLEEP_SYNCLOG=1` makes the sleep page report each crackle's speaker/screen time into `sync.jsonl` in the tmpfs work dir (gone at stop); `TIPHYS_SCREEN_HEADLESS=/abs/path/to/chromium` runs any mode's kiosk as a headless, muted Chromium in its own unit (`tiphys-screen-headless`) and work dir, with no Hyprland step, no visibility watch and no hardware (a second agent on a desktop as a test group leader, no window and no sound). All unset by default. |
+| `modes.*.layout` | per mode | `{template, cards: [{kind, source, enabled}]}`; `source` is `self` or a `sources` name. The display subscribes each source to the topics of the cards it serves. |
+| `share.code`, `batterySaver` | `false`, `true` | `share.code`: this host as a source sends real file names in the code city and the Claude brain (off: every path segment is an opaque token; read when the city starts) and approval diffs of Tiphys Claude sessions (off: no `diff` at all; read per permission). `batterySaver` (`true`): on a display host running on battery below 30 % the kiosk drops to motion `low` and the flat city until it is on mains or at ≥ 35 %; read live. Test only: the environment variable `TIPHYS_SCREEN_POWER_DIR=/abs/dir` (unset by default) makes the agent read batteries from a directory of fake `power_supply` entries (`<name>/type`, `capacity`, `status`) instead of `/sys/class/power_supply`. |
 
-The source host needs nothing here: the flag plus a `gamemode` service token for the display host. Map data for the
-page lives in `~/.local/share/tiphys/gamemode/map/` (program data, not a trace). Settings are read on every use; only
-the flag needs a restart.
+**Migration from `gamemode` (once, at the first start of this version; the file is rewritten without the old keys):**
+`features.gamemode` → `features.screen`; `gamemode.source` → `screen.sources.main` with the Game cards reading `main`;
+`gamemode.display` → `screen.modes.game`; `lastMode` becomes `game`. Values already under `screen` win.
+
+The source host needs nothing here: the flag plus a service token for the display host. Map data for the page lives in
+`~/.local/share/tiphys/gamemode/map/` (program data, not a trace). Settings are read on every use; only the flag needs
+a restart.
 
 ### stacks
 

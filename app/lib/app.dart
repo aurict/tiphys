@@ -25,7 +25,9 @@ import 'features/system/clipboard_sync.dart';
 import 'features/system/compose.dart';
 import 'features/system/events.dart';
 import 'features/system/log_search.dart';
-import 'features/gamemode/gamemode_screen.dart';
+import 'features/screen/screen_screen.dart';
+import 'features/screen/sleep/sleep_alarm_screen.dart';
+import 'features/screen/sleep/sleep_screen.dart';
 import 'features/system/media.dart';
 import 'features/system/velour_screen.dart';
 import 'features/desktop/desktop_screen.dart';
@@ -163,7 +165,15 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(path: '/vault', builder: (c, s) => const VaultScreen()),
       GoRoute(path: '/system/media', builder: (c, s) => MediaScreen(hostId: s.uri.queryParameters['host'] ?? '')),
       GoRoute(path: '/system/velour', builder: (c, s) => VelourScreen(hostId: s.uri.queryParameters['host'] ?? '', openPlayer: s.uri.queryParameters['player'] == '1')),
-      GoRoute(path: '/gamemode', builder: (c, s) => GameModeScreen(hostId: s.uri.queryParameters['host'] ?? '')),
+      GoRoute(
+        path: '/screen',
+        builder: (c, s) => ScreenModeScreen(hostId: s.uri.queryParameters['host'] ?? '', tab: s.uri.queryParameters['tab'], summary: s.uri.queryParameters['summary']),
+      ),
+      // Sleep mode (PLAN.md §21): the whole group's screen and the alarm (full screen, also from its notification).
+      GoRoute(path: '/screen/sleep', builder: (c, s) => SleepScreen(morning: s.uri.queryParameters['morning'])),
+      GoRoute(path: '/screen/sleep/alarm', builder: (c, s) => SleepAlarmScreen(at: int.tryParse(s.uri.queryParameters['at'] ?? ''))),
+      // The Game mode screen's old address (§19): the screen modes, on the Game tab.
+      GoRoute(path: '/gamemode', redirect: (c, s) => '/screen?host=${Uri.encodeQueryComponent(s.uri.queryParameters['host'] ?? '')}&tab=game'),
       GoRoute(path: '/system/desktop', builder: (c, s) => DesktopScreen(hostId: s.uri.queryParameters['host'] ?? '')),
       GoRoute(
         path: '/system/desktop/live',

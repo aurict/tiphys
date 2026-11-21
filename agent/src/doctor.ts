@@ -179,7 +179,7 @@ async function featureChecks(d: DoctorDeps): Promise<Check[]> {
   if (f.services && d.platform === "linux" && !d.which("systemctl")) missing("services", ["systemctl"]);
   if (f.git && !d.which("git")) missing("git", ["git"]);
   if (f.claude && !d.which("claude") && !(await d.exists(expandHome("~/.claude/local/claude")))) missing("claude", ["claude"], "npm install -g @anthropic-ai/claude-code");
-  if (f.gamemode && d.platform === "linux") out.push(...(await gamemodeChecks(d, c)));
+  if (f.screen && d.platform === "linux") out.push(...(await screenChecks(d, c)));
   if (f.transcribe && !(await d.exists(expandHome(c.transcribe.command)))) {
     out.push(fail("feature.transcribe", "doctor.feature.transcribeMissing", { command: c.transcribe.command }));
   }
@@ -187,25 +187,52 @@ async function featureChecks(d: DoctorDeps): Promise<Check[]> {
 }
 
 /**
- * Game mode: a machine with a source configured is a display (kiosk tools; brightnessctl optional), otherwise a source
- * (pw-record for the spectrum; the ETS2 plugin when the game is installed).
+ * Screen modes: the kiosk tools on a display host (missing = failure when remote sources are set, as on the laptop;
+ * a warning otherwise, the host may only be a source), brightnessctl optional; the source side's pw-record (spectrum)
+ * and the ETS2 plugin when the game is installed.
  */
-async function gamemodeChecks(d: DoctorDeps, c: AgentConfig): Promise<Check[]> {
-  if (c.gamemode.source) {
-    const need = ["systemd-run", "systemd-inhibit", "hyprctl"].filter((t) => !d.which(t));
-    if (!d.which("firefox") && !d.which("firefox-esr")) need.push("firefox");
-    const out: Check[] = need.length ? [fail("feature.gamemode", "doctor.feature.toolsMissing", { feature: "gamemode", tools: need })] : [];
-    if (!d.which("brightnessctl")) out.push(warn("feature.gamemode.brightness", "doctor.feature.toolsMissing", { feature: "gamemode", tools: ["brightnessctl"] }));
-    return out;
-  }
+async function screenChecks(d: DoctorDeps, c: AgentConfig): Promise<Check[]> {
   const out: Check[] = [];
-  if (!d.which("pw-record")) out.push(warn("feature.gamemode.audio", "doctor.feature.toolsMissing", { feature: "gamemode", tools: ["pw-record"] }));
-  const { findGameDir, pluginStatus } = await import("./gamemode/ets2.ts");
+  const display = Object.keys(c.screen.sources).length > 0;
+  const need = ["systemd-run", "systemd-inhibit", "hyprctl"].filter((t) => !d.which(t));
+  if (!d.which("firefox") && !d.which("firefox-esr")) need.push("firefox");
+  if (need.length) {
+    const check = display || c.screen.placement === "scratch" ? fail : warn;
+    out.push(check("feature.screen", "doctor.feature.toolsMissing", { feature: "screen", tools: need }));
+  }
+  if (display && !d.which("brightnessctl")) out.push(warn("feature.screen.brightness", "doctor.feature.toolsMissing", { feature: "screen", tools: ["brightnessctl"] }));
+  if (!d.which("pw-record")) out.push(warn("feature.screen.audio", "doctor.feature.toolsMissing", { feature: "screen", tools: ["pw-record"] }));
+  // Work mode CI dot (optional): `gh` on this host as a source, logged in. Without it the Git card has no CI dot.
+  if (!d.which("gh")) out.push(ok("feature.screen.ci", "doctor.screen.ciUnavailable", { reason: "missing" }));
+  else if ((await d.exec("gh", ["auth", "status"], { timeoutMs: 10_000 })).code !== 0) out.push(ok("feature.screen.ci", "doctor.screen.ciUnavailable", { reason: "loggedOut" }));
+  const { findGameDir, pluginStatus } = await import("./screen/ets2.ts");
   const game = await findGameDir();
   if (game) {
     const p = await pluginStatus(game);
-    if (p.plugin !== "installed") out.push(warn("feature.gamemode.ets2", "doctor.gamemode.pluginMissing", { status: p.plugin }, "tiphys-agent gamemode install-plugin"));
+    if (p.plugin !== "installed") out.push(warn("feature.screen.ets2", "doctor.gamemode.pluginMissing", { status: p.plugin }, "tiphys-agent gamemode install-plugin"));
   }
+  out.push(...(await sleepChecks(d, c)));
+  return out;
+}
+
+/**
+ * Sleep mode (PLAN.md §21 A-11): hardware dimming — the backlight (brightnessctl) or else DDC/CI (ddcutil, `detect`
+ * must find a working display; the monitor's OSD DDC/CI setting or, on NVIDIA, the driver's I²C) — the WAV fallback's
+ * pw-play (S4) and powerprofilesctl when the quiet power profile is on. All warnings: the mode runs without them
+ * (the page dims alone).
+ */
+async function sleepChecks(d: DoctorDeps, c: AgentConfig): Promise<Check[]> {
+  const out: Check[] = [];
+  const { parseBacklight, parseDetect } = await import("./screen/sleep_hw.ts");
+  const backlight = d.which("brightnessctl") && parseBacklight((await d.exec("brightnessctl", ["-m", "-c", "backlight"], { timeoutMs: 5000 })).stdout) !== null;
+  if (!backlight) {
+    if (!d.which("ddcutil")) out.push(warn("feature.sleep.dimming", "doctor.feature.toolsMissing", { feature: "sleep", tools: ["ddcutil"] }, "sudo apt install ddcutil"));
+    else if (!parseDetect((await d.exec("ddcutil", ["detect", "--terse"], { timeoutMs: 30_000 })).stdout).length) {
+      out.push(warn("feature.sleep.dimming", "doctor.sleep.ddcUnavailable", {}));
+    }
+  }
+  if (!d.which("pw-play")) out.push(warn("feature.sleep.audio", "doctor.feature.toolsMissing", { feature: "sleep", tools: ["pw-play"] }));
+  if (c.screen.modes.sleep.quietPower && !d.which("powerprofilesctl")) out.push(warn("feature.sleep.power", "doctor.feature.toolsMissing", { feature: "sleep", tools: ["powerprofilesctl"] }));
   return out;
 }
 
@@ -272,6 +299,8 @@ const TEXT: Record<string, string> = {
   "doctor.node.old": "Node.js {node} works; 24 is recommended.",
   "doctor.node.ok": "Node.js {node}.",
   "doctor.feature.toolsMissing": "Feature \"{feature}\" is on but needs: {tools}.",
+  "doctor.screen.ciUnavailable": "Screen modes: no CI status on the Git card ({reason}: `gh` is needed, logged in).",
+  "doctor.sleep.ddcUnavailable": "Sleep mode: the monitor's brightness can't be set over DDC/CI (`ddcutil detect` finds no working display); the page dims alone. Turn DDC/CI on in the monitor's menu; on NVIDIA see docs/features/screen-modes.md.",
   "doctor.feature.dockerDenied": "Feature \"docker\" is on but {socket} is not accessible to this user.",
   "doctor.feature.unsupported": "Feature \"{feature}\" is on but does not work on {platform}.",
   "doctor.feature.dockerUnreachable": "Feature \"docker\" is on but the Docker daemon does not answer (is Docker Desktop running?).",

@@ -33,12 +33,17 @@ import 'package:tiphys/features/monitoring/providers.dart';
 import 'package:tiphys/core/integrations/grafana_client.dart';
 import 'package:tiphys/core/integrations/dozzle_client.dart';
 import 'package:tiphys/features/terminal/sessions.dart';
+import 'package:tiphys/core/push/focus_notices.dart' show FocusQuiet;
+import 'package:tiphys/features/screen/screen_focus.dart';
+import 'package:tiphys/features/screen/sleep/sleep_sync.dart';
+import 'package:tiphys/core/push/sleep_notices.dart' show SleepRunStore;
 
 import 'png.dart';
 import 'agy_fixtures.dart';
 import 'config_fixtures.dart';
 import 'db_fixtures.dart';
-import 'gamemode_fixtures.dart';
+import 'screen_fixtures.dart';
+import 'sleep_fixtures.dart';
 import 'incident_fixtures.dart';
 import 'security_fixtures.dart';
 import 'security_more_fixtures.dart';
@@ -75,7 +80,7 @@ class NoBiometrics implements Biometrics {
 }
 
 class Harness {
-  Harness({Profile? profile, Map<String, String>? secrets, this.homeData = sampleHomeData, this.pin, this.extra = const [], this.agent, this.biometrics, this.agentFeatures = defaultAgentFeatures, this.clock, this.onboarded = true, this.agentVersion = '0.5.0', this.health})
+  Harness({Profile? profile, Map<String, String>? secrets, this.homeData = sampleHomeData, this.pin, this.extra = const [], this.agent, this.biometrics, this.agentFeatures = defaultAgentFeatures, this.clock, this.onboarded = true, this.agentVersion = '0.6.0', this.health})
       : profile = profile ?? exampleProfile(),
         secrets = MemorySecretStore(secrets ?? {'ssh-phone': 'x', 'agent-argo': 'x', 'grafana-atlas': 'x'});
   final Profile profile;
@@ -112,6 +117,14 @@ class Harness {
   /// Fake of the persistent "Claude is using the PC" notification.
   final pcNotifications = FakePcNotifications();
 
+  /// Fake of the ongoing Focus notification and the quiet summary; the quiet record lives in [quietVault].
+  final focusNotifications = FakeFocusNotifications();
+  final quietVault = MemoryVault();
+
+  /// Fake of the sleep alarm surface (backup alarm, reminder); the run record lives in [sleepVault].
+  final sleepAlarms = FakeSleepAlarms();
+  final sleepVault = MemoryVault();
+
   late final repo = ProfileRepository(
     file: File('${Directory.systemTemp.createTempSync('tiphys-ui').path}/profile.json'),
     codec: codec,
@@ -139,6 +152,10 @@ class Harness {
         grafanaFactoryProvider.overrideWithValue((g) async => FakeGrafana()),
         dozzleFactoryProvider.overrideWithValue((d) async => FakeDozzle()),
         pcNotificationsProvider.overrideWithValue(pcNotifications),
+        focusNotificationsProvider.overrideWithValue(focusNotifications),
+        focusQuietProvider.overrideWithValue(FocusQuiet(quietVault)),
+        sleepAlarmsProvider.overrideWithValue(sleepAlarms),
+        sleepRunStoreProvider.overrideWithValue(SleepRunStore(sleepVault)),
         onboardingSeenInitialProvider.overrideWithValue(onboarded),
         onboardingVaultProvider.overrideWithValue(vault),
         ...extra,
@@ -226,14 +243,14 @@ class FakeAgent extends AgentClient {
   static Object updateApply = {'ok': true, 'version': '0.4.0', 'restarting': true};
 
   /// Version in GET /v1/agent/status.
-  static String statusVersion = '0.5.0';
+  static String statusVersion = '0.6.0';
 
   static void resetSetup() {
     capabilities = null;
     doctor = null;
     update = null;
     updateApply = {'ok': true, 'version': '0.4.0', 'restarting': true};
-    statusVersion = '0.5.0';
+    statusVersion = '0.6.0';
   }
 
   static dynamic _orNotFound(Object? v) {
@@ -305,10 +322,16 @@ class FakeAgent extends AgentClient {
   /// Security center S-2…S-5 (scanners, traps, outside view, attacks, black box, lost phone).
   static FakeSecurityMoreState securityMore = FakeSecurityMoreState();
 
-  /// Game mode (GET/PUT/POST /v1/gamemode*, service tokens); tests change it, call [resetGame] at the start.
-  static FakeGameState game = FakeGameState();
+  /// Screen modes (GET/PUT/POST /v1/screen*, the older /v1/gamemode*, service tokens); tests change it, call
+  /// [resetScreen] at the start.
+  static FakeScreenState screen = FakeScreenState();
 
-  static void resetGame() => game = FakeGameState();
+  static void resetScreen() => screen = FakeScreenState();
+
+  /// Sleep mode (GET/PUT/POST /v1/sleep*) of every display host; tests change it, call [resetSleep] at the start.
+  static FakeSleepState sleep = FakeSleepState();
+
+  static void resetSleep() => sleep = FakeSleepState();
 
   /// Database console (GET/POST /v1/db/*).
   static FakeDbState db = FakeDbState();
@@ -455,7 +478,8 @@ class FakeAgent extends AgentClient {
     }
     calls.add((method, path, method == 'GET' && query != null ? query : body));
     if (path.startsWith('/v1/agy/')) return agy.route(method, path, body, query);
-    if (path.startsWith('/v1/gamemode') || path.startsWith('/v1/service-tokens')) return game.route(hostId, method, path, body);
+    if (path.startsWith('/v1/screen') || path.startsWith('/v1/gamemode') || path.startsWith('/v1/service-tokens')) return screen.route(hostId, method, path, body);
+    if (path.startsWith('/v1/sleep')) return sleep.route(hostId, method, path, body);
     if (path == '/v1/fs/dirs') {
       return {
         'path': '/home/user',
@@ -1375,7 +1399,7 @@ class FakePcNotifications implements PcNotifications {
 
 /// GET /v1/doctor (agent's format): one failure with a fix, two warnings, the rest OK.
 Map<String, dynamic> sampleDoctor() => {
-      'version': '0.5.0',
+      'version': '0.6.0',
       'checks': [
         {'id': 'tailscale', 'status': 'ok', 'code': 'doctor.tailscale.ok', 'params': {'dnsName': 'argo.my-tailnet.ts.net'}},
         {'id': 'tailscale.serve', 'status': 'fail', 'code': 'doctor.tailscale.notServed', 'params': {'port': 7443}, 'fix': 'sudo tailscale serve --bg --https=7443 http://127.0.0.1:7443'},
@@ -1385,7 +1409,7 @@ Map<String, dynamic> sampleDoctor() => {
         {'id': 'disk', 'status': 'warn', 'code': 'doctor.disk.low', 'params': {'freeMb': 1480, 'totalMb': 240000}},
         {'id': 'node', 'status': 'ok', 'code': 'doctor.node.ok', 'params': {'node': '24.11.0'}},
         {'id': 'push', 'status': 'warn', 'code': 'doctor.push.notConfigured', 'params': {}},
-        {'id': 'version', 'status': 'ok', 'code': 'doctor.version.latest', 'params': {'current': '0.5.0', 'latest': '0.5.0'}},
+        {'id': 'version', 'status': 'ok', 'code': 'doctor.version.latest', 'params': {'current': '0.6.0', 'latest': '0.6.0'}},
       ],
     };
 

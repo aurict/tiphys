@@ -1,6 +1,7 @@
 # Game mode
 
-Game mode turns a laptop next to your PC into an ambient second screen while you play Euro Truck Simulator 2:
+Game mode is one of the [screen modes](screen-modes.md) (Work, Focus, Game): it turns a laptop next to your PC into an
+ambient second screen while you play Euro Truck Simulator 2:
 
 - the song playing in **Velour** on the PC: cover, colours taken from the cover, a spectrum of the PC's audio output
   and optional synced lyrics;
@@ -17,16 +18,25 @@ Two agents take part:
 
 ```
 phone ──> display agent (laptop) ──systemd-run──> Firefox kiosk ──127.0.0.1──> display agent
-              display agent ──WS /v1/gamemode/feed (service token)──> source agent (PC: Velour, PipeWire, ETS2)
+              display agent ──WS /v1/screen/feed (service token)──> source agent (PC: Velour, PipeWire, ETS2)
 ```
 
-API details: [api.md › gamemode](../agent/api.md#gamemode). Security rationale: [Security › Game mode](../security.md#game-mode).
+What all screen modes share (placements, sources and mirroring, the privacy veil, the session summary, the battery
+saver, the trace-free stop, resource use) is on the [Screen modes](screen-modes.md) page; this page covers what is
+specific to Game. API details: [api.md › screen](../agent/api.md#screen) (and the 0.5 [gamemode](../agent/api.md#gamemode)
+routes). Security rationale: [Security › Screen modes](../security.md#screen-modes).
+
+> **Since the screen modes (after agent 0.5.0):** the feature flag is `screen`, the settings live under `screen` in
+> `agent.json` (moved automatically) and the routes are `/v1/screen/*`; the `gamemode` flag name, scope and the
+> `/v1/gamemode/*` routes keep working for one release. The event log says `screen.started` / `screen.stopped`. In
+> the app the **Screen mode** home card and screen (`/screen`) replace the Game mode card and screen; Game is one of
+> its tabs, and an agent older than the screen modes still works there for Game only.
 
 ## Requirements
 
 | Host | Need | Used for |
 |---|---|---|
-| Both | Linux, the agent with the **`gamemode`** feature on | the routes on each side (the flag is off on macOS/Windows) |
+| Both | Linux, the agent with the **`screen`** feature on (was `gamemode`) | the routes on each side (the flag is off on macOS/Windows) |
 | Display host (laptop) | Hyprland, with the agent running as the logged-in user | the fullscreen window rule and the `yol` workspace (`hyprctl`) |
 | Display host | Firefox (`firefox` or `firefox-esr`) | the kiosk page (`firefox --kiosk`, empty temporary profile) |
 | Display host | `systemd-run` and `systemd-inhibit` (systemd user session) | one transient unit for the kiosk; no idle/sleep while it runs |
@@ -44,28 +54,34 @@ API details: [api.md › gamemode](../agent/api.md#gamemode). Security rationale
 
 ### 1. Turn on the feature on both hosts
 
-`gamemode` is a risky feature, so `tiphys-agent init --detect` (and `install.sh`) never turns it on. On the laptop
+`screen` is a risky feature, so `tiphys-agent init --detect` (and `install.sh`) never turns it on. On the laptop
 and on the PC, either:
 
-- in the app: *Settings › Hosts › (host) › Agent settings › Features* › **Game mode**, or
-- on the machine: `tiphys-agent init --features gamemode` (adds it; nothing else is turned off).
+- in the app: *Settings › Hosts › (host) › Agent settings › Features* › **Screen mode**, or
+- on the machine: `tiphys-agent init --features screen` (adds it; nothing else is turned off; `gamemode` is still
+  accepted for one release).
 
-Then restart the agent. Without the flag the app shows *Game mode is off on this host* with a link to the agent
-settings. All keys: [Agent configuration](../agent/configuration.md#gamemode).
+Then restart the agent. Without the flag the app shows *Screen mode is off on this host* with a link to the agent
+settings. All keys: [Agent configuration](../agent/configuration.md#screen).
 
 ### 2. Connect the two hosts (setup wizard)
 
-Open **Game mode** (home card, or the Game mode screen) and tap **Set up**. Pick the **display PC** (laptop) and the
-**source PC** (music and game) and tap **Connect**. The app:
+Open **Screen mode** (home card, or the screen mode screen) and, under **Connections**, tap **Add a source**. Pick the
+**display PC** (laptop) and the **source PC(s)** (music and game) and tap **Connect**. The app:
 
-1. creates a service token with the `gamemode` scope on the source agent (the same API as
-   `tiphys-agent service-token create --name <laptop> --scope gamemode`);
-2. writes the source URL and that token to the display agent (`PUT /v1/gamemode`);
-3. tests the connection and shows *Connected* or *Saved, but the display PC cannot reach …*.
+1. creates a service token with the `screen` scope on each source agent (the same API as
+   `tiphys-agent service-token create --name <laptop> --scope screen`; `gamemode` for a display agent older than the
+   screen modes);
+2. writes the source URL and that token to the display agent (`PUT /v1/screen` `sources`; older: `PUT /v1/gamemode`);
+3. checks that the source answers and shows *Connected* or *Saved, but the display PC cannot reach …*, then offers
+   code sharing (for the Work mode) as a separate step that stays off unless you turn it on and confirm.
+
+For the Game mode's cards to read that source, pick *Mirror <source>* in the mode chooser (or set the cards' source
+on the Game tab's layout).
 
 The token is not stored on the phone. The display agent keeps it in its `agent.json` and never returns it from an
-API. Revoking it on the source (`tiphys-agent service-token list` / `revoke <id>`) cuts the link; run the wizard
-again (*Set up again*) to make a new one.
+API. Revoking it on the source (`tiphys-agent service-token list` / `revoke <id>`) cuts the link; add the source
+again to make a new one. Removing a source in the app revokes the token it made.
 
 ### 3. ETS2 plugin
 
@@ -89,7 +105,8 @@ Optional; see [Map data](#map-data) below. Until it is installed, the driving sc
 
 ## Usage
 
-- **Start / stop:** the big button on the Game mode screen, or the toggle on the **Game mode** home card. Every
+- **Start / stop:** the big button on the screen mode screen, or the button on the **Screen mode** home card (closed:
+  it opens the mode chooser, pick *Game*; running: one tap stops it). Every
   paired device can stop it. On the laptop, **hold Esc for 1 second** to stop. Closing Firefox also stops the mode
   (checked every 5 s), and so does stopping the display agent.
 - On start the laptop switches to a workspace named `yol`, opens Firefox fullscreen there, holds an idle/sleep
@@ -244,8 +261,8 @@ Nothing about your music or your drives is saved:
 - The drive history (the trail behind the truck), telemetry, the song, lyrics and the spectrum exist only in memory:
   on the source while someone is subscribed, on the display agent while the mode runs, and in the page while it is
   open. Titles, lyrics and job details are never logged.
-- The event log records only **Game mode started** and **Game mode stopped** (`gamemode.started` /
-  `gamemode.stopped`), with no content.
+- The event log records only that a screen mode started and stopped (`screen.started {mode}` / `screen.stopped`;
+  0.5.0: `gamemode.started` / `gamemode.stopped`), with no content.
 - The kiosk Firefox uses an empty profile in a tmpfs directory under `$XDG_RUNTIME_DIR`, deleted on stop (or on the
   next agent start after a crash); its output goes to `/dev/null`, not the journal.
 - The **display token** the page uses is made at each start, kept only in memory and invalid after stop.
@@ -257,12 +274,12 @@ Nothing about your music or your drives is saved:
 
 | Symptom | Cause and fix |
 |---|---|
-| *Game mode is off on this host* | The `gamemode` flag is off on that agent (or the agent was not restarted after turning it on). See [step 1](#1-turn-on-the-feature-on-both-hosts). |
-| *No source is set up yet* (`agent.gamemode.noSource`, 409) | Run the setup wizard. |
-| *The display PC has no graphical session* (`agent.gamemode.noDisplay`, 503) | Hyprland is not running on the laptop, or the agent cannot reach the session (it must run as the logged-in user). Log in to Hyprland and try again. |
+| *Screen mode is off on this host* | The `screen` flag is off on that agent (or the agent was not restarted after turning it on). See [step 1](#1-turn-on-the-feature-on-both-hosts). |
+| *No source is set up yet* (`agent.screen.noSource`, 409; 0.5 routes `agent.gamemode.noSource`) | Run the setup wizard, or pick *This machine itself* for cards that should read the laptop. |
+| *The display PC has no graphical session* (`agent.screen.noDisplay`, 503) | Hyprland is not running on the laptop, or the agent cannot reach the session (it must run as the logged-in user). Log in to Hyprland and try again. |
 | `agent.exec.commandMissing` (`firefox`) | Install Firefox on the laptop. |
-| *The ambient display could not be started* (`agent.gamemode.startFailed`, 502) | `systemd-run --user` failed; the error carries its stderr. Check that the systemd user session works (`systemctl --user status`). Everything done so far is undone. |
-| Page shows the source as unreachable, with a retry counter (app: *Unreachable*) | The display agent cannot reach the source agent: the PC is off or asleep, its agent is down or has `gamemode` off, the URL changed, or the token was revoked. It retries after 1, 2, 4, 8, 15, 30 s. Fix the PC side, or run *Set up again*. |
+| *The ambient display could not be started* (`agent.screen.startFailed`, 502) | `systemd-run --user` failed; the error carries its stderr. Check that the systemd user session works (`systemctl --user status`). Everything done so far is undone. |
+| Page shows the source as unreachable, with a retry counter (app: *Unreachable*) | The display agent cannot reach the source agent: the PC is off or asleep, its agent is down or has `screen` off, the URL changed, or the token was revoked. It retries after 1, 2, 4, 8, 15, 30 s. Fix the PC side, or run *Set up again*. |
 | No music, *Velour is not running* | Start Velour on the PC. The source retries every 3 s. |
 | No spectrum | `pw-record` missing on the PC (doctor warns), the spectrum setting is off, or nothing is playing (frames are sent only while Velour plays). |
 | Cockpit stays empty, truck state `none` | `reason` says why: `noGame`: ETS2 is not running; `noPlugin`: the game runs but the plugin's shared memory is missing (plugin not installed, or the SDK dialog was not accepted; restart the game); `unsupported`: the plugin has a different layout revision than the agent reads (12); install the pinned version from the app. |
@@ -272,7 +289,7 @@ Nothing about your music or your drives is saved:
 | Radar instead of a map | No (or incomplete) map data in `~/.local/share/tiphys/gamemode/map/` on the **laptop** (see [Map data](#map-data)), or Firefox has no WebGL2 (check `about:support` → Graphics). The reason is logged in the page console. |
 | No route line | `route.json` is missing from the map folder on the **laptop** (see [Route line](#route-line)), there is no job, or the destination company is not in it (the console logs `[route] …`). An agent older than this feature doesn't send `job.toCompanyId`. |
 | No destination marker | The marker is placed by matching the job's destination name against the map's city names (English, from the game data). A city name the game shows in another language (e.g. *München* for *Munich*) is not matched; the rest of the map works. |
-| Brightness does not change | `brightnessctl` is missing or your user may not write the backlight (e.g. not in the `video` group). The mode runs without changing it. |
+| Brightness does not change | `brightnessctl` is missing, your user may not write the backlight (e.g. not in the `video` group), or the machine has no backlight at all (a desktop monitor: `GET /v1/screen` says `backlight: false`). The mode runs without changing it; only a `backlight` class device is ever written, never an LED. |
 | The screen went to sleep / Firefox window is not fullscreen | `systemd-inhibit` is missing, or another tool overrides the Hyprland window rule. `tiphys-agent doctor` on the laptop lists missing tools. |
 | The mode stopped by itself | Firefox exited (closed, crashed) or the agent restarted; start it again. |
 

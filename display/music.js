@@ -147,7 +147,7 @@ export function createMusic({ onCoverLoaded }) {
       onCoverLoaded(null);
       return;
     }
-    const url = `/v1/gamemode/art?t=${encodeURIComponent(window.__tphToken ?? '')}&id=${encodeURIComponent(id)}`;
+    const url = `/v1/screen/art?t=${encodeURIComponent(window.__tphToken ?? '')}&id=${encodeURIComponent(id)}`;
     const img = new Image();
     img.decoding = 'async';
     img.onload = () => {

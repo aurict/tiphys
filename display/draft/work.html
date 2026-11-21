@@ -1,0 +1,110 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="referrer" content="no-referrer">
+<title>Tiphys · Çalışma (taslak)</title>
+<link rel="stylesheet" href="../tokens.css">
+<link rel="stylesheet" href="../app.css">
+<link rel="stylesheet" href="draft.css">
+<script type="module" src="work.js"></script>
+</head>
+<!-- W0 visual draft. ?state=diff opens the approval preview, &tab=0|1|2 picks the request; ?replay=0 stops the fake
+     activity; ?perf shows the frame counter. Sizes are for the laptop: 2160×1440 @1.25 → 1728×1152 CSS px. -->
+<body class="draft" data-motion="normal">
+<div id="bg" aria-hidden="true"></div>
+
+<main id="stage">
+  <header id="topbar">
+    <div class="hdr">
+      <div class="overline">ÇALIŞMA MODU</div>
+      <h1 class="title" id="hdr-title">tiphys</h1>
+    </div>
+    <div class="hdr-right">
+      <div class="chip" id="hdr-claude"><span class="ic-wrap" data-icon="sparkle" data-size="18"></span><span class="lbl">2 Claude oturumu</span></div>
+      <div class="chip" id="hdr-jobs"><span class="ic-wrap" data-icon="cpu" data-size="18"></span><span class="lbl">2 iş</span></div>
+      <div class="chip" data-state="ok"><span class="dot"></span><span class="lbl">Kaynak bağlı · masaüstü</span></div>
+    </div>
+  </header>
+
+  <section class="work-scene" aria-label="Çalışma">
+    <article class="card hero city-card" id="city-card">
+      <canvas class="gl" id="city" aria-label="Kod şehri"></canvas>
+      <div class="file-tags" id="file-tags"></div>
+      <div class="orb-labels" id="orb-labels"></div>
+      <div class="overlay-strip city-info"><span class="ic-wrap" data-icon="code" data-size="17"></span><b id="ci-root">tiphys</b><span class="sep"></span><span id="ci-files">–</span><span class="sep"></span><span id="ci-lines">–</span></div>
+      <div class="overlay-strip city-legend" id="city-legend"></div>
+
+      <div class="diff-layer" id="diff-layer" aria-live="polite">
+        <canvas class="diff-bg" id="diff-bg"></canvas>
+        <div class="diff-shade"></div>
+        <div class="diff-card" role="dialog" aria-label="Onay bekleyen değişiklik">
+          <div class="d-tabs" id="d-tabs"></div>
+          <div id="d-content"></div>
+          <div class="d-foot">
+            <div class="ph" data-icon="phone"></div>
+            <div><div class="t1">Telefonda onayla</div><div class="t2">Tiphys › Claude › bekleyen izin · bu ekranın onay yetkisi yok</div></div>
+            <div class="wait"><span class="ic-wrap" data-icon="hourglass" data-size="18"></span><span id="d-wait">–</span></div>
+          </div>
+        </div>
+      </div>
+    </article>
+
+    <div class="right-col">
+      <article class="card wcard day-card" aria-label="Gün">
+        <div>
+          <div class="day-clock" id="day-clock">00:00</div>
+          <div class="day-date" id="day-date"></div>
+        </div>
+        <div class="day-right">
+          <div class="chip"><span class="ic-wrap" data-icon="clock" data-size="16"></span><span>Çalışma · 1 sa 42 dk</span></div>
+          <div class="chip"><span class="ic-wrap" data-icon="commit" data-size="16"></span><span id="day-commits">bugün 6 commit</span></div>
+        </div>
+      </article>
+
+      <article class="card wcard sys-card" aria-label="Kaynaklar">
+        <div class="card-k"><span class="ic-wrap" data-icon="cpu" data-size="18"></span>Kaynaklar<span class="aside"><span class="dot"></span>masaüstü · 16 çekirdek</span></div>
+        <div class="rings">
+          <div class="gauge g-cpu" id="g-cpu"><div class="gauge-ring"><svg class="ring" viewBox="0 0 120 120"><circle class="track" cx="60" cy="60" r="50"/><circle class="arc" cx="60" cy="60" r="50" pathLength="100"/></svg><div class="pct"></div></div><div><div class="gk">CPU</div><div class="gs"></div></div></div>
+          <div class="gauge g-ram" id="g-ram"><div class="gauge-ring"><svg class="ring" viewBox="0 0 120 120"><circle class="track" cx="60" cy="60" r="50"/><circle class="arc" cx="60" cy="60" r="50" pathLength="100"/></svg><div class="pct"></div></div><div><div class="gk">RAM</div><div class="gs"></div></div></div>
+          <div class="gauge g-gpu" id="g-gpu"><div class="gauge-ring"><svg class="ring" viewBox="0 0 120 120"><circle class="track" cx="60" cy="60" r="50"/><circle class="arc" cx="60" cy="60" r="50" pathLength="100"/></svg><div class="pct"></div></div><div><div class="gk">GPU</div><div class="gs"></div></div></div>
+        </div>
+      </article>
+
+      <article class="card wcard jobs-card" aria-label="İşler">
+        <div class="card-k"><span class="ic-wrap" data-icon="terminal" data-size="18"></span>İşler<span class="aside" id="jobs-aside"></span></div>
+        <div class="jobs" id="jobs"></div>
+      </article>
+
+      <article class="card wcard git-card" aria-label="Git">
+        <div class="card-k"><span class="ic-wrap" data-icon="branch" data-size="18"></span>Git<span class="aside" id="git-root"></span></div>
+        <div class="git-top">
+          <div class="branch"><span class="ic-wrap" data-icon="branch" data-size="19"></span><span id="git-branch"></span></div>
+          <div class="ab"><span class="up" id="git-ahead"></span><span id="git-behind"></span></div>
+          <div class="git-counts">
+            <div class="gc warn"><b id="git-changed">0</b><span>değişti</span></div>
+            <div class="gc"><b id="git-untracked">0</b><span>yeni</span></div>
+            <div class="gc ok"><b id="git-conflicts">0</b><span>çakışma</span></div>
+          </div>
+        </div>
+        <div class="commits" id="commits"></div>
+      </article>
+
+      <article class="card mu-card" aria-label="Müzik">
+        <div class="mc-cover" data-icon="music" data-size="30"></div>
+        <div class="mu-text">
+          <div class="np-label"><span class="live-dot"></span><span>Şimdi çalıyor · Velour</span></div>
+          <div class="mu-t">Gece Yarısı Treni</div>
+          <div class="mu-a">Örnek Sanatçı · Taslak Albüm</div>
+          <div class="progress" id="mu-progress"><div class="bar"><div class="fill"></div></div><div class="times"><span class="pos">0:00</span><span class="dur">3:58</span></div></div>
+        </div>
+      </article>
+    </div>
+  </section>
+</main>
+
+<div id="pill" class="pill" role="status" aria-live="polite"><span class="pill-ic"></span><span class="pill-text"></span></div>
+<div id="perf" hidden></div>
+</body>
+</html>

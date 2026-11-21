@@ -4,12 +4,20 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="referrer" content="no-referrer">
-<title>Tiphys · Oyun Modu</title>
+<title>Tiphys · Ekran Modu</title>
 <link rel="stylesheet" href="tokens.css">
 <link rel="stylesheet" href="app.css">
+<link rel="stylesheet" href="shell.css">
+<link rel="stylesheet" href="work.css">
+<link rel="stylesheet" href="focus.css">
 <script type="module" src="main.js"></script>
 </head>
-<body data-scene="connecting" data-motion="normal">
+<body data-motion="normal">
+<!-- The current mode's view (main.js builds it from the agent's `layout` message). -->
+<div id="views"></div>
+
+<!-- Game mode scenes (cards/game.js clones this into its view). -->
+<template id="tpl-game">
 <canvas id="ambient" aria-hidden="true"></canvas>
 
 <main id="stage">
@@ -151,6 +159,7 @@
     </div>
   </section>
 </main>
+</template>
 
 <!-- Source down / page connection lost -->
 <div id="problem" class="problem" hidden>
@@ -170,7 +179,12 @@
   <div class="esc-t">Kapatmak için basılı tut</div>
 </div>
 
+<!-- Privacy veil: a dim clock only (main.js); the view underneath is destroyed while it shows. -->
+<div id="veil" hidden><div class="veil-clock"><span class="veil-time"></span><span class="veil-suffix"></span></div><div class="veil-date"></div></div>
+
 <div id="dim" aria-hidden="true"></div>
+<!-- Battery saver (the display host on battery, low): motion low and the flat city until it charges. -->
+<div id="power" class="chip power-chip" role="status" hidden></div>
 <div id="perf" hidden></div>
 </body>
 </html>

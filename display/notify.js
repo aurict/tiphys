@@ -2,6 +2,7 @@
 import { icon } from './icons.js';
 import { fmtMoney, fmtInt } from './format.js';
 
+const dur = (sec) => (sec == null ? null : sec < 60 ? `${sec} sn` : sec < 3600 ? `${Math.floor(sec / 60)} dk` : `${Math.floor(sec / 3600)} sa ${Math.floor((sec % 3600) / 60)} dk`);
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
 
 /** Turkish copy for an `event` message (or a local one) → {icon, tone, html}; null for unknown kinds. */
@@ -22,6 +23,15 @@ export function eventCopy(ev, truck) {
     case 'rest': return { icon: 'rest', tone: 'warning', html: `<b>Mola zamanı</b>${sub(ev.detail ?? 'Bir dinlenme yerine uğra')}` };
     case 'linkDown': return { icon: 'linkOff', tone: 'danger', html: `<b>Bağlantı koptu</b>${sub(ev.detail)}` };
     case 'linkUp': return { icon: 'link', tone: 'success', html: `<b>Bağlantı geri geldi</b>` };
+    // Work mode (W2): jobs, commits, servers.
+    case 'jobDone': return { icon: 'check', tone: 'success', html: `<b>İş bitti</b>${sub([ev.detail, dur(ev.durationSec)].filter(Boolean).join(' · '))}` };
+    case 'jobFail': return { icon: 'x', tone: 'danger', html: `<b>İş başarısız · çıkış ${esc(ev.exitCode)}</b>${sub(ev.detail)}` };
+    case 'commit': return { icon: 'commit', tone: 'accent', html: `<b>Commit</b>${sub(ev.detail)}` };
+    case 'serverDown': return { icon: 'server', tone: 'danger', html: `<b>Sunucu düştü</b>${sub(ev.detail)}` };
+    case 'serverUp': return { icon: 'server', tone: 'success', html: `<b>Sunucu geri geldi</b>${sub(ev.detail)}` };
+    // W4: Claude sessions.
+    case 'claudeWaiting': return { icon: 'hourglass', tone: 'warning', html: `<b>Claude onay bekliyor</b>${sub(ev.detail)}` };
+    case 'claudeDone': return { icon: 'sparkle', tone: 'success', html: `<b>Claude bitirdi</b>${sub(ev.detail)}` };
     default: return null;
   }
 }
@@ -45,6 +55,8 @@ export function createPill(el) {
     }, 4000);
   }
   return {
+    /** Drops the queue and hides the current pill (the privacy veil). */
+    clear() { queue.length = 0; el.classList.remove('show'); },
     push(item) {
       if (!item) return;
       if (queue.length > 6) queue.shift(); // a burst doesn't keep the pill busy for minutes
@@ -104,6 +116,8 @@ export function setupEscHold(el, onStop) {
     raf = requestAnimationFrame(step);
   };
   addEventListener('keydown', (e) => {
+    // The sleep view handles Esc itself (while the alarm rings Esc held = dismiss, not stop; PLAN.md §21 S4).
+    if (document.body.classList.contains('sleep-view')) return;
     if (e.key !== 'Escape' || e.repeat || start || done) return;
     e.preventDefault();
     start = performance.now();

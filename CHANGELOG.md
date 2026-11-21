@@ -9,6 +9,90 @@ extension is `0.1.0`.
 
 ## [Unreleased]
 
+## [0.6.0] - 2026-11-21
+
+### Added
+
+**Screen modes: Work and Focus** (see [docs/features/screen-modes.md](docs/features/screen-modes.md))
+
+- Game mode became one of three screen modes, picked, switched (on the page, without restarting Firefox) and stopped
+  from the phone: **Work**, **Focus** and **Game**. Each display host has its own layout per mode; every card reads a
+  source of its own (`self` = the display host, in-process, or a named remote agent), with *Mirror <source>* and
+  *This machine itself* ready layouts. Placements `fullscreen` (a named workspace) or `scratch` (Hyprland special
+  workspace with a temporary Super+` bind); the page pauses completely while it is not visible.
+- **Work:** a code city of the project (WebGL with a 2D fallback; folders as districts, edits, new and deleted files,
+  commits as effects; folder-level above 20 000 files), the Claude brain (Tiphys and terminal sessions as spheres,
+  read/edit beams, waiting state), a diff card for a Tiphys session's Edit/Write/MultiEdit/NotebookEdit or Bash
+  permission (approval stays on the phone), and Day, Resources, Jobs, Git (optional CI dot via `gh`), Music and
+  Servers cards. Project `auto` (last active Claude session, else the focused terminal) or fixed.
+- **Focus:** a focus/break timer kept by the display agent (survives an agent restart), a task line (memory only),
+  synthesized ambient noise and a chime, only critical pills; on the phone an ongoing notification with *Pause* and an
+  optional quiet filter that holds non-critical Tiphys notifications until the mode ends.
+- Privacy veil (`POST /v1/screen/veil`): the page drops to a dim clock and gets no data until it is lifted.
+- Session summary: one `screen.summary` push (numbers and mode names only, never recorded) when a mode that ran
+  ≥ 2 minutes stops; *Last session* card in the app.
+- Battery saver: on battery below 30 % the display drops to low motion and the flat city.
+- Agent: `screen` feature with `GET`/`PUT /v1/screen`, `POST /v1/screen/{start,mode,stop,focus,veil}`,
+  `WS /v1/screen/live` and the source feed `WS /v1/screen/feed` (topic subscriptions; producers `system`, `jobs`,
+  `git`, `city`, `claude`, `diff`, `servers` run only while subscribed); `screen` service-token scope; doctor checks
+  (`doctor.screen.ciUnavailable`).
+- App: **Screen mode** home card, mode chooser, screen mode screen (Layout, Appearance, per-mode settings,
+  Connections, Setup) and a setup wizard with a separate code sharing consent step.
+
+**Sleep mode** (see [docs/features/sleep-mode.md](docs/features/sleep-mode.md))
+
+- A fourth screen mode for the bedroom: very dim fireplace embers (WebGL, 2D fallback) on every machine of a **sleep
+  group** as one scene, synthesized crackles, log cracks and an optional hum/wind/rain tied to the same deterministic
+  timeline (seed + start time; no event stream on the network), spatial sound from the room layout (side and
+  distance per machine), phases settle → fade → night light, always full screen on the workspace `uyku`, no producers.
+- Group: the phone starts the leader first and passes its plan to the members; the member reaches the leader over its
+  existing source link (no new token): clock offset from the lowest-RTT pings, stop/snooze/dismiss both ways, a member
+  that loses the link keeps its own timeline (`agent.sleep.memberDown`). Measured sync between two machines: sound
+  median −6 ms, picture −7 ms, all within ±40 ms.
+- Sunrise alarm: the leader's local time and days, sunrise, birds / chime / a Velour song on the leader, ramp,
+  snooze (Space / phone), dismiss (Esc held / phone), auto-stop, optional morning screen; WAV fallback with `pw-play`
+  and a kiosk restart when Firefox died; `sleep.alarm` push (one per group, from the leader) with *Snooze* / *Turn off*;
+  the phone's own backup alarm 3 min later (full-screen on Android, lock screen included).
+- Night filter: only the chosen critical kinds are sent overnight; the rest are held in memory (count + 3 titles)
+  and still recorded in the event history. One `sleep.morning` summary from the leader (night length, jobs,
+  backups, incidents, held notifications), `GET /v1/sleep/summary` (memory, 12 h), the morning screen shows it.
+- Velour sleep playlist on the leader with a fade-out and Velour's sleep timer; the embers duck −12 dB under it; one
+  saved Velour volume shared with the Velour alarm, put back once.
+- Hardware dimming saved and restored exactly: the laptop backlight (`brightnessctl`, ≥ 1 %), a desktop monitor over
+  DDC/CI (`ddcutil`, every 15 s at most; content dimming alone until DDC works, `doctor.sleep.ddcUnavailable`), plus
+  optional quiet power profile, fixed system volume and plain LEDs; 5 s live brightness preview.
+- Measured for an 8-hour night on a laptop: the night phase costs ~2 % of one core (Firefox + agent, 1–2 fps at
+  1/6 resolution, audio suspended); the night hum (`nightSound`) is **off by default** because it keeps the audio
+  stack running all night (+13 % of a core with PipeWire).
+- Agent: `GET`/`PUT /v1/sleep`, `POST /v1/sleep/{start,stop,alarm,preview}`, `GET /v1/sleep/summary`,
+  `screen.modes.sleep` settings, events `sleep.started` / `sleep.stopped` / `sleep.alarm {state}` (no content),
+  doctor checks; test-only `TIPHYS_SLEEP_SCALE`, `TIPHYS_SLEEP_SYNCLOG`, `TIPHYS_SCREEN_HEADLESS`.
+- App: *Sleep* in the mode chooser and on the home card (phase, alarm, *Wake up* / *Turn off*), the sleep screen
+  (scene, sound, Velour playlist, alarm, machines, notifications, bedtime reminder), a group wizard (machines, leader,
+  layout, DDC test), the full-screen alarm and the morning summary card.
+
+### Changed
+
+- **Rename `gamemode` → `screen`, migrated automatically:** `features.gamemode` → `features.screen`,
+  `gamemode.source` → `screen.sources.main`, `gamemode.display` → `screen.modes.game` (once, on the first start; the
+  file is rewritten without the old keys). The kiosk unit and work dir are `tiphys-screen` (a 0.5 `tiphys-gamemode`
+  leftover is cleaned up); events are `screen.started {mode}` / `screen.stopped`. The app's Game mode home card is
+  replaced by the Screen mode card (home layouts migrate by themselves).
+- Code sharing is a source setting, `screen.share.code`, off by default: without it file names are opaque tokens and
+  no diff is sent.
+- Release bundles and `tools/deploy-agent.sh` no longer ship `display/draft/` (design mock-ups).
+
+### Deprecated
+
+- Kept for **one release** for the app 1.2: the `gamemode` feature name (`init --features`, `PATCH /v1/config`,
+  `/v1/health`), the `gamemode` service-token scope (Game topics only), the `/v1/gamemode/*` and `/gamemode/*` routes
+  with their 0.5 shapes and `agent.gamemode.*` error codes, and the `/v1/gamemode/feed` fallback for 0.5 sources.
+
+### Fixed
+
+- Screen modes' brightness setting wrote the first `brightnessctl` device of any class, on a desktop a keyboard LED;
+  it now uses the `backlight` class device only and does nothing without one (`GET /v1/screen` → `backlight: false`).
+
 ## [0.5.0] - 2026-11-21
 
 ### Added

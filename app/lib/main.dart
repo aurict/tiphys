@@ -12,12 +12,15 @@ import 'core/profile/codec.dart';
 import 'core/profile/model.dart';
 import 'core/profile/repository.dart';
 import 'core/push/push_service.dart';
+import 'core/push/sleep_notices.dart';
 import 'core/secrets/secret_store.dart';
 import 'core/security/app_lock.dart';
 import 'features/claude/pc_ongoing.dart';
 import 'features/databases/db_data.dart' show dbClearCsvCopiesProvider;
 import 'features/files/share_to_pc.dart';
 import 'features/onboarding/onboarding_state.dart';
+import 'features/screen/sleep/sleep_alarm_screen.dart';
+import 'features/screen/sleep/sleep_data.dart';
 import 'features/settings/push_section.dart';
 import 'state/providers.dart';
 
@@ -73,7 +76,25 @@ Future<void> main(List<String> args) async {
   unawaited(container.read(dbClearCsvCopiesProvider)());
 
   // Tapping a notification opens the related screen.
-  push.onOpen = (route) => container.read(routerProvider).push(route);
+  push.onOpen = (route) {
+    // The sleep alarm: with the app locked the lock gate shows the alarm screen alone.
+    if (isSleepAlarmRoute(route)) container.read(sleepAlarmRequestProvider.notifier).open(route);
+    container.read(routerProvider).push(route);
+  };
+  // Ertele / Kapat of the sleep alarm while the app is open: through the group state (the machines and the backup).
+  push.onSleepAction = (action) async {
+    final keep = container.listen(sleepGroupProvider, (_, _) {});
+    try {
+      if (!(await container.read(sleepGroupProvider.future)).running) return false;
+      await container.read(sleepGroupProvider.notifier).alarm(action == actionSleepDismiss ? 'dismiss' : 'snooze');
+      return true;
+    } catch (_) {
+      // Not known here: the push service tells the run's machines itself.
+      return false;
+    } finally {
+      keep.close();
+    }
+  };
   // Claude using the PC: notification buttons and the agent's "control finished" notification run off UI state.
   push.onPcAction = (action) => container.read(pcOngoingProvider.notifier).action(action);
   push.onPcEnded = (sessionId) => container.read(pcOngoingProvider.notifier).ended(sessionId);
@@ -86,6 +107,7 @@ Future<void> main(List<String> args) async {
   WidgetsBinding.instance.addPostFrameCallback((_) {
     ShareIntake().start((items) => container.read(routerProvider).push('/share', extra: items));
   });
+  if (launch != null && isSleepAlarmRoute(launch)) container.read(sleepAlarmRequestProvider.notifier).open(launch);
   if (launch != null) {
     WidgetsBinding.instance.addPostFrameCallback((_) => container.read(routerProvider).push(launch));
   }

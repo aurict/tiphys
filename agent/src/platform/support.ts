@@ -8,8 +8,8 @@ import { AppError } from "../errors.ts";
 
 const UNSUPPORTED: Partial<Record<NodeJS.Platform, readonly string[]>> = {
   linux: [],
-  // Game mode drives systemd-run, Hyprland, PipeWire and the Linux ETS2 plugin (PLAN.md §19).
-  darwin: ["gamemode"],
+  // Screen modes drive systemd-run, Hyprland, PipeWire and the Linux ETS2 plugin (PLAN.md §19, §20).
+  darwin: ["screen"],
   win32: [
     // Windows services have no per-user scope here, and the event log is not read.
     "services.user",
@@ -20,7 +20,7 @@ const UNSUPPORTED: Partial<Record<NodeJS.Platform, readonly string[]>> = {
     // Unix sockets (Linux/macOS only; Windows named pipes are not implemented).
     "desktop.velour",
     "desktop.firefoxBridge",
-    "gamemode",
+    "screen",
   ],
 };
 
