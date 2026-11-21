@@ -1,9 +1,11 @@
 // `git` topic (PLAN.md §20 A-2): the state of each subscriber's project (project.ts), one watcher per git root shared
 // by every subscriber of that root. Non-recursive fs.watch on the git dir (HEAD, index, packed-refs, MERGE_HEAD …),
 // refs/heads and refs/remotes/* → 500 ms debounce → ONE `git status --porcelain=v2 --branch` + `git log -3`. Working
-// tree edits don't touch .git, so a slow refresh (60 s) catches them until W3's city watcher can trigger it. CI (`gh
-// run list`, 5 min, 10 s timeout) only while a subscriber of that root has the CI setting on (default off). Sent:
-// the root's basename, branch, ahead/behind, counts and the last 3 commits; no path at all. Unchanged state is not sent.
+// tree edits don't touch .git: while the root also has a `city` watcher (city.ts, one fs.watch per tracked
+// directory) its changes refresh the status (at most once a second); without one, a slow refresh (60 s) catches them.
+// CI (`gh run list`, 5 min, 10 s timeout) only while a subscriber of that root has the CI setting on (default off).
+// Sent: the root's basename, branch, ahead/behind, counts and the last 3 commits; no path at all. Unchanged state is
+// not sent. The topic below also places `city` subscribers (same project selection, one CityWatch per root).
 import { watch as fsWatch } from "node:fs";
 import { readFile } from "node:fs/promises";
 import { join, resolve } from "node:path";
@@ -14,6 +16,7 @@ import { allowedPath } from "../../paths.ts";
 import { parseStatus } from "../../routes/git.ts";
 import type { Sock } from "../source.ts";
 import type { Rec } from "./common.ts";
+import { CityWatch, type CityDeps } from "./city.ts";
 import { gitRootOf, rootLabel, type ProjectSpec } from "./project.ts";
 
 const GIT_ENV = { GIT_TERMINAL_PROMPT: "0", GIT_OPTIONAL_LOCKS: "0", GIT_PAGER: "cat" };
@@ -94,7 +97,7 @@ export function parseCi(out: string): { state: "ok" | "fail" | "running" | "none
 }
 
 /** .git directory or worktree file → [git dir, common dir]. */
-async function gitDirs(io: GitIo, root: string): Promise<[string, string]> {
+export async function gitDirs(io: { read(path: string): Promise<string | null> }, root: string): Promise<[string, string]> {
   const dotgit = join(root, ".git");
   const file = await io.read(dotgit);
   const gitDir = file?.startsWith("gitdir:") ? resolve(root, file.slice(7).trim()) : dotgit;
@@ -106,6 +109,8 @@ export interface GitWatchOpts {
   debounceMs?: number;
   refreshMs?: number;
   ciMs?: number;
+  /** Working tree change → status after at most this long. */
+  pokeMs?: number;
 }
 
 /** One root: watchers, the latest message and the subscribers that get it. */
@@ -121,6 +126,9 @@ export class GitWatch {
   #ciTimer: NodeJS.Timeout | null = null;
   #ci: Rec | null = null;
   #ciOn = false;
+  /** A city watcher reports working tree changes: no slow refresh needed. */
+  #worktree = false;
+  #poke: NodeJS.Timeout | null = null;
   #busy: Promise<void> | null = null;
   #again = false;
   #stopped = false;
@@ -132,11 +140,41 @@ export class GitWatch {
     this.root = root;
     this.#io = io;
     this.#send = send;
-    this.#o = { debounceMs: o.debounceMs ?? 500, refreshMs: o.refreshMs ?? 60_000, ciMs: o.ciMs ?? 5 * 60_000 };
+    this.#o = { debounceMs: o.debounceMs ?? 500, refreshMs: o.refreshMs ?? 60_000, ciMs: o.ciMs ?? 5 * 60_000, pokeMs: o.pokeMs ?? 1000 };
   }
 
   get active() {
-    return this.#watchers.length > 0 || this.#debounce !== null || this.#refresh !== null || this.#ciTimer !== null;
+    return this.#watchers.length > 0 || this.#debounce !== null || this.#refresh !== null || this.#ciTimer !== null || this.#poke !== null;
+  }
+
+  /** The slow refresh runs only while nothing reports working tree changes. */
+  get polling() {
+    return this.#refresh !== null;
+  }
+
+  /** On: working tree changes come from poke() (the city watcher); off: the 60 s refresh. */
+  setWorktreeEvents(on: boolean) {
+    if (this.#stopped || on === this.#worktree) return;
+    this.#worktree = on;
+    this.#arm();
+  }
+
+  #arm() {
+    if (this.#refresh) clearInterval(this.#refresh);
+    this.#refresh = null;
+    if (this.#worktree || this.#stopped) return;
+    this.#refresh = setInterval(() => void this.update(), this.#o.refreshMs);
+    this.#refresh.unref?.();
+  }
+
+  /** A working tree file changed: status again within a second (throttled, not pushed back by more changes). */
+  poke() {
+    if (this.#stopped || this.#poke) return;
+    this.#poke = setTimeout(() => {
+      this.#poke = null;
+      void this.update();
+    }, this.#o.pokeMs);
+    this.#poke.unref?.();
   }
 
   async start() {
@@ -150,8 +188,7 @@ export class GitWatch {
         this.#watchers.push(this.#io.watch(dir, (f) => (!filter || f === null || GIT_FILES.has(f) ? this.#soon() : undefined)));
       } catch {}
     }
-    this.#refresh = setInterval(() => void this.update(), this.#o.refreshMs);
-    this.#refresh.unref?.();
+    this.#arm();
     await this.update();
   }
 
@@ -162,7 +199,8 @@ export class GitWatch {
     if (this.#debounce) clearTimeout(this.#debounce);
     if (this.#refresh) clearInterval(this.#refresh);
     if (this.#ciTimer) clearInterval(this.#ciTimer);
-    this.#debounce = this.#refresh = this.#ciTimer = null;
+    if (this.#poke) clearTimeout(this.#poke);
+    this.#debounce = this.#refresh = this.#ciTimer = this.#poke = null;
   }
 
   setCi(on: boolean) {
@@ -237,6 +275,8 @@ export interface GitTopicDeps {
   /** A fixed path → its git root inside the allowed roots, or why not. */
   resolve(path: string): Promise<{ root: string } | { none: "notRepo" | "notAllowed" }>;
   watch?: GitWatchOpts;
+  /** The city topic (none: city subscriptions are ignored). */
+  city?: CityDeps;
 }
 
 /** Fixed path → git root, both inside the agent's allowed roots. */
@@ -252,22 +292,37 @@ export async function resolveProject(config: AgentConfig, path: string): Promise
   return allowedPath(config, root).then((r) => ({ root: r }), () => ({ none: "notAllowed" as const }));
 }
 
+/** Topics that follow the subscriber's project. */
+export type ProjectTopicName = "git" | "city";
+const PROJECT_TOPICS: readonly ProjectTopicName[] = ["git", "city"];
+
 interface Sub {
   spec: ProjectSpec;
+  want: Set<ProjectTopicName>;
+  /** The resolved project (null: none, see `none`). */
   root: string | null;
+  none: string | null;
+  resolved: boolean;
   /** Bumped per spec change: a late resolve of an older spec is dropped. */
   gen: number;
+  /** The root whose watcher currently has this subscriber, per topic. */
+  at: Record<ProjectTopicName, string | null>;
+}
+
+interface RootWatch {
+  git: GitWatch | null;
+  city: CityWatch | null;
 }
 
 const send = (sock: Sock, data: string) => {
   if (sock.readyState === 1) sock.send(data);
 };
 
-/** Subscribers → their project's watcher. */
+/** Subscribers → their project's watchers (git and/or city; one of each per root, shared). */
 export class GitTopic {
   readonly #d: GitTopicDeps;
   readonly #subs = new Map<Sock, Sub>();
-  readonly #watches = new Map<string, GitWatch>();
+  readonly #watches = new Map<string, RootWatch>();
   #selector: Selector | null = null;
 
   constructor(d: GitTopicDeps) {
@@ -278,28 +333,45 @@ export class GitTopic {
     return this.#subs.size > 0 || this.#watches.size > 0 || this.#selector !== null;
   }
 
+  /** A subscriber wants the topic or a watcher of it still runs. */
+  has(t: ProjectTopicName) {
+    return [...this.#subs.values()].some((s) => s.want.has(t)) || [...this.#watches.values()].some((e) => e[t] !== null);
+  }
+
   /** Watched roots (tests). */
   get roots() {
     return [...this.#watches.keys()];
   }
 
   watchOf(root: string) {
-    return this.#watches.get(root) ?? null;
+    return this.#watches.get(root)?.git ?? null;
   }
 
-  /** The subscriber's project (null = it no longer wants git). */
-  set(sock: Sock, spec: ProjectSpec | null) {
+  cityOf(root: string) {
+    return this.#watches.get(root)?.city ?? null;
+  }
+
+  /** The subscriber's project and the project topics it wants (null or none = it wants neither any more). */
+  set(sock: Sock, spec: ProjectSpec | null, want: readonly ProjectTopicName[] = ["git"]) {
     const old = this.#subs.get(sock);
-    if (!spec) {
+    const w = new Set(want.filter((t) => t === "git" || (t === "city" && this.#d.city)));
+    if (!spec || !w.size) {
       if (!old) return;
       this.#subs.delete(sock);
-      this.#release(sock, old.root);
+      old.want.clear();
+      this.#place(sock, old);
       this.#selectorFits();
       return;
     }
-    if (old && old.spec.project === spec.project && old.spec.ci === spec.ci) return;
-    const sub: Sub = { spec, root: old?.root ?? null, gen: (old?.gen ?? 0) + 1 };
+    if (old && old.spec.project === spec.project && old.spec.ci === spec.ci) {
+      const added = new Set([...w].filter((t) => !old.want.has(t)));
+      old.want = w;
+      if (old.resolved) this.#place(sock, old, added);
+      return;
+    }
+    const sub: Sub = { spec, want: w, root: old?.root ?? null, none: old?.none ?? null, resolved: old?.resolved ?? false, gen: (old?.gen ?? 0) + 1, at: old?.at ?? { git: null, city: null } };
     this.#subs.set(sock, sub);
+    if (old) this.#place(sock, sub, new Set([...w].filter((t) => !old.want.has(t))));
     this.#selectorFits();
     if (spec.project === "auto") {
       if (this.#selector?.known) this.#assign(sock, this.#selector.root, "noProject");
@@ -311,13 +383,13 @@ export class GitTopic {
         else this.#assign(sock, null, r.none);
       });
     }
-    if (old && old.root) this.#fitCi(old.root);
   }
 
   stop() {
     for (const [sock, s] of [...this.#subs]) {
       this.#subs.delete(sock);
-      this.#release(sock, s.root);
+      s.want.clear();
+      this.#place(sock, s);
     }
     this.#selectorFits();
   }
@@ -339,43 +411,83 @@ export class GitTopic {
   #assign(sock: Sock, root: string | null, reason: string) {
     const sub = this.#subs.get(sock);
     if (!sub) return;
-    if (sub.root !== root) {
-      this.#release(sock, sub.root);
-      sub.root = root;
-      if (root) {
-        let w = this.#watches.get(root);
-        if (!w) {
-          const watch = new GitWatch(root, this.#d.io, (data) => {
-            for (const s of watch.socks) send(s, data);
-          }, this.#d.watch);
-          w = watch;
-          this.#watches.set(root, w);
-          w.socks.add(sock);
-          this.#fitCi(root);
-          void w.start();
-          return;
-        }
-        w.socks.add(sock);
-        if (w.last) send(sock, w.last);
-      }
-    }
+    sub.root = root;
+    sub.none = root ? null : reason;
+    sub.resolved = true;
+    this.#place(sock, sub);
     if (root) this.#fitCi(root);
-    else send(sock, JSON.stringify({ type: "git", root: null, none: reason }));
   }
 
-  #release(sock: Sock, root: string | null) {
+  /** Moves the subscriber's memberships to its root; `fresh` topics without a project get the "none" message. */
+  #place(sock: Sock, sub: Sub, fresh: ReadonlySet<ProjectTopicName> = sub.want) {
+    for (const t of PROJECT_TOPICS) {
+      const target = sub.want.has(t) ? sub.root : null;
+      if (sub.at[t] !== target) {
+        this.#leave(sock, t, sub.at[t]);
+        sub.at[t] = target;
+        if (target) this.#join(sock, t, target);
+      }
+      if (!target && sub.want.has(t) && sub.resolved && fresh.has(t)) send(sock, JSON.stringify({ type: t, root: null, none: sub.none ?? "noProject" }));
+    }
+  }
+
+  #join(sock: Sock, t: ProjectTopicName, root: string) {
+    let e = this.#watches.get(root);
+    if (!e) {
+      e = { git: null, city: null };
+      this.#watches.set(root, e);
+    }
+    if (t === "git") {
+      if (e.git) {
+        e.git.socks.add(sock);
+        if (e.git.last) send(sock, e.git.last);
+        return this.#fitCi(root);
+      }
+      const watch = new GitWatch(root, this.#d.io, (data) => {
+        for (const s of watch.socks) send(s, data);
+      }, this.#d.watch);
+      e.git = watch;
+      watch.socks.add(sock);
+      watch.setWorktreeEvents(e.city !== null);
+      this.#fitCi(root);
+      void watch.start();
+      return;
+    }
+    const d = this.#d.city!;
+    if (e.city) {
+      e.city.socks.add(sock);
+      if (e.city.ready) send(sock, e.city.snapshot());
+      return;
+    }
+    const city = new CityWatch(root, d.io, (data) => {
+      for (const s of city.socks) send(s, data);
+    }, { ...d.watch, masked: !d.share() });
+    city.onWorktree = () => this.#watches.get(root)?.git?.poke();
+    e.city = city;
+    city.socks.add(sock);
+    e.git?.setWorktreeEvents(true);
+    void city.start();
+  }
+
+  #leave(sock: Sock, t: ProjectTopicName, root: string | null) {
     if (!root) return;
-    const w = this.#watches.get(root);
-    if (!w) return;
+    const e = this.#watches.get(root);
+    const w = e?.[t];
+    if (!e || !w) return;
     w.socks.delete(sock);
-    if (w.socks.size) return this.#fitCi(root);
-    w.stop();
-    this.#watches.delete(root);
+    if (w.socks.size) {
+      if (t === "git") this.#fitCi(root);
+    } else {
+      w.stop();
+      e[t] = null;
+      if (t === "city") e.git?.setWorktreeEvents(false);
+    }
+    if (!e.git && !e.city) this.#watches.delete(root);
   }
 
   #fitCi(root: string) {
-    const w = this.#watches.get(root);
+    const w = this.#watches.get(root)?.git;
     if (!w) return;
-    w.setCi([...this.#subs.values()].some((s) => s.root === root && s.spec.ci));
+    w.setCi([...this.#subs.values()].some((s) => s.at.git === root && s.spec.ci));
   }
 }

@@ -109,10 +109,10 @@ describe("topics and layouts", () => {
     expect([...layoutTopics("game", off, gs).get("self")!]).toEqual(["music"]);
     const split = { ...gl, cards: gl.cards.map((x) => ({ ...x, source: x.kind === "map" ? "argo" : "self" })) };
     expect([...layoutTopics("game", split, gs).entries()].map(([k, v]) => [k, [...v]])).toEqual([["argo", ["truck"]], ["self", ["truck", "music", "spectrum"]]]);
-    // Work (W2): the state topics of its cards; the city (W3) subscribes nothing yet; hidden → no system gauge.
+    // Work (W2, W3): the topics of its cards; hidden → no system gauge (the city keeps its state).
     const { layout: wl, ...ws } = c.work;
-    expect([...layoutTopics("work", wl, ws).get("self")!]).toEqual(["system", "jobs", "git", "music", "servers"]);
-    expect([...layoutTopics("work", wl, ws, true).get("self")!]).toEqual(["jobs", "git", "music", "servers"]);
+    expect([...layoutTopics("work", wl, ws).get("self")!]).toEqual(["city", "system", "jobs", "git", "music", "servers"]);
+    expect([...layoutTopics("work", wl, ws, true).get("self")!]).toEqual(["city", "jobs", "git", "music", "servers"]);
   });
 
   it("checkLayout and parseTopics", () => {
@@ -354,7 +354,7 @@ describe("screen display", () => {
     const feed = t.feed();
     const s = await t.req("POST", "/v1/screen/start", { mode: "work" });
     expect(s.statusCode).toBe(200);
-    expect(s.json()).toMatchObject({ running: true, mode: "work", placement: "fullscreen", sources: [{ name: "self", state: "ok", topics: ["git", "jobs", "music", "servers", "system"] }] });
+    expect(s.json()).toMatchObject({ running: true, mode: "work", placement: "fullscreen", sources: [{ name: "self", state: "ok", topics: ["city", "git", "jobs", "music", "servers", "system"] }] });
     expect(t.hypr()).toContain("keyword windowrule[tiphys-screen]:workspace name:is");
     expect(t.hypr()).toContain("dispatch workspace name:is");
     await until(() => ["system", "jobs", "servers", "git"].every((x) => feed.producing.includes(x as never)));
@@ -423,6 +423,35 @@ describe("screen display", () => {
     expect(t.feed().producing).not.toContain("git"); // this host's feed: no git subscriber
     const bad = await t.req("PUT", "/v1/screen", { settings: { modes: { work: { project: { path: "relative/p" } } } } });
     expect(bad.statusCode).toBe(400);
+    await t.req("POST", "/v1/screen/stop");
+  });
+
+  it("work: the city card's source gets the project; patches are folded into the replayed city; a big snapshot passes", async () => {
+    const t = await screenApp({ sources: { argo: { url: "https://argo.example.com:7443", token: "tps_x" } } });
+    const cards = defaultLayout("work").cards.map((c) => ({ ...c, source: c.kind === "city" ? "argo" : "self" }));
+    await t.req("PUT", "/v1/screen", { settings: { modes: { work: { layout: { template: "work", cards }, project: { path: "/home/u/p" } } } } });
+    await t.req("POST", "/v1/screen/start", { mode: "work" });
+    const up = t.ups[0]!;
+    up.open();
+    expect(JSON.parse(up.sent[0]!)).toEqual({ type: "subscribe", topics: ["city"], project: "/home/u/p", ci: false });
+    const p = await t.page();
+    // ~1.6 MB: over the 1 MB limit of other messages.
+    const files = Array.from({ length: 20_000 }, (_, i) => [`packages/module-${i % 50}/src/some/deeper/folder/file-${i}.ts`, i % 300, "code"]);
+    up.onmessage!({ data: JSON.stringify({ type: "city", root: "p", files, truncated: false, masked: false }) });
+    up.onmessage!({ data: JSON.stringify({ type: "cityPatch", upsert: [["new.ts", 3, "code"], [files[0]![0], 999, "code"]], remove: [files[1]![0]] }) });
+    up.onmessage!({ data: JSON.stringify({ type: "touch", path: "new.ts", kind: "create", by: null }) });
+    await until(() => p.msgs().some((m) => m.type === "touch" && m.src === "argo"));
+    expect(p.msgs().find((m) => m.type === "city")).toMatchObject({ src: "argo", root: "p" });
+    // A second page gets the city with the patch in it (and no stale touch).
+    const q = await t.page();
+    await until(() => q.msgs().some((m) => m.type === "city"));
+    const c = q.msgs().find((m) => m.type === "city")!;
+    const got = new Map((c.files as Array<[string, number]>).map((f) => [f[0], f[1]]));
+    expect(got.size).toBe(20_000);
+    expect(got.get("new.ts")).toBe(3);
+    expect(got.get(files[0]![0] as string)).toBe(999);
+    expect(got.has(files[1]![0] as string)).toBe(false);
+    expect(q.msgs().some((m) => m.type === "touch" || m.type === "cityPatch")).toBe(false);
     await t.req("POST", "/v1/screen/stop");
   });
 

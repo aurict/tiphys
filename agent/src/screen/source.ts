@@ -7,7 +7,8 @@
 // - spectrum: pw-record on the default output's monitor → FFT → binary frames, only while Velour plays.
 // - truck: ETS2 shared memory, 20 Hz while driving and 1 Hz otherwise, plus derived events.
 // - system, jobs, servers: state producers (producers/*.ts), the latest message replayed to a new subscriber.
-// - git: per subscriber project (`project`, `ci` in the subscribe message), one watcher per git root (producers/git.ts).
+// - git, city: per subscriber project (`project`, `ci` in the subscribe message), one watcher of each per git root
+//   (producers/git.ts, producers/city.ts); the city's working tree watchers also refresh the git status.
 // WS /v1/gamemode/feed is the 0.5 feed for one release: every Game mode topic at once, nothing accepted.
 // GET /v1/screen/game/source and POST /v1/screen/game/plugin (+ the /v1/gamemode/… aliases) are for the phone.
 import { spawn } from "node:child_process";
@@ -29,7 +30,8 @@ import { velourRequest, velourSocketPath, type VelourOp } from "../routes/velour
 import type { Ctx } from "../server.ts";
 import { findGameDir, installPlugin, parseTelemetry, pluginStatus, removePlugin, TelemetryReader, TruckEvents, type Sample } from "./ets2.ts";
 import type { StateProducer } from "./producers/common.ts";
-import { GitTopic, realGitIo, resolveProject, type GitTopicDeps } from "./producers/git.ts";
+import { realCityIo } from "./producers/city.ts";
+import { GitTopic, realGitIo, resolveProject, type GitTopicDeps, type ProjectTopicName } from "./producers/git.ts";
 import { JobsProducer } from "./producers/jobs.ts";
 import { parseProject, ProjectSelector, realSelectorIo, type ProjectSpec } from "./producers/project.ts";
 import { ServersProducer, type ServersState } from "./producers/servers.ts";
@@ -215,7 +217,8 @@ export class FeedProducer {
       ...(this.#spectrum ? ["spectrum" as const] : []),
       ...(this.#truck ? ["truck" as const] : []),
       ...STATE_TOPICS.filter((t) => this.#state.has(t)),
-      ...(this.#git?.active ? ["git" as const] : []),
+      ...(this.#git?.has("git") ? ["git" as const] : []),
+      ...(this.#git?.has("city") ? ["city" as const] : []),
     ];
   }
 
@@ -224,7 +227,7 @@ export class FeedProducer {
     return this.#state.get(t)?.p ?? null;
   }
 
-  /** The git topic (tests). */
+  /** The git and city topics (tests). */
   get git() {
     return this.#git;
   }
@@ -252,7 +255,8 @@ export class FeedProducer {
       const last = this.#state.get(t)?.last;
       if (next.has(t) && !old.has(t) && last) sock.send(last);
     }
-    this.#git?.set(sock, next.has("git") ? project : null);
+    const proj = [...next].filter((t): t is ProjectTopicName => t === "git" || t === "city");
+    this.#git?.set(sock, proj.length ? project : null, proj);
     return this.#apply();
   }
 
@@ -569,6 +573,7 @@ export function realProducers(ctx: Ctx): Producers {
           }),
           onChange,
         ),
+      city: { io: realCityIo, share: () => ctx.store.get().screen.share.code },
     },
   };
 }

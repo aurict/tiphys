@@ -245,6 +245,8 @@ interface Latest {
   truck: Rec | null;
   /** Latest tagged state message per type (STATE_TYPES), replayed to a new page or layout. */
   raw: Map<string, string>;
+  /** The latest city with the patches since folded in (path → entry); `raw` "city" is rebuilt from it when stale. */
+  city: { msg: Rec; files: Map<string, unknown[]>; stale: boolean } | null;
 }
 
 export interface DisplayOpts {
@@ -263,7 +265,9 @@ export interface DisplayOpts {
   visibility?: VisibilityOpts;
 }
 
-const emptyLatest = (): Latest => ({ music: null, truck: null, raw: new Map() });
+const emptyLatest = (): Latest => ({ music: null, truck: null, raw: new Map(), city: null });
+/** A city snapshot may be large (20 000 files ≈ 1.5 MB); every other message stays under 1 MB. */
+const maxMessage = (data: string) => (data.startsWith('{"type":"city"') ? 16 * 1024 * 1024 : 1024 * 1024);
 const sameSet = (a: Set<Topic>, b: Set<Topic>) => a.size === b.size && [...a].every((x) => b.has(x));
 const sameProject = (a: ProjectSpec, b: ProjectSpec) => a.project === b.project && a.ci === b.ci;
 
@@ -331,10 +335,23 @@ export class ScreenDisplay {
   /** A new layout rebuilds the page's cards: they get the latest state again right after it. */
   #sendLayout(mode: ScreenMode) {
     this.#sendPages(this.#layoutMsg(mode));
-    for (const l of this.#latest.values()) for (const m of l.raw.values()) this.#sendPages(m);
+    for (const m of this.#replay()) this.#sendPages(m);
   }
 
-  /** What the git (later city) topic watches: the Work mode's project and CI setting. */
+  /** The latest state messages of every source (a city with its patches folded in). */
+  #replay(): string[] {
+    const out: string[] = [];
+    for (const [src, l] of this.#latest) {
+      if (l.city?.stale) {
+        l.raw.set("city", JSON.stringify({ src, ...l.city.msg, files: [...l.city.files.values()] }));
+        l.city.stale = false;
+      }
+      out.push(...l.raw.values());
+    }
+    return out;
+  }
+
+  /** What the git and city topics watch: the Work mode's project and CI setting. */
   #project(mode: ScreenMode): ProjectSpec {
     if (mode !== "work") return { project: "auto", ci: false };
     const w = this.#cfg.modes.work;
@@ -777,7 +794,7 @@ export class ScreenDisplay {
   #subscribe(c: Conn) {
     if (c.legacy || !c.ws || c.ws.readyState !== 1) return;
     try {
-      const git = c.topics.has("git") ? { project: c.project.project, ci: c.project.ci } : {};
+      const git = c.topics.has("git") || c.topics.has("city") ? { project: c.project.project, ci: c.project.ci } : {};
       c.ws.send(JSON.stringify({ type: "subscribe", topics: [...c.topics], ...git }));
     } catch {}
   }
@@ -886,7 +903,7 @@ export class ScreenDisplay {
       this.#sendPages(b, true);
       return;
     }
-    if (data.length > 1024 * 1024) return;
+    if (data.length > maxMessage(data)) return;
     let msg: Rec;
     try {
       msg = JSON.parse(data) as Rec;
@@ -896,11 +913,21 @@ export class ScreenDisplay {
     if (!msg || typeof msg !== "object" || typeof msg.type !== "string") return;
     const topic = MESSAGE_TOPIC[msg.type];
     if (!topic || !topics.has(topic)) return;
+    // Hidden: a page that draws nothing has no use for touch effects (the city state still follows).
+    if (this.#paused && msg.type === "touch") return;
     const tagged = JSON.stringify({ src, ...msg });
     const l = this.#latest.get(src) ?? emptyLatest();
     this.#latest.set(src, l);
     if (msg.type === "music") l.music = msg;
     else if (msg.type === "truck") l.truck = msg;
+    else if (msg.type === "city") {
+      const { files, ...head } = msg;
+      l.city = Array.isArray(files) ? { msg: head, files: new Map(files.filter(Array.isArray).map((f: unknown[]) => [String(f[0]), f])), stale: false } : null;
+    } else if (msg.type === "cityPatch" && l.city) {
+      for (const u of Array.isArray(msg.upsert) ? msg.upsert : []) if (Array.isArray(u)) l.city.files.set(String(u[0]), u);
+      for (const r of Array.isArray(msg.remove) ? msg.remove : []) l.city.files.delete(String(r));
+      l.city.stale = true;
+    }
     if (STATE_TYPES.has(msg.type)) l.raw.set(msg.type, tagged);
     this.#sendPages(tagged, msg.type === "truck");
   }
@@ -920,7 +947,7 @@ export class ScreenDisplay {
     this.#pages.add(sock);
     sock.send(this.#layoutMsg(st.mode));
     for (const c of this.#conns.values()) sock.send(this.#sourceMsg(c));
-    for (const l of this.#latest.values()) for (const m of l.raw.values()) sock.send(m);
+    for (const m of this.#replay()) sock.send(m);
     if (this.#paused) sock.send(JSON.stringify({ type: "pause" }));
     void this.#showScratch().catch(() => {});
   }
