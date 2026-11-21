@@ -21,6 +21,7 @@ import * as music from './cards/music.js';
 import * as servers from './cards/servers.js';
 import * as focus from './cards/focus.js';
 import * as task from './cards/task.js';
+import * as sleep from './cards/sleep.js';
 import { icon } from './icons.js';
 import { fmtClock, fmtOverline } from './format.js';
 import { everyMinute } from './sched.js';
@@ -49,7 +50,11 @@ const effective = (s) => (saver ? { ...s, motion: 'low', city: '2d' } : s);
 const sched = createScheduler((now, dt) => { for (const c of view?.cards ?? []) c.frame?.(now, dt); });
 /** Focus: only what can't wait (server down, Claude waiting, a failed job, the link) and the timer's own pills. */
 const critical = (item) => item && (item.always || item.tone === 'danger' || item.tone === 'warning');
-const ctx = { pill: (item) => { if (view?.mode !== 'focus' || critical(item)) pill.push(item); }, debug: DEBUG, frames: sched, title: setTitle };
+const ctx = {
+  pill: (item) => { if (view?.mode !== 'focus' || critical(item)) pill.push(item); }, debug: DEBUG, frames: sched, title: setTitle,
+  /** A message to the agent (the sleep card's heartbeat and stop). */
+  send: (m) => { if (ws && ws.readyState === 1) ws.send(JSON.stringify(m)); },
+};
 
 /** The Work view's title: "proje › dal" from the Git card; null → the mode name. */
 function setTitle(rootName, branch) {
@@ -74,6 +79,8 @@ const mountCard = (out, layout, kind, mod, el, opts = {}) => {
 
 const TEMPLATES = {
   game: (root) => [game.mount(root, ctx)],
+  // Sleep (PLAN.md §21): one full-screen card, built from the agent's `sleep` message (no layout cards).
+  sleep: (root) => [sleep.mount(root, ctx)],
   work(root, layout) {
     // The left area is the code city's; with the city card off, a quiet note.
     root.innerHTML = shell('tpl-work', 'ÇALIŞMA MODU', 'Çalışma', `<section class="work-grid"><div class="card hero work-main"><div class="city-soon">${icon('code', 40)}<div class="t1">Kod şehri kapalı</div><div class="t2">Telefondan Ekran modu › Çalışma › Düzen’de açılabilir.</div></div></div><div class="side-col"></div></section>`);
