@@ -20384,12 +20384,6 @@ abstract class AppLocalizations {
   /// **'On'**
   String get gmOn;
 
-  /// No description provided for @gmOnAt.
-  ///
-  /// In en, this message translates to:
-  /// **'On · {host}'**
-  String gmOnAt(String host);
-
   /// No description provided for @gmDriving.
   ///
   /// In en, this message translates to:
@@ -20401,12 +20395,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Driving · {speed} km/h'**
   String gmDrivingSpeed(String speed);
-
-  /// No description provided for @gmOffHint.
-  ///
-  /// In en, this message translates to:
-  /// **'Opens the ambient screen on {host}.'**
-  String gmOffHint(String host);
 
   /// No description provided for @gmSceneAuto.
   ///
@@ -20473,12 +20461,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'ETS2 on the road'**
   String get gmEts2Driving;
-
-  /// No description provided for @gmSectionDisplay.
-  ///
-  /// In en, this message translates to:
-  /// **'Display'**
-  String get gmSectionDisplay;
 
   /// No description provided for @gmLyrics.
   ///
@@ -20575,12 +20557,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Source host'**
   String get gmSourceHost;
-
-  /// No description provided for @gmSourceUnknown.
-  ///
-  /// In en, this message translates to:
-  /// **'Source'**
-  String get gmSourceUnknown;
 
   /// No description provided for @gmStateOff.
   ///
@@ -20738,12 +20714,6 @@ abstract class AppLocalizations {
   /// **'The source PC is not one of your hosts.'**
   String get gmSourceNoHost;
 
-  /// No description provided for @gmErrNoSource.
-  ///
-  /// In en, this message translates to:
-  /// **'No source is set up yet. Connect the music and game source first.'**
-  String get gmErrNoSource;
-
   /// No description provided for @gmErrNoDisplay.
   ///
   /// In en, this message translates to:
@@ -20792,65 +20762,11 @@ abstract class AppLocalizations {
   /// **'Game mode stopped'**
   String get gmEventStopped;
 
-  /// No description provided for @gmFeatureOffTitle.
-  ///
-  /// In en, this message translates to:
-  /// **'Game mode is off on this host'**
-  String get gmFeatureOffTitle;
-
-  /// No description provided for @gmFeatureOffBody.
-  ///
-  /// In en, this message translates to:
-  /// **'Turn on the “Game mode” feature in the agent settings and restart the agent.'**
-  String get gmFeatureOffBody;
-
   /// No description provided for @gmFeatureOpenSettings.
   ///
   /// In en, this message translates to:
   /// **'Open agent settings'**
   String get gmFeatureOpenSettings;
-
-  /// No description provided for @gmNoHostTitle.
-  ///
-  /// In en, this message translates to:
-  /// **'No host with game mode'**
-  String get gmNoHostTitle;
-
-  /// No description provided for @gmNoHostBody.
-  ///
-  /// In en, this message translates to:
-  /// **'Add a host with an agent and turn on its “Game mode” feature.'**
-  String get gmNoHostBody;
-
-  /// No description provided for @gmSetupTitle.
-  ///
-  /// In en, this message translates to:
-  /// **'Set up game mode'**
-  String get gmSetupTitle;
-
-  /// No description provided for @gmSetupIntro.
-  ///
-  /// In en, this message translates to:
-  /// **'Pick the PC whose screen shows the ambient display and the PC that plays music and the game. Tiphys creates an access token for it and gives it to the display PC; the token is not stored on this phone.'**
-  String get gmSetupIntro;
-
-  /// No description provided for @gmSetupDisplay.
-  ///
-  /// In en, this message translates to:
-  /// **'Display PC (laptop)'**
-  String get gmSetupDisplay;
-
-  /// No description provided for @gmSetupSource.
-  ///
-  /// In en, this message translates to:
-  /// **'Source PC (music and game)'**
-  String get gmSetupSource;
-
-  /// No description provided for @gmSetupNeedTwo.
-  ///
-  /// In en, this message translates to:
-  /// **'You need two different hosts with the “Game mode” feature turned on.'**
-  String get gmSetupNeedTwo;
 
   /// No description provided for @gmSetupConnect.
   ///
@@ -20863,12 +20779,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Connected'**
   String get gmSetupDoneTitle;
-
-  /// No description provided for @gmSetupDoneBody.
-  ///
-  /// In en, this message translates to:
-  /// **'The display PC will fetch music and game data from {source} when the mode starts.'**
-  String gmSetupDoneBody(String source);
 
   /// No description provided for @gmSetupDownBody.
   ///
@@ -20888,11 +20798,983 @@ abstract class AppLocalizations {
   /// **'Set up'**
   String get gmCardSetup;
 
-  /// No description provided for @homeCardsGameMode.
+  /// No description provided for @smTitle.
   ///
   /// In en, this message translates to:
-  /// **'Game mode'**
-  String get homeCardsGameMode;
+  /// **'Screen mode'**
+  String get smTitle;
+
+  /// No description provided for @homeCardsScreenMode.
+  ///
+  /// In en, this message translates to:
+  /// **'Screen mode'**
+  String get homeCardsScreenMode;
+
+  /// No description provided for @smModeWork.
+  ///
+  /// In en, this message translates to:
+  /// **'Work'**
+  String get smModeWork;
+
+  /// No description provided for @smModeFocus.
+  ///
+  /// In en, this message translates to:
+  /// **'Focus'**
+  String get smModeFocus;
+
+  /// No description provided for @smModeGame.
+  ///
+  /// In en, this message translates to:
+  /// **'Game'**
+  String get smModeGame;
+
+  /// No description provided for @smModeWorkHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Code city, Claude, jobs and git'**
+  String get smModeWorkHint;
+
+  /// No description provided for @smModeFocusHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Timer and task, quiet notifications'**
+  String get smModeFocusHint;
+
+  /// No description provided for @smModeGameHint.
+  ///
+  /// In en, this message translates to:
+  /// **'ETS2 map, cockpit and music'**
+  String get smModeGameHint;
+
+  /// No description provided for @smModeLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Mode'**
+  String get smModeLabel;
+
+  /// No description provided for @smSheetIntro.
+  ///
+  /// In en, this message translates to:
+  /// **'Pick a mode, the screen and where the data comes from.'**
+  String get smSheetIntro;
+
+  /// No description provided for @smDisplayLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Screen'**
+  String get smDisplayLabel;
+
+  /// No description provided for @smFromLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'From'**
+  String get smFromLabel;
+
+  /// No description provided for @smMirror.
+  ///
+  /// In en, this message translates to:
+  /// **'Mirror {host}'**
+  String smMirror(String host);
+
+  /// No description provided for @smMirroring.
+  ///
+  /// In en, this message translates to:
+  /// **'Mirroring {host}'**
+  String smMirroring(String host);
+
+  /// No description provided for @smFromSelf.
+  ///
+  /// In en, this message translates to:
+  /// **'This machine itself'**
+  String get smFromSelf;
+
+  /// No description provided for @smFromCustom.
+  ///
+  /// In en, this message translates to:
+  /// **'Custom'**
+  String get smFromCustom;
+
+  /// No description provided for @smFromCustomLayout.
+  ///
+  /// In en, this message translates to:
+  /// **'Custom layout'**
+  String get smFromCustomLayout;
+
+  /// No description provided for @smFromCustomHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Each card keeps the source chosen for it on the screen mode page.'**
+  String get smFromCustomHint;
+
+  /// No description provided for @smApply.
+  ///
+  /// In en, this message translates to:
+  /// **'Apply'**
+  String get smApply;
+
+  /// No description provided for @smSwitchTo.
+  ///
+  /// In en, this message translates to:
+  /// **'Switch to {mode}'**
+  String smSwitchTo(String mode);
+
+  /// No description provided for @smLegacyHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Work and Focus need a newer agent on this host.'**
+  String get smLegacyHint;
+
+  /// No description provided for @smLegacyNote.
+  ///
+  /// In en, this message translates to:
+  /// **'The agent on {host} only knows Game mode. Update it for Work and Focus.'**
+  String smLegacyNote(String host);
+
+  /// No description provided for @smNeedsUpdateTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Needs a newer agent'**
+  String get smNeedsUpdateTitle;
+
+  /// No description provided for @smNeedsUpdate.
+  ///
+  /// In en, this message translates to:
+  /// **'This host\'s agent is older than the screen modes: only Game mode works. Update the agent to use Work and Focus.'**
+  String get smNeedsUpdate;
+
+  /// No description provided for @smLastUsed.
+  ///
+  /// In en, this message translates to:
+  /// **'Last used: {mode} · {host}'**
+  String smLastUsed(String mode, String host);
+
+  /// No description provided for @smOnHost.
+  ///
+  /// In en, this message translates to:
+  /// **'On {host}'**
+  String smOnHost(String host);
+
+  /// No description provided for @smStopAll.
+  ///
+  /// In en, this message translates to:
+  /// **'Stop the screen mode'**
+  String get smStopAll;
+
+  /// No description provided for @smChangeMode.
+  ///
+  /// In en, this message translates to:
+  /// **'Mode'**
+  String get smChangeMode;
+
+  /// No description provided for @smHoursMinutes.
+  ///
+  /// In en, this message translates to:
+  /// **'{h} h {m} min'**
+  String smHoursMinutes(int h, int m);
+
+  /// No description provided for @smClaudeSessions.
+  ///
+  /// In en, this message translates to:
+  /// **'{n, plural, =1{1 Claude session} other{{n} Claude sessions}}'**
+  String smClaudeSessions(int n);
+
+  /// No description provided for @smClaudeWaiting.
+  ///
+  /// In en, this message translates to:
+  /// **'{n} waiting for approval'**
+  String smClaudeWaiting(int n);
+
+  /// No description provided for @smNoClaude.
+  ///
+  /// In en, this message translates to:
+  /// **'No Claude session'**
+  String get smNoClaude;
+
+  /// No description provided for @smJobs.
+  ///
+  /// In en, this message translates to:
+  /// **'{n, plural, =1{1 job} other{{n} jobs}}'**
+  String smJobs(int n);
+
+  /// No description provided for @smFocusReady.
+  ///
+  /// In en, this message translates to:
+  /// **'Timer ready'**
+  String get smFocusReady;
+
+  /// No description provided for @smFocusLeft.
+  ///
+  /// In en, this message translates to:
+  /// **'{time} left'**
+  String smFocusLeft(String time);
+
+  /// No description provided for @smFocusPausedLeft.
+  ///
+  /// In en, this message translates to:
+  /// **'Paused · {time}'**
+  String smFocusPausedLeft(String time);
+
+  /// No description provided for @smFocusPaused.
+  ///
+  /// In en, this message translates to:
+  /// **'Paused'**
+  String get smFocusPaused;
+
+  /// No description provided for @smFocusPause.
+  ///
+  /// In en, this message translates to:
+  /// **'Pause'**
+  String get smFocusPause;
+
+  /// No description provided for @smFocusResume.
+  ///
+  /// In en, this message translates to:
+  /// **'Resume'**
+  String get smFocusResume;
+
+  /// No description provided for @smFocusSkip.
+  ///
+  /// In en, this message translates to:
+  /// **'Skip'**
+  String get smFocusSkip;
+
+  /// No description provided for @smFocusReset.
+  ///
+  /// In en, this message translates to:
+  /// **'Reset'**
+  String get smFocusReset;
+
+  /// No description provided for @smTask.
+  ///
+  /// In en, this message translates to:
+  /// **'Task'**
+  String get smTask;
+
+  /// No description provided for @smTaskHint.
+  ///
+  /// In en, this message translates to:
+  /// **'What are you working on? (shown big on the screen)'**
+  String get smTaskHint;
+
+  /// No description provided for @smTaskSave.
+  ///
+  /// In en, this message translates to:
+  /// **'Save task'**
+  String get smTaskSave;
+
+  /// No description provided for @smPhaseFocus.
+  ///
+  /// In en, this message translates to:
+  /// **'Focus'**
+  String get smPhaseFocus;
+
+  /// No description provided for @smPhaseShort.
+  ///
+  /// In en, this message translates to:
+  /// **'Short break'**
+  String get smPhaseShort;
+
+  /// No description provided for @smPhaseLong.
+  ///
+  /// In en, this message translates to:
+  /// **'Long break'**
+  String get smPhaseLong;
+
+  /// No description provided for @smPhaseIdle.
+  ///
+  /// In en, this message translates to:
+  /// **'Ready'**
+  String get smPhaseIdle;
+
+  /// No description provided for @smOngoingRound.
+  ///
+  /// In en, this message translates to:
+  /// **'{phase} · {round}/{every}'**
+  String smOngoingRound(String phase, int round, int every);
+
+  /// No description provided for @smOngoingEnds.
+  ///
+  /// In en, this message translates to:
+  /// **'Ends {time} · {host}'**
+  String smOngoingEnds(String time, String host);
+
+  /// No description provided for @smOngoingPaused.
+  ///
+  /// In en, this message translates to:
+  /// **'Paused, {left} left · {host}'**
+  String smOngoingPaused(String left, String host);
+
+  /// No description provided for @smNoticeFocus.
+  ///
+  /// In en, this message translates to:
+  /// **'Focus: round {round}'**
+  String smNoticeFocus(int round);
+
+  /// No description provided for @smNoticeShort.
+  ///
+  /// In en, this message translates to:
+  /// **'Focus: short break'**
+  String get smNoticeShort;
+
+  /// No description provided for @smNoticeLong.
+  ///
+  /// In en, this message translates to:
+  /// **'Focus: long break'**
+  String get smNoticeLong;
+
+  /// No description provided for @smNoticeIdle.
+  ///
+  /// In en, this message translates to:
+  /// **'Focus: timer stopped'**
+  String get smNoticeIdle;
+
+  /// No description provided for @smNoticeBreakOver.
+  ///
+  /// In en, this message translates to:
+  /// **'The break is over'**
+  String get smNoticeBreakOver;
+
+  /// No description provided for @smNoticeRoundDone.
+  ///
+  /// In en, this message translates to:
+  /// **'Round {round} is done'**
+  String smNoticeRoundDone(int round);
+
+  /// No description provided for @smNoticeStopped.
+  ///
+  /// In en, this message translates to:
+  /// **'The mode stopped'**
+  String get smNoticeStopped;
+
+  /// No description provided for @smNoticeAction.
+  ///
+  /// In en, this message translates to:
+  /// **'From the phone'**
+  String get smNoticeAction;
+
+  /// No description provided for @smQuietSummaryTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'{n, plural, =1{1 notification waited during Focus} other{{n} notifications waited during Focus}}'**
+  String smQuietSummaryTitle(int n);
+
+  /// No description provided for @smQuietSummaryBody.
+  ///
+  /// In en, this message translates to:
+  /// **'They are all in Events.'**
+  String get smQuietSummaryBody;
+
+  /// No description provided for @smVeil.
+  ///
+  /// In en, this message translates to:
+  /// **'Hide the screen'**
+  String get smVeil;
+
+  /// No description provided for @smVeilHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Only a dim clock shows until you turn it off.'**
+  String get smVeilHint;
+
+  /// No description provided for @smTabsLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Mode settings'**
+  String get smTabsLabel;
+
+  /// No description provided for @smSectionLayout.
+  ///
+  /// In en, this message translates to:
+  /// **'Layout'**
+  String get smSectionLayout;
+
+  /// No description provided for @smSectionLook.
+  ///
+  /// In en, this message translates to:
+  /// **'Look'**
+  String get smSectionLook;
+
+  /// No description provided for @smLayoutReset.
+  ///
+  /// In en, this message translates to:
+  /// **'Back to the template'**
+  String get smLayoutReset;
+
+  /// No description provided for @smLayoutHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Drag to reorder. A card reads its source\'s data; cards that are off start nothing.'**
+  String get smLayoutHint;
+
+  /// No description provided for @smReorder.
+  ///
+  /// In en, this message translates to:
+  /// **'Move {card}'**
+  String smReorder(String card);
+
+  /// No description provided for @smCardSource.
+  ///
+  /// In en, this message translates to:
+  /// **'Source of {card}'**
+  String smCardSource(String card);
+
+  /// No description provided for @smSelfSource.
+  ///
+  /// In en, this message translates to:
+  /// **'This machine ({host})'**
+  String smSelfSource(String host);
+
+  /// No description provided for @smCardCity.
+  ///
+  /// In en, this message translates to:
+  /// **'Code city and Claude'**
+  String get smCardCity;
+
+  /// No description provided for @smCardDay.
+  ///
+  /// In en, this message translates to:
+  /// **'Day (clock)'**
+  String get smCardDay;
+
+  /// No description provided for @smCardSystem.
+  ///
+  /// In en, this message translates to:
+  /// **'Resources'**
+  String get smCardSystem;
+
+  /// No description provided for @smCardJobs.
+  ///
+  /// In en, this message translates to:
+  /// **'Long jobs'**
+  String get smCardJobs;
+
+  /// No description provided for @smCardMusic.
+  ///
+  /// In en, this message translates to:
+  /// **'Music'**
+  String get smCardMusic;
+
+  /// No description provided for @smCardServers.
+  ///
+  /// In en, this message translates to:
+  /// **'Servers'**
+  String get smCardServers;
+
+  /// No description provided for @smCardFocus.
+  ///
+  /// In en, this message translates to:
+  /// **'Focus timer'**
+  String get smCardFocus;
+
+  /// No description provided for @smCardTask.
+  ///
+  /// In en, this message translates to:
+  /// **'Task line'**
+  String get smCardTask;
+
+  /// No description provided for @smCardMap.
+  ///
+  /// In en, this message translates to:
+  /// **'Map'**
+  String get smCardMap;
+
+  /// No description provided for @smCardCockpit.
+  ///
+  /// In en, this message translates to:
+  /// **'Cockpit'**
+  String get smCardCockpit;
+
+  /// No description provided for @smPlacement.
+  ///
+  /// In en, this message translates to:
+  /// **'Placement (all modes)'**
+  String get smPlacement;
+
+  /// No description provided for @smPlacementHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Full screen on its own workspace, or a hidden layer shown with a key.'**
+  String get smPlacementHint;
+
+  /// No description provided for @smPlacementFull.
+  ///
+  /// In en, this message translates to:
+  /// **'Full screen'**
+  String get smPlacementFull;
+
+  /// No description provided for @smPlacementScratch.
+  ///
+  /// In en, this message translates to:
+  /// **'With a key'**
+  String get smPlacementScratch;
+
+  /// No description provided for @smBind.
+  ///
+  /// In en, this message translates to:
+  /// **'Key'**
+  String get smBind;
+
+  /// No description provided for @smBindHelp.
+  ///
+  /// In en, this message translates to:
+  /// **'Hyprland form MODS,key, e.g. SUPER,grave. Bound only while the mode runs.'**
+  String get smBindHelp;
+
+  /// No description provided for @smBindInvalid.
+  ///
+  /// In en, this message translates to:
+  /// **'Not a valid key (e.g. SUPER,grave).'**
+  String get smBindInvalid;
+
+  /// No description provided for @smBindState.
+  ///
+  /// In en, this message translates to:
+  /// **'Screen key'**
+  String get smBindState;
+
+  /// No description provided for @smBindActive.
+  ///
+  /// In en, this message translates to:
+  /// **'Bound'**
+  String get smBindActive;
+
+  /// No description provided for @smBindOnStart.
+  ///
+  /// In en, this message translates to:
+  /// **'Bound at start'**
+  String get smBindOnStart;
+
+  /// No description provided for @smBindUnused.
+  ///
+  /// In en, this message translates to:
+  /// **'Not used'**
+  String get smBindUnused;
+
+  /// No description provided for @smProject.
+  ///
+  /// In en, this message translates to:
+  /// **'Project'**
+  String get smProject;
+
+  /// No description provided for @smProjectAuto.
+  ///
+  /// In en, this message translates to:
+  /// **'Automatic'**
+  String get smProjectAuto;
+
+  /// No description provided for @smProjectAutoHint.
+  ///
+  /// In en, this message translates to:
+  /// **'The last active Claude session\'s repository, else the focused terminal\'s'**
+  String get smProjectAutoHint;
+
+  /// No description provided for @smProjectPick.
+  ///
+  /// In en, this message translates to:
+  /// **'Pick a folder'**
+  String get smProjectPick;
+
+  /// No description provided for @smProjectPickHint.
+  ///
+  /// In en, this message translates to:
+  /// **'A folder on {host}'**
+  String smProjectPickHint(String host);
+
+  /// No description provided for @smProjectPickNoHost.
+  ///
+  /// In en, this message translates to:
+  /// **'The city\'s source isn\'t one of your hosts.'**
+  String get smProjectPickNoHost;
+
+  /// No description provided for @smCity.
+  ///
+  /// In en, this message translates to:
+  /// **'Code city'**
+  String get smCity;
+
+  /// No description provided for @smCityHint.
+  ///
+  /// In en, this message translates to:
+  /// **'2D is lighter; without WebGL the screen uses it anyway.'**
+  String get smCityHint;
+
+  /// No description provided for @smDiff.
+  ///
+  /// In en, this message translates to:
+  /// **'Diff preview'**
+  String get smDiff;
+
+  /// No description provided for @smDiffHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Before you approve on the phone, the change shows big on the screen.'**
+  String get smDiffHint;
+
+  /// No description provided for @smShareIsOn.
+  ///
+  /// In en, this message translates to:
+  /// **'Code sharing is on on {host}: diffs and file names reach this screen.'**
+  String smShareIsOn(String host);
+
+  /// No description provided for @smShareIsOff.
+  ///
+  /// In en, this message translates to:
+  /// **'Code sharing is off on {host}: the screen gets no diffs and only hidden file names.'**
+  String smShareIsOff(String host);
+
+  /// No description provided for @smShareUnknown.
+  ///
+  /// In en, this message translates to:
+  /// **'Code sharing on {host} couldn\'t be read.'**
+  String smShareUnknown(String host);
+
+  /// No description provided for @smShareOpen.
+  ///
+  /// In en, this message translates to:
+  /// **'Turn on at source'**
+  String get smShareOpen;
+
+  /// No description provided for @smShareOff.
+  ///
+  /// In en, this message translates to:
+  /// **'Turn off'**
+  String get smShareOff;
+
+  /// No description provided for @smShareOn.
+  ///
+  /// In en, this message translates to:
+  /// **'Turn on sharing'**
+  String get smShareOn;
+
+  /// No description provided for @smShareConfirm.
+  ///
+  /// In en, this message translates to:
+  /// **'{source} will send the file names of its projects and the diff of every change waiting for your approval to {display}\'s screen. Anyone near that screen can read the code. Turn code sharing on on {source}?'**
+  String smShareConfirm(String source, String display);
+
+  /// No description provided for @smShareDone.
+  ///
+  /// In en, this message translates to:
+  /// **'Code sharing is on on {host}.'**
+  String smShareDone(String host);
+
+  /// No description provided for @smCi.
+  ///
+  /// In en, this message translates to:
+  /// **'CI status'**
+  String get smCi;
+
+  /// No description provided for @smCiHint.
+  ///
+  /// In en, this message translates to:
+  /// **'A dot from GitHub Actions (gh), checked every 5 minutes.'**
+  String get smCiHint;
+
+  /// No description provided for @smFocusMin.
+  ///
+  /// In en, this message translates to:
+  /// **'Focus'**
+  String get smFocusMin;
+
+  /// No description provided for @smShortMin.
+  ///
+  /// In en, this message translates to:
+  /// **'Short break'**
+  String get smShortMin;
+
+  /// No description provided for @smLongMin.
+  ///
+  /// In en, this message translates to:
+  /// **'Long break'**
+  String get smLongMin;
+
+  /// No description provided for @smLongEvery.
+  ///
+  /// In en, this message translates to:
+  /// **'Long break every'**
+  String get smLongEvery;
+
+  /// No description provided for @smRounds.
+  ///
+  /// In en, this message translates to:
+  /// **'{n, plural, =1{1 round} other{{n} rounds}}'**
+  String smRounds(int n);
+
+  /// No description provided for @smDurationsHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Changes apply from the next phase.'**
+  String get smDurationsHint;
+
+  /// No description provided for @smLess.
+  ///
+  /// In en, this message translates to:
+  /// **'Less'**
+  String get smLess;
+
+  /// No description provided for @smMore.
+  ///
+  /// In en, this message translates to:
+  /// **'More'**
+  String get smMore;
+
+  /// No description provided for @smAmbient.
+  ///
+  /// In en, this message translates to:
+  /// **'Ambient sound'**
+  String get smAmbient;
+
+  /// No description provided for @smAmbientHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Brown or pink noise, or rain; made by the screen, only during a focus round.'**
+  String get smAmbientHint;
+
+  /// No description provided for @smAmbientOff.
+  ///
+  /// In en, this message translates to:
+  /// **'Off'**
+  String get smAmbientOff;
+
+  /// No description provided for @smAmbientBrown.
+  ///
+  /// In en, this message translates to:
+  /// **'Brown'**
+  String get smAmbientBrown;
+
+  /// No description provided for @smAmbientPink.
+  ///
+  /// In en, this message translates to:
+  /// **'Pink'**
+  String get smAmbientPink;
+
+  /// No description provided for @smAmbientRain.
+  ///
+  /// In en, this message translates to:
+  /// **'Rain'**
+  String get smAmbientRain;
+
+  /// No description provided for @smVolume.
+  ///
+  /// In en, this message translates to:
+  /// **'Volume'**
+  String get smVolume;
+
+  /// No description provided for @smChime.
+  ///
+  /// In en, this message translates to:
+  /// **'Chime at a phase\'s end'**
+  String get smChime;
+
+  /// No description provided for @smChimeHint.
+  ///
+  /// In en, this message translates to:
+  /// **'A soft bell when a round or break ends by itself.'**
+  String get smChimeHint;
+
+  /// No description provided for @smQuietPhone.
+  ///
+  /// In en, this message translates to:
+  /// **'Quiet Tiphys notifications'**
+  String get smQuietPhone;
+
+  /// No description provided for @smQuietPhoneHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Only critical ones during a round; the rest come as one summary at the end.'**
+  String get smQuietPhoneHint;
+
+  /// No description provided for @smConnectionsHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Sources are the agents the screen reads. A source is used only while a mode\'s card reads it.'**
+  String get smConnectionsHint;
+
+  /// No description provided for @smSourceAdd.
+  ///
+  /// In en, this message translates to:
+  /// **'Add a source'**
+  String get smSourceAdd;
+
+  /// No description provided for @smSourceTest.
+  ///
+  /// In en, this message translates to:
+  /// **'Test'**
+  String get smSourceTest;
+
+  /// No description provided for @smSourceRemove.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove'**
+  String get smSourceRemove;
+
+  /// No description provided for @smSourceActions.
+  ///
+  /// In en, this message translates to:
+  /// **'{name}: actions'**
+  String smSourceActions(String name);
+
+  /// No description provided for @smSourceRemoveConfirm.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove {name} as a source? Its access token on that host is revoked.'**
+  String smSourceRemoveConfirm(String name);
+
+  /// No description provided for @smTestOk.
+  ///
+  /// In en, this message translates to:
+  /// **'{name}: connected.'**
+  String smTestOk(String name);
+
+  /// No description provided for @smTestDown.
+  ///
+  /// In en, this message translates to:
+  /// **'{name}: the screen can\'t reach it right now.'**
+  String smTestDown(String name);
+
+  /// No description provided for @smTestIdle.
+  ///
+  /// In en, this message translates to:
+  /// **'{name} answers. The screen connects when a mode\'s card reads it.'**
+  String smTestIdle(String name);
+
+  /// No description provided for @smTestIdleUnknown.
+  ///
+  /// In en, this message translates to:
+  /// **'The screen connects to {name} when a mode\'s card reads it.'**
+  String smTestIdleUnknown(String name);
+
+  /// No description provided for @smTestUnreachable.
+  ///
+  /// In en, this message translates to:
+  /// **'{name} doesn\'t answer the phone.'**
+  String smTestUnreachable(String name);
+
+  /// No description provided for @smSetupTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Set up the screen modes'**
+  String get smSetupTitle;
+
+  /// No description provided for @smSetupIntro.
+  ///
+  /// In en, this message translates to:
+  /// **'Pick the machine whose screen shows the mode and the machines it reads from. Tiphys creates an access token on each source and gives it to the screen\'s agent; the token isn\'t kept on this phone.'**
+  String get smSetupIntro;
+
+  /// No description provided for @smSetupDisplay.
+  ///
+  /// In en, this message translates to:
+  /// **'Screen (display host)'**
+  String get smSetupDisplay;
+
+  /// No description provided for @smSetupSources.
+  ///
+  /// In en, this message translates to:
+  /// **'Sources'**
+  String get smSetupSources;
+
+  /// No description provided for @smSetupSourcesHint.
+  ///
+  /// In en, this message translates to:
+  /// **'The screen can always show its own machine; add the ones to mirror.'**
+  String get smSetupSourcesHint;
+
+  /// No description provided for @smSetupNeedTwo.
+  ///
+  /// In en, this message translates to:
+  /// **'This needs two hosts with the “Screen mode” feature on.'**
+  String get smSetupNeedTwo;
+
+  /// No description provided for @smSetupDoneBody.
+  ///
+  /// In en, this message translates to:
+  /// **'The screen reads {names} when a mode needs it.'**
+  String smSetupDoneBody(String names);
+
+  /// No description provided for @smShareStep.
+  ///
+  /// In en, this message translates to:
+  /// **'Code sharing'**
+  String get smShareStep;
+
+  /// No description provided for @smShareStepTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Show code on the screen? (optional)'**
+  String get smShareStepTitle;
+
+  /// No description provided for @smShareStepBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Off by default: the city hides file names and no diff is sent. Turned on, the source sends file names and the diff of changes waiting for your approval. Approving stays on the phone.'**
+  String get smShareStepBody;
+
+  /// No description provided for @smFeatureOffTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Screen mode is off on this host'**
+  String get smFeatureOffTitle;
+
+  /// No description provided for @smFeatureOffBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Turn on “Screen mode” in the agent settings and restart the agent.'**
+  String get smFeatureOffBody;
+
+  /// No description provided for @smNoHostTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'No host with screen mode'**
+  String get smNoHostTitle;
+
+  /// No description provided for @smNoHostBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Add a host with an agent and turn on its “Screen mode” feature.'**
+  String get smNoHostBody;
+
+  /// No description provided for @smErrNoSource.
+  ///
+  /// In en, this message translates to:
+  /// **'A card of this mode reads a source that isn\'t set up. Add it under Connections or pick “This machine itself”.'**
+  String get smErrNoSource;
+
+  /// No description provided for @smErrBindTaken.
+  ///
+  /// In en, this message translates to:
+  /// **'{bind} is already bound in Hyprland; pick another key.'**
+  String smErrBindTaken(String bind);
+
+  /// No description provided for @smErrBadLayout.
+  ///
+  /// In en, this message translates to:
+  /// **'The screen didn\'t accept this layout.'**
+  String get smErrBadLayout;
+
+  /// No description provided for @smErrNotFocus.
+  ///
+  /// In en, this message translates to:
+  /// **'The Focus mode isn\'t running.'**
+  String get smErrNotFocus;
+
+  /// No description provided for @smErrNotRunning.
+  ///
+  /// In en, this message translates to:
+  /// **'No screen mode is running.'**
+  String get smErrNotRunning;
+
+  /// No description provided for @smEventStarted.
+  ///
+  /// In en, this message translates to:
+  /// **'Screen mode started: {mode}'**
+  String smEventStarted(String mode);
+
+  /// No description provided for @smEventStopped.
+  ///
+  /// In en, this message translates to:
+  /// **'Screen mode stopped'**
+  String get smEventStopped;
 }
 
 class _AppLocalizationsDelegate

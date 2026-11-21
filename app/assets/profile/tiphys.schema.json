@@ -119,7 +119,8 @@
                   "events",
                   "nowPlaying",
                   "security",
-                  "gameMode"
+                  "gameMode",
+                  "screenMode"
                 ]
               }
             },

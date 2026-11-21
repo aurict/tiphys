@@ -20,10 +20,10 @@ final agentConfigProvider = FutureProvider.autoDispose.family<Map<String, dynami
   return withAgent(ref, hostId, (c) => c.get('/v1/config'));
 });
 
-const agentFeatures = ['system', 'services', 'docker', 'power', 'git', 'desktop', 'control', 'ports', 'transcribe', 'alerts', 'backups', 'homepage', 'claude', 'uptime', 'wake', 'watch', 'research', 'telegram', 'incidents', 'agy', 'securityFix', 'update', 'gamemode'];
+const agentFeatures = ['system', 'services', 'docker', 'power', 'git', 'desktop', 'control', 'ports', 'transcribe', 'alerts', 'backups', 'homepage', 'claude', 'uptime', 'wake', 'watch', 'research', 'telegram', 'incidents', 'agy', 'securityFix', 'update', 'screen', 'gamemode'];
 
 /// Shown only when the agent reports them (older agents don't know them and would refuse the key).
-const agentFeaturesIfKnown = {'update', 'gamemode'};
+const agentFeaturesIfKnown = {'update', 'screen', 'gamemode'};
 
 class AgentSettingsScreen extends ConsumerStatefulWidget {
   const AgentSettingsScreen({super.key, required this.hostId});
@@ -173,7 +173,8 @@ class _AgentSettingsState extends ConsumerState<AgentSettingsScreen> {
             return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
               GroupedSection(title: l.agentFeatures, footer: l.agentRestartHint, children: [
                 for (final f in agentFeatures)
-                  if (!agentFeaturesIfKnown.contains(f) || _features!.containsKey(f))
+                  // An agent that knows "screen" also reports its old name "gamemode" (one release): one switch.
+                  if ((!agentFeaturesIfKnown.contains(f) || _features!.containsKey(f)) && !(f == 'gamemode' && _features!.containsKey('screen')))
                     SwitchRow(
                       title: agentFeatureName(l, f),
                       value: _features![f] ?? false,
@@ -322,6 +323,7 @@ String agentFeatureName(AppLocalizations l, String f) => switch (f) {
       'agy' => 'agy (Antigravity)',
       'securityFix' => l.fixFeatureName,
       'update' => l.agentFeatUpdate,
+      'screen' => l.smTitle,
       'gamemode' => l.gmTitle,
       _ => l.agentFeatWatch,
     };

@@ -70,7 +70,7 @@ String eventType(String key) => switch (key.split('.').first) {
       'backup' => 'backup',
       'grafana' => 'grafana',
       'command' => 'command',
-      'host' || 'disk' || 'service' || 'agent' || 'push' || 'control' || 'ui' || 'gamemode' || 'security' || 'blackbox' => 'system',
+      'host' || 'disk' || 'service' || 'agent' || 'push' || 'control' || 'ui' || 'gamemode' || 'screen' || 'security' || 'blackbox' => 'system',
       _ => 'other',
     };
 
@@ -110,6 +110,7 @@ String eventTypeName(AppLocalizations l, String type) => switch (type) {
     'control' => LucideIcons.mousePointer2,
     'ui' => LucideIcons.layoutList,
     'gamemode' => LucideIcons.gamepad2,
+    'screen' => key == 'screen.focus.phase' ? LucideIcons.target : LucideIcons.monitorPlay,
     'security' || 'blackbox' => LucideIcons.shieldAlert,
     _ => LucideIcons.dot,
   };

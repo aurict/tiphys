@@ -12280,11 +12280,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get gmOn => 'On';
 
   @override
-  String gmOnAt(String host) {
-    return 'On · $host';
-  }
-
-  @override
   String gmDriving(String from, String to) {
     return 'Driving: $from → $to';
   }
@@ -12292,11 +12287,6 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String gmDrivingSpeed(String speed) {
     return 'Driving · $speed km/h';
-  }
-
-  @override
-  String gmOffHint(String host) {
-    return 'Opens the ambient screen on $host.';
   }
 
   @override
@@ -12333,9 +12323,6 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get gmEts2Driving => 'ETS2 on the road';
-
-  @override
-  String get gmSectionDisplay => 'Display';
 
   @override
   String get gmLyrics => 'Lyrics';
@@ -12384,9 +12371,6 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get gmSourceHost => 'Source host';
-
-  @override
-  String get gmSourceUnknown => 'Source';
 
   @override
   String get gmStateOff => 'Idle';
@@ -12473,10 +12457,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get gmSourceNoHost => 'The source PC is not one of your hosts.';
 
   @override
-  String get gmErrNoSource =>
-      'No source is set up yet. Connect the music and game source first.';
-
-  @override
   String get gmErrNoDisplay =>
       'The display PC has no graphical session (Hyprland is not running).';
 
@@ -12506,49 +12486,13 @@ class AppLocalizationsEn extends AppLocalizations {
   String get gmEventStopped => 'Game mode stopped';
 
   @override
-  String get gmFeatureOffTitle => 'Game mode is off on this host';
-
-  @override
-  String get gmFeatureOffBody =>
-      'Turn on the “Game mode” feature in the agent settings and restart the agent.';
-
-  @override
   String get gmFeatureOpenSettings => 'Open agent settings';
-
-  @override
-  String get gmNoHostTitle => 'No host with game mode';
-
-  @override
-  String get gmNoHostBody =>
-      'Add a host with an agent and turn on its “Game mode” feature.';
-
-  @override
-  String get gmSetupTitle => 'Set up game mode';
-
-  @override
-  String get gmSetupIntro =>
-      'Pick the PC whose screen shows the ambient display and the PC that plays music and the game. Tiphys creates an access token for it and gives it to the display PC; the token is not stored on this phone.';
-
-  @override
-  String get gmSetupDisplay => 'Display PC (laptop)';
-
-  @override
-  String get gmSetupSource => 'Source PC (music and game)';
-
-  @override
-  String get gmSetupNeedTwo =>
-      'You need two different hosts with the “Game mode” feature turned on.';
 
   @override
   String get gmSetupConnect => 'Connect';
 
   @override
   String get gmSetupDoneTitle => 'Connected';
-
-  @override
-  String gmSetupDoneBody(String source) {
-    return 'The display PC will fetch music and game data from $source when the mode starts.';
-  }
 
   @override
   String gmSetupDownBody(String source) {
@@ -12562,5 +12506,612 @@ class AppLocalizationsEn extends AppLocalizations {
   String get gmCardSetup => 'Set up';
 
   @override
-  String get homeCardsGameMode => 'Game mode';
+  String get smTitle => 'Screen mode';
+
+  @override
+  String get homeCardsScreenMode => 'Screen mode';
+
+  @override
+  String get smModeWork => 'Work';
+
+  @override
+  String get smModeFocus => 'Focus';
+
+  @override
+  String get smModeGame => 'Game';
+
+  @override
+  String get smModeWorkHint => 'Code city, Claude, jobs and git';
+
+  @override
+  String get smModeFocusHint => 'Timer and task, quiet notifications';
+
+  @override
+  String get smModeGameHint => 'ETS2 map, cockpit and music';
+
+  @override
+  String get smModeLabel => 'Mode';
+
+  @override
+  String get smSheetIntro =>
+      'Pick a mode, the screen and where the data comes from.';
+
+  @override
+  String get smDisplayLabel => 'Screen';
+
+  @override
+  String get smFromLabel => 'From';
+
+  @override
+  String smMirror(String host) {
+    return 'Mirror $host';
+  }
+
+  @override
+  String smMirroring(String host) {
+    return 'Mirroring $host';
+  }
+
+  @override
+  String get smFromSelf => 'This machine itself';
+
+  @override
+  String get smFromCustom => 'Custom';
+
+  @override
+  String get smFromCustomLayout => 'Custom layout';
+
+  @override
+  String get smFromCustomHint =>
+      'Each card keeps the source chosen for it on the screen mode page.';
+
+  @override
+  String get smApply => 'Apply';
+
+  @override
+  String smSwitchTo(String mode) {
+    return 'Switch to $mode';
+  }
+
+  @override
+  String get smLegacyHint => 'Work and Focus need a newer agent on this host.';
+
+  @override
+  String smLegacyNote(String host) {
+    return 'The agent on $host only knows Game mode. Update it for Work and Focus.';
+  }
+
+  @override
+  String get smNeedsUpdateTitle => 'Needs a newer agent';
+
+  @override
+  String get smNeedsUpdate =>
+      'This host\'s agent is older than the screen modes: only Game mode works. Update the agent to use Work and Focus.';
+
+  @override
+  String smLastUsed(String mode, String host) {
+    return 'Last used: $mode · $host';
+  }
+
+  @override
+  String smOnHost(String host) {
+    return 'On $host';
+  }
+
+  @override
+  String get smStopAll => 'Stop the screen mode';
+
+  @override
+  String get smChangeMode => 'Mode';
+
+  @override
+  String smHoursMinutes(int h, int m) {
+    return '$h h $m min';
+  }
+
+  @override
+  String smClaudeSessions(int n) {
+    String _temp0 = intl.Intl.pluralLogic(
+      n,
+      locale: localeName,
+      other: '$n Claude sessions',
+      one: '1 Claude session',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String smClaudeWaiting(int n) {
+    return '$n waiting for approval';
+  }
+
+  @override
+  String get smNoClaude => 'No Claude session';
+
+  @override
+  String smJobs(int n) {
+    String _temp0 = intl.Intl.pluralLogic(
+      n,
+      locale: localeName,
+      other: '$n jobs',
+      one: '1 job',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get smFocusReady => 'Timer ready';
+
+  @override
+  String smFocusLeft(String time) {
+    return '$time left';
+  }
+
+  @override
+  String smFocusPausedLeft(String time) {
+    return 'Paused · $time';
+  }
+
+  @override
+  String get smFocusPaused => 'Paused';
+
+  @override
+  String get smFocusPause => 'Pause';
+
+  @override
+  String get smFocusResume => 'Resume';
+
+  @override
+  String get smFocusSkip => 'Skip';
+
+  @override
+  String get smFocusReset => 'Reset';
+
+  @override
+  String get smTask => 'Task';
+
+  @override
+  String get smTaskHint => 'What are you working on? (shown big on the screen)';
+
+  @override
+  String get smTaskSave => 'Save task';
+
+  @override
+  String get smPhaseFocus => 'Focus';
+
+  @override
+  String get smPhaseShort => 'Short break';
+
+  @override
+  String get smPhaseLong => 'Long break';
+
+  @override
+  String get smPhaseIdle => 'Ready';
+
+  @override
+  String smOngoingRound(String phase, int round, int every) {
+    return '$phase · $round/$every';
+  }
+
+  @override
+  String smOngoingEnds(String time, String host) {
+    return 'Ends $time · $host';
+  }
+
+  @override
+  String smOngoingPaused(String left, String host) {
+    return 'Paused, $left left · $host';
+  }
+
+  @override
+  String smNoticeFocus(int round) {
+    return 'Focus: round $round';
+  }
+
+  @override
+  String get smNoticeShort => 'Focus: short break';
+
+  @override
+  String get smNoticeLong => 'Focus: long break';
+
+  @override
+  String get smNoticeIdle => 'Focus: timer stopped';
+
+  @override
+  String get smNoticeBreakOver => 'The break is over';
+
+  @override
+  String smNoticeRoundDone(int round) {
+    return 'Round $round is done';
+  }
+
+  @override
+  String get smNoticeStopped => 'The mode stopped';
+
+  @override
+  String get smNoticeAction => 'From the phone';
+
+  @override
+  String smQuietSummaryTitle(int n) {
+    String _temp0 = intl.Intl.pluralLogic(
+      n,
+      locale: localeName,
+      other: '$n notifications waited during Focus',
+      one: '1 notification waited during Focus',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get smQuietSummaryBody => 'They are all in Events.';
+
+  @override
+  String get smVeil => 'Hide the screen';
+
+  @override
+  String get smVeilHint => 'Only a dim clock shows until you turn it off.';
+
+  @override
+  String get smTabsLabel => 'Mode settings';
+
+  @override
+  String get smSectionLayout => 'Layout';
+
+  @override
+  String get smSectionLook => 'Look';
+
+  @override
+  String get smLayoutReset => 'Back to the template';
+
+  @override
+  String get smLayoutHint =>
+      'Drag to reorder. A card reads its source\'s data; cards that are off start nothing.';
+
+  @override
+  String smReorder(String card) {
+    return 'Move $card';
+  }
+
+  @override
+  String smCardSource(String card) {
+    return 'Source of $card';
+  }
+
+  @override
+  String smSelfSource(String host) {
+    return 'This machine ($host)';
+  }
+
+  @override
+  String get smCardCity => 'Code city and Claude';
+
+  @override
+  String get smCardDay => 'Day (clock)';
+
+  @override
+  String get smCardSystem => 'Resources';
+
+  @override
+  String get smCardJobs => 'Long jobs';
+
+  @override
+  String get smCardMusic => 'Music';
+
+  @override
+  String get smCardServers => 'Servers';
+
+  @override
+  String get smCardFocus => 'Focus timer';
+
+  @override
+  String get smCardTask => 'Task line';
+
+  @override
+  String get smCardMap => 'Map';
+
+  @override
+  String get smCardCockpit => 'Cockpit';
+
+  @override
+  String get smPlacement => 'Placement (all modes)';
+
+  @override
+  String get smPlacementHint =>
+      'Full screen on its own workspace, or a hidden layer shown with a key.';
+
+  @override
+  String get smPlacementFull => 'Full screen';
+
+  @override
+  String get smPlacementScratch => 'With a key';
+
+  @override
+  String get smBind => 'Key';
+
+  @override
+  String get smBindHelp =>
+      'Hyprland form MODS,key, e.g. SUPER,grave. Bound only while the mode runs.';
+
+  @override
+  String get smBindInvalid => 'Not a valid key (e.g. SUPER,grave).';
+
+  @override
+  String get smBindState => 'Screen key';
+
+  @override
+  String get smBindActive => 'Bound';
+
+  @override
+  String get smBindOnStart => 'Bound at start';
+
+  @override
+  String get smBindUnused => 'Not used';
+
+  @override
+  String get smProject => 'Project';
+
+  @override
+  String get smProjectAuto => 'Automatic';
+
+  @override
+  String get smProjectAutoHint =>
+      'The last active Claude session\'s repository, else the focused terminal\'s';
+
+  @override
+  String get smProjectPick => 'Pick a folder';
+
+  @override
+  String smProjectPickHint(String host) {
+    return 'A folder on $host';
+  }
+
+  @override
+  String get smProjectPickNoHost =>
+      'The city\'s source isn\'t one of your hosts.';
+
+  @override
+  String get smCity => 'Code city';
+
+  @override
+  String get smCityHint =>
+      '2D is lighter; without WebGL the screen uses it anyway.';
+
+  @override
+  String get smDiff => 'Diff preview';
+
+  @override
+  String get smDiffHint =>
+      'Before you approve on the phone, the change shows big on the screen.';
+
+  @override
+  String smShareIsOn(String host) {
+    return 'Code sharing is on on $host: diffs and file names reach this screen.';
+  }
+
+  @override
+  String smShareIsOff(String host) {
+    return 'Code sharing is off on $host: the screen gets no diffs and only hidden file names.';
+  }
+
+  @override
+  String smShareUnknown(String host) {
+    return 'Code sharing on $host couldn\'t be read.';
+  }
+
+  @override
+  String get smShareOpen => 'Turn on at source';
+
+  @override
+  String get smShareOff => 'Turn off';
+
+  @override
+  String get smShareOn => 'Turn on sharing';
+
+  @override
+  String smShareConfirm(String source, String display) {
+    return '$source will send the file names of its projects and the diff of every change waiting for your approval to $display\'s screen. Anyone near that screen can read the code. Turn code sharing on on $source?';
+  }
+
+  @override
+  String smShareDone(String host) {
+    return 'Code sharing is on on $host.';
+  }
+
+  @override
+  String get smCi => 'CI status';
+
+  @override
+  String get smCiHint =>
+      'A dot from GitHub Actions (gh), checked every 5 minutes.';
+
+  @override
+  String get smFocusMin => 'Focus';
+
+  @override
+  String get smShortMin => 'Short break';
+
+  @override
+  String get smLongMin => 'Long break';
+
+  @override
+  String get smLongEvery => 'Long break every';
+
+  @override
+  String smRounds(int n) {
+    String _temp0 = intl.Intl.pluralLogic(
+      n,
+      locale: localeName,
+      other: '$n rounds',
+      one: '1 round',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get smDurationsHint => 'Changes apply from the next phase.';
+
+  @override
+  String get smLess => 'Less';
+
+  @override
+  String get smMore => 'More';
+
+  @override
+  String get smAmbient => 'Ambient sound';
+
+  @override
+  String get smAmbientHint =>
+      'Brown or pink noise, or rain; made by the screen, only during a focus round.';
+
+  @override
+  String get smAmbientOff => 'Off';
+
+  @override
+  String get smAmbientBrown => 'Brown';
+
+  @override
+  String get smAmbientPink => 'Pink';
+
+  @override
+  String get smAmbientRain => 'Rain';
+
+  @override
+  String get smVolume => 'Volume';
+
+  @override
+  String get smChime => 'Chime at a phase\'s end';
+
+  @override
+  String get smChimeHint => 'A soft bell when a round or break ends by itself.';
+
+  @override
+  String get smQuietPhone => 'Quiet Tiphys notifications';
+
+  @override
+  String get smQuietPhoneHint =>
+      'Only critical ones during a round; the rest come as one summary at the end.';
+
+  @override
+  String get smConnectionsHint =>
+      'Sources are the agents the screen reads. A source is used only while a mode\'s card reads it.';
+
+  @override
+  String get smSourceAdd => 'Add a source';
+
+  @override
+  String get smSourceTest => 'Test';
+
+  @override
+  String get smSourceRemove => 'Remove';
+
+  @override
+  String smSourceActions(String name) {
+    return '$name: actions';
+  }
+
+  @override
+  String smSourceRemoveConfirm(String name) {
+    return 'Remove $name as a source? Its access token on that host is revoked.';
+  }
+
+  @override
+  String smTestOk(String name) {
+    return '$name: connected.';
+  }
+
+  @override
+  String smTestDown(String name) {
+    return '$name: the screen can\'t reach it right now.';
+  }
+
+  @override
+  String smTestIdle(String name) {
+    return '$name answers. The screen connects when a mode\'s card reads it.';
+  }
+
+  @override
+  String smTestIdleUnknown(String name) {
+    return 'The screen connects to $name when a mode\'s card reads it.';
+  }
+
+  @override
+  String smTestUnreachable(String name) {
+    return '$name doesn\'t answer the phone.';
+  }
+
+  @override
+  String get smSetupTitle => 'Set up the screen modes';
+
+  @override
+  String get smSetupIntro =>
+      'Pick the machine whose screen shows the mode and the machines it reads from. Tiphys creates an access token on each source and gives it to the screen\'s agent; the token isn\'t kept on this phone.';
+
+  @override
+  String get smSetupDisplay => 'Screen (display host)';
+
+  @override
+  String get smSetupSources => 'Sources';
+
+  @override
+  String get smSetupSourcesHint =>
+      'The screen can always show its own machine; add the ones to mirror.';
+
+  @override
+  String get smSetupNeedTwo =>
+      'This needs two hosts with the “Screen mode” feature on.';
+
+  @override
+  String smSetupDoneBody(String names) {
+    return 'The screen reads $names when a mode needs it.';
+  }
+
+  @override
+  String get smShareStep => 'Code sharing';
+
+  @override
+  String get smShareStepTitle => 'Show code on the screen? (optional)';
+
+  @override
+  String get smShareStepBody =>
+      'Off by default: the city hides file names and no diff is sent. Turned on, the source sends file names and the diff of changes waiting for your approval. Approving stays on the phone.';
+
+  @override
+  String get smFeatureOffTitle => 'Screen mode is off on this host';
+
+  @override
+  String get smFeatureOffBody =>
+      'Turn on “Screen mode” in the agent settings and restart the agent.';
+
+  @override
+  String get smNoHostTitle => 'No host with screen mode';
+
+  @override
+  String get smNoHostBody =>
+      'Add a host with an agent and turn on its “Screen mode” feature.';
+
+  @override
+  String get smErrNoSource =>
+      'A card of this mode reads a source that isn\'t set up. Add it under Connections or pick “This machine itself”.';
+
+  @override
+  String smErrBindTaken(String bind) {
+    return '$bind is already bound in Hyprland; pick another key.';
+  }
+
+  @override
+  String get smErrBadLayout => 'The screen didn\'t accept this layout.';
+
+  @override
+  String get smErrNotFocus => 'The Focus mode isn\'t running.';
+
+  @override
+  String get smErrNotRunning => 'No screen mode is running.';
+
+  @override
+  String smEventStarted(String mode) {
+    return 'Screen mode started: $mode';
+  }
+
+  @override
+  String get smEventStopped => 'Screen mode stopped';
 }

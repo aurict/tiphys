@@ -32,7 +32,17 @@ enum LanguagePref { system, tr, en }
 /// Default home screen cards; "Recent events" (events) and "Now playing" (nowPlaying) are optional,
 /// enabled from Settings › Home screen.
 const defaultHomeCards = ['infra', 'claude', 'system', 'grafana', 'dozzle', 'quickAccess'];
-const allHomeCards = [...defaultHomeCards, 'events', 'nowPlaying', 'security', 'gameMode'];
+const allHomeCards = [...defaultHomeCards, 'events', 'nowPlaying', 'security', 'screenMode'];
+
+/// Home card ids read from a file: the Game mode card became the screen mode card (PLAN.md §20) in the same place.
+List<String> migrateHomeCards(List<String> cards) {
+  final out = <String>[];
+  for (final c in cards) {
+    final id = c == 'gameMode' ? 'screenMode' : c;
+    if (!out.contains(id)) out.add(id);
+  }
+  return out;
+}
 const allTabs = ['home', 'claude', 'terminal', 'files', 'system'];
 
 /// Home screen layout: cards (default bento), shortcut grid, focus (large status card + shortcut list).
@@ -110,7 +120,7 @@ class AppSettings {
       theme: ThemePref.values.byName(_get(j, 'theme', 'system')),
       language: LanguagePref.values.byName(_get(j, 'language', 'system')),
       lock: LockSettings.fromJson(_obj(j, 'lock') ?? {}),
-      cards: _strings(home, 'cards', defaultHomeCards),
+      cards: migrateHomeCards(_strings(home, 'cards', defaultHomeCards)),
       tabs: _strings(home, 'tabs', allTabs),
       layout: HomeLayout.values.byName(_get(home, 'layout', 'cards')),
       securityStyle: SecurityStyle.values.byName(_get(home, 'securityStyle', 'shield')),

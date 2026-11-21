@@ -33,12 +33,14 @@ import 'package:tiphys/features/monitoring/providers.dart';
 import 'package:tiphys/core/integrations/grafana_client.dart';
 import 'package:tiphys/core/integrations/dozzle_client.dart';
 import 'package:tiphys/features/terminal/sessions.dart';
+import 'package:tiphys/core/push/focus_notices.dart' show FocusQuiet;
+import 'package:tiphys/features/screen/screen_focus.dart';
 
 import 'png.dart';
 import 'agy_fixtures.dart';
 import 'config_fixtures.dart';
 import 'db_fixtures.dart';
-import 'gamemode_fixtures.dart';
+import 'screen_fixtures.dart';
 import 'incident_fixtures.dart';
 import 'security_fixtures.dart';
 import 'security_more_fixtures.dart';
@@ -112,6 +114,10 @@ class Harness {
   /// Fake of the persistent "Claude is using the PC" notification.
   final pcNotifications = FakePcNotifications();
 
+  /// Fake of the ongoing Focus notification and the quiet summary; the quiet record lives in [quietVault].
+  final focusNotifications = FakeFocusNotifications();
+  final quietVault = MemoryVault();
+
   late final repo = ProfileRepository(
     file: File('${Directory.systemTemp.createTempSync('tiphys-ui').path}/profile.json'),
     codec: codec,
@@ -139,6 +145,8 @@ class Harness {
         grafanaFactoryProvider.overrideWithValue((g) async => FakeGrafana()),
         dozzleFactoryProvider.overrideWithValue((d) async => FakeDozzle()),
         pcNotificationsProvider.overrideWithValue(pcNotifications),
+        focusNotificationsProvider.overrideWithValue(focusNotifications),
+        focusQuietProvider.overrideWithValue(FocusQuiet(quietVault)),
         onboardingSeenInitialProvider.overrideWithValue(onboarded),
         onboardingVaultProvider.overrideWithValue(vault),
         ...extra,
@@ -305,10 +313,11 @@ class FakeAgent extends AgentClient {
   /// Security center S-2…S-5 (scanners, traps, outside view, attacks, black box, lost phone).
   static FakeSecurityMoreState securityMore = FakeSecurityMoreState();
 
-  /// Game mode (GET/PUT/POST /v1/gamemode*, service tokens); tests change it, call [resetGame] at the start.
-  static FakeGameState game = FakeGameState();
+  /// Screen modes (GET/PUT/POST /v1/screen*, the older /v1/gamemode*, service tokens); tests change it, call
+  /// [resetScreen] at the start.
+  static FakeScreenState screen = FakeScreenState();
 
-  static void resetGame() => game = FakeGameState();
+  static void resetScreen() => screen = FakeScreenState();
 
   /// Database console (GET/POST /v1/db/*).
   static FakeDbState db = FakeDbState();
@@ -455,7 +464,7 @@ class FakeAgent extends AgentClient {
     }
     calls.add((method, path, method == 'GET' && query != null ? query : body));
     if (path.startsWith('/v1/agy/')) return agy.route(method, path, body, query);
-    if (path.startsWith('/v1/gamemode') || path.startsWith('/v1/service-tokens')) return game.route(hostId, method, path, body);
+    if (path.startsWith('/v1/screen') || path.startsWith('/v1/gamemode') || path.startsWith('/v1/service-tokens')) return screen.route(hostId, method, path, body);
     if (path == '/v1/fs/dirs') {
       return {
         'path': '/home/user',

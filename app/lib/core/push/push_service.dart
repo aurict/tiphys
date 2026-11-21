@@ -19,6 +19,7 @@ import '../../features/agy/agy_data.dart' show agyOptionFor;
 import '../../features/databases/db_texts.dart' show restoreNotificationReason;
 import '../../features/incidents/incident_texts.dart';
 import '../../features/incidents/incidents_data.dart' show exactHostFor;
+import '../../features/screen/screen_texts.dart' show focusPhaseNotice, screenModeName;
 import '../../features/security/security_more_texts.dart' show securityUrgentKeys;
 import '../../features/security/security_texts.dart';
 import '../../l10n/gen/app_localizations.dart';
@@ -28,6 +29,7 @@ import '../profile/model.dart';
 import '../security/app_lock.dart';
 import '../secrets/secret_store.dart';
 import 'clipboard.dart';
+import 'focus_notices.dart';
 
 const pushInstance = 'tiphys';
 const _clipboardChannel = 'tiphys-clipboard';
@@ -93,6 +95,10 @@ const _endpointKey = 'app:pushEndpoint';
     // Game mode (PLAN.md §19): only in the event stream; device is missing when the agent cleaned up after a restart.
     'gamemode.started' => (l.gmEventStarted, s('device')),
     'gamemode.stopped' => (l.gmEventStopped, s('device')),
+    // Screen modes (PLAN.md §20): started/stopped only in the event stream; a Focus phase change is also a push (no task).
+    'screen.started' => (l.smEventStarted(screenModeName(l, s('mode'))), s('device')),
+    'screen.stopped' => (l.smEventStopped, s('device')),
+    'screen.focus.phase' => focusPhaseNotice(l, p),
     'telegram.stateCorrupt' => (l.notifTgStateCorruptTitle, l.notifTgStateCorruptBody),
     // Telegram newsletters (atlas): approval request (Send / Cancel buttons), sent, failed, research PC unreachable.
     'telegram.approval' => (l.notifTgApprovalTitle(s('feed')), l.notifTgApprovalBody(n('items'), n('recipients'))),
@@ -272,6 +278,8 @@ int noticeId(String key, Map<String, dynamic> p, {String? link, String? requestI
     'push.test' => 'test',
     // PC clipboard: each new text replaces the previous one.
     'clipboard.pc' => 'clipboard',
+    // The Focus timer: each phase change replaces the previous one.
+    'screen.focus.phase' => 'screen-focus',
     _ => null,
   };
   // Topic ids are 0..2^30, unique ones above 2^30: the two never collide.
@@ -326,6 +334,8 @@ String? routeForPayload(String? payload) {
       if (j['fileId'] is String && host is String && host.isNotEmpty && RegExp(r'^cf-[a-f0-9]{24}$').hasMatch(j['fileId'] as String)) {
         return '/configfiles/file?host=${Uri.encodeQueryComponent(host)}&id=${j['fileId']}';
       }
+      // The ongoing Focus notification: the screen mode screen of its display host.
+      if (route == '/screen') return host is String && host.isNotEmpty ? '/screen?host=${Uri.encodeQueryComponent(host)}' : route;
       if (route == '/db/restore') {
         final test = j['test'];
         return '/db/restore?host=${Uri.encodeQueryComponent('${host ?? ''}')}${test is String ? '&test=${Uri.encodeQueryComponent(test)}' : ''}';
@@ -676,10 +686,22 @@ Future<void> _showPcFailed(FlutterLocalNotificationsPlugin n, AppLocalizations l
 /// Entry point Android runs when a notification button is pressed while the app is closed (separate isolate).
 @pragma('vm:entry-point')
 Future<void> onNotificationActionBackground(NotificationResponse r) async {
-  const handled = {actionAllow, actionDeny, actionCopyClipboard, actionPcStop, actionPcExtend, actionTgApprove, actionTgReject};
+  const handled = {actionAllow, actionDeny, actionCopyClipboard, actionPcStop, actionPcExtend, actionTgApprove, actionTgReject, actionFocusPause, actionFocusResume};
   if (!handled.contains(r.actionId)) return;
   DartPluginRegistrant.ensureInitialized();
   final docs = await getApplicationDocumentsDirectory();
+  if (r.actionId == actionFocusPause || r.actionId == actionFocusResume) {
+    final n = FlutterLocalNotificationsPlugin();
+    await n.initialize(settings: const InitializationSettings(android: AndroidInitializationSettings('ic_notification')));
+    Profile profile;
+    try {
+      profile = Profile.fromJson(jsonDecode(await File('${docs.path}/profile.json').readAsString()) as Map<String, dynamic>);
+    } catch (_) {
+      profile = Profile.empty;
+    }
+    await handleFocusAction(r.actionId!, r.payload, n, profile: profile, secrets: KeystoreSecretStore());
+    return;
+  }
   if (r.actionId == actionTgApprove || r.actionId == actionTgReject) {
     final profile = Profile.fromJson(jsonDecode(await File('${docs.path}/profile.json').readAsString()) as Map<String, dynamic>);
     final ok = await telegramDecideFromNotification(r.payload ?? '', r.actionId == actionTgApprove, profile: profile, secrets: KeystoreSecretStore());
@@ -735,6 +757,26 @@ Future<void> _showCopyFailed(FlutterLocalNotificationsPlugin n, String docs) asy
   );
 }
 
+/// Pause / Resume in the ongoing Focus notification: sent to the display host with its device token; the notification
+/// then shows the new state (or a failure notice).
+Future<void> handleFocusAction(String action, String? payload, FlutterLocalNotificationsPlugin n, {required Profile profile, required SecretStore secrets, AgentClient Function(String url, String token)? clientFor}) async {
+  final l = lookupAppLocalizations(profileLocale(profile));
+  String? hostId;
+  try {
+    hostId = (jsonDecode(payload ?? '') as Map)['host'] as String?;
+  } catch (_) {}
+  final host = hostId == null ? null : profile.host(hostId);
+  final agent = host?.agent;
+  final token = agent == null ? null : await secrets.read(secretIdOf(agent.tokenRef));
+  final focus = agent == null || token == null ? null : await focusActionFromNotification((clientFor ?? (u, t) => AgentClient(baseUrl: u, token: t))(agent.url, token), action);
+  final o = focus == null ? null : focusOngoingFrom(focus, hostId: host!.id, hostName: host.name);
+  if (o != null) return showFocusOngoing(n, l, o);
+  if (focus == null) return _showPcFailed(n, l);
+  await n.cancel(id: focusOngoingId);
+}
+
+Locale profileLocale(Profile profile) => _localeOf(profile);
+
 Locale _localeOf(Profile profile) => switch (profile.app.language) {
       LanguagePref.tr => const Locale('tr'),
       LanguagePref.en => const Locale('en'),
@@ -761,6 +803,7 @@ String? routeForLink(String? link) {
   if (rest == 'incidents') return '/incidents';
   if (rest == 'configfiles') return '/configfiles';
   if (rest == 'db/restore') return '/db/restore';
+  if (rest == 'screen') return '/screen';
   if (rest == 'security') return '/security';
   final security = RegExp(r'^security/([a-z0-9][a-z0-9-]{0,62})$').firstMatch(rest);
   if (security != null) return '/security/${security.group(1)}';
@@ -805,6 +848,10 @@ class PushService {
         onDidReceiveNotificationResponse: (r) async {
           if (r.actionId == actionCopyClipboard) {
             await copyFromNotification(r.payload, seen: ClipboardSeen(() async => (await getApplicationDocumentsDirectory()).path));
+            return;
+          }
+          if (r.actionId == actionFocusPause || r.actionId == actionFocusResume) {
+            await handleFocusAction(r.actionId!, r.payload, notifications, profile: await loadProfile(), secrets: secrets);
             return;
           }
           if (r.actionId == actionPcStop || r.actionId == actionPcExtend) {
@@ -963,10 +1010,21 @@ class PushService {
       if (params['working'] != 1 || params['reason'] == 'stopped') return;
     }
     final profile = await loadProfile();
-    if (!noticeAllowed(profile, key, params)) return;
     final l = lookupAppLocalizations(_localeOf(profile));
+    final quiet = FocusQuiet(vault);
+    final now = DateTime.now();
+    // Quiet notifications during Focus (PLAN.md §20 U5): a record nobody ended is summarized now.
+    final stale = await quiet.endIfStale(now);
+    if (stale > 0) await showFocusSummary(notifications, l, stale);
+    if (key == 'screen.focus.phase') {
+      await _focusPhase(profile, l, params, data, now);
+      // Only a phase that ended by itself is worth a notification (an action was the user's own).
+      if (params['cause'] != 'timer') return;
+    }
+    if (!noticeAllowed(profile, key, params)) return;
     final text = noticeText(l, key, params);
     if (text == null) return;
+    if (await quiet.hold(key, params, now)) return;
     final high = const {'claude.pcExpiring', 'claude.pcEnded', 'claude.waiting', 'claude.sudo', 'agy.waiting', 'host.offline', 'disk.full', 'service.failed', 'grafana.alert', 'agent.restarted', 'docker.died', 'docker.oom', 'docker.unhealthy', 'docker.restartLoop', 'uptime.down', 'incident.actionFailed', 'config.restartFailed', 'db.restoreTest.failed', 'backup.stale', 'backup.failed', 'claude.scheduleFailed', 'telegram.approval', 'telegram.pcUnreachable'}.contains(key) ||
         (key == 'security.change' && params['severity'] == 'critical') ||
         securityUrgentKeys.contains(key) ||
@@ -1025,6 +1083,45 @@ class PushService {
         ),
       ),
     );
+  }
+
+  /// A Focus phase push: the quiet record and the ongoing notification follow it (the app may be closed).
+  Future<void> _focusPhase(Profile profile, AppLocalizations l, Map<String, dynamic> params, Map<String, dynamic>? data, DateTime now) async {
+    final quiet = FocusQuiet(vault);
+    final agents = profile.hosts.where((h) => h.agent != null).toList();
+    final host = exactHostFor(agents, data?['agent'] as String?) ?? (agents.length == 1 ? agents.single : null);
+    final phase = '${params['phase'] ?? 'idle'}';
+    if (phase == 'idle' || params['cause'] == 'stop') {
+      final held = await quiet.end();
+      if (held > 0) await showFocusSummary(notifications, l, held);
+      await notifications.cancel(id: focusOngoingId);
+      return;
+    }
+    final endsAt = int.tryParse('${data?['endsAt'] ?? ''}');
+    final hostId = host?.id ?? '${data?['agent'] ?? ''}';
+    if (phase == 'focus' && data?['quiet'] == '1') {
+      await quiet.enter(hostId, endsAt == null ? now.add(quietPausedFor) : DateTime.fromMillisecondsSinceEpoch(endsAt).add(quietGrace), now);
+    } else {
+      await quiet.rest(hostId, now);
+    }
+    if (host != null) {
+      final o = focusOngoingFrom({...params, 'endsAt': endsAt}, hostId: host.id, hostName: host.name, now: now);
+      if (o != null && o.endsAt != null) await showFocusOngoing(notifications, l, o);
+    }
+  }
+
+  /// The summary of the notifications held during Focus (the app ended the mode itself).
+  Future<void> showFocusSummaryNow(int held) async {
+    if (held <= 0) return;
+    final l = lookupAppLocalizations(_localeOf(await loadProfile()));
+    await showFocusSummary(notifications, l, held);
+  }
+
+  /// The ongoing Focus notification from the app's own state (null: none).
+  Future<void> syncFocusOngoing(FocusOngoing? o) async {
+    if (o == null) return notifications.cancel(id: focusOngoingId);
+    final l = lookupAppLocalizations(_localeOf(await loadProfile()));
+    await showFocusOngoing(notifications, l, o);
   }
 
   /// PC clipboard: silent notification never shown on the lock screen (secret); "Copy" writes to the clipboard

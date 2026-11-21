@@ -12037,11 +12037,6 @@ class AppLocalizationsTr extends AppLocalizations {
   String get gmOn => 'Açık';
 
   @override
-  String gmOnAt(String host) {
-    return 'Açık · $host';
-  }
-
-  @override
   String gmDriving(String from, String to) {
     return 'Yolda: $from → $to';
   }
@@ -12049,11 +12044,6 @@ class AppLocalizationsTr extends AppLocalizations {
   @override
   String gmDrivingSpeed(String speed) {
     return 'Yolda · $speed km/sa';
-  }
-
-  @override
-  String gmOffHint(String host) {
-    return '$host ekranında ortam ekranını açar.';
   }
 
   @override
@@ -12090,9 +12080,6 @@ class AppLocalizationsTr extends AppLocalizations {
 
   @override
   String get gmEts2Driving => 'ETS2 yolda';
-
-  @override
-  String get gmSectionDisplay => 'Ekran';
 
   @override
   String get gmLyrics => 'Şarkı sözleri';
@@ -12141,9 +12128,6 @@ class AppLocalizationsTr extends AppLocalizations {
 
   @override
   String get gmSourceHost => 'Kaynak hostu';
-
-  @override
-  String get gmSourceUnknown => 'Kaynak';
 
   @override
   String get gmStateOff => 'Beklemede';
@@ -12230,10 +12214,6 @@ class AppLocalizationsTr extends AppLocalizations {
   String get gmSourceNoHost => 'Kaynak PC, hostlarınız arasında değil.';
 
   @override
-  String get gmErrNoSource =>
-      'Henüz kaynak ayarlanmamış. Önce müzik ve oyun kaynağını bağlayın.';
-
-  @override
   String get gmErrNoDisplay =>
       'Ekran PC’sinde grafik oturumu yok (Hyprland çalışmıyor).';
 
@@ -12262,49 +12242,13 @@ class AppLocalizationsTr extends AppLocalizations {
   String get gmEventStopped => 'Oyun Modu kapandı';
 
   @override
-  String get gmFeatureOffTitle => 'Oyun Modu bu hostta kapalı';
-
-  @override
-  String get gmFeatureOffBody =>
-      'Ajan ayarlarında “Oyun Modu” özelliğini açın ve ajanı yeniden başlatın.';
-
-  @override
   String get gmFeatureOpenSettings => 'Ajan ayarlarını aç';
-
-  @override
-  String get gmNoHostTitle => 'Oyun Modu olan host yok';
-
-  @override
-  String get gmNoHostBody =>
-      'Ajanı olan bir host ekleyin ve “Oyun Modu” özelliğini açın.';
-
-  @override
-  String get gmSetupTitle => 'Oyun Modunu kur';
-
-  @override
-  String get gmSetupIntro =>
-      'Ortam ekranının görüneceği PC’yi ve müziğin/oyunun çalındığı PC’yi seçin. Tiphys kaynak için bir erişim jetonu oluşturup ekran PC’sine verir; jeton bu telefonda saklanmaz.';
-
-  @override
-  String get gmSetupDisplay => 'Ekran PC’si (laptop)';
-
-  @override
-  String get gmSetupSource => 'Kaynak PC (müzik ve oyun)';
-
-  @override
-  String get gmSetupNeedTwo =>
-      '“Oyun Modu” özelliği açık, birbirinden farklı iki host gerekir.';
 
   @override
   String get gmSetupConnect => 'Bağla';
 
   @override
   String get gmSetupDoneTitle => 'Bağlandı';
-
-  @override
-  String gmSetupDoneBody(String source) {
-    return 'Mod başlayınca ekran PC’si müziği ve oyun verisini $source üzerinden alır.';
-  }
 
   @override
   String gmSetupDownBody(String source) {
@@ -12318,5 +12262,591 @@ class AppLocalizationsTr extends AppLocalizations {
   String get gmCardSetup => 'Kurulum gerekli';
 
   @override
-  String get homeCardsGameMode => 'Oyun Modu';
+  String get smTitle => 'Ekran modu';
+
+  @override
+  String get homeCardsScreenMode => 'Ekran modu';
+
+  @override
+  String get smModeWork => 'Çalışma';
+
+  @override
+  String get smModeFocus => 'Odak';
+
+  @override
+  String get smModeGame => 'Oyun';
+
+  @override
+  String get smModeWorkHint => 'Kod şehri, Claude, işler ve git';
+
+  @override
+  String get smModeFocusHint => 'Sayaç ve görev, sessiz bildirimler';
+
+  @override
+  String get smModeGameHint => 'ETS2 haritası, kokpit ve müzik';
+
+  @override
+  String get smModeLabel => 'Mod';
+
+  @override
+  String get smSheetIntro =>
+      'Mod seç; ekranı ve verinin nereden geleceğini belirle.';
+
+  @override
+  String get smDisplayLabel => 'Ekran';
+
+  @override
+  String get smFromLabel => 'Nereden';
+
+  @override
+  String smMirror(String host) {
+    return 'Yansıt: $host';
+  }
+
+  @override
+  String smMirroring(String host) {
+    return 'Kaynak: $host';
+  }
+
+  @override
+  String get smFromSelf => 'Bu makinenin kendisi';
+
+  @override
+  String get smFromCustom => 'Özel';
+
+  @override
+  String get smFromCustomLayout => 'Özel düzen';
+
+  @override
+  String get smFromCustomHint =>
+      'Her kart, ekran modu sayfasında kendisi için seçilen kaynağı okur.';
+
+  @override
+  String get smApply => 'Uygula';
+
+  @override
+  String smSwitchTo(String mode) {
+    return '$mode moduna geç';
+  }
+
+  @override
+  String get smLegacyHint =>
+      'Çalışma ve Odak için bu hostta daha yeni bir ajan gerekir.';
+
+  @override
+  String smLegacyNote(String host) {
+    return '$host ajanı yalnız Oyun Modunu biliyor. Çalışma ve Odak için ajanı güncelleyin.';
+  }
+
+  @override
+  String get smNeedsUpdateTitle => 'Daha yeni bir ajan gerekiyor';
+
+  @override
+  String get smNeedsUpdate =>
+      'Bu hostun ajanı ekran modlarından eski: yalnız Oyun Modu çalışır. Çalışma ve Odak için ajanı güncelleyin.';
+
+  @override
+  String smLastUsed(String mode, String host) {
+    return 'Son kullanılan: $mode · $host';
+  }
+
+  @override
+  String smOnHost(String host) {
+    return '$host ekranında';
+  }
+
+  @override
+  String get smStopAll => 'Ekran modunu kapat';
+
+  @override
+  String get smChangeMode => 'Mod';
+
+  @override
+  String smHoursMinutes(int h, int m) {
+    return '$h sa $m dk';
+  }
+
+  @override
+  String smClaudeSessions(int n) {
+    return '$n Claude oturumu';
+  }
+
+  @override
+  String smClaudeWaiting(int n) {
+    return '$n onay bekliyor';
+  }
+
+  @override
+  String get smNoClaude => 'Claude oturumu yok';
+
+  @override
+  String smJobs(int n) {
+    return '$n iş';
+  }
+
+  @override
+  String get smFocusReady => 'Sayaç hazır';
+
+  @override
+  String smFocusLeft(String time) {
+    return '$time kaldı';
+  }
+
+  @override
+  String smFocusPausedLeft(String time) {
+    return 'Duraklatıldı · $time';
+  }
+
+  @override
+  String get smFocusPaused => 'Duraklatıldı';
+
+  @override
+  String get smFocusPause => 'Duraklat';
+
+  @override
+  String get smFocusResume => 'Devam';
+
+  @override
+  String get smFocusSkip => 'Atla';
+
+  @override
+  String get smFocusReset => 'Sıfırla';
+
+  @override
+  String get smTask => 'Görev';
+
+  @override
+  String get smTaskHint => 'Ne üzerinde çalışıyorsun? (ekranda büyük görünür)';
+
+  @override
+  String get smTaskSave => 'Görevi kaydet';
+
+  @override
+  String get smPhaseFocus => 'Odak';
+
+  @override
+  String get smPhaseShort => 'Kısa mola';
+
+  @override
+  String get smPhaseLong => 'Uzun mola';
+
+  @override
+  String get smPhaseIdle => 'Hazır';
+
+  @override
+  String smOngoingRound(String phase, int round, int every) {
+    return '$phase · $round/$every';
+  }
+
+  @override
+  String smOngoingEnds(String time, String host) {
+    return 'Bitiş $time · $host';
+  }
+
+  @override
+  String smOngoingPaused(String left, String host) {
+    return 'Duraklatıldı, $left kaldı · $host';
+  }
+
+  @override
+  String smNoticeFocus(int round) {
+    return 'Odak: $round. tur';
+  }
+
+  @override
+  String get smNoticeShort => 'Odak: kısa mola';
+
+  @override
+  String get smNoticeLong => 'Odak: uzun mola';
+
+  @override
+  String get smNoticeIdle => 'Odak: sayaç durdu';
+
+  @override
+  String get smNoticeBreakOver => 'Mola bitti';
+
+  @override
+  String smNoticeRoundDone(int round) {
+    return '$round. tur bitti';
+  }
+
+  @override
+  String get smNoticeStopped => 'Mod kapandı';
+
+  @override
+  String get smNoticeAction => 'Telefondan';
+
+  @override
+  String smQuietSummaryTitle(int n) {
+    return 'Odak sırasında $n bildirim bekletildi';
+  }
+
+  @override
+  String get smQuietSummaryBody => 'Hepsi Olaylar’da.';
+
+  @override
+  String get smVeil => 'Ekranı gizle';
+
+  @override
+  String get smVeilHint => 'Kapatana kadar yalnız sönük bir saat görünür.';
+
+  @override
+  String get smTabsLabel => 'Mod ayarları';
+
+  @override
+  String get smSectionLayout => 'Düzen';
+
+  @override
+  String get smSectionLook => 'Görünüm';
+
+  @override
+  String get smLayoutReset => 'Şablona dön';
+
+  @override
+  String get smLayoutHint =>
+      'Sıralamak için sürükleyin. Kart, kaynağının verisini okur; kapalı kartlar hiçbir şey başlatmaz.';
+
+  @override
+  String smReorder(String card) {
+    return '$card kartını taşı';
+  }
+
+  @override
+  String smCardSource(String card) {
+    return '$card: kaynak';
+  }
+
+  @override
+  String smSelfSource(String host) {
+    return 'Bu makine ($host)';
+  }
+
+  @override
+  String get smCardCity => 'Kod şehri ve Claude';
+
+  @override
+  String get smCardDay => 'Gün (saat)';
+
+  @override
+  String get smCardSystem => 'Kaynaklar';
+
+  @override
+  String get smCardJobs => 'Uzun işler';
+
+  @override
+  String get smCardMusic => 'Müzik';
+
+  @override
+  String get smCardServers => 'Sunucular';
+
+  @override
+  String get smCardFocus => 'Odak sayacı';
+
+  @override
+  String get smCardTask => 'Görev satırı';
+
+  @override
+  String get smCardMap => 'Harita';
+
+  @override
+  String get smCardCockpit => 'Kokpit';
+
+  @override
+  String get smPlacement => 'Yerleşim (tüm modlar)';
+
+  @override
+  String get smPlacementHint =>
+      'Kendi çalışma alanında tam ekran ya da kısayolla açılıp kapanan gizli katman.';
+
+  @override
+  String get smPlacementFull => 'Tam ekran';
+
+  @override
+  String get smPlacementScratch => 'Kısayolla';
+
+  @override
+  String get smBind => 'Kısayol';
+
+  @override
+  String get smBindHelp =>
+      'Hyprland biçimi MODS,tuş, ör. SUPER,grave. Yalnız mod çalışırken bağlanır.';
+
+  @override
+  String get smBindInvalid => 'Geçerli bir kısayol değil (ör. SUPER,grave).';
+
+  @override
+  String get smBindState => 'Ekran kısayolu';
+
+  @override
+  String get smBindActive => 'Bağlı';
+
+  @override
+  String get smBindOnStart => 'Başlayınca bağlanır';
+
+  @override
+  String get smBindUnused => 'Kullanılmıyor';
+
+  @override
+  String get smProject => 'Proje';
+
+  @override
+  String get smProjectAuto => 'Otomatik';
+
+  @override
+  String get smProjectAutoHint =>
+      'Son etkin Claude oturumunun deposu, yoksa odaktaki terminalinki';
+
+  @override
+  String get smProjectPick => 'Klasör seç';
+
+  @override
+  String smProjectPickHint(String host) {
+    return '$host üzerinde bir klasör';
+  }
+
+  @override
+  String get smProjectPickNoHost =>
+      'Şehrin kaynağı hostlarınız arasında değil.';
+
+  @override
+  String get smCity => 'Kod şehri';
+
+  @override
+  String get smCityHint =>
+      '2D daha hafif; WebGL yoksa ekran zaten onu kullanır.';
+
+  @override
+  String get smDiff => 'Diff önizlemesi';
+
+  @override
+  String get smDiffHint =>
+      'Telefonda onaylamadan önce değişiklik büyük ekranda görünür.';
+
+  @override
+  String smShareIsOn(String host) {
+    return '$host üzerinde kod paylaşımı açık: diff ve dosya adları bu ekrana gelir.';
+  }
+
+  @override
+  String smShareIsOff(String host) {
+    return '$host üzerinde kod paylaşımı kapalı: ekrana diff gelmez, dosya adları gizlenir.';
+  }
+
+  @override
+  String smShareUnknown(String host) {
+    return '$host üzerindeki kod paylaşımı okunamadı.';
+  }
+
+  @override
+  String get smShareOpen => 'Kaynakta aç';
+
+  @override
+  String get smShareOff => 'Kapat';
+
+  @override
+  String get smShareOn => 'Paylaşımı aç';
+
+  @override
+  String smShareConfirm(String source, String display) {
+    return '$source, projelerindeki dosya adlarını ve onay bekleyen her değişikliğin diff\'ini $display ekranına gönderecek. O ekranın yanındaki herkes kodu okuyabilir. $source üzerinde kod paylaşımı açılsın mı?';
+  }
+
+  @override
+  String smShareDone(String host) {
+    return '$host üzerinde kod paylaşımı açıldı.';
+  }
+
+  @override
+  String get smCi => 'CI durumu';
+
+  @override
+  String get smCiHint =>
+      'GitHub Actions\'tan (gh) bir nokta; 5 dakikada bir bakılır.';
+
+  @override
+  String get smFocusMin => 'Odak';
+
+  @override
+  String get smShortMin => 'Kısa mola';
+
+  @override
+  String get smLongMin => 'Uzun mola';
+
+  @override
+  String get smLongEvery => 'Uzun mola sıklığı';
+
+  @override
+  String smRounds(int n) {
+    return '$n tur';
+  }
+
+  @override
+  String get smDurationsHint =>
+      'Değişiklikler bir sonraki evreden itibaren geçerli olur.';
+
+  @override
+  String get smLess => 'Azalt';
+
+  @override
+  String get smMore => 'Artır';
+
+  @override
+  String get smAmbient => 'Ortam sesi';
+
+  @override
+  String get smAmbientHint =>
+      'Kahve (kahverengi) ya da pembe gürültü, yağmur; ekran üretir, yalnız odak turunda çalar.';
+
+  @override
+  String get smAmbientOff => 'Kapalı';
+
+  @override
+  String get smAmbientBrown => 'Kahve';
+
+  @override
+  String get smAmbientPink => 'Pembe';
+
+  @override
+  String get smAmbientRain => 'Yağmur';
+
+  @override
+  String get smVolume => 'Ses düzeyi';
+
+  @override
+  String get smChime => 'Evre sonunda zil';
+
+  @override
+  String get smChimeHint =>
+      'Tur ya da mola kendiliğinden bitince yumuşak bir zil.';
+
+  @override
+  String get smQuietPhone => 'Tiphys bildirimlerini sustur';
+
+  @override
+  String get smQuietPhoneHint =>
+      'Odak turunda yalnız kritikler görünür; gerisi mod bitince tek özet olur.';
+
+  @override
+  String get smConnectionsHint =>
+      'Kaynaklar, ekranın verisini okuduğu ajanlardır. Bir kaynak yalnız bir modun kartı onu okurken kullanılır.';
+
+  @override
+  String get smSourceAdd => 'Kaynak ekle';
+
+  @override
+  String get smSourceTest => 'Dene';
+
+  @override
+  String get smSourceRemove => 'Kaldır';
+
+  @override
+  String smSourceActions(String name) {
+    return '$name: işlemler';
+  }
+
+  @override
+  String smSourceRemoveConfirm(String name) {
+    return '$name kaynak olarak kaldırılsın mı? O hosttaki erişim jetonu iptal edilir.';
+  }
+
+  @override
+  String smTestOk(String name) {
+    return '$name: bağlı.';
+  }
+
+  @override
+  String smTestDown(String name) {
+    return '$name: ekran şu an ulaşamıyor.';
+  }
+
+  @override
+  String smTestIdle(String name) {
+    return '$name yanıt veriyor. Ekran, bir modun kartı onu okuyunca bağlanır.';
+  }
+
+  @override
+  String smTestIdleUnknown(String name) {
+    return 'Ekran, bir modun kartı okuyunca $name kaynağına bağlanır.';
+  }
+
+  @override
+  String smTestUnreachable(String name) {
+    return '$name telefona yanıt vermiyor.';
+  }
+
+  @override
+  String get smSetupTitle => 'Ekran modlarını kur';
+
+  @override
+  String get smSetupIntro =>
+      'Modun görüneceği ekranı ve verinin okunacağı makineleri seçin. Tiphys her kaynakta bir erişim jetonu oluşturup ekranın ajanına verir; jeton bu telefonda saklanmaz.';
+
+  @override
+  String get smSetupDisplay => 'Ekran (ekran hostu)';
+
+  @override
+  String get smSetupSources => 'Kaynaklar';
+
+  @override
+  String get smSetupSourcesHint =>
+      'Ekran kendi makinesini her zaman gösterebilir; yansıtılacakları ekleyin.';
+
+  @override
+  String get smSetupNeedTwo =>
+      'Bunun için “Ekran modu” özelliği açık iki host gerekir.';
+
+  @override
+  String smSetupDoneBody(String names) {
+    return 'Ekran, bir mod gerektirdiğinde $names verisini okur.';
+  }
+
+  @override
+  String get smShareStep => 'Kod paylaşımı';
+
+  @override
+  String get smShareStepTitle => 'Kod ekranda gösterilsin mi? (isteğe bağlı)';
+
+  @override
+  String get smShareStepBody =>
+      'Varsayılan kapalı: şehir dosya adlarını gizler, diff gönderilmez. Açılırsa kaynak, dosya adlarını ve onay bekleyen değişikliklerin diff\'ini gönderir. Onay her zaman telefonda kalır.';
+
+  @override
+  String get smFeatureOffTitle => 'Ekran modu bu hostta kapalı';
+
+  @override
+  String get smFeatureOffBody =>
+      'Ajan ayarlarında “Ekran modu” özelliğini açın ve ajanı yeniden başlatın.';
+
+  @override
+  String get smNoHostTitle => 'Ekran modu olan host yok';
+
+  @override
+  String get smNoHostBody =>
+      'Ajanı olan bir host ekleyin ve “Ekran modu” özelliğini açın.';
+
+  @override
+  String get smErrNoSource =>
+      'Bu modun bir kartı kurulmamış bir kaynağı okuyor. Bağlantılar\'dan ekleyin ya da “Bu makinenin kendisi”ni seçin.';
+
+  @override
+  String smErrBindTaken(String bind) {
+    return '$bind Hyprland\'de zaten bağlı; başka bir kısayol seçin.';
+  }
+
+  @override
+  String get smErrBadLayout => 'Ekran bu düzeni kabul etmedi.';
+
+  @override
+  String get smErrNotFocus => 'Odak modu çalışmıyor.';
+
+  @override
+  String get smErrNotRunning => 'Çalışan bir ekran modu yok.';
+
+  @override
+  String smEventStarted(String mode) {
+    return 'Ekran modu açıldı: $mode';
+  }
+
+  @override
+  String get smEventStopped => 'Ekran modu kapandı';
 }
