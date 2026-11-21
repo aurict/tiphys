@@ -29,6 +29,16 @@ third-party files, each under its own license.
 - **License:** SIL Open Font License 1.1
 - **Source:** <https://github.com/JetBrains/JetBrainsMono>
 
+### three.js
+
+- **Files:** `display/vendor/three/three.module.js`, `display/vendor/three/three.core.js`, license text in
+  `display/vendor/three/LICENSE-three.txt` (versions and SHA-256 in `display/vendor/three/README.md`)
+- **Version:** 0.187.0 (npm `three`, unmodified `build/` files)
+- **Copyright:** 2010-2026 three.js authors
+- **License:** MIT License
+- **Source:** <https://github.com/mrdoob/three.js>
+- Used by the screen modes display (code city, `display/draft/`).
+
 ## Package dependencies
 
 Libraries installed by package managers are not stored in this repository. Their licenses are listed in their
