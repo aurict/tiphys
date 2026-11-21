@@ -1,0 +1,41 @@
+/* Sleep mode view (PLAN.md §21 E, S1 draft). Warm only: no blue light at night; the hint and the morning screen use
+   the embers' ramp. Everything is pure black unless the scene draws it. */
+html, body { margin: 0; height: 100%; background: #000; overflow: hidden; }
+body { cursor: none; font-family: var(--font); }
+#app { position: fixed; inset: 0; }
+
+.sleep { position: absolute; inset: 0; background: #000; }
+/* The shader draws at 1/3 or 1/6 of the screen; the compositor stretches it (bilinear: embers are soft anyway). */
+.sl-embers { position: absolute; inset: 0; width: 100%; height: 100%; display: block; image-rendering: auto; }
+
+/* Interaction hint: a very dim clock and one line, 5 s after a key. Dim amber on black (the room is dark: this must not
+   light it up; still readable up close). */
+.sl-hint {
+  position: absolute; left: 50%; top: 38%; transform: translate(-50%, -50%);
+  text-align: center; color: #A0581F; pointer-events: none;
+  animation: sl-in 600ms ease-out;
+}
+.sl-hint[hidden] { display: none; }
+.sl-clock { font-size: clamp(64px, 9vw, 140px); font-weight: 300; letter-spacing: 0.02em; line-height: 1; font-variant-numeric: tabular-nums; }
+.sl-msg { margin-top: 18px; font-size: clamp(16px, 1.4vw, 22px); color: #B8692E; }
+.sleep[data-phase="ring"] .sl-hint, .sleep[data-phase="sunrise"] .sl-hint { color: #4A1A04; }
+.sleep[data-phase="ring"] .sl-msg, .sleep[data-phase="sunrise"] .sl-msg { color: #5A2408; }
+@keyframes sl-in { from { opacity: 0; } to { opacity: 1; } }
+
+/* Morning: warm light background, big clock + date, the short summary. Dark brown text on warm cream: AA. */
+.sl-morning {
+  position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center;
+  background: radial-gradient(120% 90% at 50% 110%, #FFD9A8 0%, #F7E6CF 55%, #EFE2D2 100%);
+  color: #3A1C08; animation: sl-in 1200ms ease-out;
+}
+.sl-morning[hidden] { display: none; }
+.sl-m-date { font-size: clamp(18px, 1.6vw, 26px); font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: #7A4420; }
+.sl-m-clock { font-size: clamp(120px, 16vw, 260px); font-weight: 700; line-height: 1; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; margin: 8px 0 36px; }
+.sl-m-sum { list-style: none; margin: 0; padding: 18px 28px; min-width: min(560px, 86vw); border-radius: var(--radius-card); background: rgba(255, 255, 255, 0.45); border: 1px solid rgba(122, 68, 32, 0.18); }
+.sl-m-sum li { display: flex; justify-content: space-between; gap: 24px; padding: 10px 0; font-size: clamp(16px, 1.3vw, 21px); }
+.sl-m-sum li + li { border-top: 1px solid rgba(122, 68, 32, 0.15); }
+.sl-m-sum span { color: #6A3A1A; }
+.sl-m-sum b { font-weight: 600; text-align: right; }
+.sl-m-note { margin-top: 14px; font-size: 14px; color: #8A5A36; }
+
+@media (prefers-reduced-motion: reduce) { .sl-hint, .sl-morning { animation: none; } }
