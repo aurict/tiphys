@@ -19772,6 +19772,18 @@ abstract class AppLocalizations {
   /// **'The “transcribe” feature is on but {command} does not exist.'**
   String doctorFeatureTranscribeMissing(String command);
 
+  /// No description provided for @doctorGamemodePluginMissing.
+  ///
+  /// In en, this message translates to:
+  /// **'Game mode: the ETS2 telemetry plugin is not installed.'**
+  String get doctorGamemodePluginMissing;
+
+  /// No description provided for @doctorGamemodePluginOutdated.
+  ///
+  /// In en, this message translates to:
+  /// **'Game mode: the ETS2 telemetry plugin is outdated.'**
+  String get doctorGamemodePluginOutdated;
+
   /// No description provided for @doctorPushOk.
   ///
   /// In en, this message translates to:
@@ -20341,6 +20353,546 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Installs new signed agent releases when you tap Update. The agent restarts.'**
   String get onbRiskUpdate;
+
+  /// No description provided for @gmTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Game mode'**
+  String get gmTitle;
+
+  /// No description provided for @gmStart.
+  ///
+  /// In en, this message translates to:
+  /// **'Start'**
+  String get gmStart;
+
+  /// No description provided for @gmStop.
+  ///
+  /// In en, this message translates to:
+  /// **'Stop'**
+  String get gmStop;
+
+  /// No description provided for @gmOff.
+  ///
+  /// In en, this message translates to:
+  /// **'Off'**
+  String get gmOff;
+
+  /// No description provided for @gmOn.
+  ///
+  /// In en, this message translates to:
+  /// **'On'**
+  String get gmOn;
+
+  /// No description provided for @gmOnAt.
+  ///
+  /// In en, this message translates to:
+  /// **'On · {host}'**
+  String gmOnAt(String host);
+
+  /// No description provided for @gmDriving.
+  ///
+  /// In en, this message translates to:
+  /// **'Driving: {from} → {to}'**
+  String gmDriving(String from, String to);
+
+  /// No description provided for @gmDrivingSpeed.
+  ///
+  /// In en, this message translates to:
+  /// **'Driving · {speed} km/h'**
+  String gmDrivingSpeed(String speed);
+
+  /// No description provided for @gmOffHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Opens the ambient screen on {host}.'**
+  String gmOffHint(String host);
+
+  /// No description provided for @gmSceneAuto.
+  ///
+  /// In en, this message translates to:
+  /// **'Auto'**
+  String get gmSceneAuto;
+
+  /// No description provided for @gmSceneDrive.
+  ///
+  /// In en, this message translates to:
+  /// **'Driving'**
+  String get gmSceneDrive;
+
+  /// No description provided for @gmSceneMusic.
+  ///
+  /// In en, this message translates to:
+  /// **'Music'**
+  String get gmSceneMusic;
+
+  /// No description provided for @gmSceneIdle.
+  ///
+  /// In en, this message translates to:
+  /// **'Standby'**
+  String get gmSceneIdle;
+
+  /// No description provided for @gmSceneNow.
+  ///
+  /// In en, this message translates to:
+  /// **'Scene: {scene}'**
+  String gmSceneNow(String scene);
+
+  /// No description provided for @gmScene.
+  ///
+  /// In en, this message translates to:
+  /// **'Scene'**
+  String get gmScene;
+
+  /// No description provided for @gmNothingPlaying.
+  ///
+  /// In en, this message translates to:
+  /// **'Nothing playing'**
+  String get gmNothingPlaying;
+
+  /// No description provided for @gmEts2None.
+  ///
+  /// In en, this message translates to:
+  /// **'ETS2 not running'**
+  String get gmEts2None;
+
+  /// No description provided for @gmEts2Menu.
+  ///
+  /// In en, this message translates to:
+  /// **'ETS2 in the menu'**
+  String get gmEts2Menu;
+
+  /// No description provided for @gmEts2Paused.
+  ///
+  /// In en, this message translates to:
+  /// **'ETS2 paused'**
+  String get gmEts2Paused;
+
+  /// No description provided for @gmEts2Driving.
+  ///
+  /// In en, this message translates to:
+  /// **'ETS2 on the road'**
+  String get gmEts2Driving;
+
+  /// No description provided for @gmSectionDisplay.
+  ///
+  /// In en, this message translates to:
+  /// **'Display'**
+  String get gmSectionDisplay;
+
+  /// No description provided for @gmLyrics.
+  ///
+  /// In en, this message translates to:
+  /// **'Lyrics'**
+  String get gmLyrics;
+
+  /// No description provided for @gmSpectrum.
+  ///
+  /// In en, this message translates to:
+  /// **'Spectrum'**
+  String get gmSpectrum;
+
+  /// No description provided for @gmMotion.
+  ///
+  /// In en, this message translates to:
+  /// **'Animation intensity'**
+  String get gmMotion;
+
+  /// No description provided for @gmMotionLow.
+  ///
+  /// In en, this message translates to:
+  /// **'Low'**
+  String get gmMotionLow;
+
+  /// No description provided for @gmMotionNormal.
+  ///
+  /// In en, this message translates to:
+  /// **'Normal'**
+  String get gmMotionNormal;
+
+  /// No description provided for @gmMotionHigh.
+  ///
+  /// In en, this message translates to:
+  /// **'High'**
+  String get gmMotionHigh;
+
+  /// No description provided for @gmBrightness.
+  ///
+  /// In en, this message translates to:
+  /// **'Brightness'**
+  String get gmBrightness;
+
+  /// No description provided for @gmBrightnessKeep.
+  ///
+  /// In en, this message translates to:
+  /// **'Leave brightness alone'**
+  String get gmBrightnessKeep;
+
+  /// No description provided for @gmBrightnessKeepHint.
+  ///
+  /// In en, this message translates to:
+  /// **'The screen keeps the brightness it has.'**
+  String get gmBrightnessKeepHint;
+
+  /// No description provided for @gmClock24.
+  ///
+  /// In en, this message translates to:
+  /// **'24-hour clock'**
+  String get gmClock24;
+
+  /// No description provided for @gmDimAfter.
+  ///
+  /// In en, this message translates to:
+  /// **'Dim after (min)'**
+  String get gmDimAfter;
+
+  /// No description provided for @gmDimNever.
+  ///
+  /// In en, this message translates to:
+  /// **'Never'**
+  String get gmDimNever;
+
+  /// No description provided for @gmDimHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Dims the screen when nothing is playing.'**
+  String get gmDimHint;
+
+  /// No description provided for @gmSectionConnections.
+  ///
+  /// In en, this message translates to:
+  /// **'Connections'**
+  String get gmSectionConnections;
+
+  /// No description provided for @gmDisplayHost.
+  ///
+  /// In en, this message translates to:
+  /// **'Display host'**
+  String get gmDisplayHost;
+
+  /// No description provided for @gmSourceHost.
+  ///
+  /// In en, this message translates to:
+  /// **'Source host'**
+  String get gmSourceHost;
+
+  /// No description provided for @gmSourceUnknown.
+  ///
+  /// In en, this message translates to:
+  /// **'Source'**
+  String get gmSourceUnknown;
+
+  /// No description provided for @gmStateOff.
+  ///
+  /// In en, this message translates to:
+  /// **'Idle'**
+  String get gmStateOff;
+
+  /// No description provided for @gmStateConnecting.
+  ///
+  /// In en, this message translates to:
+  /// **'Connecting'**
+  String get gmStateConnecting;
+
+  /// No description provided for @gmStateOk.
+  ///
+  /// In en, this message translates to:
+  /// **'Connected'**
+  String get gmStateOk;
+
+  /// No description provided for @gmStateDown.
+  ///
+  /// In en, this message translates to:
+  /// **'Unreachable'**
+  String get gmStateDown;
+
+  /// No description provided for @gmReconfigure.
+  ///
+  /// In en, this message translates to:
+  /// **'Set up again'**
+  String get gmReconfigure;
+
+  /// No description provided for @gmSectionSetup.
+  ///
+  /// In en, this message translates to:
+  /// **'Setup'**
+  String get gmSectionSetup;
+
+  /// No description provided for @gmPlugin.
+  ///
+  /// In en, this message translates to:
+  /// **'ETS2 plugin'**
+  String get gmPlugin;
+
+  /// No description provided for @gmPluginInstalled.
+  ///
+  /// In en, this message translates to:
+  /// **'Installed · {version}'**
+  String gmPluginInstalled(String version);
+
+  /// No description provided for @gmPluginInstalledPlain.
+  ///
+  /// In en, this message translates to:
+  /// **'Installed'**
+  String get gmPluginInstalledPlain;
+
+  /// No description provided for @gmPluginOutdated.
+  ///
+  /// In en, this message translates to:
+  /// **'Outdated · {version}'**
+  String gmPluginOutdated(String version);
+
+  /// No description provided for @gmPluginMissing.
+  ///
+  /// In en, this message translates to:
+  /// **'Not installed'**
+  String get gmPluginMissing;
+
+  /// No description provided for @gmPluginNoGame.
+  ///
+  /// In en, this message translates to:
+  /// **'ETS2 was not found on the source PC.'**
+  String get gmPluginNoGame;
+
+  /// No description provided for @gmPluginInstall.
+  ///
+  /// In en, this message translates to:
+  /// **'Install'**
+  String get gmPluginInstall;
+
+  /// No description provided for @gmPluginUpdate.
+  ///
+  /// In en, this message translates to:
+  /// **'Update'**
+  String get gmPluginUpdate;
+
+  /// No description provided for @gmPluginRemove.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove'**
+  String get gmPluginRemove;
+
+  /// No description provided for @gmPluginRemoveConfirm.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove the ETS2 telemetry plugin from the game folder?'**
+  String get gmPluginRemoveConfirm;
+
+  /// No description provided for @gmTelemetryUnsupported.
+  ///
+  /// In en, this message translates to:
+  /// **'This game version is not supported.'**
+  String get gmTelemetryUnsupported;
+
+  /// No description provided for @gmTelemetryNone.
+  ///
+  /// In en, this message translates to:
+  /// **'No data from the game yet.'**
+  String get gmTelemetryNone;
+
+  /// No description provided for @gmMap.
+  ///
+  /// In en, this message translates to:
+  /// **'Map data'**
+  String get gmMap;
+
+  /// No description provided for @gmMapPresent.
+  ///
+  /// In en, this message translates to:
+  /// **'Present'**
+  String get gmMapPresent;
+
+  /// No description provided for @gmMapMissing.
+  ///
+  /// In en, this message translates to:
+  /// **'Missing'**
+  String get gmMapMissing;
+
+  /// No description provided for @gmMapMissingHint.
+  ///
+  /// In en, this message translates to:
+  /// **'The map is generated once from your game files; until then the driving scene has no map.'**
+  String get gmMapMissingHint;
+
+  /// No description provided for @gmOpenVelour.
+  ///
+  /// In en, this message translates to:
+  /// **'Open Velour remote'**
+  String get gmOpenVelour;
+
+  /// No description provided for @gmVelourOff.
+  ///
+  /// In en, this message translates to:
+  /// **'Velour is not running on the source PC.'**
+  String get gmVelourOff;
+
+  /// No description provided for @gmSourceInfoFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'The source PC could not be queried.'**
+  String get gmSourceInfoFailed;
+
+  /// No description provided for @gmSourceNoHost.
+  ///
+  /// In en, this message translates to:
+  /// **'The source PC is not one of your hosts.'**
+  String get gmSourceNoHost;
+
+  /// No description provided for @gmErrNoSource.
+  ///
+  /// In en, this message translates to:
+  /// **'No source is set up yet. Connect the music and game source first.'**
+  String get gmErrNoSource;
+
+  /// No description provided for @gmErrNoDisplay.
+  ///
+  /// In en, this message translates to:
+  /// **'The display PC has no graphical session (Hyprland is not running).'**
+  String get gmErrNoDisplay;
+
+  /// No description provided for @gmErrStartFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'The ambient display could not be started on the display PC.'**
+  String get gmErrStartFailed;
+
+  /// No description provided for @gmErrNoArt.
+  ///
+  /// In en, this message translates to:
+  /// **'This track has no cover art.'**
+  String get gmErrNoArt;
+
+  /// No description provided for @gmErrPluginDownloadFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'The ETS2 plugin could not be downloaded. Check the source PC’s internet connection.'**
+  String get gmErrPluginDownloadFailed;
+
+  /// No description provided for @gmErrPluginHashMismatch.
+  ///
+  /// In en, this message translates to:
+  /// **'The downloaded ETS2 plugin failed verification; it was not installed.'**
+  String get gmErrPluginHashMismatch;
+
+  /// No description provided for @gmErrPluginBadArchive.
+  ///
+  /// In en, this message translates to:
+  /// **'The downloaded ETS2 plugin archive is broken; it was not installed.'**
+  String get gmErrPluginBadArchive;
+
+  /// No description provided for @gmEventStarted.
+  ///
+  /// In en, this message translates to:
+  /// **'Game mode started'**
+  String get gmEventStarted;
+
+  /// No description provided for @gmEventStopped.
+  ///
+  /// In en, this message translates to:
+  /// **'Game mode stopped'**
+  String get gmEventStopped;
+
+  /// No description provided for @gmFeatureOffTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Game mode is off on this host'**
+  String get gmFeatureOffTitle;
+
+  /// No description provided for @gmFeatureOffBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Turn on the “Game mode” feature in the agent settings and restart the agent.'**
+  String get gmFeatureOffBody;
+
+  /// No description provided for @gmFeatureOpenSettings.
+  ///
+  /// In en, this message translates to:
+  /// **'Open agent settings'**
+  String get gmFeatureOpenSettings;
+
+  /// No description provided for @gmNoHostTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'No host with game mode'**
+  String get gmNoHostTitle;
+
+  /// No description provided for @gmNoHostBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Add a host with an agent and turn on its “Game mode” feature.'**
+  String get gmNoHostBody;
+
+  /// No description provided for @gmSetupTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Set up game mode'**
+  String get gmSetupTitle;
+
+  /// No description provided for @gmSetupIntro.
+  ///
+  /// In en, this message translates to:
+  /// **'Pick the PC whose screen shows the ambient display and the PC that plays music and the game. Tiphys creates an access token for it and gives it to the display PC; the token is not stored on this phone.'**
+  String get gmSetupIntro;
+
+  /// No description provided for @gmSetupDisplay.
+  ///
+  /// In en, this message translates to:
+  /// **'Display PC (laptop)'**
+  String get gmSetupDisplay;
+
+  /// No description provided for @gmSetupSource.
+  ///
+  /// In en, this message translates to:
+  /// **'Source PC (music and game)'**
+  String get gmSetupSource;
+
+  /// No description provided for @gmSetupNeedTwo.
+  ///
+  /// In en, this message translates to:
+  /// **'You need two different hosts with the “Game mode” feature turned on.'**
+  String get gmSetupNeedTwo;
+
+  /// No description provided for @gmSetupConnect.
+  ///
+  /// In en, this message translates to:
+  /// **'Connect'**
+  String get gmSetupConnect;
+
+  /// No description provided for @gmSetupDoneTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Connected'**
+  String get gmSetupDoneTitle;
+
+  /// No description provided for @gmSetupDoneBody.
+  ///
+  /// In en, this message translates to:
+  /// **'The display PC will fetch music and game data from {source} when the mode starts.'**
+  String gmSetupDoneBody(String source);
+
+  /// No description provided for @gmSetupDownBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Saved, but the display PC cannot reach {source} right now.'**
+  String gmSetupDownBody(String source);
+
+  /// No description provided for @gmSetupFinish.
+  ///
+  /// In en, this message translates to:
+  /// **'Done'**
+  String get gmSetupFinish;
+
+  /// No description provided for @gmCardSetup.
+  ///
+  /// In en, this message translates to:
+  /// **'Set up'**
+  String get gmCardSetup;
+
+  /// No description provided for @homeCardsGameMode.
+  ///
+  /// In en, this message translates to:
+  /// **'Game mode'**
+  String get homeCardsGameMode;
 }
 
 class _AppLocalizationsDelegate

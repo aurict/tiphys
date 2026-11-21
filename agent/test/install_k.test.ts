@@ -304,7 +304,7 @@ describe("doctor (K6)", () => {
       const res = await app.inject({ url: "/v1/doctor", headers: auth });
       expect(res.statusCode).toBe(200);
       const body = res.json();
-      expect(body.version).toBe("0.4.0");
+      expect(body.version).toBe("0.5.0");
       for (const c of body.checks) expect(["ok", "warn", "fail"]).toContain(c.status);
     } finally {
       if (prev === undefined) delete process.env.TIPHYS_RELEASE_URL;

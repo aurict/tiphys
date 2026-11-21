@@ -134,7 +134,8 @@ export function parseOutputs(json: string): AudioOutput[] {
   return out;
 }
 
-const artId = (art: string) => createHash("sha256").update(art).digest("hex").slice(0, 12);
+/** Short id of a cover URL (also used by Game mode for the Velour cover). */
+export const artId = (art: string) => createHash("sha256").update(art).digest("hex").slice(0, 12);
 
 export function mediaRoutes(app: FastifyInstance, _ctx: Ctx, exec: Exec = run, opts: { settleMs?: number } = {}) {
   const settleMs = opts.settleMs ?? 250;

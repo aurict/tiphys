@@ -130,7 +130,7 @@ rely on the package manager's own checks plus the checksums copied from the sign
 Each area of functionality is a flag in `agent.json`. If a flag is off, its routes are not registered and heavy
 modules such as the Claude SDK are not even loaded. On a new configuration only `system`, `services`, `docker` and
 `power` are on. Everything that runs code on your behalf or touches the desktop (`claude`, `agy`, `git`, `desktop`,
-`control`, `ports`, `transcribe`, `wake`, `watch`, `uptime`, `alerts`, `backups`, `homepage`, `security`, `securityFix`) must be enabled
+`control`, `ports`, `transcribe`, `wake`, `watch`, `uptime`, `alerts`, `backups`, `homepage`, `security`, `securityFix`, `gamemode`) must be enabled
 explicitly. Enable only what a machine needs. A server usually needs no `claude`, `agy`, `desktop` or `control`.
 
 ## Path restrictions
@@ -508,6 +508,49 @@ validated operation to the Velour player's local socket, `$XDG_RUNTIME_DIR/velou
 - **On the phone**, the lock-screen/notification controls show the song title and artist; they appear only after the
   Velour remote has been opened in this app run and can be turned off in the PC panel. While the remote screen is
   open, the phone's volume buttons change Velour's volume instead of the phone's.
+
+## Game mode
+
+The `gamemode` flag (off by default, never turned on by `init --detect`) turns a laptop into a second screen for the PC
+(see [api.md](agent/api.md#gamemode)). Two agents take part; each side's rules:
+
+**No control session.** Starting the mode shows a fullscreen window, holds an idle/sleep inhibitor and may change the
+backlight on the display host, which is the kind of desktop change a control session normally guards. It is not
+required here, by decision: the operations are fixed (start, stop, settings) with no input that reaches a command,
+the result is plainly visible on the very screen it changes, it is undone completely by stop, and the feature must be
+turned on explicitly on that machine. A control session's timer would also end a mode that is meant to run for a whole
+drive. Every paired device can stop the mode, and so can the laptop's own keyboard (Esc held 1 s).
+
+- **Fixed commands only.** `systemd-run`, `systemd-inhibit`, `firefox`, `hyprctl`, `brightnessctl` and `systemctl` get
+  argument arrays built from constants; the only values taken from outside are the backlight percent (integer 5–100)
+  and the previous workspace, which must match `^[1-9]\d{0,2}$` or `name:[A-Za-z0-9_.-]{1,64}` (also when read back from
+  the state file after a crash). The window rule and Lua snippets contain no outside text.
+- **The kiosk leaves nothing behind.** Firefox runs with an empty profile in a tmpfs directory under
+  `$XDG_RUNTIME_DIR` (0700) inside one transient user unit; stop kills the unit's whole cgroup and deletes the
+  directory, a crash is cleaned up on the next agent start, and a reboot empties the tmpfs. Firefox's output goes to
+  `/dev/null`, not the journal. Nothing about songs, lyrics or drives is stored: no history, only `gamemode.started`
+  and `gamemode.stopped` in the event log.
+- **Kiosk routes without a device token.** The local Firefox reaches the agent on `127.0.0.1`, without the Tailscale
+  identity header, and a page must not hold a device token. So `/gamemode/*` (static files from the agent's
+  `display/` folder and map tiles; no secrets in them, fixed extension list, single decode, no `..`/hidden segments,
+  symlinks must stay inside the root, no listing) need no token, and `WS /v1/gamemode/live` and `GET
+  /v1/gamemode/art` need the **display token**: 32 random bytes made at each start, kept only in memory, compared in
+  constant time and dead after stop. Behind `tailscale serve` every request comes from 127.0.0.1, so "comes from
+  localhost" is never used as a credential. The token is passed to Firefox through `start.html` in the private work
+  directory, not on the command line (`/proc/*/cmdline` is readable by every local user). It does appear in the
+  agent's request log for `/v1/gamemode/art` and `/v1/gamemode/live` URLs, where it is worthless after the mode stops.
+- **Cover proxy.** `GET /v1/gamemode/art` fetches only the https cover named in the current `music` message (no URL
+  parameter), with a 10 s timeout, at most 5 MB, image magic bytes required, a small in-memory cache.
+- **Source side.** `WS /v1/gamemode/feed` is the only route a `gamemode` service token opens. It sends what is playing
+  (title, artist, album, lyrics, the next two songs), a spectrum of the **output** audio (the default sink's monitor,
+  `stream.capture.sink=true`; the microphone is never opened) and ETS2 telemetry. It runs nothing while nobody is
+  subscribed and accepts nothing from subscribers. The display host keeps its source token in `agent.json` (never
+  returned by an API) and connects only while the mode runs.
+- **ETS2 plugin.** The installer downloads one pinned release asset and checks the SHA-256 of the zip and of the `.so`
+  inside before writing it into the game's `bin/linux_x64/plugins/`. The plugin is native code that runs inside the
+  game (MIT, [truckermudgeon/scs-sdk-plugin](https://github.com/truckermudgeon/scs-sdk-plugin)); the game shows its
+  "SDK features" notice on start. The agent only reads the plugin's shared memory, at fixed offsets, and checks its
+  layout revision.
 
 ## Sunshine / Moonlight
 

@@ -14,6 +14,7 @@
 #
 # Bundle tiphys-agent-<version>-<platform>.tar.gz (win: .zip) holds tiphys-agent-<version>-<platform>/ with dist/,
 # production node_modules for that OS/CPU (incl. the matching Claude Agent SDK binary package), helpers/,
+# display/ (the Game mode kiosk page with its vendor/ and fonts/; the agent serves it from ../display next to dist/),
 # package.json and node/ (the official Node.js 24 runtime, checked against nodejs.org's SHASUMS256.txt).
 # Env: TIPHYS_NODE_VERSION (default: newest 24.x), SOURCE_DATE_EPOCH (default: last commit time).
 set -euo pipefail
@@ -45,6 +46,8 @@ src_version=$(sed -n 's/^export const VERSION = "\(.*\)";/\1/p' "$ROOT/agent/src
 pkg_version=$(node -p 'require(process.argv[1]).version' "$ROOT/agent/package.json")
 [ "$src_version" = "$VERSION" ] && [ "$pkg_version" = "$VERSION" ] ||
   die "agent/src/version.ts ($src_version) and agent/package.json ($pkg_version) must both be $VERSION — bump them (and kExpectedAgentVersion in the app if needed) and commit first"
+[ -f "$ROOT/display/index.html" ] && [ -d "$ROOT/display/vendor" ] && [ -d "$ROOT/display/fonts" ] ||
+  die "display/ (Game mode kiosk page with vendor/ and fonts/) is incomplete"
 if [ -z "$UNSIGNED" ]; then
   [ -f "$KEY" ] || die "no signing key at $KEY — run tools/release-keygen.sh once (or use --unsigned for a build check)"
   grep -q "BEGIN PUBLIC KEY" "$ROOT/agent/src/update_key.ts" || die "agent/src/update_key.ts still holds the placeholder key (tools/release-keygen.sh writes it)"
@@ -136,6 +139,7 @@ for p in "${PLATS[@]}"; do
   echo "==> $name"
   mkdir -p "$dir"
   cp -r "$ROOT/agent/dist" "$ROOT/agent/helpers" "$ROOT/agent/package.json" "$ROOT/agent/package-lock.json" "$dir/"
+  cp -r "$ROOT/display" "$dir/display"  # Game mode kiosk page (defaultDisplayDir(): ../display next to dist/)
   find "$dir" -name '*.map' -delete
   find "$dir/helpers" -name __pycache__ -prune -exec rm -rf {} +
   # Production dependencies for the target OS/CPU: npm picks the optional packages (the Claude Agent SDK's native

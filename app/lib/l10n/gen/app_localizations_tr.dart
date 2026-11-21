@@ -11652,6 +11652,14 @@ class AppLocalizationsTr extends AppLocalizations {
   }
 
   @override
+  String get doctorGamemodePluginMissing =>
+      'Oyun Modu: ETS2 telemetri eklentisi kurulu değil.';
+
+  @override
+  String get doctorGamemodePluginOutdated =>
+      'Oyun Modu: ETS2 telemetri eklentisi eski sürüm.';
+
+  @override
   String doctorPushOk(String count) {
     return 'Anlık bildirimler: $count cihaz kayıtlı.';
   }
@@ -12012,4 +12020,303 @@ class AppLocalizationsTr extends AppLocalizations {
   @override
   String get onbRiskUpdate =>
       'Güncelle’ye dokunduğunuzda yeni imzalı ajan sürümlerini kurar. Ajan yeniden başlar.';
+
+  @override
+  String get gmTitle => 'Oyun Modu';
+
+  @override
+  String get gmStart => 'Başlat';
+
+  @override
+  String get gmStop => 'Durdur';
+
+  @override
+  String get gmOff => 'Kapalı';
+
+  @override
+  String get gmOn => 'Açık';
+
+  @override
+  String gmOnAt(String host) {
+    return 'Açık · $host';
+  }
+
+  @override
+  String gmDriving(String from, String to) {
+    return 'Yolda: $from → $to';
+  }
+
+  @override
+  String gmDrivingSpeed(String speed) {
+    return 'Yolda · $speed km/sa';
+  }
+
+  @override
+  String gmOffHint(String host) {
+    return '$host ekranında ortam ekranını açar.';
+  }
+
+  @override
+  String get gmSceneAuto => 'Otomatik';
+
+  @override
+  String get gmSceneDrive => 'Sürüş';
+
+  @override
+  String get gmSceneMusic => 'Müzik';
+
+  @override
+  String get gmSceneIdle => 'Bekleme';
+
+  @override
+  String gmSceneNow(String scene) {
+    return 'Sahne: $scene';
+  }
+
+  @override
+  String get gmScene => 'Sahne';
+
+  @override
+  String get gmNothingPlaying => 'Müzik çalmıyor';
+
+  @override
+  String get gmEts2None => 'ETS2 çalışmıyor';
+
+  @override
+  String get gmEts2Menu => 'ETS2 menüde';
+
+  @override
+  String get gmEts2Paused => 'ETS2 duraklatıldı';
+
+  @override
+  String get gmEts2Driving => 'ETS2 yolda';
+
+  @override
+  String get gmSectionDisplay => 'Ekran';
+
+  @override
+  String get gmLyrics => 'Şarkı sözleri';
+
+  @override
+  String get gmSpectrum => 'Spektrum';
+
+  @override
+  String get gmMotion => 'Animasyon yoğunluğu';
+
+  @override
+  String get gmMotionLow => 'Düşük';
+
+  @override
+  String get gmMotionNormal => 'Normal';
+
+  @override
+  String get gmMotionHigh => 'Yüksek';
+
+  @override
+  String get gmBrightness => 'Parlaklık';
+
+  @override
+  String get gmBrightnessKeep => 'Parlaklığa dokunma';
+
+  @override
+  String get gmBrightnessKeepHint => 'Ekran, olduğu parlaklıkta kalır.';
+
+  @override
+  String get gmClock24 => '24 saat biçimi';
+
+  @override
+  String get gmDimAfter => 'Kısılma süresi (dk)';
+
+  @override
+  String get gmDimNever => 'Hiç';
+
+  @override
+  String get gmDimHint => 'Hiçbir şey çalmıyorsa ekranı kısar.';
+
+  @override
+  String get gmSectionConnections => 'Bağlantılar';
+
+  @override
+  String get gmDisplayHost => 'Ekran hostu';
+
+  @override
+  String get gmSourceHost => 'Kaynak hostu';
+
+  @override
+  String get gmSourceUnknown => 'Kaynak';
+
+  @override
+  String get gmStateOff => 'Beklemede';
+
+  @override
+  String get gmStateConnecting => 'Bağlanıyor';
+
+  @override
+  String get gmStateOk => 'Bağlı';
+
+  @override
+  String get gmStateDown => 'Ulaşılamıyor';
+
+  @override
+  String get gmReconfigure => 'Yeniden kur';
+
+  @override
+  String get gmSectionSetup => 'Kurulum';
+
+  @override
+  String get gmPlugin => 'ETS2 eklentisi';
+
+  @override
+  String gmPluginInstalled(String version) {
+    return 'Kurulu · $version';
+  }
+
+  @override
+  String get gmPluginInstalledPlain => 'Kurulu';
+
+  @override
+  String gmPluginOutdated(String version) {
+    return 'Eski sürüm · $version';
+  }
+
+  @override
+  String get gmPluginMissing => 'Kurulu değil';
+
+  @override
+  String get gmPluginNoGame => 'ETS2 kaynak PC’de bulunamadı.';
+
+  @override
+  String get gmPluginInstall => 'Kur';
+
+  @override
+  String get gmPluginUpdate => 'Güncelle';
+
+  @override
+  String get gmPluginRemove => 'Kaldır';
+
+  @override
+  String get gmPluginRemoveConfirm =>
+      'ETS2 telemetri eklentisi oyun klasöründen kaldırılsın mı?';
+
+  @override
+  String get gmTelemetryUnsupported => 'Bu oyun sürümü desteklenmiyor.';
+
+  @override
+  String get gmTelemetryNone => 'Oyundan henüz veri yok.';
+
+  @override
+  String get gmMap => 'Harita verisi';
+
+  @override
+  String get gmMapPresent => 'Var';
+
+  @override
+  String get gmMapMissing => 'Yok';
+
+  @override
+  String get gmMapMissingHint =>
+      'Harita, oyun dosyalarınızdan bir kez üretilir; o zamana kadar sürüş sahnesinde harita olmaz.';
+
+  @override
+  String get gmOpenVelour => 'Velour kumandasını aç';
+
+  @override
+  String get gmVelourOff => 'Velour kaynak PC’de çalışmıyor.';
+
+  @override
+  String get gmSourceInfoFailed => 'Kaynak PC sorgulanamadı.';
+
+  @override
+  String get gmSourceNoHost => 'Kaynak PC, hostlarınız arasında değil.';
+
+  @override
+  String get gmErrNoSource =>
+      'Henüz kaynak ayarlanmamış. Önce müzik ve oyun kaynağını bağlayın.';
+
+  @override
+  String get gmErrNoDisplay =>
+      'Ekran PC’sinde grafik oturumu yok (Hyprland çalışmıyor).';
+
+  @override
+  String get gmErrStartFailed => 'Ortam ekranı, ekran PC’sinde başlatılamadı.';
+
+  @override
+  String get gmErrNoArt => 'Bu parçanın kapak görseli yok.';
+
+  @override
+  String get gmErrPluginDownloadFailed =>
+      'ETS2 eklentisi indirilemedi. Kaynak PC’nin internet bağlantısını kontrol edin.';
+
+  @override
+  String get gmErrPluginHashMismatch =>
+      'İndirilen ETS2 eklentisi doğrulamadan geçemedi; kurulmadı.';
+
+  @override
+  String get gmErrPluginBadArchive =>
+      'İndirilen ETS2 eklenti arşivi bozuk; kurulmadı.';
+
+  @override
+  String get gmEventStarted => 'Oyun Modu açıldı';
+
+  @override
+  String get gmEventStopped => 'Oyun Modu kapandı';
+
+  @override
+  String get gmFeatureOffTitle => 'Oyun Modu bu hostta kapalı';
+
+  @override
+  String get gmFeatureOffBody =>
+      'Ajan ayarlarında “Oyun Modu” özelliğini açın ve ajanı yeniden başlatın.';
+
+  @override
+  String get gmFeatureOpenSettings => 'Ajan ayarlarını aç';
+
+  @override
+  String get gmNoHostTitle => 'Oyun Modu olan host yok';
+
+  @override
+  String get gmNoHostBody =>
+      'Ajanı olan bir host ekleyin ve “Oyun Modu” özelliğini açın.';
+
+  @override
+  String get gmSetupTitle => 'Oyun Modunu kur';
+
+  @override
+  String get gmSetupIntro =>
+      'Ortam ekranının görüneceği PC’yi ve müziğin/oyunun çalındığı PC’yi seçin. Tiphys kaynak için bir erişim jetonu oluşturup ekran PC’sine verir; jeton bu telefonda saklanmaz.';
+
+  @override
+  String get gmSetupDisplay => 'Ekran PC’si (laptop)';
+
+  @override
+  String get gmSetupSource => 'Kaynak PC (müzik ve oyun)';
+
+  @override
+  String get gmSetupNeedTwo =>
+      '“Oyun Modu” özelliği açık, birbirinden farklı iki host gerekir.';
+
+  @override
+  String get gmSetupConnect => 'Bağla';
+
+  @override
+  String get gmSetupDoneTitle => 'Bağlandı';
+
+  @override
+  String gmSetupDoneBody(String source) {
+    return 'Mod başlayınca ekran PC’si müziği ve oyun verisini $source üzerinden alır.';
+  }
+
+  @override
+  String gmSetupDownBody(String source) {
+    return 'Kaydedildi, ama ekran PC’si şu an $source hostuna ulaşamıyor.';
+  }
+
+  @override
+  String get gmSetupFinish => 'Bitti';
+
+  @override
+  String get gmCardSetup => 'Kurulum gerekli';
+
+  @override
+  String get homeCardsGameMode => 'Oyun Modu';
 }

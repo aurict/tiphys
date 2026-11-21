@@ -20,7 +20,8 @@ export const deviceSchema = z.object({
 /** "analysis": incident analysis jobs on the PC (PLAN.md §13.1 I-3, /v1/analysis/jobs). */
 /** "security-report": another agent (the monitoring server) pulls this host's raw audit report (PLAN.md §15). */
 /** "blackbox": an agent appends its records to this agent's black box; "lockdown": this agent revokes all access on request. */
-export const SERVICE_SCOPES = ["research", "analysis", "security-report", "blackbox", "lockdown"] as const;
+/** "gamemode": the laptop's agent reads this PC's Game mode feed (PLAN.md §19, WS /v1/gamemode/feed). */
+export const SERVICE_SCOPES = ["research", "analysis", "security-report", "blackbox", "lockdown", "gamemode"] as const;
 
 export const serviceTokenSchema = z.object({
   id,
@@ -188,6 +189,21 @@ export const dbConnectionSchema = z
     path: ["readCredential"],
   });
 
+/** Game mode display settings (PLAN.md §19 contract); pushed to the kiosk page as the `settings` message. */
+export const gamemodeDisplaySchema = z.object({
+  scene: z.enum(["auto", "drive", "music"]).default("auto"),
+  lyrics: z.boolean().default(true),
+  spectrum: z.boolean().default(true),
+  motion: z.enum(["low", "normal", "high"]).default("normal"),
+  /** Backlight percent while the mode runs; null = don't touch it. */
+  brightness: z.number().int().min(5).max(100).nullable().default(null),
+  clock24: z.boolean().default(true),
+  /** Dim the idle scene after this many minutes; 0 = never. */
+  dimIdleMinutes: z.number().int().min(0).max(120).default(10),
+});
+export type GamemodeDisplay = z.infer<typeof gamemodeDisplaySchema>;
+export const GAMEMODE_DISPLAY_DEFAULTS: GamemodeDisplay = gamemodeDisplaySchema.parse({});
+
 export const agentConfigSchema = z.object({
   version: z.literal(1),
   name: z.string().min(1).max(80),
@@ -235,6 +251,8 @@ export const agentConfigSchema = z.object({
     securityFix: z.boolean().default(false),
     /** Self-update from signed GitHub releases (only installs made by install.sh; see update.ts). */
     update: z.boolean().default(false),
+    /** Game mode (PLAN.md §19): the source feed (Velour, spectrum, ETS2) and/or the kiosk display on this machine. */
+    gamemode: z.boolean().default(false),
   }),
   devices: z.array(deviceSchema).default([]),
   /** Scoped service tokens (tps_…): they open only routes that declare one of their scopes. */
@@ -351,6 +369,16 @@ export const agentConfigSchema = z.object({
     .object({ url: z.url({ protocol: /^https?$/ }), token: z.string().min(1).max(200), wakeHostId: id.optional() })
     .nullable()
     .default(null),
+  /**
+   * Game mode ("gamemode" feature). source: the agent that serves WS /v1/gamemode/feed (its URL and a service token
+   * with the "gamemode" scope; the token is never returned by any API). display: the kiosk page settings.
+   */
+  gamemode: z
+    .object({
+      source: z.object({ url: z.url({ protocol: /^https?$/ }), token: z.string().min(1).max(200) }).nullable().default(null),
+      display: gamemodeDisplaySchema.default(GAMEMODE_DISPLAY_DEFAULTS),
+    })
+    .default({ source: null, display: GAMEMODE_DISPLAY_DEFAULTS }),
   /**
    * Compose stacks (PLAN.md §13.0): every directory directly under a root holding a compose file is a stack.
    * Separate from allowedRoots: stack actions (compose recreate) only touch files inside these roots.

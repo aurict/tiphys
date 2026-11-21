@@ -17,7 +17,7 @@ export const FEATURE_NAMES = Object.keys(agentConfigSchema.shape.features.shape)
 /** Never enabled by --detect: they run code, drive the desktop, cut power, read secrets or reach other machines. */
 export const RISKY_FEATURES: readonly FeatureName[] = [
   "control", "claude", "power", "securityFix", "databases", "research", "agy", "analysis", "configfiles",
-  "security", "telegram", "incidents", "wake", "homepage", "uptime", "watch", "alerts", "backups",
+  "security", "telegram", "incidents", "wake", "homepage", "uptime", "watch", "alerts", "backups", "gamemode",
 ];
 
 export interface Detected {

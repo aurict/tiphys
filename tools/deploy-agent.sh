@@ -18,13 +18,14 @@ npm run -s build
 STAGE=$(mktemp -d)
 cp -r dist helpers package.json package-lock.json "$STAGE/"  # helpers/: AT-SPI helper (11.4)
 find "$STAGE/helpers" -name __pycache__ -prune -exec rm -rf {} +
+[ -d ../display ] && cp -r ../display "$STAGE/display"  # Game mode kiosk page (served from ../display next to dist/)
 (cd "$STAGE" && npm ci --omit=dev --omit=optional --ignore-scripts --no-audit --no-fund >/dev/null)
 if find "$STAGE/node_modules" -name '*.node' | grep -q .; then
   echo "yerel (native) modül var; başka mimariye kopyalanamaz" >&2; exit 1
 fi
 
 "${SSH[@]}" 'command -v node >/dev/null || sudo DEBIAN_FRONTEND=noninteractive apt-get install -y -qq nodejs >/dev/null; mkdir -p ~/tiphys-agent'
-tar -C "$STAGE" -czf - . | "${SSH[@]}" 'rm -rf ~/tiphys-agent/dist ~/tiphys-agent/helpers ~/tiphys-agent/node_modules && tar -C ~/tiphys-agent -xzf -'
+tar -C "$STAGE" -czf - . | "${SSH[@]}" 'rm -rf ~/tiphys-agent/dist ~/tiphys-agent/helpers ~/tiphys-agent/display ~/tiphys-agent/node_modules && tar -C ~/tiphys-agent -xzf -'
 rm -rf "$STAGE"
 
 "${SSH[@]}" bash -s -- "$NAME" "$FEATURES" "${TIPHYS_TAILSCALE_LOGIN:-}" "${TIPHYS_EXACT_FEATURES:-}" <<'REMOTE'

@@ -90,6 +90,9 @@ const _endpointKey = 'app:pushEndpoint';
         ].join(' · '),
       ),
     'ui.opened' => (l.notifUiOpenedTitle, s('class')),
+    // Game mode (PLAN.md §19): only in the event stream; device is missing when the agent cleaned up after a restart.
+    'gamemode.started' => (l.gmEventStarted, s('device')),
+    'gamemode.stopped' => (l.gmEventStopped, s('device')),
     'telegram.stateCorrupt' => (l.notifTgStateCorruptTitle, l.notifTgStateCorruptBody),
     // Telegram newsletters (atlas): approval request (Send / Cancel buttons), sent, failed, research PC unreachable.
     'telegram.approval' => (l.notifTgApprovalTitle(s('feed')), l.notifTgApprovalBody(n('items'), n('recipients'))),

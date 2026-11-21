@@ -12,6 +12,7 @@
 //   firefox install            registers the Firefox bridge native messaging host (11.2)
 //   vscode-a11y install|remove adds/removes --force-renderer-accessibility in the VS Code launcher (11.4)
 //   service-token create --name N --scope research | list | revoke <id>   scoped tokens for other agents
+//   gamemode install-plugin|remove-plugin   ETS2 telemetry plugin (pinned release, SHA-256 checked) for Game mode
 //   lockdown --url https://atlas:7443   lost phone: asks for the recovery code (stdin), locks that agent and the agents
 //                              it fans out to (security center, PLAN.md §15 S-4)
 import { spawn } from "node:child_process";
@@ -177,6 +178,12 @@ async function main() {
       return;
     }
 
+    case "gamemode": {
+      const { pluginCli } = await import("./gamemode/ets2.ts");
+      console.log(await pluginCli(positionals[0]));
+      return;
+    }
+
     case "lockdown": {
       const url = values.url;
       if (!url || !/^https:\/\//.test(url)) throw new Error("kullanım: tiphys-agent lockdown --url https://SUNUCU:7443  (kurtarma kodu standart girdiden okunur)");
@@ -261,7 +268,7 @@ async function main() {
     }
 
     default:
-      console.error("komutlar: serve | init | pair | doctor | devices | revoke <id> | schema | run -- KOMUT | firefox install | vscode-a11y install|remove | service-token create|list|revoke");
+      console.error("komutlar: serve | init | pair | doctor | devices | revoke <id> | schema | run -- KOMUT | firefox install | vscode-a11y install|remove | service-token create|list|revoke | gamemode install-plugin|remove-plugin");
       process.exit(2);
   }
 }

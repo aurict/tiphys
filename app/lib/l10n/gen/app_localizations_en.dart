@@ -11895,6 +11895,14 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String get doctorGamemodePluginMissing =>
+      'Game mode: the ETS2 telemetry plugin is not installed.';
+
+  @override
+  String get doctorGamemodePluginOutdated =>
+      'Game mode: the ETS2 telemetry plugin is outdated.';
+
+  @override
   String doctorPushOk(String count) {
     return 'Push notifications: $count device(s) registered.';
   }
@@ -12255,4 +12263,304 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get onbRiskUpdate =>
       'Installs new signed agent releases when you tap Update. The agent restarts.';
+
+  @override
+  String get gmTitle => 'Game mode';
+
+  @override
+  String get gmStart => 'Start';
+
+  @override
+  String get gmStop => 'Stop';
+
+  @override
+  String get gmOff => 'Off';
+
+  @override
+  String get gmOn => 'On';
+
+  @override
+  String gmOnAt(String host) {
+    return 'On · $host';
+  }
+
+  @override
+  String gmDriving(String from, String to) {
+    return 'Driving: $from → $to';
+  }
+
+  @override
+  String gmDrivingSpeed(String speed) {
+    return 'Driving · $speed km/h';
+  }
+
+  @override
+  String gmOffHint(String host) {
+    return 'Opens the ambient screen on $host.';
+  }
+
+  @override
+  String get gmSceneAuto => 'Auto';
+
+  @override
+  String get gmSceneDrive => 'Driving';
+
+  @override
+  String get gmSceneMusic => 'Music';
+
+  @override
+  String get gmSceneIdle => 'Standby';
+
+  @override
+  String gmSceneNow(String scene) {
+    return 'Scene: $scene';
+  }
+
+  @override
+  String get gmScene => 'Scene';
+
+  @override
+  String get gmNothingPlaying => 'Nothing playing';
+
+  @override
+  String get gmEts2None => 'ETS2 not running';
+
+  @override
+  String get gmEts2Menu => 'ETS2 in the menu';
+
+  @override
+  String get gmEts2Paused => 'ETS2 paused';
+
+  @override
+  String get gmEts2Driving => 'ETS2 on the road';
+
+  @override
+  String get gmSectionDisplay => 'Display';
+
+  @override
+  String get gmLyrics => 'Lyrics';
+
+  @override
+  String get gmSpectrum => 'Spectrum';
+
+  @override
+  String get gmMotion => 'Animation intensity';
+
+  @override
+  String get gmMotionLow => 'Low';
+
+  @override
+  String get gmMotionNormal => 'Normal';
+
+  @override
+  String get gmMotionHigh => 'High';
+
+  @override
+  String get gmBrightness => 'Brightness';
+
+  @override
+  String get gmBrightnessKeep => 'Leave brightness alone';
+
+  @override
+  String get gmBrightnessKeepHint => 'The screen keeps the brightness it has.';
+
+  @override
+  String get gmClock24 => '24-hour clock';
+
+  @override
+  String get gmDimAfter => 'Dim after (min)';
+
+  @override
+  String get gmDimNever => 'Never';
+
+  @override
+  String get gmDimHint => 'Dims the screen when nothing is playing.';
+
+  @override
+  String get gmSectionConnections => 'Connections';
+
+  @override
+  String get gmDisplayHost => 'Display host';
+
+  @override
+  String get gmSourceHost => 'Source host';
+
+  @override
+  String get gmSourceUnknown => 'Source';
+
+  @override
+  String get gmStateOff => 'Idle';
+
+  @override
+  String get gmStateConnecting => 'Connecting';
+
+  @override
+  String get gmStateOk => 'Connected';
+
+  @override
+  String get gmStateDown => 'Unreachable';
+
+  @override
+  String get gmReconfigure => 'Set up again';
+
+  @override
+  String get gmSectionSetup => 'Setup';
+
+  @override
+  String get gmPlugin => 'ETS2 plugin';
+
+  @override
+  String gmPluginInstalled(String version) {
+    return 'Installed · $version';
+  }
+
+  @override
+  String get gmPluginInstalledPlain => 'Installed';
+
+  @override
+  String gmPluginOutdated(String version) {
+    return 'Outdated · $version';
+  }
+
+  @override
+  String get gmPluginMissing => 'Not installed';
+
+  @override
+  String get gmPluginNoGame => 'ETS2 was not found on the source PC.';
+
+  @override
+  String get gmPluginInstall => 'Install';
+
+  @override
+  String get gmPluginUpdate => 'Update';
+
+  @override
+  String get gmPluginRemove => 'Remove';
+
+  @override
+  String get gmPluginRemoveConfirm =>
+      'Remove the ETS2 telemetry plugin from the game folder?';
+
+  @override
+  String get gmTelemetryUnsupported => 'This game version is not supported.';
+
+  @override
+  String get gmTelemetryNone => 'No data from the game yet.';
+
+  @override
+  String get gmMap => 'Map data';
+
+  @override
+  String get gmMapPresent => 'Present';
+
+  @override
+  String get gmMapMissing => 'Missing';
+
+  @override
+  String get gmMapMissingHint =>
+      'The map is generated once from your game files; until then the driving scene has no map.';
+
+  @override
+  String get gmOpenVelour => 'Open Velour remote';
+
+  @override
+  String get gmVelourOff => 'Velour is not running on the source PC.';
+
+  @override
+  String get gmSourceInfoFailed => 'The source PC could not be queried.';
+
+  @override
+  String get gmSourceNoHost => 'The source PC is not one of your hosts.';
+
+  @override
+  String get gmErrNoSource =>
+      'No source is set up yet. Connect the music and game source first.';
+
+  @override
+  String get gmErrNoDisplay =>
+      'The display PC has no graphical session (Hyprland is not running).';
+
+  @override
+  String get gmErrStartFailed =>
+      'The ambient display could not be started on the display PC.';
+
+  @override
+  String get gmErrNoArt => 'This track has no cover art.';
+
+  @override
+  String get gmErrPluginDownloadFailed =>
+      'The ETS2 plugin could not be downloaded. Check the source PC’s internet connection.';
+
+  @override
+  String get gmErrPluginHashMismatch =>
+      'The downloaded ETS2 plugin failed verification; it was not installed.';
+
+  @override
+  String get gmErrPluginBadArchive =>
+      'The downloaded ETS2 plugin archive is broken; it was not installed.';
+
+  @override
+  String get gmEventStarted => 'Game mode started';
+
+  @override
+  String get gmEventStopped => 'Game mode stopped';
+
+  @override
+  String get gmFeatureOffTitle => 'Game mode is off on this host';
+
+  @override
+  String get gmFeatureOffBody =>
+      'Turn on the “Game mode” feature in the agent settings and restart the agent.';
+
+  @override
+  String get gmFeatureOpenSettings => 'Open agent settings';
+
+  @override
+  String get gmNoHostTitle => 'No host with game mode';
+
+  @override
+  String get gmNoHostBody =>
+      'Add a host with an agent and turn on its “Game mode” feature.';
+
+  @override
+  String get gmSetupTitle => 'Set up game mode';
+
+  @override
+  String get gmSetupIntro =>
+      'Pick the PC whose screen shows the ambient display and the PC that plays music and the game. Tiphys creates an access token for it and gives it to the display PC; the token is not stored on this phone.';
+
+  @override
+  String get gmSetupDisplay => 'Display PC (laptop)';
+
+  @override
+  String get gmSetupSource => 'Source PC (music and game)';
+
+  @override
+  String get gmSetupNeedTwo =>
+      'You need two different hosts with the “Game mode” feature turned on.';
+
+  @override
+  String get gmSetupConnect => 'Connect';
+
+  @override
+  String get gmSetupDoneTitle => 'Connected';
+
+  @override
+  String gmSetupDoneBody(String source) {
+    return 'The display PC will fetch music and game data from $source when the mode starts.';
+  }
+
+  @override
+  String gmSetupDownBody(String source) {
+    return 'Saved, but the display PC cannot reach $source right now.';
+  }
+
+  @override
+  String get gmSetupFinish => 'Done';
+
+  @override
+  String get gmCardSetup => 'Set up';
+
+  @override
+  String get homeCardsGameMode => 'Game mode';
 }

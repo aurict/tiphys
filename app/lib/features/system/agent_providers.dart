@@ -12,6 +12,7 @@ import '../../state/providers.dart';
 import '../agy/agy_texts.dart';
 import '../configfiles/configfiles_texts.dart';
 import '../databases/db_texts.dart';
+import '../gamemode/gamemode_texts.dart';
 import '../incidents/incident_texts.dart';
 import '../security/security_fix.dart' show fixErrorCodes, fixErrorText;
 import '../security/security_texts.dart';
@@ -184,6 +185,8 @@ String agentErrorText(AppLocalizations l, Object e) {
     // Config files and secrets (PLAN.md §13.3).
     final c when c.startsWith('agent.security.') || c.startsWith('agent.blackbox.') => securityErrorText(l, c, e.params),
     final c when c.startsWith('agent.agy.') => agyErrorText(l, c),
+    // Game mode (PLAN.md §19).
+    final c when c.startsWith('agent.gamemode.') => gameModeErrorText(l, c),
     final c when c.startsWith('agent.update.') => updateErrorText(l, c, e.params),
     final c when c.startsWith('agent.db.') => dbErrorText(l, c, e.params),
     final c when c.startsWith('agent.configfiles.') => configErrorText(l, c, e.params),

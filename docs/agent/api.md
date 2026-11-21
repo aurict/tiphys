@@ -15,7 +15,7 @@ Source of truth: `agent/src/server.ts` (registration), `agent/src/routes/*.ts`, 
   - [Always available](#always-available)
   - [system](#system) · [services](#services) · [docker](#docker) · [power](#power) · [wake](#wake) · [ports](#ports) · [transcribe](#transcribe) · [git](#git) · [homepage](#homepage)
   - [desktop](#desktop): [clipboard, screenshot, open](#clipboard-screenshot-open) · [media](#media) · [windows and apps](#windows-and-apps) · [Sunshine](#sunshine) · [Firefox bridge](#firefox-bridge) · [mobile view](#mobile-view-at-spi) · [live screen](#live-screen)
-  - [claude](#claude) · [agy](#agy) · [watch](#watch) · [alerts](#alerts) · [backups](#backups) · [uptime](#uptime) · [research](#research) · [analysis](#analysis) · [telegram](#telegram) · [incidents](#incidents) · [configfiles](#configfiles) · [databases](#databases) · [security](#security)
+  - [claude](#claude) · [agy](#agy) · [watch](#watch) · [alerts](#alerts) · [backups](#backups) · [uptime](#uptime) · [research](#research) · [analysis](#analysis) · [telegram](#telegram) · [incidents](#incidents) · [configfiles](#configfiles) · [databases](#databases) · [security](#security) · [gamemode](#gamemode)
 - [Protocols](#protocols)
   - [Live screen WebSocket](#live-screen-websocket)
   - [Claude session WebSocket](#claude-session-websocket)
@@ -37,8 +37,9 @@ Source of truth: `agent/src/server.ts` (registration), `agent/src/routes/*.ts`, 
 
 | Mechanism | Applies to | Details |
 | --- | --- | --- |
-| Service token | only routes that declare its scope (today: `research` → `POST /v1/research/jobs`, `GET`/`DELETE /v1/research/jobs/:id`; `analysis` → `POST /v1/analysis/jobs`, `GET`/`DELETE /v1/analysis/jobs/:id`; `security-report` → `GET /v1/security/raw`; `blackbox` → `POST /v1/blackbox/append`; `lockdown` → `POST /v1/security/lockdown/remote`) | `Authorization: Bearer tps_…` (header only, never `?token=`). Issued for another agent with `tiphys-agent service-token create` or `POST /v1/service-tokens`; shown once, stored as a SHA-256 hash. Any other route, including unknown paths, returns `403 agent.auth.scopeDenied`. The Tailscale identity check applies as for devices. The audit log records the caller as `service:<id>`. A request with an unknown `tps_`/`tph_` token on any route is the same `401 agent.auth.invalidToken`, and if the token is a security-center decoy it also raises an alarm (see [traps](#traps-and-alerts)). |
+| Service token | only routes that declare its scope (today: `research` → `POST /v1/research/jobs`, `GET`/`DELETE /v1/research/jobs/:id`; `analysis` → `POST /v1/analysis/jobs`, `GET`/`DELETE /v1/analysis/jobs/:id`; `security-report` → `GET /v1/security/raw`; `blackbox` → `POST /v1/blackbox/append`; `lockdown` → `POST /v1/security/lockdown/remote`; `gamemode` → `WS /v1/gamemode/feed`) | `Authorization: Bearer tps_…` (header only, never `?token=`). Issued for another agent with `tiphys-agent service-token create` or `POST /v1/service-tokens`; shown once, stored as a SHA-256 hash. Any other route, including unknown paths, returns `403 agent.auth.scopeDenied`. The Tailscale identity check applies as for devices. The audit log records the caller as `service:<id>`. A request with an unknown `tps_`/`tph_` token on any route is the same `401 agent.auth.invalidToken`, and if the token is a security-center decoy it also raises an alarm (see [traps](#traps-and-alerts)). |
 | None (own credential) | `POST /v1/security/lockdown` only (route config `public`) | Needs no token, because the phone and its token are lost: the body's recovery code is the credential (see [lost phone](#lost-phone-and-lockdown)). The Tailscale-login check **still applies** (`403 agent.auth.tailnetUserNotAllowed` when `requireTailscaleLogin` is set and the header differs). Rate limited per address and in total, see the error table. |
+| Display token (Game mode kiosk) | `WS /v1/gamemode/live`, `GET /v1/gamemode/art`, static `GET /gamemode/*` (route config `kiosk`) | The local kiosk Firefox reaches the agent on `127.0.0.1` without Tailscale headers, so these routes skip the device-token **and** Tailscale-identity checks. Static files hold no secrets. The live socket and the art proxy need `?t=<display token>`: 32 random bytes (hex), made at each start, in memory only, invalid after stop. See [gamemode](#gamemode). |
 | Device token | every route except `GET /v1/health` | `Authorization: Bearer tph_…`. Created by `tiphys-agent pair`; only its SHA-256 hash is stored, and comparison is constant-time. For WebSockets the token may also be sent as the `?token=` query parameter. |
 | Tailscale identity | every route except `GET /v1/health` | When `requireTailscaleLogin` is set, the `Tailscale-User-Login` header (added by `tailscale serve`) must equal it. Otherwise `403 agent.auth.tailnetUserNotAllowed`. |
 | Control token | mutating desktop routes, live screen, Firefox tabs, mobile view, Sunshine actions, Claude PC sessions | `X-Tiphys-Control: tpc_…`, obtained from `POST /v1/desktop/control/session`. It must belong to the calling device and not be expired, and the `control` feature must be on. |
@@ -169,6 +170,14 @@ Every error has the same envelope. The agent sends codes, never sentences; the a
 | `agent.db.countChanged` | 409 | Write commit: the statement now affects a different number of rows than previewed (`params.expected`, `actual`); rolled back |
 | `agent.db.failed` | 502 | Unexpected driver/child failure (`params.reason` or `message`) |
 | `agent.research.busy` | 429 | Research queue full (1 running + 5 waiting) |
+| `agent.gamemode.noSource` | 409 | Game mode start without a source agent configured |
+| `agent.gamemode.noDisplay` | 503 | Game mode start without a Hyprland session |
+| `agent.gamemode.startFailed` | 502 | `systemd-run` could not start the kiosk unit (`params.stderr`) |
+| `agent.gamemode.noArt` | 404 | No such cover: not the current song, not https, too large, not an image, or a wrong display token |
+| `agent.gamemode.noGame` | 404 | No Linux ETS2 found in the Steam libraries |
+| `agent.gamemode.pluginDownloadFailed` | 502 | The pinned ETS2 plugin release could not be downloaded |
+| `agent.gamemode.pluginHashMismatch` | 502 | The download or the plugin inside does not match the pinned SHA-256 |
+| `agent.gamemode.pluginBadArchive` | 502 | The release zip does not hold the plugin file |
 | `agent.research.notFound` | 404 | Unknown research job (or another service token's job) |
 | `agent.telegram.notConfigured` | 409 | No bot token stored yet (`PUT /v1/telegram/bot`) |
 | `agent.telegram.invalidToken` | 400 | Bot token malformed or rejected by Telegram (`getMe`) |
@@ -333,8 +342,9 @@ macOS/Windows code is in `src/platform/` and loads only there. What an OS can't 
 
 | Platform | `unsupported` |
 | --- | --- |
-| Linux, macOS | `[]` |
-| Windows | `services.user`, `services.logs`, `processes.signal.INT`, `processes.signal.HUP`, `desktop.velour`, `desktop.firefoxBridge` (Unix sockets) |
+| Linux | `[]` |
+| macOS | `gamemode` |
+| Windows | `services.user`, `services.logs`, `processes.signal.INT`, `processes.signal.HUP`, `desktop.velour`, `desktop.firefoxBridge` (Unix sockets), `gamemode` |
 
 `tiphys-agent init --detect` and `doctor` never turn on or recommend a whole feature that is listed. The per-feature
 overview is in [System › Platforms](../features/system.md#platforms).
@@ -1138,6 +1148,115 @@ Device tokens only. Behaviour: [Outside view](../features/security.md#outside-vi
 #### Notifications (S-2 to S-5)
 
 Overview of the keys above, all sent by the monitoring server's agent (or whichever agent runs the feature): `security.vulns`, `security.secretFound`, `security.trap`, `security.exposure`, `security.attack`, `blackbox.broken`, `security.lockdown`. `security.trap`, `security.secretFound`, `blackbox.broken`, `security.lockdown` and `security.change` with `severity: critical` are relayed to the owner's Telegram as a title only (`🚨 Tiphys güvenlik · <host> · <title>`, Turkish text). Notices that are not `sensitive` are also appended to the black box as `event` records.
+
+### gamemode
+
+Feature `gamemode` (`gamemode/*.ts`; Linux only). The laptop next to the PC becomes an ambient second screen: the
+song playing in Velour (cover colours, spectrum, synced lyrics), the ETS2 cockpit and the truck's position. Both sides
+load with the flag; which one a machine plays depends on use: the **source** (PC) serves the feed, the **display**
+(laptop) runs the kiosk and relays the feed. Nothing runs until a feed subscriber connects (source) or the mode is
+started (display).
+
+**Display host (laptop)**
+
+| Method | Path | Auth | Description |
+| --- | --- | --- | --- |
+| GET | `/v1/gamemode` | device | `{running, startedAt\|null, settings, source: {configured, url\|null, state: off\|connecting\|ok\|down}, map: {present}, live: {music: {title, artist, playing}\|null, truck: {state, from\|null, to\|null, speedKmh\|null}\|null}}`. `live` is filled only while the mode runs (the upstream connection exists only then). The source token is never returned. |
+| PUT | `/v1/gamemode` | device | Strict `{settings?: Partial<settings>, source?: {url, token}\|null}` → same as GET. A partial `settings` changes only the fields sent; the open kiosk page gets a `settings` message at once. A new backlight value is applied at once while running. A new source reconnects the relay. |
+| POST | `/v1/gamemode/start` | device | Idempotent → same as GET. `409 agent.gamemode.noSource` when no source is set, `503 agent.gamemode.noDisplay` without a Hyprland session, `502 agent.gamemode.startFailed` when `systemd-run` fails (everything done so far is undone). |
+| POST | `/v1/gamemode/stop` | device | Idempotent → same as GET. |
+| WS | `/v1/gamemode/live?t=<display token>` | display token | Kiosk page socket. On connect: the latest `settings`, `source`, `music`, `lyrics`, `truck`; then every relayed message and binary spectrum frame (frames only while `settings.spectrum`). Page → agent: `{"type":"stop"}` (Esc held 1 s) stops the mode. Closed with `4410` on stop. A wrong or old token is `401` before the upgrade. |
+| GET | `/v1/gamemode/art?t=<display token>&id=<artId>` | display token | The cover of the **current** `music` message only: its `artUrl` must be https; ≤ 5 MB, image magic bytes, 10 s timeout, 8 covers cached in memory. Anything else `404 agent.gamemode.noArt`. |
+| GET | `/gamemode/`, `/gamemode/<file>` | none (kiosk) | The kiosk page from the repo's `display/` folder (resolved as `../display` next to the agent's `dist/`, then the repo root's `display/`). |
+| GET | `/gamemode/map/<file>` | none (kiosk) | Map data from `~/.local/share/tiphys/gamemode/map/` (`$XDG_DATA_HOME` respected) with single-range requests (`206`, `416`). |
+
+Static path rules: each URL segment is decoded once; empty, `.`, `..`, hidden (`.x`) segments, `/`, `\` or NUL after
+decoding, more than 8 segments and unknown extensions (allowed: html, js, mjs, css, json, svg, png, webp, jpg, woff2,
+woff, ttf, otf, wasm, pbf, pmtiles) are `404`; the resolved real path (symlinks followed) must stay inside the root;
+no directory listing. `Cache-Control: no-cache`, `X-Content-Type-Options: nosniff`.
+
+Settings (`config.gamemode.display`): `{scene: auto|drive|music, lyrics, spectrum, motion: low|normal|high,
+brightness: 5..100|null (null = don't touch the backlight), clock24, dimIdleMinutes: 0..120 (0 = never)}`.
+
+Start, in order: tmpfs work dir `$XDG_RUNTIME_DIR/tiphys-gamemode/` (0700) with an empty Firefox profile (`user.js`: no
+session restore, telemetry, updates, first-run pages or fullscreen warning; WebRender and hardware acceleration on)
+and a state file; a leftover `tiphys-gamemode` unit is stopped first; the active workspace is remembered; the named
+window rule `tiphys-gamemode` for the app id `tiphys-gamemode` (workspace `name:yol`, fullscreen, border 0, no shadow,
+rounding 0, no animation) is set with `hyprctl keyword windowrule[tiphys-gamemode]:…` (classic config) or
+`hyprctl eval 'hl.window_rule({…})'` (Lua config); the backlight is saved and set (`brightnessctl`; no permission =
+untouched); workspace `name:yol` is focused; then:
+
+```
+systemd-run --user --unit=tiphys-gamemode --collect -p StandardOutput=null -p StandardError=null \
+  --setenv=WAYLAND_DISPLAY=… --setenv=XDG_RUNTIME_DIR=… --setenv=HYPRLAND_INSTANCE_SIGNATURE=… \
+  --setenv=DBUS_SESSION_BUS_ADDRESS=… --setenv=MOZ_ENABLE_WAYLAND=1 -- \
+  systemd-inhibit --what=idle:sleep "--why=Tiphys Oyun Modu" \
+  firefox --kiosk --no-remote --name tiphys-gamemode --profile <work dir>/profile file://<work dir>/start.html
+```
+
+`start.html` (0600, tmpfs) forwards to `http://127.0.0.1:<port>/gamemode/#t=<display token>`, so the token is never on
+a command line. Stop (phone, page, Firefox gone — the unit is checked every 5 s — or agent shutdown): `systemctl --user
+stop tiphys-gamemode.service` (the whole cgroup), the work dir is removed, the rule is disabled
+(`windowrule[tiphys-gamemode]:enable false` / `enabled = false`), the previous workspace is focused again if you are
+still on `yol`, the backlight is restored, the token dies, page sockets and the upstream close. If the agent crashed
+while the mode ran, the next start finds the state file and does the same. The event log gets only
+`gamemode.started` / `gamemode.stopped`.
+
+Relay: the display agent opens `wss://<source>/v1/gamemode/feed` with `Authorization: Bearer <source token>` only while
+the mode runs; reconnects after 1, 2, 4, 8, 15, 30 s (`source {state: "down", retryInSec}`); a feed silent for 15 s is
+reconnected. Known JSON messages (`music`, `lyrics`, `truck`, `event`) and 25-byte spectrum frames are relayed
+verbatim; anything else is dropped. `truck` messages and frames are skipped for a page with more than 256 KB queued.
+
+**Source host (PC)**
+
+| Method | Path | Auth | Description |
+| --- | --- | --- | --- |
+| WS | `/v1/gamemode/feed` | service (`gamemode`) or device | The feed (messages below). One shared producer for all subscribers, started by the first and stopped by the last (Velour long-poll ends, `pw-record` is killed). A new subscriber gets the latest `music`, `lyrics` and `truck` at once. Nothing is accepted from subscribers. |
+| GET | `/v1/gamemode/source` | device | `{velour: bool, audio: bool, ets2: {gameDir\|null, plugin: installed\|missing\|outdated, version\|null, running: bool, telemetry: ok\|unsupported\|none}}` |
+| POST | `/v1/gamemode/plugin` | device | Strict `{action: install\|remove}` → same as GET source. `404 agent.gamemode.noGame` without a Linux ETS2 in the Steam libraries, `502 agent.gamemode.pluginDownloadFailed`, `502 agent.gamemode.pluginHashMismatch`, `502 agent.gamemode.pluginBadArchive`. CLI: `tiphys-agent gamemode install-plugin\|remove-plugin`. |
+
+Producers: **music** long-polls Velour's `wait` and sends `music` when `rev` changes, `lyrics` on a track change, `next`
+from `queue` when the track or `queueRev` changes; Velour unreachable → `{type: "music", none: true}`, retried every
+3 s. **Spectrum** runs only while Velour plays: `pw-record --target <default sink node.name> -P '{ stream.capture.sink=true
+node.name=tiphys-gamemode-spectrum }' --rate 16000 --channels 1 --format s16 --latency 20ms --raw -` (the output's
+monitor, never the microphone), Hann-windowed 1024-point FFT, 24 log bands 40 Hz–7.6 kHz, 48 dB range under a moving
+ceiling, attack/release smoothing, 30 fps. **Truck** reads ETS2's shared memory 20 times a second while driving, once
+a second otherwise. Titles, lyrics and job details are never logged.
+
+ETS2: [truckermudgeon/scs-sdk-plugin](https://github.com/truckermudgeon/scs-sdk-plugin) v1.12.1 (MIT), release asset
+`build-ubuntu-latest.zip` (SHA-256 `ac2f9871e2fa14edbf6c6c9c408fada04376545bdf83838d9fb59652e9b50a7e`) holding
+`libscs-telemetry.so` (SHA-256 `ca18a9b32b99c79942f5cdd35e0236b070a5ff10fe3d17b3edf8ac2436b2aecc`), written to
+`<game>/bin/linux_x64/plugins/`. The game directory comes from Steam's `libraryfolders.vdf` (native, `~/.steam`,
+Flatpak and Snap Steam). The plugin's shared memory `/SCSTelemetry` (layout revision 12) is read from
+`/dev/shm/SCSTelemetry`, or for Flatpak Steam from `/proc/<eurotrucks2 pid>/root/dev/shm/SCSTelemetry`. Another
+revision → `telemetry: "unsupported"` and only `state: "none"` truck messages. States: no game process → `none`
+(`reason: "noGame"`); game running without the shared memory (plugin missing or not loaded) → `none` (`reason:
+"noPlugin"`); another layout revision → `none` (`reason: "unsupported"`); SDK inactive or paused before a profile is
+loaded → `menu`; paused → `paused`; else `driving`. `timeScale` is the game's time compression from the telemetry
+(game seconds per real second; 19 on roads, lower on ferries and trains), left out when the game reports none (the
+page then assumes 19).
+
+Messages (JSON text, `type` first, SI units unless named; binary frames: byte 0 = `0x01`, bytes 1–24 = bands 0–255):
+
+```
+{type:"settings", ...settings}                                  // display agent only
+{type:"source", state:"connecting"|"ok"|"down", retryInSec?}    // display agent only
+{type:"music", playing, title, artist, album|null, artId|null, artUrl|null, duration, position, at, next:[{title, artist}]}
+  | {type:"music", none:true}
+{type:"lyrics", artId|null, title, kind:"synced"|"plain"|"none", lines:[{t, text}]}
+{type:"truck", state:"none"|"menu"|"paused"|"driving", at, speed, speedLimit|null, rpm, rpmMax, gear, gears, fuel, fuelCap,
+  fuelRange, cruise, parkingBrake, lowBeam, highBeam, beacon, blinkerL, blinkerR, wear, cargoDamage|null, x, z, heading,
+  gameTime, timeScale?, restMinutes|null, job:{from, to, toCityId, toCompanyId, cargo, income, currency,
+  deadlineGameTime|null}|null, nav:{distance, time}|null}
+  // state "none" → only {type, state, reason, at}, reason: "noGame"|"noPlugin"|"unsupported"
+{type:"event", kind:"fine"|"ferry"|"train"|"toll"|"delivered"|"cancelled"|"fuelLow"|"rest", amount?, currency?, detail?}
+```
+
+`artUrl` (the https cover from Velour, `null` otherwise) is the one addition to the plan's contract: the display agent
+needs it for the art proxy. `artId` is the first 12 hex characters of its SHA-256. Events: each flip of the plugin's
+gameplay-event flags is one event (`amount` and `currency` EUR/USD from the event fields; `detail`: the fine offence,
+or the ferry/train target); `fuelLow` once when fuel/capacity drops below 0.15 (re-armed above 0.17); `rest` once when
+the next rest stop drops below 60 game minutes; the first sample after the game appears only sets the baseline.
 
 ## Protocols
 

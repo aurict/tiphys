@@ -38,6 +38,7 @@ import 'png.dart';
 import 'agy_fixtures.dart';
 import 'config_fixtures.dart';
 import 'db_fixtures.dart';
+import 'gamemode_fixtures.dart';
 import 'incident_fixtures.dart';
 import 'security_fixtures.dart';
 import 'security_more_fixtures.dart';
@@ -74,7 +75,7 @@ class NoBiometrics implements Biometrics {
 }
 
 class Harness {
-  Harness({Profile? profile, Map<String, String>? secrets, this.homeData = sampleHomeData, this.pin, this.extra = const [], this.agent, this.biometrics, this.agentFeatures = defaultAgentFeatures, this.clock, this.onboarded = true, this.agentVersion = '0.4.0', this.health})
+  Harness({Profile? profile, Map<String, String>? secrets, this.homeData = sampleHomeData, this.pin, this.extra = const [], this.agent, this.biometrics, this.agentFeatures = defaultAgentFeatures, this.clock, this.onboarded = true, this.agentVersion = '0.5.0', this.health})
       : profile = profile ?? exampleProfile(),
         secrets = MemorySecretStore(secrets ?? {'ssh-phone': 'x', 'agent-argo': 'x', 'grafana-atlas': 'x'});
   final Profile profile;
@@ -225,14 +226,14 @@ class FakeAgent extends AgentClient {
   static Object updateApply = {'ok': true, 'version': '0.4.0', 'restarting': true};
 
   /// Version in GET /v1/agent/status.
-  static String statusVersion = '0.4.0';
+  static String statusVersion = '0.5.0';
 
   static void resetSetup() {
     capabilities = null;
     doctor = null;
     update = null;
     updateApply = {'ok': true, 'version': '0.4.0', 'restarting': true};
-    statusVersion = '0.4.0';
+    statusVersion = '0.5.0';
   }
 
   static dynamic _orNotFound(Object? v) {
@@ -303,6 +304,11 @@ class FakeAgent extends AgentClient {
 
   /// Security center S-2…S-5 (scanners, traps, outside view, attacks, black box, lost phone).
   static FakeSecurityMoreState securityMore = FakeSecurityMoreState();
+
+  /// Game mode (GET/PUT/POST /v1/gamemode*, service tokens); tests change it, call [resetGame] at the start.
+  static FakeGameState game = FakeGameState();
+
+  static void resetGame() => game = FakeGameState();
 
   /// Database console (GET/POST /v1/db/*).
   static FakeDbState db = FakeDbState();
@@ -449,6 +455,7 @@ class FakeAgent extends AgentClient {
     }
     calls.add((method, path, method == 'GET' && query != null ? query : body));
     if (path.startsWith('/v1/agy/')) return agy.route(method, path, body, query);
+    if (path.startsWith('/v1/gamemode') || path.startsWith('/v1/service-tokens')) return game.route(hostId, method, path, body);
     if (path == '/v1/fs/dirs') {
       return {
         'path': '/home/user',
@@ -1368,7 +1375,7 @@ class FakePcNotifications implements PcNotifications {
 
 /// GET /v1/doctor (agent's format): one failure with a fix, two warnings, the rest OK.
 Map<String, dynamic> sampleDoctor() => {
-      'version': '0.4.0',
+      'version': '0.5.0',
       'checks': [
         {'id': 'tailscale', 'status': 'ok', 'code': 'doctor.tailscale.ok', 'params': {'dnsName': 'argo.my-tailnet.ts.net'}},
         {'id': 'tailscale.serve', 'status': 'fail', 'code': 'doctor.tailscale.notServed', 'params': {'port': 7443}, 'fix': 'sudo tailscale serve --bg --https=7443 http://127.0.0.1:7443'},
@@ -1378,7 +1385,7 @@ Map<String, dynamic> sampleDoctor() => {
         {'id': 'disk', 'status': 'warn', 'code': 'doctor.disk.low', 'params': {'freeMb': 1480, 'totalMb': 240000}},
         {'id': 'node', 'status': 'ok', 'code': 'doctor.node.ok', 'params': {'node': '24.11.0'}},
         {'id': 'push', 'status': 'warn', 'code': 'doctor.push.notConfigured', 'params': {}},
-        {'id': 'version', 'status': 'ok', 'code': 'doctor.version.latest', 'params': {'current': '0.4.0', 'latest': '0.4.0'}},
+        {'id': 'version', 'status': 'ok', 'code': 'doctor.version.latest', 'params': {'current': '0.5.0', 'latest': '0.5.0'}},
       ],
     };
 
