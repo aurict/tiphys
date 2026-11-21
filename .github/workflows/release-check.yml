@@ -65,10 +65,10 @@ jobs:
       - run: docker build -f packaging/docker/Dockerfile -t tiphys-agent:check .
       - name: Starts read-only as non-root and becomes healthy
         run: |
-          docker run -d --name t --read-only --tmpfs /tmp -e TIPHYS_FEATURES=system tiphys-agent:check
+          docker run -d --name tiphys-check --read-only --tmpfs /tmp -e TIPHYS_FEATURES=system tiphys-agent:check
           for i in $(seq 1 30); do
-            s=$(docker inspect -f '{{.State.Health.Status}}' t); [ "$s" = healthy ] && break; sleep 2
+            s=$(docker inspect -f '{{.State.Health.Status}}' tiphys-check); [ "$s" = healthy ] && break; sleep 2
           done
-          docker exec t id -u | grep -qx 1000
-          docker inspect -f '{{.State.Health.Status}}' t | grep -qx healthy
-          docker rm -f t
+          docker exec tiphys-check id -u | grep -qx 1000
+          docker inspect -f '{{.State.Health.Status}}' tiphys-check | grep -qx healthy
+          docker rm -f tiphys-check
