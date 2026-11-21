@@ -1,0 +1,158 @@
+/* Work / Focus cards (PLAN.md §20 E-2, E-3, E-5): the W0 draft's side cards (display/draft/draft.css) as shared styles
+   on the app tokens (tokens.css) and glass (app.css). Every card has a header (.card-k), a body and a state note
+   (connecting / source down / empty). No infinite animation; transitions only on data changes. */
+
+/* ---------- top bar: "proje › dal" ---------- */
+.topbar .hdr { min-width: 0; max-width: 100%; }
+.topbar .title { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.topbar .title .arrow { color: var(--label); font-weight: 600; margin: 0 .25em; }
+
+/* ---------- city placeholder (W3) ---------- */
+.work-main { display: flex; align-items: center; justify-content: center; }
+.city-soon { display: flex; flex-direction: column; align-items: center; gap: 10px; color: var(--muted-icon); text-align: center; max-width: 420px; }
+.city-soon .t1 { font-size: 24px; font-weight: 800; color: var(--label); margin-top: 6px; }
+.city-soon .t2 { font-size: 17px; font-weight: 600; line-height: 1.45; color: var(--text-secondary); }
+
+/* ---------- card frame ---------- */
+.side-col { overflow: hidden; }
+.wcard { padding: 18px 22px; min-height: 0; flex: none; display: flex; flex-direction: column; }
+.card-k { order: -2; display: flex; align-items: center; gap: 9px; font-size: 16px; font-weight: 700; color: var(--label); min-width: 0; }
+.card-k > .ic { width: 18px; height: 18px; }
+.card-k .aside { margin-left: auto; font-weight: 600; font-size: 15px; color: var(--label); display: flex; align-items: center; gap: 8px; min-width: 0; white-space: nowrap; }
+.card-k .aside > span { overflow: hidden; text-overflow: ellipsis; }
+.card-k .aside .sep { width: 1px; height: 14px; background: rgba(255, 255, 255, .16); flex: none; }
+.card-body { min-height: 0; transition: opacity 300ms ease; }
+.card-note { display: none; padding: 14px 2px 4px; }
+.card-note .n1 { font-size: 18px; font-weight: 700; color: var(--text); }
+.card-note .n2 { font-size: 15px; font-weight: 600; color: var(--label); margin-top: 4px; line-height: 1.4; }
+.card-note .n2:empty { display: none; }
+.wcard[data-state="connecting"] .card-body, .wcard[data-state="empty"] .card-body { display: none; }
+.wcard[data-state="connecting"] .card-note, .wcard[data-state="empty"] .card-note, .wcard[data-state="down"] .card-note { display: block; }
+.wcard[data-state="connecting"] .card-note .n1 { color: var(--label); font-weight: 600; }
+/* Source down: the last data stays, dimmed, with the note on top. */
+.wcard[data-state="down"] .card-body { opacity: .35; }
+.wcard[data-state="down"] .card-note { order: -1; padding: 8px 0 2px; }
+.wcard[data-state="down"] .card-note .n1 { color: var(--danger); font-size: 16px; }
+.wcard[data-state="down"] .card-note .n2 { display: none; }
+
+/* Middle ellipsis: the head shrinks, the tail (file name, last argument) stays. */
+.mid { display: flex; min-width: 0; white-space: nowrap; }
+.mid .a { overflow: hidden; text-overflow: ellipsis; min-width: 0; flex: 0 1 auto; }
+.mid .b { flex: none; white-space: pre; }
+
+/* ---------- Gün (compact) ---------- */
+.day-card.compact { padding: 18px 24px; flex-direction: column-reverse; align-items: flex-start; gap: 8px; }
+.day-card.compact .day-clock { font-size: 66px; }
+.day-card.compact .day-suffix { font-size: 22px; margin-left: 8px; }
+.day-card.compact .overline { font-size: 16px; }
+
+/* ---------- Kaynaklar ---------- */
+.rings { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-top: 12px; }
+.rings.two { grid-template-columns: repeat(2, 1fr); }
+.gauge { display: flex; align-items: center; gap: 14px; min-width: 0; }
+.gauge-ring { position: relative; width: 78px; height: 78px; flex: none; }
+.gauge-ring .ring { width: 100%; height: 100%; }
+.gauge-ring circle { stroke-width: 10; }
+.gauge-ring .arc { transition: stroke-dasharray 600ms ease, stroke .4s ease; }
+.gauge-ring .pct { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-size: 22px; font-weight: 800; letter-spacing: -0.03em; }
+.gauge-ring .pct small { font-size: 13px; font-weight: 700; color: var(--label); margin-left: 1px; }
+.gtxt { min-width: 0; }
+.gauge .gk { font-size: 17px; font-weight: 800; }
+.gauge .gs { font-size: 14px; font-weight: 600; color: var(--label); margin-top: 3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.g-cpu .arc { stroke: var(--accent); } .g-ram .arc { stroke: var(--host-2); } .g-gpu .arc { stroke: var(--host-3); }
+.gauge.hot .arc { stroke: var(--warning); }
+.gauge.hot .gs { color: var(--warning); }
+.batt { display: inline-flex; align-items: center; gap: 5px; color: var(--text); }
+.batt .ic { width: 16px; height: 16px; color: var(--label); }
+.batt.low, .batt.low .ic { color: var(--danger); }
+
+/* ---------- İşler ---------- */
+.jobs-card { flex: 0 1 auto; }
+.jobs { display: flex; flex-direction: column; margin-top: 8px; }
+.job { display: grid; grid-template-columns: 40px minmax(0, 1fr) auto; align-items: center; gap: 14px; padding: 8px 0; border-top: 1px solid rgba(255, 255, 255, .07); }
+.job:first-child { border-top: 0; }
+.job .jb { width: 40px; height: 40px; border-radius: 12px; display: flex; align-items: center; justify-content: center; background: rgba(165, 180, 252, .14); color: var(--accent); }
+.job .jb .ic { width: 20px; height: 20px; }
+.job .jm { min-width: 0; }
+.job .jn { font: 700 17px var(--mono); }
+.job .js { font-size: 14px; font-weight: 600; color: var(--label); margin-top: 3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.job .jr { text-align: right; }
+.job .jt { font-size: 20px; font-weight: 800; letter-spacing: -0.02em; white-space: nowrap; }
+.job .jc { font: 600 14px var(--mono); color: var(--label); margin-top: 3px; white-space: nowrap; }
+.job .cpu-bar { width: 84px; height: 4px; border-radius: 4px; background: var(--ring-track); overflow: hidden; margin: 5px 0 0 auto; }
+.job .cpu-bar i { display: block; height: 100%; width: 100%; background: var(--accent); border-radius: 5px; transform-origin: 0 50%; transition: transform 600ms ease; }
+.job.done .jb { background: rgba(48, 209, 88, .14); color: var(--success); }
+.job.done .jt { font-size: 15px; color: var(--success); font-weight: 700; }
+.job.fail .jb { background: rgba(255, 105, 97, .16); color: var(--danger); }
+.job.fail .jt { font-size: 15px; color: var(--danger); font-weight: 700; }
+.job.done .jn, .job.fail .jn { color: #C7C7CC; }
+.jobs-more { font-size: 14px; font-weight: 600; color: var(--label); }
+.jobs-more:empty { display: none; }
+
+/* ---------- Git ---------- */
+.git-card { flex: none; }
+.git-top { display: flex; align-items: center; gap: 12px; margin-top: 12px; min-width: 0; }
+.branch { display: inline-flex; align-items: center; gap: 9px; height: 42px; padding: 0 16px 0 12px; border-radius: 14px; min-width: 0;
+  background: rgba(165, 180, 252, .14); color: var(--accent); font: 700 18px var(--mono); }
+.branch .ic { width: 19px; height: 19px; }
+.branch .bn { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ab { display: flex; gap: 8px; font: 700 16px var(--mono); color: var(--label); flex: none; }
+.ab span { padding: 7px 11px; border-radius: 10px; background: var(--chip); }
+.ab .on { color: var(--accent); }
+.git-counts { display: flex; gap: 18px; margin-left: auto; flex: none; }
+.gc { text-align: right; }
+.gc b { display: block; font-size: 24px; font-weight: 800; letter-spacing: -0.02em; line-height: 1.1; }
+.gc span { font-size: 13px; font-weight: 600; color: var(--label); }
+.gc.warn b { color: var(--warning); } .gc.bad b { color: var(--danger); }
+.commits { margin-top: 10px; display: flex; flex-direction: column; gap: 2px; }
+.commit { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 12px; align-items: baseline; padding: 6px 0; }
+.commit .h { font: 700 15px var(--mono); color: var(--accent); }
+.commit .s { font-size: 16px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.commit .t { font-size: 14px; font-weight: 600; color: var(--label); white-space: nowrap; }
+.commit + .commit .s { color: #C7C7CC; }
+.commit.fresh .h { color: var(--success); }
+.commit.none { display: block; font-size: 15px; color: var(--label); }
+.ci { display: inline-flex; align-items: center; gap: 6px; }
+.ci i { width: 9px; height: 9px; border-radius: 9px; background: var(--label); }
+.ci-ok i { background: var(--success); } .ci-fail i { background: var(--danger); } .ci-running i { background: var(--warning); }
+.git-card .aside .root { color: var(--text); font-weight: 700; }
+
+/* ---------- Müzik (small) ---------- */
+.mu-card .card-k { display: none; }
+.mu-card .card-body { display: flex; align-items: center; gap: 18px; }
+.mu-card { padding: 16px 20px; }
+.mu-card .mc-cover { width: 76px; height: 76px; border-radius: 16px;
+  background: radial-gradient(120% 120% at 20% 10%, rgba(242, 169, 133, .85), rgba(124, 116, 240, .55) 55%, rgba(20, 20, 26, .95)); }
+.mu-card .mc-cover .cover-none { color: rgba(255, 255, 255, .8); }
+.mu-text { flex: 1; min-width: 0; }
+.mu-text .np-label { display: flex; align-items: center; gap: 8px; font-size: 14px; font-weight: 700; color: var(--label); }
+.mu-card:not(.playing) .live-dot { background: var(--label); box-shadow: none; }
+.mu-t { font-size: 21px; font-weight: 800; letter-spacing: -0.015em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 2px; }
+.mu-a { font-size: 16px; font-weight: 600; color: #C7C7CC; margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.mu-card .progress { margin-top: 10px; }
+.mu-card .progress .bar { height: 4px; }
+.mu-card .progress .fill { transition: transform 600ms ease; }
+.mu-card .progress .times { font-size: 13px; margin-top: 6px; }
+.mu-card[data-state="empty"] .card-k, .mu-card[data-state="connecting"] .card-k, .mu-card[data-state="down"] .card-k { display: flex; }
+
+/* ---------- Sunucular ---------- */
+.srv-card.line { padding: 14px 22px; }
+.srv-card.line .card-body, .srv-card.line .card-note { display: none; }
+.srv-card.line[data-state="down"] .card-k .aside { display: none; }
+.srv-card.line[data-state="down"] .card-note { display: block; order: 0; padding: 0; position: absolute; right: 22px; top: 14px; }
+.srv-card .ok-dot { width: 9px; height: 9px; border-radius: 9px; background: var(--success); box-shadow: 0 0 10px rgba(48, 209, 88, .55); flex: none; }
+.srv-card.bad { border-color: rgba(255, 105, 97, .45); }
+.srv-card.bad .card-k .aside { color: var(--danger); }
+.srv-list { display: flex; flex-direction: column; margin-top: 8px; }
+.srv { display: grid; grid-template-columns: 28px minmax(0, 1fr) auto; align-items: center; gap: 10px; padding: 6px 0; }
+.srv .sd { color: var(--danger); }
+.srv .sn { font-size: 17px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.srv .st { font-size: 14px; font-weight: 600; color: var(--label); white-space: nowrap; }
+
+/* ---------- Focus: clock + music + servers under it ---------- */
+.focus-center { flex-direction: column; gap: 28px; }
+.focus-side { display: flex; flex-direction: column; gap: var(--gutter); width: 640px; max-width: 100%; }
+
+/* ---------- pill: top right in Work/Focus (as in the draft), never over the title's start ---------- */
+body[data-mode="work"] .pill, body[data-mode="focus"] .pill { left: auto; right: 40px; top: 34px; translate: none; }
+body[data-mode="work"] .pill-text, body[data-mode="focus"] .pill-text { max-width: 620px; }

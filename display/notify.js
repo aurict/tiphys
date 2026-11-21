@@ -2,6 +2,7 @@
 import { icon } from './icons.js';
 import { fmtMoney, fmtInt } from './format.js';
 
+const dur = (sec) => (sec == null ? null : sec < 60 ? `${sec} sn` : sec < 3600 ? `${Math.floor(sec / 60)} dk` : `${Math.floor(sec / 3600)} sa ${Math.floor((sec % 3600) / 60)} dk`);
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
 
 /** Turkish copy for an `event` message (or a local one) → {icon, tone, html}; null for unknown kinds. */
@@ -22,6 +23,12 @@ export function eventCopy(ev, truck) {
     case 'rest': return { icon: 'rest', tone: 'warning', html: `<b>Mola zamanı</b>${sub(ev.detail ?? 'Bir dinlenme yerine uğra')}` };
     case 'linkDown': return { icon: 'linkOff', tone: 'danger', html: `<b>Bağlantı koptu</b>${sub(ev.detail)}` };
     case 'linkUp': return { icon: 'link', tone: 'success', html: `<b>Bağlantı geri geldi</b>` };
+    // Work mode (W2): jobs, commits, servers.
+    case 'jobDone': return { icon: 'check', tone: 'success', html: `<b>İş bitti</b>${sub([ev.detail, dur(ev.durationSec)].filter(Boolean).join(' · '))}` };
+    case 'jobFail': return { icon: 'x', tone: 'danger', html: `<b>İş başarısız · çıkış ${esc(ev.exitCode)}</b>${sub(ev.detail)}` };
+    case 'commit': return { icon: 'commit', tone: 'accent', html: `<b>Commit</b>${sub(ev.detail)}` };
+    case 'serverDown': return { icon: 'server', tone: 'danger', html: `<b>Sunucu düştü</b>${sub(ev.detail)}` };
+    case 'serverUp': return { icon: 'server', tone: 'success', html: `<b>Sunucu geri geldi</b>${sub(ev.detail)}` };
     default: return null;
   }
 }
