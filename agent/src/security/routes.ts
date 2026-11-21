@@ -455,7 +455,7 @@ export function securityRoutes(opts: SecurityRouteOpts = {}) {
         record("audit", { ...e });
       };
       const unobserveBox = ctx.notifier.observe((n) => {
-        if (!n.sensitive) record("event", { key: n.key, params: n.params ?? {} });
+        if (!n.sensitive && !n.transient) record("event", { key: n.key, params: n.params ?? {} });
       });
       app.addHook("onClose", async () => {
         ctx.onAudit = undefined;

@@ -202,6 +202,9 @@ async function screenChecks(d: DoctorDeps, c: AgentConfig): Promise<Check[]> {
   }
   if (display && !d.which("brightnessctl")) out.push(warn("feature.screen.brightness", "doctor.feature.toolsMissing", { feature: "screen", tools: ["brightnessctl"] }));
   if (!d.which("pw-record")) out.push(warn("feature.screen.audio", "doctor.feature.toolsMissing", { feature: "screen", tools: ["pw-record"] }));
+  // Work mode CI dot (optional): `gh` on this host as a source, logged in. Without it the Git card has no CI dot.
+  if (!d.which("gh")) out.push(ok("feature.screen.ci", "doctor.screen.ciUnavailable", { reason: "missing" }));
+  else if ((await d.exec("gh", ["auth", "status"], { timeoutMs: 10_000 })).code !== 0) out.push(ok("feature.screen.ci", "doctor.screen.ciUnavailable", { reason: "loggedOut" }));
   const { findGameDir, pluginStatus } = await import("./screen/ets2.ts");
   const game = await findGameDir();
   if (game) {
@@ -274,6 +277,7 @@ const TEXT: Record<string, string> = {
   "doctor.node.old": "Node.js {node} works; 24 is recommended.",
   "doctor.node.ok": "Node.js {node}.",
   "doctor.feature.toolsMissing": "Feature \"{feature}\" is on but needs: {tools}.",
+  "doctor.screen.ciUnavailable": "Screen modes: no CI status on the Git card ({reason}: `gh` is needed, logged in).",
   "doctor.feature.dockerDenied": "Feature \"docker\" is on but {socket} is not accessible to this user.",
   "doctor.feature.unsupported": "Feature \"{feature}\" is on but does not work on {platform}.",
   "doctor.feature.dockerUnreachable": "Feature \"docker\" is on but the Docker daemon does not answer (is Docker Desktop running?).",

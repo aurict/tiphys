@@ -18,6 +18,8 @@ export interface Notice {
    * with a WebPush key (end-to-end encrypted); plain text never goes to ntfy.
    */
   sensitive?: boolean;
+  /** Not written to the event stream either, but sent to every endpoint (e.g. the screen mode summary: numbers only). */
+  transient?: boolean;
   /**
    * Local hints for observers only (e.g. a container's compose project and service); never sent, never recorded.
    */
@@ -77,7 +79,7 @@ export class Notifier {
     }
     const { endpoints, token } = this.#getConfig().push;
     const body = payloadOf(n);
-    const recorded = n.sensitive ? undefined : this.events?.record({ key: n.key, params: eventParams(n), link: n.link }, (e) => this.#log("olay yazılamadı", e));
+    const recorded = n.sensitive || n.transient ? undefined : this.events?.record({ key: n.key, params: eventParams(n), link: n.link }, (e) => this.#log("olay yazılamadı", e));
     const results = await Promise.all(
       endpoints.map(async (e) => {
         if (n.sensitive && !(e.pubKey && e.auth)) return false;

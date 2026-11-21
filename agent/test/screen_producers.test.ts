@@ -4,14 +4,15 @@
 // first-subscriber-starts / last-subscriber-stops rule with nothing left behind. Fixture files in temp dirs, fake
 // children and watchers; no real nvidia-smi, git, gh or Hyprland.
 import { EventEmitter } from "node:events";
-import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
+import { execFileSync } from "node:child_process";
+import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { PassThrough } from "node:stream";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { terminalSessions } from "../src/claude/terminal.ts";
 import { realFileIo, type FileIo } from "../src/screen/producers/common.ts";
-import { gitMessage, GitTopic, parseCi, parseCommits, type GitIo } from "../src/screen/producers/git.ts";
+import { gitMessage, GitTopic, GitWatch, parseCi, parseCommits, realGitIo, type GitIo } from "../src/screen/producers/git.ts";
 import { classify, displayCmd, JobsProducer, jobsChanged, matchKnown, parseCpuStat, parseStat, stripWrappers } from "../src/screen/producers/jobs.ts";
 import { gitRootOf, parseProject, pickProject, ProjectSelector, relativeTo, rootLabel, shellCwd, type SelectorIo } from "../src/screen/producers/project.ts";
 import { serversMessage, ServersProducer } from "../src/screen/producers/servers.ts";
@@ -432,6 +433,146 @@ describe("git", () => {
 });
 
 // ---------------------------------------------------------------- project
+
+describe("git CI (W7)", () => {
+  /** Fake git io that answers gh with `ci` (null: gh fails) and counts the calls. */
+  function ciIo(o: { gh: boolean; ci: () => string | null }) {
+    const calls: Array<{ cmd: string; args: string[]; timeoutMs: number }> = [];
+    const io: GitIo = {
+      run: async (cmd, args, opt) => {
+        calls.push({ cmd, args, timeoutMs: opt.timeoutMs });
+        if (cmd === "gh") {
+          const out = o.ci();
+          return out === null ? { stdout: "", code: 4 } : { stdout: out, code: 0 };
+        }
+        if (args.includes("status")) return { stdout: "# branch.oid aaaaaaa\n# branch.head main\n", code: 0 };
+        return { stdout: "", code: 0 };
+      },
+      watch: () => ({ close() {} }),
+      read: async () => null,
+      list: async () => [],
+      has: (c) => c === "gh" && o.gh,
+    };
+    return { io, gh: () => calls.filter((c) => c.cmd === "gh") };
+  }
+
+  it("every 5 minutes with a 10 s timeout while on; never while off; no gh or a failing gh → ci null", async () => {
+    vi.useFakeTimers();
+    cleanups.push(() => vi.useRealTimers());
+    let out: string | null = '[{"status":"completed","conclusion":"success","createdAt":"t"}]';
+    const f = ciIo({ gh: true, ci: () => out });
+    const got: Array<Record<string, unknown>> = [];
+    const w = new GitWatch("/w/a", f.io, (d) => got.push(JSON.parse(d) as Record<string, unknown>));
+    await w.start();
+    await vi.advanceTimersByTimeAsync(30 * 60_000);
+    expect(f.gh()).toEqual([]); // off: zero calls in half an hour
+    w.setCi(true);
+    await vi.advanceTimersByTimeAsync(10);
+    expect(f.gh().length).toBe(1);
+    expect(f.gh()[0]!.timeoutMs).toBe(10_000);
+    expect(got.at(-1)!.ci).toEqual({ state: "ok", at: "t" });
+    await vi.advanceTimersByTimeAsync(5 * 60_000 - 100);
+    expect(f.gh().length).toBe(1);
+    await vi.advanceTimersByTimeAsync(200);
+    expect(f.gh().length).toBe(2);
+    out = null; // logged out / no GitHub remote / timeout
+    await vi.advanceTimersByTimeAsync(5 * 60_000);
+    expect(f.gh().length).toBe(3);
+    expect(got.at(-1)!.ci).toBeNull();
+    w.setCi(false);
+    await vi.advanceTimersByTimeAsync(30 * 60_000);
+    expect(f.gh().length).toBe(3);
+    w.stop();
+    expect(w.active).toBe(false);
+    // gh not installed: on, but nothing is called and ci stays null.
+    const n = ciIo({ gh: false, ci: () => "[]" });
+    const got2: Array<Record<string, unknown>> = [];
+    const w2 = new GitWatch("/w/a", n.io, (d) => got2.push(JSON.parse(d) as Record<string, unknown>));
+    await w2.start();
+    w2.setCi(true);
+    await vi.advanceTimersByTimeAsync(20 * 60_000);
+    expect(n.gh()).toEqual([]);
+    expect(got2.every((m) => m.ci === null)).toBe(true);
+    w2.stop();
+  });
+
+  it("end to end with a fake gh on PATH and a real repository: pass/fail/running/none/logged out/timeout; off spawns nothing", async () => {
+    const dir = await mkdtemp(join(tmpdir(), "tiphys-w7-ci-"));
+    cleanups.push(() => rm(dir, { recursive: true, force: true }));
+    const bin = join(dir, "bin");
+    const repo = join(dir, "repo");
+    await mkdir(bin);
+    await mkdir(repo);
+    const git = (...a: string[]) => execFileSync("git", ["-C", repo, "-c", "user.name=t", "-c", "user.email=t@example.com", ...a], { stdio: "ignore" });
+    git("init", "-q", "-b", "main");
+    await writeFile(join(repo, "a.txt"), "a\n");
+    git("add", "a.txt");
+    git("commit", "-q", "-m", "first");
+    const run = (conclusion: string, status = "completed") => `[{"status":"${status}","conclusion":"${conclusion}","createdAt":"2026-11-21T10:00:00Z"}]`;
+    const script = `#!/bin/sh
+echo "$*" >> "${dir}/calls"
+case "$(cat "${dir}/mode")" in
+  pass) echo '${run("success")}' ;;
+  fail) echo '${run("failure")}' ;;
+  running) echo '${run("", "in_progress")}' ;;
+  none) echo '[]' ;;
+  loggedout) echo "To get started with GitHub CLI, please run:  gh auth login" >&2; exit 4 ;;
+  slow) exec sleep 30 ;;
+esac
+`;
+    await writeFile(join(bin, "gh"), script, { mode: 0o755 });
+    const path = process.env.PATH;
+    process.env.PATH = `${bin}:${path}`;
+    cleanups.push(() => void (process.env.PATH = path));
+    const calls = async () => (await readFile(join(dir, "calls"), "utf8").catch(() => "")).split("\n").filter(Boolean);
+
+    // Off: a git subscriber without CI → status messages, zero gh processes.
+    const topic = new GitTopic({
+      io: realGitIo,
+      selector: () => ({ root: null, known: false, active: false, start() {}, stop() {} }),
+      resolve: async () => ({ root: repo }),
+      watch: { debounceMs: 20, ciTimeoutMs: 500 },
+    });
+    const got: Array<Record<string, unknown>> = [];
+    const sk: Sock = { readyState: 1, bufferedAmount: 0, send: (d) => void got.push(JSON.parse(String(d)) as Record<string, unknown>), close() {} };
+    await writeFile(join(dir, "mode"), "pass");
+    topic.set(sk, { project: repo, ci: false });
+    await until(() => got.some((m) => m.type === "git" && m.branch === "main"), 10_000);
+    await new Promise((r) => setTimeout(r, 300));
+    expect(await calls()).toEqual([]);
+    expect(got.at(-1)!.ci).toBeNull();
+    topic.set(sk, null);
+    expect(topic.active).toBe(false);
+
+    const matrix: Array<[string, unknown]> = [
+      ["pass", { state: "ok", at: "2026-11-21T10:00:00Z" }],
+      ["fail", { state: "fail", at: "2026-11-21T10:00:00Z" }],
+      ["running", { state: "running", at: "2026-11-21T10:00:00Z" }],
+      ["none", { state: "none", at: null }],
+      ["loggedout", null],
+      ["slow", null],
+    ];
+    for (const [mode, want] of matrix) {
+      await writeFile(join(dir, "mode"), mode);
+      const n = (await calls()).length;
+      const msgs: Array<Record<string, unknown>> = [];
+      const w = new GitWatch(repo, realGitIo, (d) => msgs.push(JSON.parse(d) as Record<string, unknown>), { ciTimeoutMs: 500 });
+      await w.start();
+      const t0 = Date.now();
+      w.setCi(true);
+      await until(() => msgs.some((m) => JSON.stringify(m.ci) === JSON.stringify(want)), 10_000);
+      // The failing ones: wait until gh was called and its answer (or the timeout) came back.
+      if (want === null) {
+        for (let i = 0; i < 200 && (await calls()).length === n; i++) await new Promise((r) => setTimeout(r, 10));
+        await new Promise((r) => setTimeout(r, mode === "slow" ? 700 : 150));
+      }
+      expect(msgs.at(-1)!.ci).toEqual(want);
+      expect((await calls()).slice(n)).toEqual(["run list --limit 1 --json status,conclusion,createdAt --branch main"]);
+      if (mode === "slow") expect(Date.now() - t0).toBeLessThan(5_000);
+      w.stop();
+    }
+  }, 30_000);
+});
 
 describe("project selection", () => {
   it("path containment: only paths inside the root, relative; the root as its basename", () => {

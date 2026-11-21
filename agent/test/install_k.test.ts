@@ -287,6 +287,17 @@ describe("doctor (K6)", () => {
     expect(by.version).toMatchObject({ status: "warn", code: "doctor.version.outdated" });
   });
 
+  it("screen modes: the CI dot needs gh, logged in (an info line, never a warning)", async () => {
+    const screen = (which: string[], authCode: number) => {
+      const d = deps({ which: (c) => which.includes(c), exec: fakeExec({ "gh auth": { stdout: "", code: authCode } }) });
+      d.config!.features.screen = true;
+      return runDoctor(d).then((r) => r.checks.find((c) => c.id === "feature.screen.ci") ?? null);
+    };
+    expect(await screen(["systemctl"], 0)).toMatchObject({ status: "ok", code: "doctor.screen.ciUnavailable", params: { reason: "missing" } });
+    expect(await screen(["systemctl", "gh"], 1)).toMatchObject({ status: "ok", code: "doctor.screen.ciUnavailable", params: { reason: "loggedOut" } });
+    expect(await screen(["systemctl", "gh"], 0)).toBeNull();
+  });
+
   it("missing Tailscale and missing config", async () => {
     const r = await runDoctor(deps({ exec: fakeExec({}), config: null }));
     const by = Object.fromEntries(r.checks.map((c) => [c.id, c]));

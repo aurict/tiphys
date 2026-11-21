@@ -101,8 +101,14 @@ export function findCpuTemp(io: FileIo, root = "/sys/class/hwmon"): string | nul
   return found.sort((a, b) => a.rank - b.rank)[0]?.file ?? null;
 }
 
+/**
+ * Where batteries are looked up. TIPHYS_SCREEN_POWER_DIR (test only, unset by default; docs/agent/configuration.md)
+ * points it at a directory of fake power_supply entries, to try the battery saver without unplugging anything.
+ */
+export const powerSupplyDir = () => (process.env.TIPHYS_SCREEN_POWER_DIR?.startsWith("/") ? process.env.TIPHYS_SCREEN_POWER_DIR : "/sys/class/power_supply");
+
 /** The first system battery (type Battery, not a device's: mouse, headset). */
-export function findBattery(io: FileIo, root = "/sys/class/power_supply"): string | null {
+export function findBattery(io: FileIo, root = powerSupplyDir()): string | null {
   for (const n of io.list(root).sort()) {
     const dir = `${root}/${n}`;
     if ((io.read(`${dir}/type`) ?? "").trim() !== "Battery") continue;
@@ -110,6 +116,15 @@ export function findBattery(io: FileIo, root = "/sys/class/power_supply"): strin
     if (io.read(`${dir}/capacity`) !== null) return dir;
   }
   return null;
+}
+
+/** A battery directory → level (0..100) and whether it is on mains ("Discharging" or no status = on battery). */
+export function readBattery(io: FileIo, dir: string): SystemSample["battery"] {
+  const raw = io.read(`${dir}/capacity`);
+  const level = raw === null ? NaN : Number(raw);
+  if (!Number.isFinite(level)) return null;
+  const status = (io.read(`${dir}/status`) ?? "").trim();
+  return { level: Math.max(0, Math.min(100, level)), charging: status !== "Discharging" && status !== "" };
 }
 
 /** Intel GT idle residency counter (ms): i915 (gt/gt0 or the older power/) or xe. */
@@ -231,12 +246,7 @@ export class SystemProducer implements StateProducer {
     if (!prev || st.total <= prev.total) return null;
     const cpu = 1 - (st.idle - prev.idle) / (st.total - prev.total);
     const t = this.#tempFile ? Number(io.read(this.#tempFile)) : NaN;
-    let battery: SystemSample["battery"] = null;
-    if (this.#battery) {
-      const level = Number(io.read(`${this.#battery}/capacity`));
-      const status = (io.read(`${this.#battery}/status`) ?? "").trim();
-      if (Number.isFinite(level)) battery = { level: Math.max(0, Math.min(100, level)), charging: status !== "Discharging" && status !== "" };
-    }
+    const battery = this.#battery ? readBattery(io, this.#battery) : null;
     return {
       cpu: round(Math.max(0, Math.min(1, cpu))),
       cores: st.cores,

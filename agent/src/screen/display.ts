@@ -23,6 +23,10 @@
 // Agent restart (a systemd restart job of the agent's own unit): the mode is left running (Firefox, work dir, rules)
 // and the next agent adopts it from the state file (token included, 0600 on tmpfs) while the unit is still active;
 // the page reconnects with the same token. Any other stop of the agent stops the mode as before.
+// Session summary (W7, summary.ts): counters fed by the relayed messages, memory only; a stop after ≥ 2 min sends ONE
+// `screen.summary` push (numbers only, not recorded). Battery saver (W7): while the display host runs on battery below
+// 30 % (back at 35 % or on mains) the page gets `power {saver:true}` (motion low, flat city); the level comes from the
+// `self` source's system messages and a read of /sys/class/power_supply every 30 s (no process).
 import { randomBytes, timingSafeEqual } from "node:crypto";
 import { createReadStream, existsSync } from "node:fs";
 import { mkdir, readFile, realpath, rename, rm, stat, writeFile } from "node:fs/promises";
@@ -47,6 +51,9 @@ import type { ProjectSpec } from "./producers/project.ts";
 import { checkLayout, layoutTopics, MESSAGE_TOPIC, STATE_TYPES, type Topic } from "./topics.ts";
 import { VisibilityWatcher, type VisibilityOpts } from "./visibility.ts";
 import { FOCUS_ACTIONS, FocusClock, IDLE, parseTimes, TASK_MAX, type FocusAction, type FocusPhase, type FocusTimes } from "./focus_timer.ts";
+import { realFileIo, type FileIo } from "./producers/common.ts";
+import { findBattery, powerSupplyDir, readBattery } from "./producers/system.ts";
+import { SessionSummary, SUMMARY_MIN_MS } from "./summary.ts";
 
 export const UNIT = "tiphys-screen";
 export { APP_ID } from "./placement.ts";
@@ -305,6 +312,22 @@ export interface DisplayOpts {
   mapDir?: string;
   maxBuffered?: number;
   visibility?: VisibilityOpts;
+  /** A mode that ran shorter than this stops without a summary push. */
+  summaryMinMs?: number;
+  /** Battery saver: where batteries are (default /sys/class/power_supply or TIPHYS_SCREEN_POWER_DIR) and how often read. */
+  power?: { dir?: string; everyMs?: number; io?: FileIo };
+}
+
+/** Battery saver thresholds (%): on below SAVER_ON, off again at SAVER_OFF or on mains. */
+export const SAVER_ON = 30;
+export const SAVER_OFF = 35;
+
+/** The saver's next state for a battery reading (hysteresis between the thresholds). */
+export function saverNext(prev: boolean, b: { level: number; charging: boolean } | null, enabled: boolean): boolean {
+  if (!enabled || !b || b.charging) return false;
+  if (b.level < SAVER_ON) return true;
+  if (b.level >= SAVER_OFF) return false;
+  return prev;
 }
 
 const emptyLatest = (): Latest => ({ music: null, truck: null, claude: null, jobs: null, raw: new Map(), city: null });
@@ -325,7 +348,7 @@ export class ScreenDisplay {
   readonly #ctx: Ctx;
   readonly #io: DisplayIo;
   readonly #feed: FeedProducer | null;
-  readonly #o: { backoff: number[]; idleMs: number; watchMs: number; maxBuffered: number; visibility: VisibilityOpts };
+  readonly #o: { backoff: number[]; idleMs: number; watchMs: number; maxBuffered: number; visibility: VisibilityOpts; summaryMinMs: number; power: { dir: string; everyMs: number; io: FileIo } };
   readonly #log: (msg: string, err?: unknown) => void;
   readonly workDir: string;
   readonly #mapFile: string;
@@ -345,13 +368,24 @@ export class ScreenDisplay {
   readonly #conns = new Map<string, Conn>();
   readonly #latest = new Map<string, Latest>();
   readonly #art = new Map<string, { type: string; bytes: Buffer }>();
+  /** The running mode's summary counters (memory only). */
+  #summary: SessionSummary | null = null;
+  /** The last stop (memory only): did it send a summary? The phone then leaves its held count to that push. */
+  #lastStop: { at: number; summary: boolean } | null = null;
+  /** Battery saver: on, the battery directory found at start, the /sys read timer. */
+  #saver = false;
+  #battery: string | null = null;
+  #powerTimer: NodeJS.Timeout | null = null;
 
   constructor(ctx: Ctx, io: DisplayIo, o: DisplayOpts, log: (msg: string, err?: unknown) => void) {
     this.#ctx = ctx;
     this.#io = io;
     this.#feed = o.feed ?? null;
     this.#log = log;
-    this.#o = { backoff: o.backoff ?? [1, 2, 4, 8, 15, 30], idleMs: o.idleMs ?? 15_000, watchMs: o.watchMs ?? 5000, maxBuffered: o.maxBuffered ?? 256 * 1024, visibility: o.visibility ?? {} };
+    this.#o = {
+      backoff: o.backoff ?? [1, 2, 4, 8, 15, 30], idleMs: o.idleMs ?? 15_000, watchMs: o.watchMs ?? 5000, maxBuffered: o.maxBuffered ?? 256 * 1024, visibility: o.visibility ?? {},
+      summaryMinMs: o.summaryMinMs ?? SUMMARY_MIN_MS, power: { dir: o.power?.dir ?? powerSupplyDir(), everyMs: o.power?.everyMs ?? 30_000, io: o.power?.io ?? realFileIo },
+    };
     this.workDir = join(io.runtimeDir, CURRENT.dir);
     this.#mapFile = join(o.mapDir ?? defaultMapDir(), "ets2.pmtiles");
   }
@@ -451,6 +485,8 @@ export class ScreenDisplay {
         }),
       ],
       veil: r?.veil ?? false,
+      power: { saver: this.#saver },
+      lastStop: this.#lastStop,
       focus: this.#focusState(),
       // The map files live on this (display) host, next to the page that draws them.
       map: { present: existsSync(this.#mapFile) },
@@ -576,7 +612,14 @@ export class ScreenDisplay {
     this.#resubscribe();
     this.#watch = setInterval(() => void this.#checkUnit(), this.#o.watchMs);
     this.#watch.unref?.();
+    this.#summary = new SessionSummary(Date.parse(state.startedAt) || Date.now(), state.mode);
     this.#focusFor(state.mode, focus);
+    this.#battery = findBattery(this.#o.power.io, this.#o.power.dir);
+    this.#power();
+    if (this.#battery) {
+      this.#powerTimer = setInterval(() => this.#power(), this.#o.power.everyMs);
+      this.#powerTimer.unref?.();
+    }
   }
 
   async #switch(mode: ScreenMode) {
@@ -585,6 +628,7 @@ export class ScreenDisplay {
     const missing = this.#missing(mode);
     if (missing.length) throw new AppError("agent.screen.noSource", 409, { sources: missing });
     st.mode = mode;
+    this.#summary?.mode(mode);
     await this.#save(st).catch(() => {});
     this.#focusFor(mode, null);
     await this.#applyBrightness(this.#settings(mode).brightness);
@@ -603,9 +647,13 @@ export class ScreenDisplay {
     return this.#serial(async () => {
       const state = this.#running;
       if (!state) return this.status();
-      this.#focusEnded();
+      const summary = this.#summary?.params(Date.now(), this.#o.summaryMinMs) ?? null;
+      this.#focusEnded(summary !== null);
       await this.#stopNow(state);
       this.#event("screen.stopped", device);
+      this.#lastStop = { at: Date.now(), summary: summary !== null };
+      // ONE notification at the stop: the phone adds the count of the notifications it held during Focus to it.
+      if (summary) void this.#ctx.notifier.send({ key: "screen.summary", params: summary, data: { agent: this.#ctx.store.get().name }, transient: true }).catch((e) => this.#log("ekran modu özeti gönderilemedi", e));
       return this.status();
     });
   }
@@ -628,6 +676,11 @@ export class ScreenDisplay {
     this.#paused = false;
     this.#focus?.stop();
     this.#focus = null;
+    this.#summary = null;
+    if (this.#powerTimer) clearInterval(this.#powerTimer);
+    this.#powerTimer = null;
+    this.#saver = false;
+    this.#battery = null;
     for (const p of [...this.#pages]) if (p.readyState === 0 || p.readyState === 1) p.close(code, reason);
     this.#pages.clear();
     this.#unsubscribeAll();
@@ -806,6 +859,7 @@ export class ScreenDisplay {
   #focusChanged(t: FocusTimes, cause: "timer" | "action" | null, from: FocusPhase) {
     if (!this.#running?.veil) this.#sendPages(this.#focusMsg(cause));
     if (!cause) return;
+    this.#summary?.focus(from, t.phase, cause);
     // No task text: the phone shows the phase (W6); the record says which phase began and why.
     const params = { phase: t.phase, from, round: t.round, cause };
     this.#focusPush(params, t.endsAt);
@@ -815,15 +869,18 @@ export class ScreenDisplay {
    * The phase push. `data` (sent, never recorded) tells the phone whether to quiet its notifications (`quiet`), when the
    * phase ends (`endsAt`, ms) and which agent runs the timer (`agent`), for its ongoing notification and its Pause button.
    */
-  #focusPush(params: { phase: FocusPhase; from: FocusPhase; round: number; cause: string }, endsAt: number | null) {
-    const data = { agent: this.#ctx.store.get().name, quiet: this.#cfg.modes.focus.quietPhone ? "1" : "0", ...(endsAt !== null ? { endsAt: String(endsAt) } : {}) };
+  #focusPush(params: { phase: FocusPhase; from: FocusPhase; round: number; cause: string }, endsAt: number | null, summary = false) {
+    const data = { agent: this.#ctx.store.get().name, quiet: this.#cfg.modes.focus.quietPhone ? "1" : "0", ...(endsAt !== null ? { endsAt: String(endsAt) } : {}), ...(summary ? { summary: "1" } : {}) };
     void this.#ctx.notifier.send({ key: "screen.focus.phase", params, data }).catch((e) => this.#log("odak bildirimi gönderilemedi", e));
   }
 
-  /** Focus ends with a running timer (mode stopped or switched): one `cause: "stop"` push so the phone ends its quiet. */
-  #focusEnded() {
+  /**
+   * Focus ends with a running timer (mode stopped or switched): one `cause: "stop"` push so the phone ends its quiet.
+   * `summary`: a `screen.summary` push follows (data.summary "1"); the phone keeps its held count for that one.
+   */
+  #focusEnded(summary = false) {
     const t = this.#focus?.times;
-    if (t && t.phase !== "idle") this.#focusPush({ phase: "idle", from: t.phase, round: t.round, cause: "stop" }, null);
+    if (t && t.phase !== "idle") this.#focusPush({ phase: "idle", from: t.phase, round: t.round, cause: "stop" }, null, summary);
   }
 
   /** POST /v1/screen/focus. Only while the Focus mode runs (409 agent.screen.notFocus otherwise). */
@@ -849,6 +906,20 @@ export class ScreenDisplay {
       if (!on) this.#sendLayout(st.mode);
       return this.status();
     });
+  }
+
+  // ---- battery saver (W7) ----
+
+  #powerMsg = () => JSON.stringify({ type: "power", saver: this.#saver });
+
+  /** A battery reading (the `self` system message's, or read from /sys now) → saver on/off, told to the page. */
+  #power(b?: { level: number; charging: boolean } | null) {
+    if (!this.#running) return;
+    const battery = b !== undefined ? b : this.#battery ? readBattery(this.#o.power.io, this.#battery) : null;
+    const next = saverNext(this.#saver, battery, this.#cfg.batterySaver);
+    if (next === this.#saver) return;
+    this.#saver = next;
+    this.#sendPages(this.#powerMsg());
   }
 
   // ---- visibility ----
@@ -928,6 +999,7 @@ export class ScreenDisplay {
         if (JSON.stringify(was.layout) !== JSON.stringify(now.layout)) this.#sendLayout(m);
         else if (JSON.stringify(was) !== JSON.stringify(now)) this.#sendPages(JSON.stringify({ type: "settings", ...this.#settings(m) }));
         if (now.brightness !== was.brightness) await this.#applyBrightness(now.brightness);
+        if (next.batterySaver !== before.batterySaver) this.#power();
         // A changed or removed source: reconnect (or drop) it.
         for (const name of [...this.#conns.keys()]) {
           if (JSON.stringify(before.sources[name]) !== JSON.stringify(next.sources[name])) this.#closeConn(name);
@@ -1106,6 +1178,8 @@ export class ScreenDisplay {
     if (!msg || typeof msg !== "object" || typeof msg.type !== "string") return;
     const topic = MESSAGE_TOPIC[msg.type];
     if (!topic || !topics.has(topic)) return;
+    this.#summary?.message(src, msg);
+    if (src === "self" && msg.type === "system" && msg.battery !== undefined) this.#power(msg.battery as { level: number; charging: boolean } | null);
     // Hidden: a page that draws nothing has no use for touch effects (the city state still follows).
     if (this.#paused && msg.type === "touch") return;
     const tagged = JSON.stringify({ src, ...msg });
@@ -1159,6 +1233,7 @@ export class ScreenDisplay {
       if (st.mode === "focus") sock.send(this.#focusMsg(null));
     }
     if (this.#paused) sock.send(JSON.stringify({ type: "pause" }));
+    if (this.#saver) sock.send(this.#powerMsg());
     void this.#showScratch().catch(() => {});
   }
 

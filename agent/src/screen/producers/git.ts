@@ -3,7 +3,8 @@
 // refs/heads and refs/remotes/* → 500 ms debounce → ONE `git status --porcelain=v2 --branch` + `git log -3`. Working
 // tree edits don't touch .git: while the root also has a `city` watcher (city.ts, one fs.watch per tracked
 // directory) its changes refresh the status (at most once a second); without one, a slow refresh (60 s) catches them.
-// CI (`gh run list`, 5 min, 10 s timeout) only while a subscriber of that root has the CI setting on (default off).
+// CI (`gh run list`, 5 min, 10 s timeout) only while a subscriber of that root has the CI setting on (default off);
+// no `gh`, not logged in, no GitHub remote, a timeout → `ci: null` (no error; `doctor` says why).
 // Sent: the root's basename, branch, ahead/behind, counts and the last 3 commits; no path at all. Unchanged state is
 // not sent. The topic below also places `city` subscribers (same project selection, one CityWatch per root).
 import { watch as fsWatch } from "node:fs";
@@ -109,6 +110,8 @@ export interface GitWatchOpts {
   debounceMs?: number;
   refreshMs?: number;
   ciMs?: number;
+  /** One `gh` call at most this long (10 s). */
+  ciTimeoutMs?: number;
   /** Working tree change → status after at most this long. */
   pokeMs?: number;
 }
@@ -140,7 +143,7 @@ export class GitWatch {
     this.root = root;
     this.#io = io;
     this.#send = send;
-    this.#o = { debounceMs: o.debounceMs ?? 500, refreshMs: o.refreshMs ?? 60_000, ciMs: o.ciMs ?? 5 * 60_000, pokeMs: o.pokeMs ?? 1000 };
+    this.#o = { debounceMs: o.debounceMs ?? 500, refreshMs: o.refreshMs ?? 60_000, ciMs: o.ciMs ?? 5 * 60_000, ciTimeoutMs: o.ciTimeoutMs ?? 10_000, pokeMs: o.pokeMs ?? 1000 };
   }
 
   get active() {
@@ -227,11 +230,14 @@ export class GitWatch {
   }
 
   async #checkCi() {
+    // The first check waits for the first status: the runs of the current branch.
+    if (!this.last) await this.update();
+    if (this.#stopped || !this.#ciOn) return;
     const branch = this.last ? (JSON.parse(this.last) as Rec).branch : null;
     const args = ["run", "list", "--limit", "1", "--json", "status,conclusion,createdAt", ...(typeof branch === "string" ? ["--branch", branch] : [])];
-    const r = await this.#io.run("gh", args, { cwd: this.root, timeoutMs: 10_000 });
+    const r = await this.#io.run("gh", args, { cwd: this.root, timeoutMs: this.#o.ciTimeoutMs });
     if (this.#stopped || !this.#ciOn) return;
-    this.#ci = r.code === 0 ? parseCi(r.stdout) : { state: "none", at: null };
+    this.#ci = r.code === 0 ? parseCi(r.stdout) : null;
     await this.update();
   }
 

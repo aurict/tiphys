@@ -1168,12 +1168,12 @@ network, no token). Nothing runs until a mode is started (display) or a topic is
 
 | Method | Path | Auth | Description |
 | --- | --- | --- | --- |
-| GET | `/v1/screen` | device | `{running, mode\|null, startedAt\|null, placement, visible\|null, settings: {placement, scratchBind, lastMode, batterySaver, share, modes}, sources: [{name, url\|null, state: off\|connecting\|ok\|down, topics}], veil, focus: {phase: idle\|focus\|short\|long, endsAt\|null, pausedLeft\|null, total\|null, round, longEvery, task\|null, now}, map: {present}, live: {music\|null, truck\|null, claude: {sessions, waiting}\|null, jobs\|null}}`. `sources` starts with `self`. `live.claude`/`live.jobs`: counts from the latest relayed `claude`/`jobs` messages (summed over sources; null when no source sent one), for the phone's one-line summary. `visible` is whether the kiosk is on screen (false = the page is paused). `veil`: the privacy veil is on. `focus`: the Focus timer (idle unless the Focus mode runs); times in ms since the epoch (`now` = the agent's clock, for skew), `pausedLeft`/`total` in ms, `round` = the current focus round (in a break the one just finished; 0 idle). Tokens are never returned. |
+| GET | `/v1/screen` | device | `{running, mode\|null, startedAt\|null, placement, visible\|null, settings: {placement, scratchBind, lastMode, batterySaver, share, modes}, sources: [{name, url\|null, state: off\|connecting\|ok\|down, topics}], veil, power: {saver}, lastStop: {at, summary}\|null, focus: {phase: idle\|focus\|short\|long, endsAt\|null, pausedLeft\|null, total\|null, round, longEvery, task\|null, now}, map: {present}, live: {music\|null, truck\|null, claude: {sessions, waiting}\|null, jobs\|null}}`. `sources` starts with `self`. `live.claude`/`live.jobs`: counts from the latest relayed `claude`/`jobs` messages (summed over sources; null when no source sent one), for the phone's one-line summary. `visible` is whether the kiosk is on screen (false = the page is paused). `veil`: the privacy veil is on. `power.saver`: the battery saver is on (below). `lastStop` (memory only, null until a stop): when the last mode stopped and whether it sent a `screen.summary` push (the phone then leaves its held-notification count to that push). `focus`: the Focus timer (idle unless the Focus mode runs); times in ms since the epoch (`now` = the agent's clock, for skew), `pausedLeft`/`total` in ms, `round` = the current focus round (in a break the one just finished; 0 idle). Tokens are never returned. |
 | PUT | `/v1/screen` | device | Strict `{settings?: {placement?, scratchBind?, lastMode?, batterySaver?, share?: {code}, modes?: {game?, work?, focus?: partial settings incl. layout}}, sources?: {<name>: {url, token}\|null}}` → same as GET. Only the fields sent change; `null` removes a source. A layout is checked (`400 agent.screen.badLayout`). While running: the page gets `settings` (or `layout`), the backlight follows, a changed source reconnects, subscriptions follow. |
 | POST | `/v1/screen/start` | device | `{mode?}` (default `lastMode`) → same as GET. Idempotent; while running a different mode is a switch. `409 agent.screen.noSource`, `409 agent.screen.bindTaken`, `503 agent.screen.noDisplay`, `502 agent.screen.startFailed` (everything done so far is undone). |
 | POST | `/v1/screen/mode` | device | `{mode}` → same as GET. Hot switch: the page gets a `layout` message (and the latest data again), the source subscriptions and the backlight follow; Firefox is not restarted. Not running: only `lastMode` is stored. |
 | POST | `/v1/screen/stop` | device | Idempotent → same as GET. |
-| POST | `/v1/screen/focus` | device | Strict `{action?: start\|pause\|resume\|skip\|reset, task?: string(≤ 80, one line)\|null}` (at least one) → `{focus}` (as in GET). Only while the Focus mode runs (`409 agent.screen.notFocus`). `start`: idle → focus round 1, in a break → the next round now, a paused round → resume; `pause`/`resume` keep the time left; `skip`: focus → short (or every `longEvery`-th round long) break, break → next round; `reset`: idle. A phase that ends starts the next one by itself. `task` alone sets the task line; `""`/`null` clears it. A phase change sends the page `focus` and records/pushes `screen.focus.phase {phase, from, round, cause: timer\|action}` (never the task); the push's `data` (sent, never recorded) has `agent` (this agent's name), `quiet` (`"1"` when `modes.focus.quietPhone`) and `endsAt` (ms, while ticking), for the phone's ongoing notification and its quiet filter. When the mode stops or switches away with a running timer, one more push `{phase: idle, from, round, cause: stop}`. |
+| POST | `/v1/screen/focus` | device | Strict `{action?: start\|pause\|resume\|skip\|reset, task?: string(≤ 80, one line)\|null}` (at least one) → `{focus}` (as in GET). Only while the Focus mode runs (`409 agent.screen.notFocus`). `start`: idle → focus round 1, in a break → the next round now, a paused round → resume; `pause`/`resume` keep the time left; `skip`: focus → short (or every `longEvery`-th round long) break, break → next round; `reset`: idle. A phase that ends starts the next one by itself. `task` alone sets the task line; `""`/`null` clears it. A phase change sends the page `focus` and records/pushes `screen.focus.phase {phase, from, round, cause: timer\|action}` (never the task); the push's `data` (sent, never recorded) has `agent` (this agent's name), `quiet` (`"1"` when `modes.focus.quietPhone`) and `endsAt` (ms, while ticking), for the phone's ongoing notification and its quiet filter. When the mode stops or switches away with a running timer, one more push `{phase: idle, from, round, cause: stop}`; its `data.summary` is `"1"` when a `screen.summary` push follows (the phone ends its quiet and leaves the held count to that one). |
 | POST | `/v1/screen/veil` | device | `{on}` → same as GET. Privacy veil: the page drops its view for a dim clock at once; until it is lifted the agent sends the page no layout or topic message (their state is kept and replayed when it lifts). Kept across an agent restart, gone with the mode. `409 agent.screen.notRunning` when no mode runs. |
 | WS | `/v1/screen/live?t=<display token>` | display token | Kiosk page socket. On connect: `layout`, every source's `source` state, the latest relayed messages, `focus` in Focus mode, `pause` if hidden (veiled: only `veil` and `pause`). Then relayed messages and binary spectrum frames. Page → agent: `{"type":"stop"}`. Closed with `4410` on stop, `1012` when the agent restarts (the page reconnects with the same token). |
 | GET | `/v1/screen/art?t=…&id=…` | display token | Cover proxy, as `/v1/gamemode/art` below. |
@@ -1182,7 +1182,7 @@ network, no token). Nothing runs until a mode is started (display) or a topic is
 Kiosk messages (agent → page): `{type:"layout", mode, template, cards:[{kind, source, enabled}], settings}`,
 `{type:"settings", ...}`, `{type:"source", name, state, retryInSec?}`, `{type:"pause"}`, `{type:"resume"}`,
 `{type:"focus", ...GET's focus, cause: "timer"\|"action"\|null}` (`timer`: the phase ended by itself → chime),
-`{type:"veil", on}`, and relayed
+`{type:"veil", on}`, `{type:"power", saver}` (battery saver on/off; also sent on connect while on), and relayed
 topic messages with their source added as `src` (`{"src":"main","type":"music",…}`); spectrum frames are binary.
 
 Lifecycle: as described for Game mode below, with the unit, app id, rule and tmpfs dir `tiphys-screen`
@@ -1203,6 +1203,19 @@ Lifecycle: as described for Game mode below, with the unit, app id, rule and tmp
 - **State file:** every side effect (unit, work dir, rule, keybind, previous workspace, backlight) is written before it
   is made; stop and the next agent start after a crash undo it. A 0.5 Game mode left in `tiphys-gamemode/` is cleaned
   up the same way. Events: `screen.started {mode}`, `screen.stopped` and `screen.focus.phase` (above).
+- **Session summary (W7):** while a mode runs the agent counts, in memory only, what the messages it relays say:
+  focus rounds that ran out (Focus), `commit` messages, `jobDone` (and those with a non-zero exit code), Claude
+  sessions seen and permission waits (new `pending` request ids; a terminal session turning `waiting`). A stop after a
+  run of ≥ 2 min sends ONE push `screen.summary {minutes, modes ("work,focus"), rounds, commits, jobs, failed, sessions,
+  waits}` with `data: {agent}`: numbers and mode names only (no file name, task, commit subject or session name), never
+  recorded (not in the event log, the black box or any file). Counters follow only the cards' topics (e.g. no commit
+  count without a city card). An agent restart (adoption) starts the counters again; the duration still counts from
+  the mode's start.
+- **Battery saver (W7, `screen.batterySaver`):** while running, the display host's first battery
+  (`/sys/class/power_supply/*` with `type` Battery) is read every 30 s (no process) and from the `self` source's
+  `system` messages. On battery below 30 % → `{type:"power", saver:true}`: the page forces motion `low` and the flat
+  city (other settings unchanged) and shows a small "Pil tasarrufu" chip; back on mains or at ≥ 35 % (or the setting
+  off) → `saver:false`. Test only: `TIPHYS_SCREEN_POWER_DIR` (see configuration.md).
 - **Agent restart:** when the agent's own systemd unit is being restarted (a `restart` job in `systemctl list-jobs`
   for the unit named in `/proc/self/cgroup`), a running mode is left as it is and the next agent adopts it from the
   state file (which also holds the display token, 0600 on tmpfs like `start.html`) if `tiphys-screen.service` is
@@ -1246,7 +1259,9 @@ Work topics (`screen/producers/*.ts`; each starts with its first subscriber, sto
   `{type:"jobDone", id, name, cmd, dir, kind, durationSec, exitCode: null}`.
 - `git` (non-recursive `fs.watch` on the git dir and refs, 500 ms debounce, one `git status` + `git log -3`; working
   tree changes come from the `city` watchers of the same project (≤ 1 s), without a city a 60 s refresh;
-  `gh run list` every 5 min only with `ci`): `{type:"git", root (basename), branch|null, head, upstream,
+  `gh run list --limit 1 --json status,conclusion,createdAt --branch <branch>` every 5 min (10 s timeout) only with
+  `ci`; no `gh`, not logged in, no GitHub run access or a timeout → `ci: null`, and `doctor` reports
+  `doctor.screen.ciUnavailable {reason: missing|loggedOut}` as an info line): `{type:"git", root (basename), branch|null, head, upstream,
   ahead, behind, changed, untracked, conflicts, commits:[{hash7, subject (≤80), at}], ci:{state, at}|null}` or
   `{type:"git", root|null, none: noProject|notRepo|notAllowed}`. `auto` = the most recently active Claude session's
   working directory (Tiphys or terminal), else the focused terminal's shell, walked up to the git root.

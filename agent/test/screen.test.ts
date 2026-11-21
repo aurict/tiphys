@@ -4,14 +4,15 @@
 // fallback to a 0.5 source. Fake exec, fake sockets; no real Hyprland, Firefox or Velour.
 import { EventEmitter } from "node:events";
 import { existsSync } from "node:fs";
-import { mkdir, mkdtemp, readdir, readFile, stat, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, readdir, readFile, rm, stat, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import { agentConfigSchema, ConfigStore, defaultConfig, defaultLayout, migrateConfig } from "../src/config.ts";
 import type { ExecResult } from "../src/exec.ts";
 import type { EventSocket } from "../src/focus.ts";
-import { displayRoutes, ownUnit, restartJob, userJs, type DisplayIo, type Upstream } from "../src/screen/display.ts";
+import { displayRoutes, ownUnit, restartJob, saverNext, userJs, type DisplayIo, type DisplayOpts, type Upstream } from "../src/screen/display.ts";
+import { SessionSummary } from "../src/screen/summary.ts";
 import { bindOffArgs, bindOnArgs, bindTaken, kioskWindow, moveToSpecialArgs, parseBind, ruleOnArgs, toggleSpecialArgs } from "../src/screen/placement.ts";
 import type { StateProducer } from "../src/screen/producers/common.ts";
 import { sourceRoutes, type FeedProducer, type Producers, type SourceIo } from "../src/screen/source.ts";
@@ -264,7 +265,12 @@ function velourIdle() {
   };
 }
 
-async function screenApp(o: { lua?: boolean; placement?: "fullscreen" | "scratch"; bindsTaken?: boolean; sources?: Record<string, { url: string; token: string }>; runtime?: string; restarting?: () => boolean } = {}) {
+async function screenApp(
+  o: {
+    lua?: boolean; placement?: "fullscreen" | "scratch"; bindsTaken?: boolean; sources?: Record<string, { url: string; token: string }>; runtime?: string; restarting?: () => boolean;
+    summaryMinMs?: number; power?: DisplayOpts["power"];
+  } = {},
+) {
   const runtime = o.runtime ?? (await mkdtemp(join(tmpdir(), "tiphys-screen-run-")));
   const calls: Call[] = [];
   let special = ""; // shown special workspace
@@ -318,7 +324,12 @@ async function screenApp(o: { lua?: boolean; placement?: "fullscreen" | "scratch
     [
       async (a, ctx) => {
         feed = sourceRoutes(a, ctx, { io: sio, idleMs: 30, heartbeatMs: 40, producers: fakeProducers() });
-        await displayRoutes(a, ctx, { io, feed, displayDir: null, mapDir: runtime, backoff: [0.02], watchMs: 60_000, visibility: { debounceMs: 5 } });
+        await displayRoutes(a, ctx, {
+          io, feed, displayDir: null, mapDir: runtime, backoff: [0.02], watchMs: 60_000, visibility: { debounceMs: 5 },
+          // No battery unless a test gives one (this machine's own must not decide a test).
+          power: o.power ?? { dir: join(runtime, "no-power-supply") },
+          ...(o.summaryMinMs !== undefined ? { summaryMinMs: o.summaryMinMs } : {}),
+        });
       },
     ],
   );
@@ -739,5 +750,140 @@ describe("screen focus timer and privacy veil", () => {
     // Not a restart (the default): stopping the agent stops the mode.
     await t2.close();
     expect(await stat(join(t.runtime, "tiphys-screen")).catch(() => null)).toBeNull();
+  });
+});
+
+// ---------------------------------------------------------------- W7: session summary, battery saver
+
+describe("session summary (W7)", () => {
+  it("counters from relayed messages only: commits, jobs (failed), sessions, permission waits, focus rounds; numbers only", () => {
+    const s = new SessionSummary(1_000_000, "work");
+    s.message("argo", { type: "commit", hash7: "abcdef1", subject: "gizli konu" });
+    s.message("argo", { type: "commit", hash7: "abcdef2", subject: "x" });
+    s.message("argo", { type: "jobDone", id: "j", name: "cargo", exitCode: null });
+    s.message("argo", { type: "jobDone", id: "k", name: "npm", exitCode: 2 });
+    s.message("argo", { type: "jobDone", id: "l", name: "npm", exitCode: 0 });
+    const claude = (sessions: object[]) => s.message("argo", { type: "claude", sessions });
+    claude([{ id: "a", status: "running", pending: [] }, { id: "t", status: "idle", pending: [] }]);
+    claude([{ id: "a", status: "waiting", pending: ["r1"] }, { id: "t", status: "waiting", pending: [] }]);
+    claude([{ id: "a", status: "waiting", pending: ["r1", "r2"] }, { id: "t", status: "waiting", pending: [] }]); // r2 new, t still waiting
+    claude([{ id: "a", status: "running", pending: [] }, { id: "t", status: "running", pending: [] }]);
+    claude([{ id: "t", status: "waiting", pending: [] }]); // t waits again
+    s.message("self", { type: "claude", sessions: [{ id: "a", status: "idle", pending: [] }] }); // another source's "a"
+    s.message("argo", { type: "touch", path: "x", kind: "edit" });
+    s.mode("focus");
+    s.mode("work");
+    s.focus("focus", "short", "timer");
+    s.focus("short", "focus", "timer"); // a break isn't a round
+    s.focus("focus", "long", "action"); // skipped, not completed
+    s.focus("focus", "long", "timer");
+    expect(s.params(1_000_000 + 119_999)).toBeNull();
+    const p = s.params(1_000_000 + 47 * 60_000 + 5_000)!;
+    expect(p).toEqual({ minutes: 47, modes: "work,focus", rounds: 2, commits: 2, jobs: 3, failed: 1, sessions: 3, waits: 4 });
+    expect(Object.values(p).every((v) => typeof v === "number" || v === "work,focus")).toBe(true);
+  });
+
+  it("stop after ≥ 2 min: ONE screen.summary push (not recorded, nothing on disk); shorter: none; a Focus stop tells the phone it follows", async () => {
+    const SUBJECT = "Gizli commit konusu W7";
+    const t = await screenApp({ summaryMinMs: 150, sources: { argo: { url: "https://argo.example.com:7443", token: "tps_x" } } });
+    const cards = defaultLayout("work").cards.map((c) => ({ ...c, source: ["city", "jobs"].includes(c.kind) ? "argo" : "self" }));
+    await t.req("PUT", "/v1/screen", { settings: { modes: { work: { layout: { template: "work", cards } } } } });
+    const sent = t.sent as Array<{ key: string; params: Record<string, unknown>; data?: Record<string, string>; transient?: boolean }>;
+    // Too short: no summary.
+    await t.req("POST", "/v1/screen/start", { mode: "work" });
+    const st = await t.req("POST", "/v1/screen/stop");
+    expect(st.json().lastStop).toMatchObject({ summary: false });
+    expect(sent.some((n) => n.key === "screen.summary")).toBe(false);
+
+    await t.req("POST", "/v1/screen/start", { mode: "work" });
+    const up = t.ups.at(-1)!;
+    up.open();
+    up.onmessage!({ data: JSON.stringify({ type: "commit", hash7: "abcdef1", subject: SUBJECT }) });
+    up.onmessage!({ data: JSON.stringify({ type: "jobDone", id: "j1", name: "vitest", cmd: "npx vitest run", dir: "gizli-dizin", kind: "proc", durationSec: 40, exitCode: null }) });
+    up.onmessage!({ data: JSON.stringify({ type: "claude", sessions: [{ id: "s1", name: "Gizli oturum adı", status: "waiting", pending: ["r1"] }] }) });
+    up.onmessage!({ data: JSON.stringify({ type: "music", title: "not subscribed from argo" }) });
+    await t.req("POST", "/v1/screen/mode", { mode: "focus" });
+    await t.req("POST", "/v1/screen/focus", { action: "start", task: "Gizli görev" });
+    await sleep(200);
+    const before = sent.length;
+    const stopped = (await t.req("POST", "/v1/screen/stop")).json();
+    expect(stopped.lastStop).toMatchObject({ summary: true });
+    await until(() => sent.some((n) => n.key === "screen.summary"));
+    const atStop = sent.slice(before);
+    // The phase push says a summary follows (the phone keeps its held count for it); the summary is the only notice.
+    expect(atStop.map((n) => n.key)).toEqual(["screen.focus.phase", "screen.summary"]);
+    expect(atStop[0]).toMatchObject({ params: { phase: "idle", cause: "stop" }, data: { summary: "1" } });
+    const sum = atStop[1]!;
+    expect(sum).toMatchObject({ transient: true, data: { agent: "test" }, params: { minutes: 0, modes: "work,focus", rounds: 0, commits: 1, jobs: 1, failed: 0, sessions: 1, waits: 1 } });
+    const text = JSON.stringify(sum);
+    for (const secret of [SUBJECT, "Gizli oturum adı", "gizli-dizin", "vitest", "Gizli görev", "abcdef1"]) expect(text).not.toContain(secret);
+    // Recorded: only started/stopped and the phase pushes; the summary is nowhere on disk.
+    await sleep(50);
+    const events = (await readFile(join(t.dir, "events.jsonl"), "utf8")).trim().split("\n").map((l) => JSON.parse(l) as { key: string });
+    expect(events.map((e) => e.key).filter((k) => k.startsWith("screen.") && k !== "screen.focus.phase")).toEqual(["screen.started", "screen.stopped", "screen.started", "screen.stopped"]);
+    for (const dir of [t.dir, t.runtime]) {
+      for (const f of await readdir(dir, { recursive: true })) {
+        const full = join(dir, String(f));
+        if ((await stat(full)).isFile()) expect(await readFile(full, "utf8")).not.toContain("screen.summary");
+      }
+    }
+  });
+
+  it("battery saver: hysteresis 30 % / 35 %, mains turns it off, the setting turns it off", () => {
+    const b = (level: number, charging = false) => ({ level, charging });
+    expect(saverNext(false, b(31), true)).toBe(false);
+    expect(saverNext(false, b(29), true)).toBe(true);
+    expect(saverNext(true, b(32), true)).toBe(true); // between: unchanged
+    expect(saverNext(false, b(32), true)).toBe(false);
+    expect(saverNext(true, b(35), true)).toBe(false);
+    expect(saverNext(true, b(10, true), true)).toBe(false);
+    expect(saverNext(true, b(10), false)).toBe(false);
+    expect(saverNext(true, null, true)).toBe(false);
+  });
+
+  it("battery saver from fake power_supply files: the page gets power {saver}; a new page too; mains or ≥ 35 % ends it", async () => {
+    const dir = await mkdtemp(join(tmpdir(), "tiphys-power-"));
+    cleanups.push(() => rm(dir, { recursive: true, force: true }));
+    const bat = join(dir, "BAT0");
+    await mkdir(bat);
+    await mkdir(join(dir, "AC"));
+    await writeFile(join(dir, "AC", "type"), "Mains\n");
+    const set = async (level: number, status: string) => {
+      await writeFile(join(bat, "capacity"), `${level}\n`);
+      await writeFile(join(bat, "status"), `${status}\n`);
+    };
+    await writeFile(join(bat, "type"), "Battery\n");
+    await set(80, "Discharging");
+    const t = await screenApp({ power: { dir, everyMs: 20 } });
+    await t.req("POST", "/v1/screen/start", { mode: "work" });
+    const p = await t.page();
+    const power = () => p.msgs().filter((m) => m.type === "power").map((m) => m.saver);
+    await set(31, "Discharging");
+    await sleep(80);
+    expect(power()).toEqual([]);
+    await set(29, "Discharging");
+    await until(() => power().length === 1);
+    expect(power()).toEqual([true]);
+    expect((await t.req("GET", "/v1/screen")).json().power).toEqual({ saver: true });
+    const q = await t.page();
+    await until(() => q.msgs().some((m) => m.type === "power" && m.saver === true));
+    await set(33, "Discharging"); // hysteresis: stays on
+    await sleep(80);
+    expect(power()).toEqual([true]);
+    await set(33, "Charging");
+    await until(() => power().length === 2);
+    await set(20, "Discharging");
+    await until(() => power().length === 3);
+    await set(35, "Discharging");
+    await until(() => power().length === 4);
+    await set(20, "Discharging");
+    await until(() => power().length === 5);
+    // The setting off: back to normal at once, and stays so.
+    await t.req("PUT", "/v1/screen", { settings: { batterySaver: false } });
+    await until(() => power().length === 6);
+    await sleep(80);
+    expect(power()).toEqual([true, false, true, false, true, false]);
+    await t.req("POST", "/v1/screen/stop");
+    expect((await t.req("GET", "/v1/screen")).json().power).toEqual({ saver: false });
   });
 });
