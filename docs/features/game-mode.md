@@ -25,7 +25,9 @@ API details: [api.md › gamemode](../agent/api.md#gamemode). Security rationale
 > **Screen modes (after agent 0.5.0):** Game mode is now one of the screen modes (Game, Work, Focus). The feature flag is
 > `screen`, the settings live under `screen` in `agent.json` (moved automatically) and the routes are `/v1/screen/*`
 > ([api.md › screen](../agent/api.md#screen)); the `gamemode` flag name, scope and the `/v1/gamemode/*` routes below
-> keep working for one release. The event log now says `screen.started` / `screen.stopped`.
+> keep working for one release. The event log now says `screen.started` / `screen.stopped`. In the app (W6) the
+> **Ekran modu / Screen mode** home card and screen (`/screen`) replace the Game mode card and screen; Game is one of
+> its tabs, and an agent older than the screen modes still works there for Game only.
 
 ## Requirements
 
@@ -60,17 +62,22 @@ settings. All keys: [Agent configuration](../agent/configuration.md#screen).
 
 ### 2. Connect the two hosts (setup wizard)
 
-Open **Game mode** (home card, or the Game mode screen) and tap **Set up**. Pick the **display PC** (laptop) and the
-**source PC** (music and game) and tap **Connect**. The app:
+Open **Screen mode** (home card, or the screen mode screen) and, under **Connections**, tap **Add a source**. Pick the
+**display PC** (laptop) and the **source PC(s)** (music and game) and tap **Connect**. The app:
 
-1. creates a service token with the `gamemode` scope on the source agent (the same API as
-   `tiphys-agent service-token create --name <laptop> --scope gamemode`);
-2. writes the source URL and that token to the display agent (`PUT /v1/gamemode`);
-3. tests the connection and shows *Connected* or *Saved, but the display PC cannot reach …*.
+1. creates a service token with the `screen` scope on each source agent (the same API as
+   `tiphys-agent service-token create --name <laptop> --scope screen`; `gamemode` for a display agent older than the
+   screen modes);
+2. writes the source URL and that token to the display agent (`PUT /v1/screen` `sources`; older: `PUT /v1/gamemode`);
+3. checks that the source answers and shows *Connected* or *Saved, but the display PC cannot reach …*, then offers
+   code sharing (for the Work mode) as a separate step that stays off unless you turn it on and confirm.
+
+For the Game mode's cards to read that source, pick *Mirror <source>* in the mode chooser (or set the cards' source
+on the Game tab's layout).
 
 The token is not stored on the phone. The display agent keeps it in its `agent.json` and never returns it from an
-API. Revoking it on the source (`tiphys-agent service-token list` / `revoke <id>`) cuts the link; run the wizard
-again (*Set up again*) to make a new one.
+API. Revoking it on the source (`tiphys-agent service-token list` / `revoke <id>`) cuts the link; add the source
+again to make a new one. Removing a source in the app revokes the token it made.
 
 ### 3. ETS2 plugin
 
@@ -94,7 +101,8 @@ Optional; see [Map data](#map-data) below. Until it is installed, the driving sc
 
 ## Usage
 
-- **Start / stop:** the big button on the Game mode screen, or the toggle on the **Game mode** home card. Every
+- **Start / stop:** the big button on the screen mode screen, or the button on the **Screen mode** home card (closed:
+  it opens the mode chooser, pick *Game*; running: one tap stops it). Every
   paired device can stop it. On the laptop, **hold Esc for 1 second** to stop. Closing Firefox also stops the mode
   (checked every 5 s), and so does stopping the display agent.
 - On start the laptop switches to a workspace named `yol`, opens Firefox fullscreen there, holds an idle/sleep
