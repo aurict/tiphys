@@ -174,6 +174,8 @@ Every error has the same envelope. The agent sends codes, never sentences; the a
 | `agent.screen.noDisplay` | 503 | Screen mode start without a Hyprland session |
 | `agent.screen.startFailed` | 502 | `systemd-run` could not start the kiosk unit (`params.stderr`) |
 | `agent.screen.bindTaken` | 409 | `scratch` placement: `screen.scratchBind` is already bound in Hyprland (`params.bind`); nothing was changed |
+| `agent.screen.notFocus` | 409 | `POST /v1/screen/focus` while the Focus mode isn't running |
+| `agent.screen.notRunning` | 409 | `POST /v1/screen/veil` while no screen mode runs |
 | `agent.screen.badLayout` | 400 | A layout whose template doesn't belong to the mode, or a card kind the template can't hold or twice (`params.mode`, `template`, `kind`) |
 | `agent.screen.noArt` | 404 | As `agent.gamemode.noArt`, on `/v1/screen/art` |
 | `agent.gamemode.noSource` | 409 | Game mode start without a source agent configured |
@@ -1166,17 +1168,21 @@ network, no token). Nothing runs until a mode is started (display) or a topic is
 
 | Method | Path | Auth | Description |
 | --- | --- | --- | --- |
-| GET | `/v1/screen` | device | `{running, mode\|null, startedAt\|null, placement, visible\|null, settings: {placement, scratchBind, lastMode, batterySaver, share, modes}, sources: [{name, url\|null, state: off\|connecting\|ok\|down, topics}], focus: {phase, endsAt, pausedLeft, round, task}, map: {present}, live: {music\|null, truck\|null}}`. `sources` starts with `self`. `visible` is whether the kiosk is on screen (false = the page is paused). `focus` is a placeholder until the Focus timer (W5). Tokens are never returned. |
+| GET | `/v1/screen` | device | `{running, mode\|null, startedAt\|null, placement, visible\|null, settings: {placement, scratchBind, lastMode, batterySaver, share, modes}, sources: [{name, url\|null, state: off\|connecting\|ok\|down, topics}], veil, focus: {phase: idle\|focus\|short\|long, endsAt\|null, pausedLeft\|null, total\|null, round, longEvery, task\|null, now}, map: {present}, live: {music\|null, truck\|null}}`. `sources` starts with `self`. `visible` is whether the kiosk is on screen (false = the page is paused). `veil`: the privacy veil is on. `focus`: the Focus timer (idle unless the Focus mode runs); times in ms since the epoch (`now` = the agent's clock, for skew), `pausedLeft`/`total` in ms, `round` = the current focus round (in a break the one just finished; 0 idle). Tokens are never returned. |
 | PUT | `/v1/screen` | device | Strict `{settings?: {placement?, scratchBind?, lastMode?, batterySaver?, share?: {code}, modes?: {game?, work?, focus?: partial settings incl. layout}}, sources?: {<name>: {url, token}\|null}}` → same as GET. Only the fields sent change; `null` removes a source. A layout is checked (`400 agent.screen.badLayout`). While running: the page gets `settings` (or `layout`), the backlight follows, a changed source reconnects, subscriptions follow. |
 | POST | `/v1/screen/start` | device | `{mode?}` (default `lastMode`) → same as GET. Idempotent; while running a different mode is a switch. `409 agent.screen.noSource`, `409 agent.screen.bindTaken`, `503 agent.screen.noDisplay`, `502 agent.screen.startFailed` (everything done so far is undone). |
 | POST | `/v1/screen/mode` | device | `{mode}` → same as GET. Hot switch: the page gets a `layout` message (and the latest data again), the source subscriptions and the backlight follow; Firefox is not restarted. Not running: only `lastMode` is stored. |
 | POST | `/v1/screen/stop` | device | Idempotent → same as GET. |
-| WS | `/v1/screen/live?t=<display token>` | display token | Kiosk page socket. On connect: `layout`, every source's `source` state, the latest relayed messages, `pause` if hidden. Then relayed messages and binary spectrum frames. Page → agent: `{"type":"stop"}`. Closed with `4410` on stop. |
+| POST | `/v1/screen/focus` | device | Strict `{action?: start\|pause\|resume\|skip\|reset, task?: string(≤ 80, one line)\|null}` (at least one) → `{focus}` (as in GET). Only while the Focus mode runs (`409 agent.screen.notFocus`). `start`: idle → focus round 1, in a break → the next round now, a paused round → resume; `pause`/`resume` keep the time left; `skip`: focus → short (or every `longEvery`-th round long) break, break → next round; `reset`: idle. A phase that ends starts the next one by itself. `task` alone sets the task line; `""`/`null` clears it. A phase change sends the page `focus` and records/pushes `screen.focus.phase {phase, from, round, cause: timer\|action}` (never the task). |
+| POST | `/v1/screen/veil` | device | `{on}` → same as GET. Privacy veil: the page drops its view for a dim clock at once; until it is lifted the agent sends the page no layout or topic message (their state is kept and replayed when it lifts). Kept across an agent restart, gone with the mode. `409 agent.screen.notRunning` when no mode runs. |
+| WS | `/v1/screen/live?t=<display token>` | display token | Kiosk page socket. On connect: `layout`, every source's `source` state, the latest relayed messages, `focus` in Focus mode, `pause` if hidden (veiled: only `veil` and `pause`). Then relayed messages and binary spectrum frames. Page → agent: `{"type":"stop"}`. Closed with `4410` on stop, `1012` when the agent restarts (the page reconnects with the same token). |
 | GET | `/v1/screen/art?t=…&id=…` | display token | Cover proxy, as `/v1/gamemode/art` below. |
 | GET | `/screen/`, `/screen/<file>`, `/screen/map/<file>` | none (kiosk) | The kiosk page and map data, as `/gamemode/…` below. |
 
 Kiosk messages (agent → page): `{type:"layout", mode, template, cards:[{kind, source, enabled}], settings}`,
-`{type:"settings", ...}`, `{type:"source", name, state, retryInSec?}`, `{type:"pause"}`, `{type:"resume"}`, and relayed
+`{type:"settings", ...}`, `{type:"source", name, state, retryInSec?}`, `{type:"pause"}`, `{type:"resume"}`,
+`{type:"focus", ...GET's focus, cause: "timer"\|"action"\|null}` (`timer`: the phase ended by itself → chime),
+`{type:"veil", on}`, and relayed
 topic messages with their source added as `src` (`{"src":"main","type":"music",…}`); spectrum frames are binary.
 
 Lifecycle: as described for Game mode below, with the unit, app id, rule and tmpfs dir `tiphys-screen`
@@ -1196,7 +1202,15 @@ Lifecycle: as described for Game mode below, with the unit, app id, rule and tmp
   `resume` when shown again.
 - **State file:** every side effect (unit, work dir, rule, keybind, previous workspace, backlight) is written before it
   is made; stop and the next agent start after a crash undo it. A 0.5 Game mode left in `tiphys-gamemode/` is cleaned
-  up the same way. Events: only `screen.started {mode}` and `screen.stopped`.
+  up the same way. Events: `screen.started {mode}`, `screen.stopped` and `screen.focus.phase` (above).
+- **Agent restart:** when the agent's own systemd unit is being restarted (a `restart` job in `systemctl list-jobs`
+  for the unit named in `/proc/self/cgroup`), a running mode is left as it is and the next agent adopts it from the
+  state file (which also holds the display token, 0600 on tmpfs like `start.html`) if `tiphys-screen.service` is
+  still active; the page reconnects with the same token. The same adoption follows a crash while Firefox still runs.
+  Any other stop of the agent stops the mode. The Focus timer's times (not the task) are in `focus.json` in the work
+  dir; a phase that ended meanwhile is caught up. The task line is memory only and is lost on a restart.
+- **Autoplay:** the kiosk profile allows media/WebAudio autoplay (`media.autoplay.default=0`,
+  `media.autoplay.blocking_policy=0`, `media.autoplay.block-webaudio=false`) for the Focus ambient sound and chime.
 - **Sources:** for the running mode's layout the display sums the topics of the enabled cards the page draws, per
   source, and keeps one connection per remote source with a non-empty topic set (none for `self`, which subscribes
   in-process). On open, and whenever the set changes, it sends `{"type":"subscribe","topics":[…]}`. A source that
@@ -1217,8 +1231,9 @@ dropped while the kiosk is hidden), `truck` (`truck`, `event`). Card kinds → t
 `lyrics` → music; `music` → music (+ spectrum in Game mode when `spectrum` is on); `system`, `jobs`, `git`,
 `servers` → the topic of the same name; `city` → city, claude and (with `modes.work.diff` on) diff. A `gamemode`
 token never gets `claude` or `diff`. Templates: `game` (map, cockpit, music, lyrics), `work` (city, day,
-system, jobs, git, music, servers), `focus` (focus, task, day, music, servers). This version's page draws everything
-but the Focus timer/task (W5); those subscribe nothing yet. `system` is dropped while the kiosk is hidden; while it is
+system, jobs, git, music, servers), `focus` (focus, task, day, music, servers). `focus` → claude and servers (only
+for its critical pills: Claude waiting for approval, a server down); `task` → nothing (the task comes with `focus`).
+`system` is dropped while the kiosk is hidden; while it is
 hidden the display host also drops `touch` events (the city state keeps following).
 
 Work topics (`screen/producers/*.ts`; each starts with its first subscriber, stops with its last, sends only changes):
