@@ -220,7 +220,9 @@ export function mount(el, ctx, { src = 'self' } = {}) {
     if (m.diff !== undefined) approval.setEnabled(m.diff !== false);
     if (nextMode !== mode) {
       mode = nextMode;
-      if (r && meta) { rGen++; building = null; dropRenderer(); void ensureRenderer(); }
+      // Also while a renderer is still being built (the battery saver's `power` arrives right after the start, while
+      // the 3D module loads): that build is dropped and the wanted one made.
+      if ((r || building) && meta) { rGen++; building = null; dropRenderer(); void ensureRenderer(); }
     }
   }
 

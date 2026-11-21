@@ -163,10 +163,11 @@ export function createCityFlat(canvas, { motion = 'normal', onFrame } = {}) {
     size = { w: r.width, h: r.height };
     canvas.width = base.width = Math.round(r.width * dpr);
     canvas.height = base.height = Math.round(r.height * dpr);
-    const m = 28;
-    s = Math.min((r.width - 2 * m) / W, (r.height - 2 * m - 60) / D);
+    // Clear of the card's overlays: the info strip and notes on top (≤ 110 px), the legend at the bottom.
+    const m = 28, top = 124, bottom = 76;
+    s = Math.min((r.width - 2 * m) / W, (r.height - top - bottom) / D);
     ox = (r.width - W * s) / 2;
-    oy = (r.height - D * s) / 2;
+    oy = top + (r.height - top - bottom - D * s) / 2;
     baseDirty = true;
     sched.invalidate();
   }

@@ -5,8 +5,8 @@
 // Instances are packed (swap-remove) and the mesh grows by 25 % when full, so nothing is rebuilt per patch.
 // Effects: edit → top glows and fades over 8 s; create → rises; delete → sinks and collapses; commit → particle
 // burst; failed job → 2 s red tint; camera: fixed angle, slow orbit only with motion "high", a gentle refocus toward
-// an event. Frames come from one scheduler: none while idle, 30 fps while an effect runs (60 with motion "high"),
-// stopped 2 s after; with motion "high" the orbit runs at 15 fps; pause() stops everything.
+// an event. Frames come from one scheduler: none while idle, 30 fps while an effect moves (60 with motion "high"), 10 fps
+// for the slow parts (glow fades, the camera's hold and return), stopped 2 s after; with motion "high" the orbit runs at 15 fps; pause() stops everything.
 //
 // For W4 (Claude orbs and beams): `layer` (a THREE.Group drawn with the city), `topOf(path)` (world position of a
 // building's roof), `setAnchor(id, Vector3|null)` + `beam(id, path, 'read'|'edit')` (a light beam from the anchor to the
@@ -292,7 +292,7 @@ export function createCity3d(canvas, { motion = 'normal', onFrame } = {}) {
   function lightUp(b, color, ms, peak = 1) {
     if (!lit.size) effects.push(glowTick);
     lit.set(b, { color, t0: performance.now(), ms, peak });
-    sched.animate(ms);
+    sched.animate(ms, 700); // a quick rise, then a slow fade (10 fps is enough)
   }
   function glowTick(now) {
     for (const [b, g] of lit) {
@@ -483,7 +483,7 @@ export function createCity3d(canvas, { motion = 'normal', onFrame } = {}) {
     const b = byPath.get(path);
     if (!b || b.i < 0) return;
     pull = { to: T0.clone().lerp(new THREE.Vector3(b.x, 4, b.z), 0.18), t0: performance.now() };
-    sched.animate(10_100);
+    sched.animate(10_100, 1700); // full rate while easing in; the hold and the slow way back at 10 fps
   }
   function setMotion(m) {
     mot = m;
@@ -508,7 +508,7 @@ export function createCity3d(canvas, { motion = 'normal', onFrame } = {}) {
     renderer.render(scene, camera);
     onFrame?.(now);
   }
-  const sched = createScheduler(draw, { fps: motion === 'high' ? 60 : 30 });
+  const sched = createScheduler(draw, { fps: motion === 'high' ? 60 : 30, slowFps: 10 });
 
   let size = { w: 1, h: 1 };
   function resize() {
