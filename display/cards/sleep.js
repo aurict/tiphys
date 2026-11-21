@@ -1,7 +1,8 @@
 // Sleep mode card (PLAN.md §21 S2): the agent's side of the sleep view. The agent sends `sleep` (session, plan,
 // phase, content brightness, settings), `phase` and `brightness` messages; this card mounts the S1 view
-// (display/sleep/sleep.js: embers + sound, built from the same plan) and dims it by the content multiplier (opacity of
-// a black-backed layer: the hardware dims the rest, see agent/src/screen/sleep.ts). It sends `heartbeat` every 10 s
+// (display/sleep/sleep.js: embers + sound, built from the same plan) and dims it by the content multiplier (the view's
+// setBrightness: the shader eases to it; the hardware dims the rest, see agent/src/screen/sleep.ts). Never a CSS
+// opacity transition over the canvas: that recomposited the whole screen at the refresh rate through the fade (S7). It sends `heartbeat` every 10 s
 // (the agent's WAV fallback in S4 listens for it) and `stop` when the view's Esc hold fires.
 // The S1 view is imported on demand; if it can't be loaded the card shows a quiet placeholder with the phase and the
 // brightness.
@@ -29,7 +30,7 @@ export function mount(el, ctx) {
   card.className = 'sleep-card';
   card.style.cssText = 'position:fixed;inset:0;background:#000;cursor:none;';
   const layer = document.createElement('div');
-  layer.style.cssText = 'position:absolute;inset:0;opacity:1;transition:opacity 2s linear;';
+  layer.style.cssText = 'position:absolute;inset:0;';
   const placeholder = document.createElement('div');
   placeholder.setAttribute('role', 'status');
   placeholder.style.cssText = 'position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);color:#A0581F;font-size:28px;text-align:center;';
@@ -95,7 +96,7 @@ export function mount(el, ctx) {
       me: msg.me,
       now: () => Date.now() + offset,
       offsetMs: () => offset,
-      brightness: 1,
+      brightness: content,
       audio: true,
       volume: msg.settings?.volume ?? 35,
       layers: msg.settings?.layers ?? {},
@@ -112,7 +113,8 @@ export function mount(el, ctx) {
   function setContent(v) {
     if (typeof v !== 'number' || !Number.isFinite(v)) return;
     content = Math.max(0, Math.min(1, v));
-    layer.style.opacity = String(content);
+    view?.setBrightness(content);
+    placeholder.style.opacity = String(content);
     drawPlaceholder();
   }
 

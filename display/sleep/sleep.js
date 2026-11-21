@@ -1,6 +1,6 @@
 // Sleep mode view (PLAN.md §21 E; S1 draft, S4 alarm). Shaped like a kiosk card (cards/*.js); the mode shell's card
 // (cards/sleep.js) mounts it: mount(el, ctx, opts) → {update, setPlan(plan), setAlarm(gain), setMusic(on),
-//   setMorning(summary), pause, resume, destroy}.
+//   setMorning(summary), setBrightness(b), pause, resume, destroy}.
 //   opts: {session {seed, t0, members}, plan (timeline.js), me (member id), now() (shared clock, ms),
 //          brightness 0..1, audio (bool), volume 0..100, layers, alarmGain 0..1, music (bool), morningSummary,
 //          onStop(), onAlarm(action),
@@ -10,6 +10,10 @@
 // (light at its peak, breathing; bird chirps each with a light mote), snoozed (bright and quiet, "Ertelendi · yeniden HH:MM"),
 // morning (warm screen, clock and date, the night's length t0 → dismiss and the agent's morning summary: morning.js).
 // S5: `music` (the leader's Velour sleep playlist plays) ducks the ember sounds −12 dB (audio.js setDuck).
+// Content brightness (the agent's half of the dimming, 0..1): the shader's `bright`, eased linearly over 2 s to each new
+// value inside the frames the phase draws anyway; the text (hint, snooze line, morning) gets it as a plain opacity.
+// Not a CSS transition on a layer over the canvas: S7 measured that one recomposited the full screen at the display's
+// refresh rate for the whole fade (it gets a new value every 2 s), ~57 % of a laptop core instead of the canvas' 20 fps.
 // Frames (its own loop, like the Game scenes: one timer then one rAF, nothing pending between frames): settle 30 fps →
 // fade 20 fps at 1/3 resolution; night 1/6 resolution at 5 fps while a flare glows, 2 fps when nothing happens;
 // sunrise 10 fps, ring 15; morning: no canvas at all (a DOM clock once a minute). A frame is also placed on the next
@@ -28,6 +32,7 @@ import { morningView } from './morning.js';
 const FPS = { settle: 30, fade: 20, night: 5, sunrise: 10, ring: 15, snoozed: 10 };
 const SCALE = { settle: 1 / 3, fade: 1 / 3, night: 1 / 6, sunrise: 1 / 3, ring: 1 / 3, snoozed: 1 / 3 };
 const NIGHT_IDLE_MS = 500;
+const BRIGHT_MS = 2000;
 const HINT_MS = 5000, HOLD_MS = 1000;
 
 const pad = (n) => String(n).padStart(2, '0');
@@ -59,7 +64,12 @@ export function mount(el, ctx, opts) {
   const morning = $('.sl-morning'), snoozeLine = $('.sl-snooze');
 
   const embers = createEmbers(canvas, tl);
-  embers.setBrightness(opts.brightness ?? 1);
+  // Content brightness: from `bFrom` at `bAt` (performance.now) linearly to `bTo` over BRIGHT_MS.
+  let bFrom = opts.brightness ?? 1, bTo = bFrom, bAt = 0;
+  const brightAt = (t) => bFrom + (bTo - bFrom) * Math.min(1, Math.max(0, (t - bAt) / BRIGHT_MS));
+  const dimText = (b) => { for (const e of [hint, snoozeLine, morning]) e.style.opacity = String(b); };
+  embers.setBrightness(bTo);
+  dimText(bTo);
   const audio = opts.audio === false ? null : createAudio(tl, { now, offsetMs: opts.offsetMs, volume: opts.volume ?? 35, layers: opts.layers, trace: opts.trace, alarmGain: opts.alarmGain ?? 1, duck: opts.music === true });
   audio?.start();
 
@@ -83,6 +93,7 @@ export function mount(el, ctx, opts) {
     const L = tl.levels(T);
     if (L.phase !== phase) enterPhase(L.phase);
     if (morningOn) return;
+    embers.setBrightness(brightAt(start));
     const s = embers.draw(T);
     stats.frames++;
     if (opts.trace) {
@@ -191,6 +202,15 @@ export function mount(el, ctx, opts) {
       if (!paused && !morningOn) { stop(); raf = requestAnimationFrame(frame); }
     },
     setAlarm(gain) { audio?.setAlarmGain(gain); },
+    /** The agent's content brightness (0..1): eased in over 2 s by the frames already drawn; the text at once. */
+    setBrightness(b) {
+      if (typeof b !== 'number' || !Number.isFinite(b)) return;
+      const v = Math.max(0, Math.min(1, b));
+      if (v === bTo) return;
+      const t = performance.now();
+      bFrom = brightAt(t); bTo = v; bAt = t;
+      dimText(v);
+    },
     setMusic(on) { audio?.setDuck(on === true); },
     setMorning(s) {
       const next = s ?? null;
