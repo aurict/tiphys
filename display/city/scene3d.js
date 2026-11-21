@@ -203,10 +203,10 @@ export function createCity3d(canvas, { motion = 'normal', onFrame } = {}) {
 
   // Movement and height animations: b.anim = {t0, ms, from:{x,z,w,d,h,k}, to:{…}, ease, done?}
   const moving = new Set();
-  function animTo(b, to, ms, fn = ease, done = null) {
+  function animTo(b, to, ms, fn = ease, done = null, fastMs = ms) {
     b.anim = { t0: performance.now(), ms, from: { x: b.x, z: b.z, w: b.w, d: b.d, h: b.h, k: b.k }, to: { x: b.x, z: b.z, w: b.w, d: b.d, h: b.h, k: b.k, ...to }, fn, done };
     moving.add(b);
-    sched.animate(ms);
+    sched.animate(ms, fastMs);
   }
   function moveTick(now) {
     for (const b of moving) {
@@ -253,7 +253,8 @@ export function createCity3d(canvas, { motion = 'normal', onFrame } = {}) {
         b.lines = lines;
         if (b.kind !== kind) { b.kind = kind; if (b.i >= 0) { paint(b); dirty.c = true; } }
         const th = heightOf(lines);
-        if (th !== b.th) { b.th = th; if (b.i >= 0) animTo(b, { h: th }, 700, easeOut); }
+        // easeOut has 92 % of the way behind it after 400 ms: the rest is fine at the slow rate.
+        if (th !== b.th) { b.th = th; if (b.i >= 0) animTo(b, { h: th }, 700, easeOut, null, 400); }
       } else {
         const nb = mk(path, lines, kind);
         byPath.set(path, nb);
@@ -292,7 +293,7 @@ export function createCity3d(canvas, { motion = 'normal', onFrame } = {}) {
   function lightUp(b, color, ms, peak = 1) {
     if (!lit.size) effects.push(glowTick);
     lit.set(b, { color, t0: performance.now(), ms, peak });
-    sched.animate(ms, 700); // a quick rise, then a slow fade (10 fps is enough)
+    sched.animate(ms, Math.min(ms, 400)); // a quick rise (fade(): 4 % of ms), then a slow fade (10 fps is enough)
   }
   function glowTick(now) {
     for (const [b, g] of lit) {
@@ -463,14 +464,18 @@ export function createCity3d(canvas, { motion = 'normal', onFrame } = {}) {
   // ---- camera: fixed oblique view; motion "high" orbits slowly; events pull the view a little toward them
   let fit = 1, orbit = false, breathOn = false, breathMs = 1000, mot = motion;
   const target = T0.clone();
-  let pull = null; // {from, to, t0} — eases to `to` (1.6 s), holds, eases back (2.5 s)
+  // {from, to, t0, back} — eases from `from` to `to` (1.6 s), holds until `back`, eases back to T0 (2.5 s). An event
+  // during a pull extends the hold instead of starting a new ease: with an edit every 3 s the camera used to restart
+  // (and jump back to T0) every time, at full frame rate; now it moves once per burst and the rest is 10 fps glow fades.
+  let pull = null;
   const ORBIT = (Math.PI * 2) / 360_000; // one turn in 6 min
   function placeCamera(now) {
     if (pull) {
       const t = now - pull.t0;
-      const k = t < 1600 ? ease(t / 1600) : t < 7600 ? 1 : 1 - ease(Math.min(1, (t - 7600) / 2500));
-      target.copy(T0).lerp(pull.to, k);
-      if (t >= 10_100) { pull = null; target.copy(T0); }
+      if (t < 1600) target.copy(pull.from).lerp(pull.to, ease(t / 1600));
+      else if (now < pull.back) target.copy(pull.to);
+      else target.copy(T0).lerp(pull.to, 1 - ease(Math.min(1, (now - pull.back) / 2500)));
+      if (now >= pull.back + 2500) { pull = null; target.copy(T0); }
     }
     const a = orbit ? now * ORBIT : 0;
     const off = v3.copy(EYE).sub(T0).multiplyScalar(fit).applyAxisAngle(THREE.Object3D.DEFAULT_UP, a);
@@ -482,7 +487,13 @@ export function createCity3d(canvas, { motion = 'normal', onFrame } = {}) {
     if (mot === 'low') return;
     const b = byPath.get(path);
     if (!b || b.i < 0) return;
-    pull = { to: T0.clone().lerp(new THREE.Vector3(b.x, 4, b.z), 0.18), t0: performance.now() };
+    const now = performance.now();
+    if (pull && now < pull.back) { // already looking toward recent work: hold longer, no new move
+      pull.back = Math.max(pull.back, now + 6000);
+      return sched.animate(pull.back + 2500 - now, 0);
+    }
+    // From wherever the camera is (it may be on its way back), so it never jumps.
+    pull = { from: target.clone(), to: T0.clone().lerp(new THREE.Vector3(b.x, 4, b.z), 0.18), t0: now, back: now + 7600 };
     sched.animate(10_100, 1700); // full rate while easing in; the hold and the slow way back at 10 fps
   }
   function setMotion(m) {

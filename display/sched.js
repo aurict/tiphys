@@ -9,11 +9,16 @@
 //  - pause()/resume(): the agent says the screen isn't visible → no frames and no timers at all.
 // Every frame calls draw(now, dt). Between frames there is no requestAnimationFrame pending, only one timer.
 // Cards that draw continuously (the Game mode scenes) keep their own loop and stop it in their pause().
+// Gaps are timed from when a frame actually ran (performance.now()), not from the rAF timestamp: that is the frame's
+// begin time and can be most of a vsync earlier, so the timer fired at once and 30 fps became ~56 (measured, W8 follow-up).
+// The timer aims a little before the wanted vsync (gap minus ≤ 8 ms) and rAF then lands on it.
+const gapOf = (fps) => { const g = 1000 / fps; return g - Math.min(8, g / 2); };
+
 export function createScheduler(draw, { fps = 30, slowFps = 15, tailMs = 2000, breathMs = 1000 } = {}) {
-  let minGap = 1000 / fps - 1;
-  const slowGap = 1000 / slowFps - 1;
+  let minGap = gapOf(fps);
+  const slowGap = gapOf(slowFps);
   let fastUntil = 0, activeUntil = 0, breath = false, paused = false, wantFrame = false;
-  let raf = 0, timer = 0, last = 0;
+  let raf = 0, timer = 0, last = 0, ran = 0;
   const stats = { frames: 0 };
 
   function frame(now) {
@@ -21,6 +26,7 @@ export function createScheduler(draw, { fps = 30, slowFps = 15, tailMs = 2000, b
     if (paused) return;
     const dt = last ? Math.min(100, now - last) : 16;
     last = now;
+    ran = performance.now();
     wantFrame = false;
     stats.frames++;
     draw(now, dt);
@@ -35,7 +41,7 @@ export function createScheduler(draw, { fps = 30, slowFps = 15, tailMs = 2000, b
   function plan() {
     if (paused || raf) return;
     const now = performance.now();
-    const sinceLast = now - last;
+    const sinceLast = now - ran;
     if (wantFrame || now < fastUntil) return at(minGap - sinceLast);
     if (now < activeUntil + tailMs) return at(Math.max(minGap, slowGap) - sinceLast);
     if (breath) return at(breathMs - sinceLast);
@@ -54,10 +60,10 @@ export function createScheduler(draw, { fps = 30, slowFps = 15, tailMs = 2000, b
     },
     busy: () => performance.now() < activeUntil,
     setBreath(on, ms = 1000) { breath = on; breathMs = ms; plan(); },
-    setFps(n) { minGap = 1000 / n - 1; },
+    setFps(n) { minGap = gapOf(n); },
     get paused() { return paused; },
     pause() { paused = true; clearTimeout(timer); timer = 0; if (raf) cancelAnimationFrame(raf); raf = 0; },
-    resume() { if (!paused) return; paused = false; last = 0; wantFrame = true; plan(); },
+    resume() { if (!paused) return; paused = false; last = ran = 0; wantFrame = true; plan(); },
   };
 }
 
