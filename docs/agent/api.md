@@ -1208,16 +1208,17 @@ Lifecycle: as described for Game mode below, with the unit, app id, rule and tmp
 
 | Method | Path | Auth | Description |
 | --- | --- | --- | --- |
-| WS | `/v1/screen/feed` | service (`screen`; `gamemode` = music, spectrum, truck only) or device | Client → source: `{"type":"subscribe","topics":[…],"project"?:"auto"\|<absolute path>,"ci"?:bool}` replaces the topic set (`project`/`ci` only matter for `git`; a fixed path must be inside `allowedRoots`) (unknown or not allowed topics are dropped; ≤ 4 KB). Starts with no topics. A topic's producer starts with its first subscriber and stops with its last; a subscriber adding a topic gets its latest messages at once. `{"type":"hb"}` every 5 s. |
+| WS | `/v1/screen/feed` | service (`screen`; `gamemode` = music, spectrum, truck only) or device | Client → source: `{"type":"subscribe","topics":[…],"project"?:"auto"\|<absolute path>,"ci"?:bool}` replaces the topic set (`project`/`ci` only matter for `git` and `city`; a fixed path must be inside `allowedRoots`) (unknown or not allowed topics are dropped; ≤ 4 KB). Starts with no topics. A topic's producer starts with its first subscriber and stops with its last; a subscriber adding a topic gets its latest messages at once. `{"type":"hb"}` every 5 s. |
 | GET | `/v1/screen/game/source` | device | As `/v1/gamemode/source`. |
 | POST | `/v1/screen/game/plugin` | device | As `/v1/gamemode/plugin`. |
 
 Topics (`screen/topics.ts`): `music` (messages `music`, `lyrics`), `spectrum` (binary frames, only while Velour plays;
 dropped while the kiosk is hidden), `truck` (`truck`, `event`). Card kinds → topics: `map`, `cockpit` → truck;
 `lyrics` → music; `music` → music (+ spectrum in Game mode when `spectrum` is on); `system`, `jobs`, `git`,
-`servers` → the topic of the same name. Templates: `game` (map, cockpit, music, lyrics), `work` (city, day, system,
-jobs, git, music, servers), `focus` (focus, task, day, music, servers). This version's page draws everything but the
-city (W3) and the Focus timer/task (W5); those subscribe nothing yet. `system` is dropped while the kiosk is hidden.
+`servers`, `city` → the topic of the same name. Templates: `game` (map, cockpit, music, lyrics), `work` (city, day,
+system, jobs, git, music, servers), `focus` (focus, task, day, music, servers). This version's page draws everything
+but the Focus timer/task (W5); those subscribe nothing yet. `system` is dropped while the kiosk is hidden; while it is
+hidden the display host also drops `touch` events (the city state keeps following).
 
 Work topics (`screen/producers/*.ts`; each starts with its first subscriber, stops with its last, sends only changes):
 - `system` (every 2 s from `/proc` and `/sys`, no process per sample; NVIDIA through one long-lived
@@ -1227,11 +1228,23 @@ Work topics (`screen/producers/*.ts`; each starts with its first subscriber, sto
   30 s; environments are never read): `{type:"jobs", running:[{id, name, cmd (≤120, paths cut to their last part,
   redacted), dir (basename)|null, startedAt (ms), cpu (cores), mem (bytes), kind: scope|proc|limited}]}`;
   `{type:"jobDone", id, name, cmd, dir, kind, durationSec, exitCode: null}`.
-- `git` (non-recursive `fs.watch` on the git dir and refs, 500 ms debounce, one `git status` + `git log -3`; a
-  60 s refresh; `gh run list` every 5 min only with `ci`): `{type:"git", root (basename), branch|null, head, upstream,
+- `git` (non-recursive `fs.watch` on the git dir and refs, 500 ms debounce, one `git status` + `git log -3`; working
+  tree changes come from the `city` watchers of the same project (≤ 1 s), without a city a 60 s refresh;
+  `gh run list` every 5 min only with `ci`): `{type:"git", root (basename), branch|null, head, upstream,
   ahead, behind, changed, untracked, conflicts, commits:[{hash7, subject (≤80), at}], ci:{state, at}|null}` or
   `{type:"git", root|null, none: noProject|notRepo|notAllowed}`. `auto` = the most recently active Claude session's
   working directory (Tiphys or terminal), else the focused terminal's shell, walked up to the git root.
+- `city` (same project selection as `git`; `git ls-files -t --cached --others --exclude-standard` + a streamed line
+  count per file, binaries/> 2 MB/symlinks skipped; above 20 000 files aggregated per folder with lines estimated
+  from size; one non-recursive `fs.watch` per directory holding listed files, at most 5000, never `.git`,
+  `node_modules`, `build`, `dist`, `.dart_tool`, `target`; all closed with the last subscriber):
+  `{type:"city", root (basename), files:[[path, lines, kind]], truncated, total? (with truncated), masked}` or
+  `{type:"city", root|null, none: noProject|notRepo|notAllowed}`; then `{type:"cityPatch", upsert:[[path, lines,
+  kind]], remove:[path]}`, `{type:"touch", path, kind: edit|create|delete, by: null}` (≤ 1 per file per second, ≤ 50
+  per second) and `{type:"commit", hash7, subject}` (a new HEAD whose parent was the old one). `kind`: code, dart,
+  docs, config, web, other. Paths are relative to the project root; without `screen.share.code` on the source every
+  path segment is an opaque 8-hex token (`masked: true`). The display host folds `cityPatch` into the `city` it replays
+  to a new page; a `city` message may be up to 16 MB (others 1 MB).
 - `servers` (uptime bridge + incident room, compared every 5 s in memory): `{type:"servers", available, hosts:[{name,
   up, since|null}], incidents}`.
 
