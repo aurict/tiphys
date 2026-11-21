@@ -1,7 +1,8 @@
 // Sleep mode view (PLAN.md §21 E, S1 draft). Shaped like a kiosk card (cards/*.js) so S2/S3 can mount it from the
 // mode shell: mount(el, ctx, opts) → {update, pause, resume, destroy}.
 //   opts: {session {seed, t0, members}, plan (timeline.js), me (member id), now() (shared clock, ms),
-//          brightness 0..1, audio (bool), volume 0..100, layers, onStop(), onAlarm(action)}
+//          brightness 0..1, audio (bool), volume 0..100, layers, onStop(), onAlarm(action), trace(line) (test only:
+//          ['v', id, eventT, wall] for the first frame that draws a crackle, and audio.js's ['a', …] lines)}
 // Frames (its own loop, like the Game scenes: one timer then one rAF, nothing pending between frames): settle 30 fps →
 // fade 20 fps at 1/3 resolution; night 1/6 resolution at 5 fps while a flare glows, 2 fps when nothing happens;
 // sunrise 10 fps, ring 15; morning: no canvas at all (a DOM clock once a minute). A frame is also placed on the next
@@ -53,12 +54,13 @@ export function mount(el, ctx, opts) {
 
   const embers = createEmbers(canvas, tl);
   embers.setBrightness(opts.brightness ?? 1);
-  const audio = opts.audio === false ? null : createAudio(tl, { now, offsetMs: opts.offsetMs, volume: opts.volume ?? 35, layers: opts.layers });
+  const audio = opts.audio === false ? null : createAudio(tl, { now, offsetMs: opts.offsetMs, volume: opts.volume ?? 35, layers: opts.layers, trace: opts.trace });
   audio?.start();
 
   let phase = null, morningOn = false, minute = null, paused = false;
   let snoozed = false;
   const stats = { frames: 0, phase: null };
+  let lastT = null; // trace: the shared time up to which crackles were reported
 
   let timer = 0, raf = 0;
   /** The next frame `ms` from now: a timer a little early, then the vsync after it. */
@@ -77,6 +79,11 @@ export function mount(el, ctx, opts) {
     if (morningOn) return;
     const s = embers.draw(T);
     stats.frames++;
+    if (opts.trace) {
+      // Test only: when (this host's wall clock) each crackle first reached the screen.
+      if (lastT != null) for (const ev of tl.between(lastT, T + 0.001)) if (ev.kind === 'crackle') opts.trace(['v', ev.id, ev.t, Date.now()]);
+      lastT = T + 0.001;
+    }
     // Next frame: the phase rate; in the night slower when nothing glows; never later than the next event.
     let gap = 1000 / (FPS[phase] ?? 10);
     if (phase === 'night' && !s.fl.length && !s.sp.length) gap = NIGHT_IDLE_MS;

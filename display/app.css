@@ -312,6 +312,12 @@ body[data-scene="idle"] #scene-idle, body[data-scene="connecting"] #scene-connec
 .esc-hold circle { fill: none; stroke-width: 6; }
 /* Sleep: the sleep view has its own dim Esc-hold hint (display/sleep/sleep.js); no bright ring over the embers. */
 body.sleep-view .esc-hold { display: none; }
+/* Sleep: a lost link to this host's agent must not light the room. The view carries on with its own timeline (the
+   group is deterministic) and the page reconnects by itself: the problem card stays a faint ghost, the scene isn't
+   dimmed behind it, and no pill pops up. */
+body.sleep-view .problem { background: none; opacity: .06; }
+body.sleep-view.has-problem #stage, body.sleep-view.has-problem .stage { opacity: 1; }
+body.sleep-view .pill { display: none; }
 .esc-hold .track { stroke: rgba(255,255,255,.12); }
 .esc-hold .arc { stroke: var(--danger); stroke-linecap: round; stroke-dasharray: 0 100; }
 .esc-ic { position: absolute; top: 66px; translate: 0 -50%; color: var(--text); }

@@ -4,8 +4,13 @@
 // a black-backed layer: the hardware dims the rest, see agent/src/screen/sleep.ts). It sends `heartbeat` every 10 s
 // (the agent's WAV fallback in S4 listens for it) and `stop` when the view's Esc hold fires.
 // The S1 view is imported on demand; if it can't be loaded the card shows a quiet placeholder with the phase and the
-// brightness. TODO(S3): the group offset (`offsetMs` from the leader), the view taking `phase` messages for snooze /
-// dismiss (S4) and a brightness setter on the view instead of the layer opacity.
+// brightness.
+// Group (S3): the view gets every member's place (`session.layout`), this host's id (`me`) and the shared clock: this
+// host's Date.now() + `offsetMs` (the leader's clock, measured by the agent; 0 unless it's off by more than 20 ms). A
+// new offset changes the clock in place (no rebuild: the sound keeps playing). Test only (`syncLog` in the message,
+// TIPHYS_SLEEP_SYNCLOG on the agent): the scheduled and drawn crackles go back as `syncLog` lines.
+// TODO(S4): the view taking `phase` messages for snooze / dismiss; a brightness setter on the view instead of the
+// layer opacity.
 // mount(el, ctx) → { update(msg), pause(), resume(), destroy() }.
 const HEARTBEAT_MS = 10_000;
 const PHASE_TR = { settle: 'Yerleşme', fade: 'Sönüş', night: 'Gece', sunrise: 'Gün doğumu', ring: 'Alarm', snoozed: 'Ertelendi', morning: 'Sabah' };
@@ -36,10 +41,15 @@ export function mount(el, ctx) {
   let css = null;
   let paused = false, destroyed = false;
   let content = 1;
+  let offset = 0;        // shared clock = Date.now() + offset
+  let trace = [];        // syncLog lines waiting to be sent (test only)
 
   const send = (m) => ctx.send?.(m);
   send({ type: 'heartbeat' });
   const beat = setInterval(() => send({ type: 'heartbeat' }), HEARTBEAT_MS);
+  const flush = setInterval(() => {
+    while (trace.length) send({ type: 'syncLog', lines: trace.splice(0, 16) });
+  }, 2000);
 
   function drawPlaceholder() {
     if (!msg) return;
@@ -47,7 +57,7 @@ export function mount(el, ctx) {
   }
 
   async function build() {
-    const k = JSON.stringify([msg.session, msg.plan, msg.me, msg.settings, msg.offsetMs]);
+    const k = JSON.stringify([msg.session, msg.plan, msg.me, msg.settings, msg.syncLog === true]);
     if (k === key) return;
     key = k;
     const mod = await loadView();
@@ -67,7 +77,6 @@ export function mount(el, ctx) {
     }
     document.body.classList.add('sleep-view');
     placeholder.hidden = true;
-    const offset = msg.offsetMs ?? 0;
     view = mod.mount(layer, ctx, {
       session: { seed: msg.session.seed, t0: msg.session.t0, members: msg.session.layout },
       plan: msg.plan,
@@ -80,6 +89,7 @@ export function mount(el, ctx) {
       layers: msg.settings?.layers ?? {},
       onStop: () => send({ type: 'stop' }),
       onAlarm: () => {}, // S4
+      trace: msg.syncLog === true ? (line) => { if (trace.length < 2000) trace.push(line); } : null,
     });
     if (paused) view.pause();
   }
@@ -95,6 +105,7 @@ export function mount(el, ctx) {
     update(m) {
       if (m.type === 'sleep') {
         msg = m;
+        offset = Number.isFinite(m.offsetMs) ? m.offsetMs : 0;
         setContent(m.brightness);
         void build();
       } else if (m.type === 'phase' && msg) {
@@ -108,6 +119,7 @@ export function mount(el, ctx) {
     destroy() {
       destroyed = true;
       clearInterval(beat);
+      clearInterval(flush);
       view?.destroy();
       view = null;
       css?.remove();

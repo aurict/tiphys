@@ -15,7 +15,10 @@
 // time through getOutputTimestamp() (the context time leaving the speaker at a performance.now() instant; latency
 // included), else currentTime − outputLatency.
 //
-// createAudio(tl, {now, volume, layers}) → {start(), tick(), unlock(), pause(), resume(), destroy(), state}
+// createAudio(tl, {now, offsetMs, volume, layers, trace}) → {start(), tick(), unlock(), pause(), resume(), destroy(), state}
+// trace (test only, S3 sync measurement): every crackle's planned onset is reported once it has played as
+// ['a', id, eventT, wall, outputLatencyMs]: `wall` = when it left the speaker on this host's Date.now() clock, from a
+// fresh getOutputTimestamp() (else currentTime + outputLatency), so a stale clock mapping shows up as an error.
 // renderOffline(tl, {from, seconds, ...}) → {buffer, events}: the same graph in an OfflineAudioContext (tests).
 
 const ALARM_LEAD_MS = 60_000;
@@ -262,9 +265,25 @@ function rampLevels(g, tl, T, c) {
   return L;
 }
 
-export function createAudio(tl, { now, offsetMs = () => 0, volume = 35, layers = {} } = {}) {
+export function createAudio(tl, { now, offsetMs = () => 0, volume = 35, layers = {}, trace = null } = {}) {
   let ac = null, g = null, timer = 0, paused = false, suspended = false, blocked = false;
   const done = new Set();
+  let traced = []; // trace: [{id, t, c}] scheduled crackles not reported yet
+
+  /** trace: the crackles whose onset has passed, with when they left the speaker (wall clock of this host). */
+  function report() {
+    if (!traced.length) return;
+    const ts = ac.getOutputTimestamp ? ac.getOutputTimestamp() : null;
+    const perf = performance.now(), wall = Date.now(), lat = ac.outputLatency ?? ac.baseLatency ?? 0;
+    const playedBefore = ts && ts.performanceTime > 0 ? ts.contextTime : ac.currentTime - lat;
+    const r1 = (v) => Math.round(v * 10) / 10;
+    traced = traced.filter((x) => {
+      if (x.c > playedBefore) return true;
+      const outPerf = ts && ts.performanceTime > 0 ? ts.performanceTime + (x.c - ts.contextTime) * 1000 : perf + (x.c - ac.currentTime + lat) * 1000;
+      trace(['a', x.id, r1(x.t), r1(wall - perf + outPerf), r1(lat * 1000)]);
+      return false;
+    });
+  }
   let horizon = 0; // shared time up to which events are scheduled
 
   const clock = () => ({
@@ -295,6 +314,7 @@ export function createAudio(tl, { now, offsetMs = () => 0, volume = 35, layers =
       ac.resume().then(() => { blocked = false; }, () => { blocked = true; });
     }
     if (want && ac.state === 'running') {
+      if (trace) report();
       const o = clock();
       const from = Math.max(T, horizon), to = T + 4000;
       const map = (t) => ctxTimeFor(t, o);
@@ -304,6 +324,7 @@ export function createAudio(tl, { now, offsetMs = () => 0, volume = 35, layers =
         done.add(ev.id);
         const c = map(ev.t);
         if (c < ac.currentTime - 0.03) continue; // too late (page was busy): skip rather than play it off-sync
+        if (trace && ev.kind === 'crackle' && traced.length < 500) traced.push({ id: ev.id, t: ev.t, c });
         playEvent(g, tl, ev, c);
       }
       horizon = to;
