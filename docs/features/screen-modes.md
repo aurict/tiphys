@@ -128,8 +128,15 @@ crackles on the bedroom screens, a slow fade to a night light. It always runs fu
 (`uyku`). The agent dims the **hardware** along the curve, the laptop backlight with `brightnessctl` (at most every 2 s)
 or a desktop monitor over **DDC/CI** with `ddcutil` (at most every 15 s), and the page dims the **content** in
 between. Every previous value (brightness, and the optional power profile, system volume and LEDs) is saved before
-it is changed and put back exactly at stop or after a crash. The alarm, the two-screen group and the morning summary
-are not there yet. API: [api.md › Sleep mode](../agent/api.md#sleep-mode).
+it is changed and put back exactly at stop or after a crash. The alarm and the morning summary API: [api.md › Sleep mode](../agent/api.md#sleep-mode).
+
+**Two screens, one scene:** the phone sends the same session (seed, start time, the members with their place in the
+room, the leader) to every machine. Each computes the same sparks and crackles by itself, so a spark leaving one
+screen's edge enters the other's, and its sound moves with it. The laptop talks to the leader over its existing
+source connection (no new token): it measures the clock difference (lowest round-trip pings; corrected only above
+20 ms) and passes stops both ways, so Esc held on either machine, or a stop from the phone, ends both. The laptop
+needs a source for the leader (named like it, or whose address starts with its name), else the start fails with
+`agent.sleep.noGroup`. If the link drops, each machine carries on alone and the phone sees `agent.sleep.memberDown`.
 
 **DDC/CI on a desktop monitor:** install `ddcutil` (its udev rule gives the logged-in user the I²C device) and turn
 DDC/CI on in the monitor's own menu. `tiphys-agent doctor` warns with `doctor.sleep.ddcUnavailable` when `ddcutil

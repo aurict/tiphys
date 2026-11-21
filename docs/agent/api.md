@@ -179,7 +179,8 @@ Every error has the same envelope. The agent sends codes, never sentences; the a
 | `agent.screen.badLayout` | 400 | A layout whose template doesn't belong to the mode, or a card kind the template can't hold or twice (`params.mode`, `template`, `kind`) |
 | `agent.screen.noArt` | 404 | As `agent.gamemode.noArt`, on `/v1/screen/art` |
 | `agent.sleep.running` | 409 | `POST /v1/screen/start` or `/v1/screen/mode` while the sleep mode runs (stop it first) |
-| `agent.sleep.noGroup` | 409 | `POST /v1/sleep/start` with a session of more than one member (the group comes with S3) |
+| `agent.sleep.noGroup` | 409 | `POST /v1/sleep/start` with a group session this host can't join: `params.reason` `notMember` (`host`: this host's id is not in `members`) or `noLeaderSource` (`leader`: a non-leader has no `screen.sources` entry reaching the leader) |
+| `agent.sleep.memberDown` | — | Not a response: `GET /v1/sleep` `group.error` while a member (on a member: the leader link) is down; the scene goes on |
 | `agent.sleep.ddcUnavailable` | 409 | `POST /v1/sleep/preview` with the mode off on a host with nothing to dim (`params.reason`: `missing` = no backlight and no `ddcutil`, `failed` = no working DDC/CI display). Also `GET /v1/sleep` `warning` while the page dims alone |
 | `agent.gamemode.noSource` | 409 | Game mode start without a source agent configured |
 | `agent.gamemode.noDisplay` | 503 | Game mode start without a Hyprland session |
@@ -1178,7 +1179,7 @@ network, no token). Nothing runs until a mode is started (display) or a topic is
 | POST | `/v1/screen/stop` | device | Idempotent → same as GET. |
 | POST | `/v1/screen/focus` | device | Strict `{action?: start\|pause\|resume\|skip\|reset, task?: string(≤ 80, one line)\|null}` (at least one) → `{focus}` (as in GET). Only while the Focus mode runs (`409 agent.screen.notFocus`). `start`: idle → focus round 1, in a break → the next round now, a paused round → resume; `pause`/`resume` keep the time left; `skip`: focus → short (or every `longEvery`-th round long) break, break → next round; `reset`: idle. A phase that ends starts the next one by itself. `task` alone sets the task line; `""`/`null` clears it. A phase change sends the page `focus` and records/pushes `screen.focus.phase {phase, from, round, cause: timer\|action}` (never the task); the push's `data` (sent, never recorded) has `agent` (this agent's name), `quiet` (`"1"` when `modes.focus.quietPhone`) and `endsAt` (ms, while ticking), for the phone's ongoing notification and its quiet filter. When the mode stops or switches away with a running timer, one more push `{phase: idle, from, round, cause: stop}`; its `data.summary` is `"1"` when a `screen.summary` push follows (the phone ends its quiet and leaves the held count to that one). |
 | POST | `/v1/screen/veil` | device | `{on}` → same as GET. Privacy veil: the page drops its view for a dim clock at once; until it is lifted the agent sends the page no layout or topic message (their state is kept and replayed when it lifts). Kept across an agent restart, gone with the mode. `409 agent.screen.notRunning` when no mode runs. |
-| WS | `/v1/screen/live?t=<display token>` | display token | Kiosk page socket. On connect: `layout`, every source's `source` state, the latest relayed messages, `focus` in Focus mode, `sleep` in sleep mode, `pause` if hidden (veiled: only `veil` and `pause`). Then relayed messages and binary spectrum frames. Page → agent: `{"type":"stop"}`, `{"type":"heartbeat"}` (sleep view, every 10 s). Closed with `4410` on stop, `1012` when the agent restarts (the page reconnects with the same token). |
+| WS | `/v1/screen/live?t=<display token>` | display token | Kiosk page socket. On connect: `layout`, every source's `source` state, the latest relayed messages, `focus` in Focus mode, `sleep` in sleep mode, `pause` if hidden (veiled: only `veil` and `pause`). Then relayed messages and binary spectrum frames. Page → agent: `{"type":"stop"}`, `{"type":"heartbeat"}` (sleep view, every 10 s), `{"type":"syncLog", lines}` (test only, `TIPHYS_SLEEP_SYNCLOG`). Closed with `4410` on stop, `1012` when the agent restarts (the page reconnects with the same token). |
 | GET | `/v1/screen/art?t=…&id=…` | display token | Cover proxy, as `/v1/gamemode/art` below. |
 | GET | `/screen/`, `/screen/<file>`, `/screen/map/<file>` | none (kiosk) | The kiosk page and map data, as `/gamemode/…` below. |
 
@@ -1300,17 +1301,17 @@ Work topics (`screen/producers/*.ts`; each starts with its first subscriber, sto
 
 #### Sleep mode
 
-PLAN.md §21 (`screen/sleep.ts`, `screen/sleep_hw.ts`; S2: one host, no group, no alarm yet). A fourth run mode of
+PLAN.md §21 (`screen/sleep.ts`, `screen/sleep_hw.ts`, `screen/sleep_group.ts`; S2: one host; S3: the group; no alarm yet). A fourth run mode of
 the same kiosk: always `fullscreen` on the workspace `uyku` (whatever `screen.placement` says), a fixed view (no
 layout cards, no topic subscription: no producer runs while sleeping), settings in `screen.modes.sleep`
 (configuration.md).
 
 | Method | Path | Auth | Description |
 | --- | --- | --- | --- |
-| GET | `/v1/sleep` | device | `{running, session\|null, phase: settle\|fade\|night\|sunrise\|ring\|snoozed\|morning\|null, phaseStartedAt\|null, phaseEndsAt\|null (ms; null = open-ended), alarm: {next, ringing, snoozedUntil} (S4: always null/false), members: [{host, state}], brightness: {dimming: backlight\|ddc\|content, hardware (percent)\|null, content (0..1), preview\|null}\|null, warning: "agent.sleep.ddcUnavailable"\|null, page: {heartbeatAt\|null}\|null, scale, settings, now}`. |
+| GET | `/v1/sleep` | device | `{running, session\|null, phase: settle\|fade\|night\|sunrise\|ring\|snoozed\|morning\|null, phaseStartedAt\|null, phaseEndsAt\|null (ms; null = open-ended), alarm: {next, ringing, snoozedUntil} (S4: always null/false), members: [{host, side, distance, leader, state: running\|connecting\|down\|stopped\|unknown}] (off: `[{host, state: "off"}]`), group: {role: leader\|member, link: connecting\|ok\|down\|null (leader), offsetMs (leader − this clock)\|null, appliedOffsetMs, rttMs\|null, syncedAt\|null, error: "agent.sleep.memberDown"\|null}\|null (alone or off), brightness: {dimming: backlight\|ddc\|content, hardware (percent)\|null, content (0..1), preview\|null}\|null, warning: "agent.sleep.ddcUnavailable"\|null, page: {heartbeatAt\|null}\|null, scale, settings, now}`. |
 | PUT | `/v1/sleep` | device | Strict `{settings: <partial screen.modes.sleep>}` → same as GET. Nested blocks merge field by field; arrays and `group` are replaced whole; unknown keys and out-of-range values → 400. While running the page gets a new `sleep` message and a changed brightness curve applies at once; `times` apply at the next start. |
-| POST | `/v1/sleep/start` | device | Strict `{session?: {id ([A-Za-z0-9_-]{8,64}), seed (uint32), t0 (ms, within 12 h before / 10 min after the agent's clock), members: [host id] (1–4, distinct), leader (a member)}}` → same as GET. Without `session` the agent makes one (this host alone, `t0` = now). More than one member → `409 agent.sleep.noGroup` (S3). Already sleeping: the status (idempotent). A running Game/Work/Focus mode is stopped first (with its own events). Kiosk errors as `POST /v1/screen/start`. |
-| POST | `/v1/sleep/stop` | device | → same as GET. Stops the sleep mode only (a layout mode running instead is left alone); `POST /v1/screen/stop` also stops it. |
+| POST | `/v1/sleep/start` | device | Strict `{session?: {id ([A-Za-z0-9_-]{8,64}), seed (uint32), t0 (ms, within 12 h before / 10 min after the agent's clock), members: [{host (host id), side: left\|right\|foot\|head, distance: near\|mid\|far (default mid)}] (1–4, distinct hosts; a bare host id is accepted: first left, last right, others foot), leader (a member)}}` → same as GET. The phone sends the same session to every member (the room layout comes from it, so all members draw the same scene). Without `session` the agent makes one (this host alone with its own `side`/`distance`, `t0` = now). This host (its config `name`, as a host id) not in `members` → `409 agent.sleep.noGroup {reason: "notMember"}`; a non-leader without a source to the leader → `409 agent.sleep.noGroup {reason: "noLeaderSource", leader}`. Already sleeping: the status (idempotent). A running Game/Work/Focus mode is stopped first (with its own events). Kiosk errors as `POST /v1/screen/start`. |
+| POST | `/v1/sleep/stop` | device | → same as GET. Stops the sleep mode only (a layout mode running instead is left alone); `POST /v1/screen/stop` also stops it. In a group it stops every member (see Group). |
 | POST | `/v1/sleep/preview` | device | `{brightness: 0..100}` → same as GET (+ `preview: {dimming, until}` when not running). Running: hardware and page at that level for 5 s, then the curve. Not running: the hardware alone for 5 s (each call extends it), then the previous value; the value is kept in `$XDG_RUNTIME_DIR/tiphys-sleep-preview.json` (0600) until restored, also across a crash. Nothing to dim → `409 agent.sleep.ddcUnavailable {reason: missing\|failed}`. |
 
 While sleep runs, `POST /v1/screen/start {mode}` and `POST /v1/screen/mode` → `409 agent.sleep.running`. `GET
@@ -1337,8 +1338,26 @@ While sleep runs, `POST /v1/screen/start {mode}` and `POST /v1/screen/mode` → 
   every previous hardware value, written whole before each change. Stop restores them all and removes it; after a crash
   the next agent adopts the run (Firefox still up: same session, no new reads, restored at its stop) or restores the
   values from the file. Events: `sleep.started` / `sleep.stopped` only (no `screen.*` event, no session summary).
+- **Group** (S3, more than one member): the scene needs no network (every member computes the same timeline from
+  `seed` and `t0`); the leader (normally theloth) never connects to a member. A non-leader uses its source connection
+  to the leader (`WS /v1/screen/feed` with a `screen` token; the source is the one named like the leader, else the one
+  whose URL host starts with the leader's id) with no topics, and both sides send group messages on it:
+  `{type:"sleepGroup", sessionId, action:"hello"|"state", host}` (member → leader; `state` every 5 s as a keepalive),
+  `{type:"sleepGroup", sessionId, action:"hello"|"members", host, members:[{host, state}]}` (leader → member),
+  `{type:"sleepGroup", sessionId, action:"unknown"}` (the leader doesn't run that session), and both ways
+  `{type:"sleepGroup", sessionId, action:"stop"|"snooze"|"dismiss"|"phase", host, at}` (snooze/dismiss/phase are
+  carried for S4). Clock: `{type:"clockPing", t}` → `{type:"clockPong", t, peer}` (answered at once by the source
+  side); 8 pings 150 ms apart on every (re)connect and every 10 min; offset = `peer − (t_send + t_recv)/2` averaged
+  over the lowest-RTT quarter of the samples (1–3; none if the best RTT is over 150 ms); the page gets it only when
+  `|offset| > 20 ms`. A user stop (`/v1/sleep/stop`, `/v1/screen/stop`, the page's Esc hold) on any member stops all:
+  the leader relays a member's stop to the others, and a member whose link comes back after the leader was stopped
+  that way stops too (the leader remembers stopped session ids for 12 h, memory only). A local end (the kiosk died,
+  the agent exits) is not a group stop. A member that loses the link keeps running on its own timeline: `group.error`
+  `agent.sleep.memberDown`, the leader marks a member `down` after 15 s without its keepalive; the link reconnects
+  with the source backoff and the messages resume. Nothing of the group is written to disk beyond the session in
+  `sleep.json`.
 - **Kiosk messages** (agent → page): `{type:"layout", mode:"sleep", template:"sleep", cards:[], settings:{}}`, then
-  `{type:"sleep", session:{id, seed, t0, leader, members, layout:[{id, side, distance}]}, me, offsetMs (0 until S3),
+  `{type:"sleep", session:{id, seed, t0, leader, members (ids), layout:[{id, side, distance}]}, me, offsetMs (shared time = this clock + offsetMs; sent again when it changes),
   plan:{t0, settleMs, fadeMs, soundFadeMs, nightSound, sunriseAt|null, ringAt|null, rampMs, alarmSound}, phase,
   phaseStartedAt, phaseEndsAt, brightness (content), settings:{volume, layers, nightSound}, scale}` (on connect and on
   a settings change), `{type:"phase", phase, phaseStartedAt, phaseEndsAt}` and `{type:"brightness", content}` (while
