@@ -47,6 +47,11 @@ body { cursor: none; font-family: var(--font); }
 .sl-m-sum li + li { border-top: 1px solid rgba(122, 68, 32, 0.15); }
 .sl-m-sum span { color: #6A3A1A; }
 .sl-m-sum b { font-weight: 600; text-align: right; }
+.sl-m-sum li.warn b { color: #8A2200; }
+.sl-m-titles { list-style: none; margin: 12px 0 0; padding: 0; min-width: min(560px, 86vw); font-size: clamp(14px, 1.1vw, 17px); color: #6A3A1A; }
+.sl-m-titles li { padding: 4px 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sl-m-titles li::before { content: "· "; color: #8A5A36; }
 .sl-m-note { margin-top: 14px; font-size: 14px; color: #8A5A36; }
+.sl-m-note[hidden], .sl-m-titles[hidden] { display: none; }
 
 @media (prefers-reduced-motion: reduce) { .sl-hint, .sl-morning, .sl-snooze { animation: none; } }

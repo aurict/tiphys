@@ -19,14 +19,27 @@
 // auto-stop); `alarmGain` scales the birds/chime on this machine (0 while Velour plays the song on the leader, 0.4 on
 // the other members of a Velour alarm). A plan change (snooze, dismiss) re-plans at once: the alarm bus follows the
 // new plan within 0.3 s, so chirps already scheduled past a snooze are not heard.
-// createAudio(tl, {now, offsetMs, volume, layers, trace, alarmGain}) → {start(), tick(), replan(), setAlarmGain(g),
-//   unlock(), pause(), resume(), destroy(), state}
+// Ducking (S5): while the leader's Velour sleep playlist plays, the fire bus (hum, crackles, logs, wind, rain; not the
+// alarm) sits DUCK_DB (−12 dB) lower: down in DUCK_DOWN_S, back up slowly (DUCK_UP_S) when the music ends.
+// createAudio(tl, {now, offsetMs, volume, layers, trace, alarmGain, duck}) → {start(), tick(), replan(), setAlarmGain(g),
+//   setDuck(on), unlock(), pause(), resume(), destroy(), state}
 // trace (test only, S3 sync measurement): every crackle's planned onset is reported once it has played as
 // ['a', id, eventT, wall, outputLatencyMs]: `wall` = when it left the speaker on this host's Date.now() clock, from a
 // fresh getOutputTimestamp() (else currentTime + outputLatency), so a stale clock mapping shows up as an error.
 // renderOffline(tl, {from, seconds, ...}) → {buffer, events}: the same graph in an OfflineAudioContext (tests).
 
 const ALARM_LEAD_MS = 60_000;
+export const DUCK_DB = -12;
+export const DUCK_GAIN = 10 ** (DUCK_DB / 20);
+export const DUCK_DOWN_S = 3;
+export const DUCK_UP_S = 20;
+
+/** Ramps a duck gain param from where it is now: to DUCK_GAIN (on) or 1 (off). */
+export function duckRamp(param, on, t) {
+  param.cancelScheduledValues(t);
+  param.setValueAtTime(param.value, t);
+  param.linearRampToValueAtTime(on ? DUCK_GAIN : 1, t + (on ? DUCK_DOWN_S : DUCK_UP_S));
+}
 
 // ---- clock mapping (pure)
 /**
@@ -168,7 +181,8 @@ function buildGraph(ac, { volume = 35, layers = {} }) {
   const rate = ac.sampleRate;
   const buf = (data) => { const b = ac.createBuffer(1, data.length, rate); b.copyToChannel(data, 0); return b; };
   const master = ac.createGain(); master.gain.value = level(volume); master.connect(ac.destination);
-  const fire = ac.createGain(); fire.gain.value = 0; fire.connect(master);
+  const duck = ac.createGain(); duck.gain.value = 1; duck.connect(master);
+  const fire = ac.createGain(); fire.gain.value = 0; fire.connect(duck);
   const alarm = ac.createGain(); alarm.gain.value = 0; alarm.connect(master);
   const loop = (data, filter, gain) => {
     const src = ac.createBufferSource(); src.buffer = buf(data); src.loop = true;
@@ -178,7 +192,7 @@ function buildGraph(ac, { volume = 35, layers = {} }) {
     return { src, g };
   };
   const L = { hum: true, crackle: true, logs: true, wind: false, rain: false, ...layers };
-  const g = { ac, rate, master, fire, alarm, L, nodes: [], chimes: new Map(), alarmGain: 1 };
+  const g = { ac, rate, master, duck, fire, alarm, L, nodes: [], chimes: new Map(), alarmGain: 1 };
   if (L.hum) {
     const lp = ac.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 170; lp.Q.value = 0.5;
     g.hum = loop(loopNoise('brown', rate, 8, 0x4a11), lp, 0.22);
@@ -272,9 +286,9 @@ function rampLevels(g, tl, T, c) {
   return L;
 }
 
-export function createAudio(tl, { now, offsetMs = () => 0, volume = 35, layers = {}, trace = null, alarmGain = 1 } = {}) {
+export function createAudio(tl, { now, offsetMs = () => 0, volume = 35, layers = {}, trace = null, alarmGain = 1, duck = false } = {}) {
   let ac = null, g = null, timer = 0, paused = false, suspended = false, blocked = false;
-  let gainNow = alarmGain;
+  let gainNow = alarmGain, duckNow = duck;
   const done = new Set();
   let traced = []; // trace: [{id, t, c}] scheduled crackles not reported yet
 
@@ -349,6 +363,7 @@ export function createAudio(tl, { now, offsetMs = () => 0, volume = 35, layers =
       ac = new AudioContext({ latencyHint: 'playback' });
       g = buildGraph(ac, { volume, layers });
       g.alarmGain = gainNow;
+      g.duck.gain.value = duckNow ? DUCK_GAIN : 1;
       if (ac.state !== 'running') ac.resume().then(() => { blocked = false; tick(); }, () => { blocked = true; });
       blocked = ac.state !== 'running';
       tick();
@@ -368,6 +383,14 @@ export function createAudio(tl, { now, offsetMs = () => 0, volume = 35, layers =
     },
     /** This machine's share of the birds/chime (0..1). */
     setAlarmGain(v) { gainNow = Number.isFinite(v) ? Math.max(0, Math.min(1, v)) : 1; if (g) g.alarmGain = gainNow; },
+    /** Music on the leader (S5): the fire bus ducks −12 dB, back up slowly after. */
+    setDuck(on) {
+      on = on === true;
+      if (on === duckNow) return;
+      duckNow = on;
+      if (g && ac) duckRamp(g.duck.gain, on, ac.currentTime);
+    },
+    get ducked() { return duckNow; },
     pause() { paused = true; clearTimeout(timer); if (ac?.state === 'running') ac.suspend(); },
     resume() { if (!paused) return; paused = false; horizon = 0; if (ac) ac.resume().then(tick); },
     destroy() { paused = true; clearTimeout(timer); ac?.close(); ac = null; },

@@ -2,3 +2,4 @@
 import './timeline.test.js';
 import './audio.test.js';
 import './alarm.test.js';
+import './morning.test.js';

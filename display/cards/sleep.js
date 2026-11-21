@@ -12,6 +12,8 @@
 // Alarm (S4): a snooze or dismiss changes the plan (`sleep` again): the view takes the new plan in place (no rebuild,
 // the sound goes on); `alarm.gain` is this machine's share of the birds/chime (0 while Velour plays on the leader).
 // The view's keys go to the agent as `{type:"alarm", action:"snooze"|"dismiss"}`.
+// S5: `music` (the leader's Velour sleep playlist plays: the ember sounds duck) and `morning` (the morning summary
+// for the morning screen) ride on the same `sleep` message and go into the running view.
 // mount(el, ctx) → { update(msg), pause(), resume(), destroy() }.
 const HEARTBEAT_MS = 10_000;
 const PHASE_TR = { settle: 'Yerleşme', fade: 'Sönüş', night: 'Gece', sunrise: 'Gün doğumu', ring: 'Alarm', snoozed: 'Ertelendi', morning: 'Sabah' };
@@ -64,6 +66,8 @@ export function mount(el, ctx) {
     if (k === key) {
       if (view && JSON.stringify(msg.plan) !== built) { built = JSON.stringify(msg.plan); view.setPlan(msg.plan); }
       view?.setAlarm(msg.alarm?.gain ?? 1);
+      view?.setMusic(msg.music === true);
+      view?.setMorning(msg.morning ?? null);
       return;
     }
     key = k;
@@ -96,6 +100,8 @@ export function mount(el, ctx) {
       volume: msg.settings?.volume ?? 35,
       layers: msg.settings?.layers ?? {},
       alarmGain: msg.alarm?.gain ?? 1,
+      music: msg.music === true,
+      morningSummary: msg.morning ?? null,
       onStop: () => send({ type: 'stop' }),
       onAlarm: (action) => send({ type: 'alarm', action }),
       trace: msg.syncLog === true ? (line) => { if (trace.length < 2000) trace.push(line); } : null,

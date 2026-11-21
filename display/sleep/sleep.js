@@ -1,12 +1,15 @@
 // Sleep mode view (PLAN.md §21 E; S1 draft, S4 alarm). Shaped like a kiosk card (cards/*.js); the mode shell's card
-// (cards/sleep.js) mounts it: mount(el, ctx, opts) → {update, setPlan(plan), setAlarm(gain), pause, resume, destroy}.
+// (cards/sleep.js) mounts it: mount(el, ctx, opts) → {update, setPlan(plan), setAlarm(gain), setMusic(on),
+//   setMorning(summary), pause, resume, destroy}.
 //   opts: {session {seed, t0, members}, plan (timeline.js), me (member id), now() (shared clock, ms),
-//          brightness 0..1, audio (bool), volume 0..100, layers, alarmGain 0..1, onStop(), onAlarm(action),
+//          brightness 0..1, audio (bool), volume 0..100, layers, alarmGain 0..1, music (bool), morningSummary,
+//          onStop(), onAlarm(action),
 //          trace(line) (test only: ['v', id, eventT, wall] for the first frame that draws a crackle, and audio.js's
 //          ['a', …] lines)}
 // The phases come from the plan alone (the agent's plan, with its snoozes and dismiss): sunrise light rising, ring
 // (light at its peak, breathing; bird chirps each with a light mote), snoozed (bright and quiet, "Ertelendi · yeniden HH:MM"),
-// morning (warm screen, clock and date; the morning summary is S5's: a placeholder line).
+// morning (warm screen, clock and date, the night's length t0 → dismiss and the agent's morning summary: morning.js).
+// S5: `music` (the leader's Velour sleep playlist plays) ducks the ember sounds −12 dB (audio.js setDuck).
 // Frames (its own loop, like the Game scenes: one timer then one rAF, nothing pending between frames): settle 30 fps →
 // fade 20 fps at 1/3 resolution; night 1/6 resolution at 5 fps while a flare glows, 2 fps when nothing happens;
 // sunrise 10 fps, ring 15; morning: no canvas at all (a DOM clock once a minute). A frame is also placed on the next
@@ -20,6 +23,7 @@ import { everyMinute } from '../sched.js';
 import { createTimeline } from './timeline.js';
 import { createEmbers } from './embers.js';
 import { createAudio } from './audio.js';
+import { morningView } from './morning.js';
 
 const FPS = { settle: 30, fade: 20, night: 5, sunrise: 10, ring: 15, snoozed: 10 };
 const SCALE = { settle: 1 / 3, fade: 1 / 3, night: 1 / 6, sunrise: 1 / 3, ring: 1 / 3, snoozed: 1 / 3 };
@@ -45,10 +49,9 @@ export function mount(el, ctx, opts) {
     <section class="sl-morning" hidden aria-label="Sabah">
       <div class="sl-m-date"></div>
       <div class="sl-m-clock" role="timer"></div>
-      <ul class="sl-m-sum" aria-label="Sabah özeti">
-        <li><span>Uyku</span><b class="sl-m-dur"></b></li>
-      </ul>
-      <p class="sl-m-note">Gecenin özeti telefonunda.</p>
+      <ul class="sl-m-sum" aria-label="Sabah özeti"></ul>
+      <ul class="sl-m-titles" aria-label="Bekleyen bildirimler" hidden></ul>
+      <p class="sl-m-note"></p>
     </section>`;
   el.append(root);
   const $ = (s) => root.querySelector(s);
@@ -57,10 +60,11 @@ export function mount(el, ctx, opts) {
 
   const embers = createEmbers(canvas, tl);
   embers.setBrightness(opts.brightness ?? 1);
-  const audio = opts.audio === false ? null : createAudio(tl, { now, offsetMs: opts.offsetMs, volume: opts.volume ?? 35, layers: opts.layers, trace: opts.trace, alarmGain: opts.alarmGain ?? 1 });
+  const audio = opts.audio === false ? null : createAudio(tl, { now, offsetMs: opts.offsetMs, volume: opts.volume ?? 35, layers: opts.layers, trace: opts.trace, alarmGain: opts.alarmGain ?? 1, duck: opts.music === true });
   audio?.start();
 
   let phase = null, morningOn = false, minute = null, paused = false;
+  let summary = opts.morningSummary ?? null;
   const stats = { frames: 0, phase: null };
   let lastT = null; // trace: the shared time up to which crackles were reported
 
@@ -126,9 +130,25 @@ export function mount(el, ctx, opts) {
     canvas.hidden = true; hint.hidden = true; snoozeLine.hidden = true;
     morning.hidden = false;
     root.dataset.phase = 'morning';
-    const slept = Math.max(0, now() - plan.t0) / 60000;
-    $('.sl-m-dur').textContent = `${Math.floor(slept / 60)} sa ${Math.round(slept % 60)} dk`;
+    drawMorning();
     minute = everyMinute((d) => { $('.sl-m-clock').textContent = clock(d); $('.sl-m-date').textContent = dateLine(d); });
+  }
+  /** The summary rows (the agent's summary, else the night's length from the plan) and up to three held titles. */
+  function drawMorning() {
+    const v = morningView(summary, tl.plan ?? plan, now());
+    const list = $('.sl-m-sum'), titles = $('.sl-m-titles'), note = $('.sl-m-note');
+    list.replaceChildren(...v.rows.map((r) => {
+      const li = document.createElement('li');
+      const a = document.createElement('span'); a.textContent = r.label;
+      const b = document.createElement('b'); b.textContent = r.value;
+      if (r.warn) li.classList.add('warn');
+      li.append(a, b);
+      return li;
+    }));
+    titles.replaceChildren(...v.titles.map((t) => { const li = document.createElement('li'); li.textContent = t; return li; }));
+    titles.hidden = !v.titles.length;
+    note.textContent = v.note ?? '';
+    note.hidden = !v.note;
   }
   function onKey(e) {
     if (morningOn) return;
@@ -171,6 +191,13 @@ export function mount(el, ctx, opts) {
       if (!paused && !morningOn) { stop(); raf = requestAnimationFrame(frame); }
     },
     setAlarm(gain) { audio?.setAlarmGain(gain); },
+    setMusic(on) { audio?.setDuck(on === true); },
+    setMorning(s) {
+      const next = s ?? null;
+      if (JSON.stringify(next) === JSON.stringify(summary)) return;
+      summary = next;
+      if (morningOn) drawMorning();
+    },
     pause() { if (paused) return; paused = true; stop(); audio?.pause(); minute?.pause(); },
     resume() { if (!paused) return; paused = false; if (!morningOn) raf = requestAnimationFrame(frame); audio?.resume(); minute?.resume(); },
     destroy() {
