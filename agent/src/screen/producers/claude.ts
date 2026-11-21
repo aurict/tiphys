@@ -427,6 +427,8 @@ export class ClaudeTopic {
       return this.#changed();
     }
     const x = this.#tiphys(s);
+    const dup = s.sdkSessionId ? [...this.#terms.values()].filter((t) => t.t.sdkSessionId === s.sdkSessionId) : [];
+    for (const t of dup) this.#dropTerm(t);
     x.name = shortName(s.title) || basename(s.cwd);
     if (e.kind === "status") x.status = STATUS[e.status] ?? "idle";
     else if (e.kind === "tool_use") {
@@ -439,7 +441,7 @@ export class ClaudeTopic {
       const p = x.pending.get(e.requestId);
       if (p && e.allow && EDIT_TOOLS.has(p.tool) && p.abs) this.#edits.push({ abs: p.abs, id: x.id, at: Date.now() });
       this.#resolved(x, e.requestId, e.allow);
-    } else return;
+    } else if (!dup.length) return;
     this.#changed();
   }
 
@@ -531,8 +533,7 @@ export class ClaudeTopic {
     if (known) return this.#readTerm(known);
     const t = await this.#d.io.session(file);
     if (!t || !this.#running || this.#terms.has(file)) return;
-    // The SDK's own process (a Tiphys session) may write a session file too: it is shown once, as the Tiphys one.
-    if ([...(this.#mgr?.sessions.values() ?? [])].some((s) => s.sdkSessionId === t.sdkSessionId)) return;
+    if (this.#ours(t.sdkSessionId)) return;
     const s: Session = { id: t.sdkSessionId.slice(0, 8), origin: "terminal", name: "", cwd: t.cwd, status: "idle", recent: [], pending: new Map(), waiting: null };
     const term: Term = { file, configDir, t, s, tail: null, w: null, open: new Map(), busy: false, again: false };
     this.#terms.set(file, term);
@@ -552,16 +553,29 @@ export class ClaudeTopic {
   async #readTerm(term: Term) {
     const t = await this.#d.io.session(term.file);
     if (!this.#running || this.#terms.get(term.file) !== term) return;
-    if (!t || t.sdkSessionId !== term.t.sdkSessionId) {
-      term.w?.close();
-      this.#terms.delete(term.file);
-      this.#sessions.delete(`t:${term.file}`);
+    if (!t || t.sdkSessionId !== term.t.sdkSessionId || this.#ours(t.sdkSessionId)) {
+      this.#dropTerm(term);
       this.#changed();
       if (t) void this.#onFile(term.file, term.configDir); // the pid file now holds another session
       return;
     }
     this.#apply(term, t);
     this.#changed();
+  }
+
+  /**
+   * The SDK's own process (a Tiphys session) writes a session file too, and with the real SDK it does so before the
+   * manager learns the session's id: such a file is shown once, as the Tiphys session, and dropped as soon as the id
+   * is known (the next Tiphys event or re-read of the file).
+   */
+  #ours(sdkSessionId: string) {
+    return [...(this.#mgr?.sessions.values() ?? [])].some((s) => s.sdkSessionId === sdkSessionId);
+  }
+
+  #dropTerm(term: Term) {
+    term.w?.close();
+    this.#terms.delete(term.file);
+    this.#sessions.delete(`t:${term.file}`);
   }
 
   #apply(term: Term, t: TerminalSession) {

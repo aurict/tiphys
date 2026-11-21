@@ -368,7 +368,28 @@ describe("claude topic", () => {
     topic.set(a.s, []);
     expect(topic.watchCount).toBe(0);
   });
+  it("a Tiphys session's own SDK process writing a session file before its id is known is dropped once the id is known", async () => {
+    const { root, mgr, topic, cfg, proc } = await setup({ share: true });
+    await mkdir(join(cfg, "sessions"), { recursive: true });
+    const s = mgr.add("ffffffff-3333-4aaa-8aaa-aaaaaaaaaaaa", root) as { sdkSessionId: string | null };
+    s.sdkSessionId = null; // the real SDK: the child's session file comes before the manager's init message
+    const sid = "abababab-4444-4aaa-8aaa-aaaaaaaaaaaa";
+    await fakeProc(proc, 5151, 88);
+    await writeFile(join(cfg, "sessions", "5151.json"), JSON.stringify({ pid: 5151, sessionId: sid, cwd: root, status: "busy", procStart: "88" }));
+    const a = sock();
+    topic.set(a.s, ["claude"]);
+    await until(() => (a.last("claude")?.sessions as Msg[])?.some((x) => x.origin === "terminal"));
+    s.sdkSessionId = sid;
+    mgr.emit("ffffffff-3333-4aaa-8aaa-aaaaaaaaaaaa", { kind: "init", sessionId: sid });
+    await until(() => (a.last("claude")!.sessions as Msg[]).every((x) => x.origin === "tiphys"));
+    expect((a.last("claude")!.sessions as Msg[]).map((x) => x.id)).toEqual(["ffffffff"]);
+    // Later rewrites of the file (busy → waiting) don't bring it back.
+    await writeFile(join(cfg, "sessions", "5151.json"), JSON.stringify({ pid: 5151, sessionId: sid, cwd: root, status: "waiting", procStart: "88" }));
+    await sleep(120);
+    expect((a.last("claude")!.sessions as Msg[]).map((x) => x.origin)).toEqual(["tiphys"]);
+  });
 });
+
 
 describe("touch attribution", () => {
   it("a city touch after a session's Edit carries that session's id; others stay null", async () => {
