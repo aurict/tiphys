@@ -55,6 +55,8 @@ export function createPill(el) {
     }, 4000);
   }
   return {
+    /** Drops the queue and hides the current pill (the privacy veil). */
+    clear() { queue.length = 0; el.classList.remove('show'); },
     push(item) {
       if (!item) return;
       if (queue.length > 6) queue.shift(); // a burst doesn't keep the pill busy for minutes

@@ -22,8 +22,6 @@ body.has-problem .stage { opacity: .12; }
 .work-main { min-height: 0; background: rgba(8, 8, 12, 0.42); }
 .side-col { display: flex; flex-direction: column; gap: var(--gutter); min-width: 0; min-height: 0; }
 
-.focus-center { position: absolute; left: 40px; right: 40px; top: 140px; bottom: 36px; display: flex; align-items: center; justify-content: center; }
-
 /* ---------- Day card ---------- */
 .day-card { padding: 26px 30px 30px; display: flex; flex-direction: column; gap: 6px; flex: none; }
 .day-clock { font-size: 112px; font-weight: 800; letter-spacing: -0.045em; line-height: 1; }

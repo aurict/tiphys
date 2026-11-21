@@ -5,6 +5,8 @@
 // is destroyed, the new one fades in, no reload. `pause`/`resume` (the kiosk isn't on screen) stop every card's
 // drawing and timers and freeze CSS animations. Topic messages (tagged with their source `src`) and spectrum frames
 // go to the mounted cards. The socket, the Esc-hold stop, the notification pill and the problem card live here.
+// Focus mode shows only critical pills (danger/warning tones and the timer's own). The privacy veil (`veil` {on})
+// destroys the view at once and shows a dim clock; the agent sends nothing else until it lifts, then a fresh layout.
 import { createPill, createProblem, setupEscHold, eventCopy } from './notify.js';
 import { createScheduler } from './sched.js';
 import * as game from './cards/game.js';
@@ -15,7 +17,11 @@ import * as jobs from './cards/jobs.js';
 import * as git from './cards/git.js';
 import * as music from './cards/music.js';
 import * as servers from './cards/servers.js';
+import * as focus from './cards/focus.js';
+import * as task from './cards/task.js';
 import { icon } from './icons.js';
+import { fmtClock, fmtOverline } from './format.js';
+import { everyMinute } from './sched.js';
 
 const $ = (s) => document.querySelector(s);
 const hash = new URLSearchParams(location.hash.slice(1));
@@ -36,7 +42,9 @@ let agentPaused = false, paused = false;
 // Cards that draw frames get them from one scheduler: nothing runs between changes (the city has its own, with its
 // effect frame rate and pause).
 const sched = createScheduler((now, dt) => { for (const c of view?.cards ?? []) c.frame?.(now, dt); });
-const ctx = { pill: (item) => pill.push(item), debug: DEBUG, frames: sched, title: setTitle };
+/** Focus: only what can't wait (server down, Claude waiting, a failed job, the link) and the timer's own pills. */
+const critical = (item) => item && (item.always || item.tone === 'danger' || item.tone === 'warning');
+const ctx = { pill: (item) => { if (view?.mode !== 'focus' || critical(item)) pill.push(item); }, debug: DEBUG, frames: sched, title: setTitle };
 
 /** The Work view's title: "proje › dal" from the Git card; null → the mode name. */
 function setTitle(rootName, branch) {
@@ -78,14 +86,24 @@ const TEMPLATES = {
     return out;
   },
   focus(root, layout) {
-    // The timer and the task line are W5: the clock, music and (if something is wrong) the servers for now.
-    root.innerHTML = shell('tpl-focus', 'ODAK MODU', 'Odak', '<section class="focus-center"><div class="focus-side"></div></section>');
-    const center = root.querySelector('.focus-center'), below = root.querySelector('.focus-side');
+    // The W0 draft: the ring in the middle with the task under it, small clock top right, round line top left, music
+    // bottom left, servers (only when something is wrong) and the "critical only" chip bottom right. Without the
+    // timer card the day card takes the middle (a big clock).
+    const timer = layout.cards.some((c) => c.kind === 'focus' && c.enabled);
+    root.innerHTML = `<main class="stage tpl-focus"><canvas class="f-bg" aria-hidden="true"></canvas>
+      <div class="f-corner f-tl"><div class="overline f-mode">ODAK MODU</div><div class="f-round"></div></div>
+      <div class="f-corner f-tr"></div><section class="f-center"></section><div class="f-bl"></div>
+      <div class="f-br"><div class="f-quiet chip">${icon('bell', 16)}<span>Yalnız kritik bildirimler</span></div></div></main>`;
+    const stage = root.querySelector('.stage'), center = root.querySelector('.f-center');
     const out = [];
-    mountCard(out, layout, 'day', day, center, { size: 'big' });
-    center.append(below);
-    mountCard(out, layout, 'music', music, below);
-    mountCard(out, layout, 'servers', servers, below);
+    const srv = layout.cards.some((c) => c.kind === 'servers' && c.enabled);
+    mountCard(out, layout, 'focus', focus, center, { stage, servers: srv });
+    mountCard(out, layout, 'task', task, center);
+    if (center.querySelector('.f-break')) center.append(center.querySelector('.f-break')); // under the task line
+    mountCard(out, layout, 'day', day, timer ? root.querySelector('.f-tr') : center, { size: timer ? 'corner' : 'big' });
+    mountCard(out, layout, 'music', music, root.querySelector('.f-bl'));
+    mountCard(out, layout, 'servers', servers, root.querySelector('.f-br'));
+    root.querySelector('.f-br').append(root.querySelector('.f-quiet'));
     return out;
   },
 };
@@ -166,6 +184,7 @@ function setPaused() {
   paused = p;
   document.body.classList.toggle('paused', p);
   if (p) sched.pause(); else sched.resume();
+  if (p) veilClock?.pause(); else veilClock?.resume();
   for (const c of view?.cards ?? []) (p ? c.pause() : c.resume());
 }
 document.addEventListener('visibilitychange', setPaused);
@@ -204,7 +223,38 @@ function connect() {
   };
 }
 
+// ------------------------------------------------------------------ privacy veil
+let veiled = false, veilClock = null, clock24 = true;
+const veilEl = $('#veil');
+function setVeil(on) {
+  if (on === veiled) return;
+  veiled = on;
+  document.body.classList.toggle('veiled', on);
+  veilEl.hidden = !on;
+  if (on) {
+    // Nothing of the view survives: its cards stop (sound included) and its DOM goes.
+    for (const c of view?.cards ?? []) c.destroy();
+    for (const v of viewsEl.querySelectorAll('.view')) v.remove();
+    view = null;
+    pill.clear();
+    const t = veilEl.querySelector('.veil-time'), sfx = veilEl.querySelector('.veil-suffix'), d = veilEl.querySelector('.veil-date');
+    veilClock = everyMinute((now) => {
+      const c = fmtClock(now, clock24);
+      t.textContent = c.time; sfx.textContent = c.suffix; d.textContent = fmtOverline(now);
+    });
+    if (paused) veilClock.pause();
+  } else {
+    veilClock?.stop();
+    veilClock = null; // the agent sends the layout and the state again
+  }
+}
+
 function onMessage(m) {
+  if (typeof m.clock24 === 'boolean') clock24 = m.clock24;
+  else if (typeof m.settings?.clock24 === 'boolean') clock24 = m.settings.clock24;
+  if (m.type === 'veil') return setVeil(m.on === true);
+  // While veiled the agent sends no layout or topic; anything else (settings, sources) has no view to go to.
+  if (veiled && m.type !== 'pause' && m.type !== 'resume' && m.type !== 'source') return;
   switch (m.type) {
     case 'layout': applyLayout(m); break;
     case 'source': applySource(m); break;

@@ -9,6 +9,7 @@
 <link rel="stylesheet" href="app.css">
 <link rel="stylesheet" href="shell.css">
 <link rel="stylesheet" href="work.css">
+<link rel="stylesheet" href="focus.css">
 <script type="module" src="main.js"></script>
 </head>
 <body data-motion="normal">
@@ -177,6 +178,9 @@
   <div class="esc-ic" data-icon="power"></div>
   <div class="esc-t">Kapatmak için basılı tut</div>
 </div>
+
+<!-- Privacy veil: a dim clock only (main.js); the view underneath is destroyed while it shows. -->
+<div id="veil" hidden><div class="veil-clock"><span class="veil-time"></span><span class="veil-suffix"></span></div><div class="veil-date"></div></div>
 
 <div id="dim" aria-hidden="true"></div>
 <div id="perf" hidden></div>
