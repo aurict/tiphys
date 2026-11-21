@@ -5,15 +5,15 @@
 // - scratch: the rule sends it silently to the special workspace special:tiphys instead, and a temporary keybind
 //   (config screen.scratchBind, default SUPER,grave) toggles that workspace. A bind already in use is refused
 //   (409 agent.screen.bindTaken) rather than overridden. Stop: unbind, rule off.
-import { SCRATCH_BIND, type ScreenMode } from "../config.ts";
+import { SCRATCH_BIND, type RunMode } from "../config.ts";
 import { AppError } from "../errors.ts";
 import { ADDRESS, luaString, type HyprMode } from "../hyprctl.ts";
 
 export const APP_ID = "tiphys-screen";
 export const RULE = "tiphys-screen";
 export const SPECIAL = "tiphys";
-/** Named workspace per mode (fullscreen placement). */
-export const WORKSPACES: Readonly<Record<ScreenMode, string>> = { game: "yol", work: "is", focus: "odak" };
+/** Named workspace per mode (fullscreen placement; sleep is always fullscreen). */
+export const WORKSPACES: Readonly<Record<RunMode, string>> = { game: "yol", work: "is", focus: "odak", sleep: "uyku" };
 
 export type Placement = "fullscreen" | "scratch";
 

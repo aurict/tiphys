@@ -27,6 +27,11 @@
 // `screen.summary` push (numbers only, not recorded). Battery saver (W7): while the display host runs on battery below
 // 30 % (back at 35 % or on mains) the page gets `power {saver:true}` (motion low, flat city); the level comes from the
 // `self` source's system messages and a read of /sys/class/power_supply every 30 s (no process).
+// Sleep mode (PLAN.md §21 S2, sleep.ts): a fourth run mode with its own routes (/v1/sleep/*): always fullscreen on the
+// workspace `uyku`, a fixed view (no layout, no topic subscription), the phase machine and the brightness curve of
+// sleep.ts with its state in sleep.json next to state.json. Its events are sleep.started / sleep.stopped only. While it
+// runs, a layout mode can't be switched to (409 agent.sleep.running); POST /v1/sleep/start stops a running layout mode
+// first. The page sends `heartbeat` every 10 s on its live socket.
 import { randomBytes, timingSafeEqual } from "node:crypto";
 import { createReadStream, existsSync } from "node:fs";
 import { mkdir, readFile, realpath, rename, rm, stat, writeFile } from "node:fs/promises";
@@ -35,7 +40,7 @@ import { extname, join, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 import { z } from "zod";
-import { gameSettingsSchema, MODE_SCHEMAS, SCREEN_MODES, screenSchema, sourceName, type ModeSettings, type ScreenConfig, type ScreenMode } from "../config.ts";
+import { gameSettingsSchema, MODE_SCHEMAS, SCREEN_MODES, screenSchema, sourceName, type ModeSettings, type RunMode, type ScreenConfig, type ScreenMode } from "../config.ts";
 import type { Exec } from "../control.ts";
 import { whichIn } from "../detect.ts";
 import { AppError } from "../errors.ts";
@@ -54,6 +59,8 @@ import { FOCUS_ACTIONS, FocusClock, IDLE, parseTimes, TASK_MAX, type FocusAction
 import { realFileIo, type FileIo } from "./producers/common.ts";
 import { findBattery, powerSupplyDir, readBattery } from "./producers/system.ts";
 import { SessionSummary, SUMMARY_MIN_MS } from "./summary.ts";
+import { Hardware, sanitizeSaved, type HwSaved } from "./sleep_hw.ts";
+import { HardwarePreview, hostIdOf, mergeSettings, parseSleepFile, SleepRun, sleepPreviewSchema, sleepPutSchema, sleepStartSchema, type SleepSession } from "./sleep.ts";
 
 export const UNIT = "tiphys-screen";
 export { APP_ID } from "./placement.ts";
@@ -251,7 +258,7 @@ export function parseBrightness(out: string): string | null {
 /** The state file: everything to undo. Written before each step. */
 interface SavedState {
   startedAt: string;
-  mode: ScreenMode;
+  mode: RunMode;
   hypr: HyprMode | null;
   placement: Placement;
   /** Our workspace: the named one (fullscreen) or SPECIAL (scratch). */
@@ -316,7 +323,22 @@ export interface DisplayOpts {
   summaryMinMs?: number;
   /** Battery saver: where batteries are (default /sys/class/power_supply or TIPHYS_SCREEN_POWER_DIR) and how often read. */
   power?: { dir?: string; everyMs?: number; io?: FileIo };
+  /**
+   * Sleep mode: the test-only time scale (default TIPHYS_SLEEP_SCALE, else 1; every phase length is divided by it),
+   * where the LEDs are (default /sys/class/leds) and the clock (tests).
+   */
+  sleep?: { scale?: number; ledsDir?: string; now?: () => number; setTimeout?: (fn: () => void, ms: number) => unknown; clearTimeout?: (h: unknown) => void };
 }
+
+/** TIPHYS_SLEEP_SCALE (test only, unset by default; docs/agent/configuration.md): 1..1000, anything else 1. */
+export function sleepScale(v = process.env.TIPHYS_SLEEP_SCALE): number {
+  const n = Number(v);
+  return v && Number.isFinite(n) && n >= 1 && n <= 1000 ? n : 1;
+}
+
+/** The fixed sleep view: no cards, no topics; the page builds it from the `sleep` message. */
+const SLEEP_LAYOUT = { template: "sleep", cards: [] as unknown[] };
+const PREVIEW_FILE = "tiphys-sleep-preview.json";
 
 /** Battery saver thresholds (%): on below SAVER_ON, off again at SAVER_OFF or on mains. */
 export const SAVER_ON = 30;
@@ -348,7 +370,10 @@ export class ScreenDisplay {
   readonly #ctx: Ctx;
   readonly #io: DisplayIo;
   readonly #feed: FeedProducer | null;
-  readonly #o: { backoff: number[]; idleMs: number; watchMs: number; maxBuffered: number; visibility: VisibilityOpts; summaryMinMs: number; power: { dir: string; everyMs: number; io: FileIo } };
+  readonly #o: {
+    backoff: number[]; idleMs: number; watchMs: number; maxBuffered: number; visibility: VisibilityOpts; summaryMinMs: number; power: { dir: string; everyMs: number; io: FileIo };
+    sleep: { scale: number; ledsDir: string; now?: () => number; setTimeout?: (fn: () => void, ms: number) => unknown; clearTimeout?: (h: unknown) => void };
+  };
   readonly #log: (msg: string, err?: unknown) => void;
   readonly workDir: string;
   readonly #mapFile: string;
@@ -376,6 +401,9 @@ export class ScreenDisplay {
   #saver = false;
   #battery: string | null = null;
   #powerTimer: NodeJS.Timeout | null = null;
+  /** Sleep mode: the run while it runs; the hardware-only preview while it doesn't. */
+  #sleep: SleepRun | null = null;
+  #preview: HardwarePreview | null = null;
 
   constructor(ctx: Ctx, io: DisplayIo, o: DisplayOpts, log: (msg: string, err?: unknown) => void) {
     this.#ctx = ctx;
@@ -385,6 +413,7 @@ export class ScreenDisplay {
     this.#o = {
       backoff: o.backoff ?? [1, 2, 4, 8, 15, 30], idleMs: o.idleMs ?? 15_000, watchMs: o.watchMs ?? 5000, maxBuffered: o.maxBuffered ?? 256 * 1024, visibility: o.visibility ?? {},
       summaryMinMs: o.summaryMinMs ?? SUMMARY_MIN_MS, power: { dir: o.power?.dir ?? powerSupplyDir(), everyMs: o.power?.everyMs ?? 30_000, io: o.power?.io ?? realFileIo },
+      sleep: { ...o.sleep, scale: o.sleep?.scale ?? sleepScale(), ledsDir: o.sleep?.ledsDir ?? "/sys/class/leds" },
     };
     this.workDir = join(io.runtimeDir, CURRENT.dir);
     this.#mapFile = join(o.mapDir ?? defaultMapDir(), "ets2.pmtiles");
@@ -405,16 +434,18 @@ export class ScreenDisplay {
     return s as ModeSettings;
   }
 
-  /** The page's `layout` message: template, cards and the mode's settings. */
-  #layoutMsg(mode: ScreenMode) {
+  /** The page's `layout` message: template, cards and the mode's settings (sleep: the fixed view). */
+  #layoutMsg(mode: RunMode) {
+    if (mode === "sleep") return JSON.stringify({ type: "layout", mode, ...SLEEP_LAYOUT, settings: {} });
     const m = this.#cfg.modes[mode];
     return JSON.stringify({ type: "layout", mode, template: m.layout.template, cards: m.layout.cards, settings: this.#settings(mode) });
   }
 
   /** A new layout rebuilds the page's cards: they get the latest state again right after it. */
-  #sendLayout(mode: ScreenMode) {
+  #sendLayout(mode: RunMode) {
     if (this.#running?.veil) return; // sent when the veil lifts
     this.#sendPages(this.#layoutMsg(mode));
+    if (this.#sleep) this.#sendPages(this.#sleep.sleepMessage());
     for (const m of this.#replay()) this.#sendPages(m);
     if (mode === "focus") this.#sendPages(this.#focusMsg(null));
   }
@@ -433,7 +464,7 @@ export class ScreenDisplay {
   }
 
   /** What the git and city topics watch: the Work mode's project and CI setting. */
-  #project(mode: ScreenMode): ProjectSpec {
+  #project(mode: RunMode): ProjectSpec {
     if (mode !== "work") return { project: "auto", ci: false };
     const w = this.#cfg.modes.work;
     return { project: w.project === "auto" ? "auto" : w.project.path, ci: w.ci };
@@ -536,6 +567,15 @@ export class ScreenDisplay {
       if (this.#running) return this.#running.mode === m ? this.status() : this.#switch(m);
       const missing = this.#missing(m);
       if (missing.length) throw new AppError("agent.screen.noSource", 409, { sources: missing });
+      await this.#launch(m, null);
+      this.#event("screen.started", device, { mode: m });
+      await this.#rememberMode(m);
+      return this.status();
+    });
+  }
+
+  /** Starts the kiosk for `m`; sleep also begins its run once the kiosk unit is up. Every step undone on failure. */
+  async #launch(m: RunMode, sleep: { session: SleepSession; me: string } | null) {
       let env: NodeJS.ProcessEnv;
       try {
         env = { ...(await this.#io.waylandEnv()), ...(await this.#io.hyprEnv()), ...this.#io.busEnv() };
@@ -549,7 +589,7 @@ export class ScreenDisplay {
       await rm(this.workDir, { recursive: true, force: true });
       await mkdir(join(this.workDir, "profile"), { recursive: true, mode: 0o700 });
       const token = randomBytes(32).toString("hex");
-      const placement = this.#cfg.placement;
+      const placement: Placement = m === "sleep" ? "fullscreen" : this.#cfg.placement;
       const state: SavedState = {
         startedAt: new Date().toISOString(), mode: m, hypr: null, placement, ws: placement === "scratch" ? SPECIAL : WORKSPACES[m],
         rules: false, bind: null, workspace: null, brightness: null, token, veil: false,
@@ -568,7 +608,8 @@ export class ScreenDisplay {
         state.rules = true;
         await this.#save(state);
         for (const args of ruleOnArgs(state.hypr, placement, state.ws)) await this.#hypr(env, args);
-        const b = this.#settings(m).brightness;
+        // Sleep dims along its own curve (sleep.ts); the layout modes have one fixed backlight setting.
+        const b = m === "sleep" ? null : this.#settings(m).brightness;
         if (b !== null) state.brightness = await this.#setBrightness(b, null);
         await this.#save(state);
         await writeFile(join(this.workDir, "profile", "user.js"), userJs(), { mode: 0o600 });
@@ -580,17 +621,16 @@ export class ScreenDisplay {
           env, timeoutMs: 15_000, allowFail: true,
         });
         if (r.code !== 0) throw new AppError("agent.screen.startFailed", 502, { stderr: r.stderr.slice(0, 300) });
+        if (sleep) this.#sleep = await SleepRun.begin(this.#sleepDeps(env), sleep.session, sleep.me, this.#o.sleep.scale);
       } catch (e) {
+        this.#sleep?.detach();
+        this.#sleep = null;
         await this.#cleanup(state, env).catch(() => {});
         throw e;
       }
       this.#token = Buffer.from(token, "utf8");
       this.#shown = false;
       this.#began(state, null);
-      this.#event("screen.started", device, { mode: m });
-      await this.#rememberMode(m);
-      return this.status();
-    });
   }
 
   /** Hot switch: new layout on the page, subscriptions and backlight follow; Firefox stays. */
@@ -612,6 +652,8 @@ export class ScreenDisplay {
     this.#resubscribe();
     this.#watch = setInterval(() => void this.#checkUnit(), this.#o.watchMs);
     this.#watch.unref?.();
+    // Sleep: no session summary (its morning summary is S5's) and no battery saver (the view is already the dimmest).
+    if (state.mode === "sleep") return;
     this.#summary = new SessionSummary(Date.parse(state.startedAt) || Date.now(), state.mode);
     this.#focusFor(state.mode, focus);
     this.#battery = findBattery(this.#o.power.io, this.#o.power.dir);
@@ -625,6 +667,8 @@ export class ScreenDisplay {
   async #switch(mode: ScreenMode) {
     const st = this.#running!;
     if (st.mode === mode) return this.status();
+    // Sleep holds the hardware along its curve: it is stopped (POST /v1/sleep/stop or /v1/screen/stop), not switched.
+    if (st.mode === "sleep") throw new AppError("agent.sleep.running", 409);
     const missing = this.#missing(mode);
     if (missing.length) throw new AppError("agent.screen.noSource", 409, { sources: missing });
     st.mode = mode;
@@ -645,22 +689,33 @@ export class ScreenDisplay {
 
   stop(device?: string) {
     return this.#serial(async () => {
-      const state = this.#running;
-      if (!state) return this.status();
-      const summary = this.#summary?.params(Date.now(), this.#o.summaryMinMs) ?? null;
-      this.#focusEnded(summary !== null);
-      await this.#stopNow(state);
-      this.#event("screen.stopped", device);
-      this.#lastStop = { at: Date.now(), summary: summary !== null };
-      // ONE notification at the stop: the phone adds the count of the notifications it held during Focus to it.
-      if (summary) void this.#ctx.notifier.send({ key: "screen.summary", params: summary, data: { agent: this.#ctx.store.get().name }, transient: true }).catch((e) => this.#log("ekran modu özeti gönderilemedi", e));
+      await this.#stopInner(device);
       return this.status();
     });
   }
 
+  /** Stops the running mode (any), with its events and the summary push; inside the serial chain. */
+  async #stopInner(device?: string) {
+    const state = this.#running;
+    if (!state) return;
+    const summary = this.#summary?.params(Date.now(), this.#o.summaryMinMs) ?? null;
+    this.#focusEnded(summary !== null);
+    await this.#stopNow(state);
+    this.#event(state.mode === "sleep" ? "sleep.stopped" : "screen.stopped", device);
+    this.#lastStop = { at: Date.now(), summary: summary !== null };
+    // ONE notification at the stop: the phone adds the count of the notifications it held during Focus to it.
+    if (summary) void this.#ctx.notifier.send({ key: "screen.summary", params: summary, data: { agent: this.#ctx.store.get().name }, transient: true }).catch((e) => this.#log("ekran modu özeti gönderilemedi", e));
+  }
+
   async #stopNow(state: SavedState) {
+    const sleep = this.#sleep;
     this.#let(4410, "stopped");
     await this.#focusSave;
+    // Sleep: every saved hardware value back first; its file then goes (the cleanup would restore it once more).
+    if (sleep) {
+      await sleep.stop().catch((e) => this.#log("uyku modu donanımı geri alınamadı", e));
+      await rm(this.#sleepFile(), { force: true }).catch(() => {});
+    }
     const env = await this.#env();
     await this.#cleanup(state, env);
   }
@@ -676,6 +731,8 @@ export class ScreenDisplay {
     this.#paused = false;
     this.#focus?.stop();
     this.#focus = null;
+    this.#sleep?.detach();
+    this.#sleep = null;
     this.#summary = null;
     if (this.#powerTimer) clearInterval(this.#powerTimer);
     this.#powerTimer = null;
@@ -694,6 +751,17 @@ export class ScreenDisplay {
   /** Undoes everything the state says was done; every step is best effort. */
   async #cleanup(state: SavedState, env: NodeJS.ProcessEnv, names: Names = CURRENT) {
     const dir = join(this.#io.runtimeDir, names.dir);
+    // A sleep run's hardware (crash, or a failed start): what its state file says was there before.
+    if (names === CURRENT) {
+      const raw = await readFile(this.#sleepFile(dir), "utf8").catch(() => null);
+      if (raw !== null) {
+        let saved: HwSaved | null = null;
+        try {
+          saved = sanitizeSaved((JSON.parse(raw) as Rec).saved);
+        } catch {}
+        if (saved) await this.#hardware(env).restore(saved).catch((e) => this.#log("uyku modu donanımı geri alınamadı", e));
+      }
+    }
     await this.#io.exec("systemctl", ["--user", "stop", `${names.unit}.service`], { env, timeoutMs: 20_000, allowFail: true }).catch((e) => this.#log("ekran modu birimi durdurulamadı", e));
     await rm(dir, { recursive: true, force: true }).catch((e) => this.#log("ekran modu dizini silinemedi", e));
     if (env.HYPRLAND_INSTANCE_SIGNATURE) {
@@ -742,12 +810,15 @@ export class ScreenDisplay {
   recover() {
     return this.#serial(async () => {
       let found = false;
+      let slept = false;
+      await this.#recoverPreview();
       for (const names of [CURRENT, LEGACY]) {
         const dir = join(this.#io.runtimeDir, names.dir);
         let state: SavedState;
         try {
           state = sanitizeState(JSON.parse(await readFile(this.#stateFile(dir), "utf8")) as Rec);
           if (names === CURRENT && (await this.#adopt(state))) continue;
+          slept ||= state.mode === "sleep";
         } catch {
           // No state file: a stray work dir or unit from an older run is still removed.
           if (await stat(dir).then(() => true, () => false)) await this.#cleanup(sanitizeState({}), await this.#env(), names);
@@ -756,7 +827,7 @@ export class ScreenDisplay {
         await this.#cleanup(state, await this.#env(), names);
         found = true;
       }
-      if (found) this.#event("screen.stopped");
+      if (found) this.#event(slept ? "sleep.stopped" : "screen.stopped");
       return found;
     });
   }
@@ -766,6 +837,12 @@ export class ScreenDisplay {
     if (!state.token || this.#running) return false;
     const r = await this.#io.exec("systemctl", ["--user", "is-active", `${UNIT}.service`], { env: await this.#env(), timeoutMs: 5000, allowFail: true }).catch(() => null);
     if (r?.stdout.trim() !== "active") return false;
+    if (state.mode === "sleep") {
+      // The run goes on from its file (its saved hardware values stay as they were at the start); unreadable → stop.
+      const file = parseSleepFile(await readFile(this.#sleepFile(), "utf8").then((t) => JSON.parse(t) as unknown, () => null));
+      if (!file) return false;
+      this.#sleep = SleepRun.adopt(this.#sleepDeps(await this.#env()), file);
+    }
     let focus: FocusTimes | null = null;
     if (state.mode === "focus") {
       try {
@@ -787,6 +864,7 @@ export class ScreenDisplay {
 
   /** Agent exit: a restart leaves the mode for the next agent (adopted in recover()); any other exit stops it. */
   async shutdown() {
+    await this.#preview?.end();
     const restarting = this.#running !== null && (await this.#io.restarting?.().catch(() => false)) === true;
     if (!restarting) return void (await this.stop());
     await this.#serial(async () => {
@@ -811,7 +889,7 @@ export class ScreenDisplay {
   #focusFile = () => join(this.workDir, "focus.json");
 
   /** The timer follows the mode: created when Focus starts (or is adopted with saved times), gone when it ends. */
-  #focusFor(mode: ScreenMode, restored: FocusTimes | null) {
+  #focusFor(mode: RunMode, restored: FocusTimes | null) {
     if (mode !== "focus") {
       if (!this.#focus) return;
       this.#focusEnded();
@@ -890,6 +968,144 @@ export class ScreenDisplay {
       this.#focus.act(action, task);
       return this.#focusState();
     });
+  }
+
+  // ---- sleep mode (PLAN.md §21 S2) ----
+
+  #sleepFile = (dir = this.workDir) => join(dir, "sleep.json");
+
+  #hardware(env: NodeJS.ProcessEnv) {
+    return new Hardware({ exec: (cmd, args, opts) => this.#io.exec(cmd, args, { ...opts, env }), which: (c) => this.#io.which(c), ledsDir: this.#o.sleep.ledsDir }, this.#log);
+  }
+
+  #clock() {
+    const o = this.#o.sleep;
+    return { ...(o.now ? { now: o.now } : {}), ...(o.setTimeout ? { setTimeout: o.setTimeout } : {}), ...(o.clearTimeout ? { clearTimeout: o.clearTimeout } : {}) };
+  }
+
+  /** A DDC bus found once is a setting (screen.modes.sleep.ddc.bus), not a trace. */
+  #storeBus = async (bus: number) => {
+    await this.#ctx.store.update((c) => ((c.screen.modes.sleep.ddc.bus = bus), c));
+  };
+
+  #sleepDeps(env: NodeJS.ProcessEnv) {
+    return {
+      hw: this.#hardware(env),
+      settings: () => this.#cfg.modes.sleep,
+      // Whole or nothing (rename), 0600 in the 0700 tmpfs work dir (written only while the run begins).
+      save: async (f: unknown) => {
+        await writeFile(`${this.#sleepFile()}.new`, JSON.stringify(f) + "\n", { mode: 0o600 });
+        await rename(`${this.#sleepFile()}.new`, this.#sleepFile());
+      },
+      send: (m: string) => {
+        if (!this.#running?.veil) this.#sendPages(m);
+      },
+      storeBus: this.#storeBus,
+      log: this.#log,
+      ...this.#clock(),
+    };
+  }
+
+  #previewFile = () => join(this.#io.runtimeDir, PREVIEW_FILE);
+
+  async #previewer() {
+    this.#preview ??= new HardwarePreview({
+      hw: this.#hardware(await this.#env()),
+      settings: () => this.#cfg.modes.sleep,
+      save: async (saved) => {
+        if (saved) await writeFile(this.#previewFile(), JSON.stringify({ saved }) + "\n", { mode: 0o600 });
+        else await rm(this.#previewFile(), { force: true });
+      },
+      storeBus: this.#storeBus,
+      log: this.#log,
+      ...this.#clock(),
+    });
+    return this.#preview;
+  }
+
+  /** A preview the previous agent left (crash within its 5 s): its saved value back. */
+  async #recoverPreview() {
+    const raw = await readFile(this.#previewFile(), "utf8").catch(() => null);
+    if (raw === null) return;
+    try {
+      await this.#hardware(await this.#env()).restore(sanitizeSaved((JSON.parse(raw) as Rec).saved));
+    } catch (e) {
+      this.#log("parlaklık önizlemesi geri alınamadı", e);
+    }
+    await rm(this.#previewFile(), { force: true }).catch(() => {});
+  }
+
+  /** GET /v1/sleep. */
+  sleepStatus() {
+    const r = this.#sleep?.status() ?? null;
+    const name = this.#ctx.store.get().name;
+    return {
+      running: r !== null,
+      session: r?.session ?? null,
+      phase: r?.phase ?? null,
+      phaseStartedAt: r?.phaseStartedAt ?? null,
+      phaseEndsAt: r?.phaseEndsAt ?? null,
+      // S4: the alarm; S3: the other members.
+      alarm: { next: null, ringing: false, snoozedUntil: null },
+      members: r ? r.session.members.map((host) => ({ host, state: host === this.#sleep!.file.me ? "running" : "unknown" })) : [{ host: name, state: "off" }],
+      brightness: r?.brightness ?? null,
+      warning: r?.warning ?? null,
+      page: r?.page ?? null,
+      scale: this.#o.sleep.scale,
+      settings: this.#cfg.modes.sleep,
+      now: Date.now(),
+    };
+  }
+
+  /**
+   * POST /v1/sleep/start. Without a session: one made here (this host alone). A group session (more than one member)
+   * needs S3: 409 agent.sleep.noGroup. Already sleeping: the status (the phone may retry). A running layout mode is
+   * stopped first (its own events and summary).
+   */
+  startSleep(session: SleepSession | undefined, device?: string) {
+    return this.#serial(async () => {
+      if (this.#running?.mode === "sleep") return this.sleepStatus();
+      const name = this.#ctx.store.get().name;
+      const s: SleepSession = session ?? { id: randomBytes(12).toString("base64url"), seed: randomBytes(4).readUInt32BE(0), t0: Date.now(), members: [hostIdOf(name)], leader: hostIdOf(name) };
+      if (s.members.length > 1) throw new AppError("agent.sleep.noGroup", 409);
+      await this.#preview?.end();
+      if (this.#running) await this.#stopInner(device);
+      await this.#launch("sleep", { session: s, me: s.members[0]! });
+      this.#event("sleep.started", device);
+      return this.sleepStatus();
+    });
+  }
+
+  /** POST /v1/sleep/stop: stops the sleep mode only (a layout mode running instead is left alone). */
+  stopSleep(device?: string) {
+    return this.#serial(async () => {
+      if (this.#running?.mode === "sleep") await this.#stopInner(device);
+      return this.sleepStatus();
+    });
+  }
+
+  /** PUT /v1/sleep (partial settings). A running sleep gets the new settings at once (times at the next start). */
+  updateSleep(patch: Record<string, unknown>) {
+    return this.#change((c) => {
+      c.modes.sleep = mergeSettings(c.modes.sleep, patch);
+    }).then(() => this.sleepStatus());
+  }
+
+  /** POST /v1/sleep/preview: 5 s at `pct` — on the running sleep (hardware and page), otherwise the hardware alone. */
+  previewSleep(pct: number) {
+    return this.#serial(async () => {
+      if (this.#sleep) {
+        this.#sleep.preview(pct);
+        return this.sleepStatus();
+      }
+      const p = await (await this.#previewer()).show(pct);
+      return { ...this.sleepStatus(), preview: p };
+    });
+  }
+
+  /** The kiosk page's heartbeat (every 10 s while the sleep view runs). */
+  heartbeat() {
+    this.#sleep?.heartbeat();
   }
 
   // ---- privacy veil (W5) ----
@@ -992,7 +1208,9 @@ export class ScreenDisplay {
       const before = this.#cfg;
       const next = (await this.#ctx.store.update((c) => (fn(c.screen), c))).screen;
       const st = this.#running;
-      if (st) {
+      if (st?.mode === "sleep") {
+        if (JSON.stringify(before.modes.sleep) !== JSON.stringify(next.modes.sleep)) this.#sleep?.settingsChanged();
+      } else if (st) {
         const m = st.mode;
         const was = before.modes[m];
         const now = next.modes[m];
@@ -1015,7 +1233,8 @@ export class ScreenDisplay {
   /** Makes the subscriptions match the running mode's layout (and visibility). */
   #resubscribe() {
     const st = this.#running;
-    const need = st ? layoutTopics(st.mode, this.#cfg.modes[st.mode].layout, this.#settings(st.mode), this.#paused) : new Map<string, Set<Topic>>();
+    // Sleep subscribes nothing (no producer runs while sleeping; Velour comes in S5).
+    const need = st && st.mode !== "sleep" ? layoutTopics(st.mode, this.#cfg.modes[st.mode].layout, this.#settings(st.mode), this.#paused) : new Map<string, Set<Topic>>();
     const project = this.#project(st?.mode ?? "work");
     const self = need.get("self");
     if (self && this.#feed) {
@@ -1228,6 +1447,7 @@ export class ScreenDisplay {
     if (st.veil) sock.send(JSON.stringify({ type: "veil", on: true }));
     else {
       sock.send(this.#layoutMsg(st.mode));
+      if (this.#sleep) sock.send(this.#sleep.sleepMessage());
       for (const c of this.#conns.values()) sock.send(this.#sourceMsg(c));
       for (const m of this.#replay()) sock.send(m);
       if (st.mode === "focus") sock.send(this.#focusMsg(null));
@@ -1278,7 +1498,7 @@ function sanitizeState(s: Rec): SavedState {
   const placement: Placement = s.placement === "scratch" ? "scratch" : "fullscreen";
   return {
     startedAt: typeof s.startedAt === "string" ? s.startedAt : "",
-    mode: SCREEN_MODES.includes(s.mode as ScreenMode) ? (s.mode as ScreenMode) : "game",
+    mode: s.mode === "sleep" || SCREEN_MODES.includes(s.mode as ScreenMode) ? (s.mode as RunMode) : "game",
     hypr: hypr === "lua" || hypr === "legacy" ? hypr : null,
     placement,
     ws: typeof s.ws === "string" && /^[a-z]{1,16}$/.test(s.ws) ? s.ws : placement === "scratch" ? SPECIAL : WORKSPACES.game,
@@ -1456,6 +1676,13 @@ export async function displayRoutes(app: FastifyInstance, ctx: Ctx, o: DisplayOp
   });
   app.post("/v1/screen/veil", async (req) => display.setVeil(z.strictObject({ on: z.boolean() }).parse(req.body).on));
 
+  // Sleep mode (PLAN.md §21 Sözleşme; S2: this host alone).
+  app.get("/v1/sleep", async () => display.sleepStatus());
+  app.put("/v1/sleep", async (req) => display.updateSleep(sleepPutSchema.parse(req.body).settings));
+  app.post("/v1/sleep/start", async (req) => display.startSleep(sleepStartSchema.parse(req.body ?? {}).session, req.device?.id));
+  app.post("/v1/sleep/stop", async (req) => display.stopSleep(req.device?.id));
+  app.post("/v1/sleep/preview", async (req) => display.previewSleep(sleepPreviewSchema.parse(req.body).brightness));
+
   // /v1/gamemode: the 0.5 routes for app 1.2, one release; the old error codes and shapes.
   const legacy = <T>(p: () => Promise<T>) => p().catch((e) => Promise.reject(legacyError(e)));
   app.get("/v1/gamemode", async () => display.legacyStatus());
@@ -1488,7 +1715,9 @@ export async function displayRoutes(app: FastifyInstance, ctx: Ctx, o: DisplayOp
         socket.on("message", (d: Buffer) => {
           if (d.length > 1024) return;
           try {
-            if ((JSON.parse(d.toString()) as { type?: unknown })?.type === "stop") void display.stop().catch(() => {});
+            const type = (JSON.parse(d.toString()) as { type?: unknown })?.type;
+            if (type === "stop") void display.stop().catch(() => {});
+            else if (type === "heartbeat") display.heartbeat();
           } catch {}
         });
       },

@@ -211,6 +211,28 @@ async function screenChecks(d: DoctorDeps, c: AgentConfig): Promise<Check[]> {
     const p = await pluginStatus(game);
     if (p.plugin !== "installed") out.push(warn("feature.screen.ets2", "doctor.gamemode.pluginMissing", { status: p.plugin }, "tiphys-agent gamemode install-plugin"));
   }
+  out.push(...(await sleepChecks(d, c)));
+  return out;
+}
+
+/**
+ * Sleep mode (PLAN.md §21 A-11): hardware dimming — the backlight (brightnessctl) or else DDC/CI (ddcutil, `detect`
+ * must find a working display; the monitor's OSD DDC/CI setting or, on NVIDIA, the driver's I²C) — the WAV fallback's
+ * pw-play (S4) and powerprofilesctl when the quiet power profile is on. All warnings: the mode runs without them
+ * (the page dims alone).
+ */
+async function sleepChecks(d: DoctorDeps, c: AgentConfig): Promise<Check[]> {
+  const out: Check[] = [];
+  const { parseBacklight, parseDetect } = await import("./screen/sleep_hw.ts");
+  const backlight = d.which("brightnessctl") && parseBacklight((await d.exec("brightnessctl", ["-m", "-c", "backlight"], { timeoutMs: 5000 })).stdout) !== null;
+  if (!backlight) {
+    if (!d.which("ddcutil")) out.push(warn("feature.sleep.dimming", "doctor.feature.toolsMissing", { feature: "sleep", tools: ["ddcutil"] }, "sudo apt install ddcutil"));
+    else if (!parseDetect((await d.exec("ddcutil", ["detect", "--terse"], { timeoutMs: 30_000 })).stdout).length) {
+      out.push(warn("feature.sleep.dimming", "doctor.sleep.ddcUnavailable", {}));
+    }
+  }
+  if (!d.which("pw-play")) out.push(warn("feature.sleep.audio", "doctor.feature.toolsMissing", { feature: "sleep", tools: ["pw-play"] }));
+  if (c.screen.modes.sleep.quietPower && !d.which("powerprofilesctl")) out.push(warn("feature.sleep.power", "doctor.feature.toolsMissing", { feature: "sleep", tools: ["powerprofilesctl"] }));
   return out;
 }
 
@@ -278,6 +300,7 @@ const TEXT: Record<string, string> = {
   "doctor.node.ok": "Node.js {node}.",
   "doctor.feature.toolsMissing": "Feature \"{feature}\" is on but needs: {tools}.",
   "doctor.screen.ciUnavailable": "Screen modes: no CI status on the Git card ({reason}: `gh` is needed, logged in).",
+  "doctor.sleep.ddcUnavailable": "Sleep mode: the monitor's brightness can't be set over DDC/CI (`ddcutil detect` finds no working display); the page dims alone. Turn DDC/CI on in the monitor's menu; on NVIDIA see docs/features/screen-modes.md.",
   "doctor.feature.dockerDenied": "Feature \"docker\" is on but {socket} is not accessible to this user.",
   "doctor.feature.unsupported": "Feature \"{feature}\" is on but does not work on {platform}.",
   "doctor.feature.dockerUnreachable": "Feature \"docker\" is on but the Docker daemon does not answer (is Docker Desktop running?).",

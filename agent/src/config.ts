@@ -263,6 +263,63 @@ export const MODE_SCHEMAS = {
   focus: focusSettingsSchema.extend({ layout: layoutSchema.default(() => defaultLayout("focus")) }),
 } as const;
 
+// ---- sleep mode (PLAN.md §21 Sözleşme) ----
+
+/** A mode the display can run: the layout modes above, and sleep (fixed view, own routes /v1/sleep/*). */
+export type RunMode = ScreenMode | "sleep";
+export const HHMM = /^(?:[01]\d|2[0-3]):[0-5]\d$/;
+/** A sleep group member: an agent's name (config `name` as the phone knows it). */
+export const hostId = z.string().regex(/^[A-Za-z0-9_.-]{1,64}$/);
+export const SLEEP_CRITICAL = ["hostDown", "securityTrap", "incident", "diskFull"] as const;
+const pct = (min: number, max: number, d: number) => z.number().int().min(min).max(max).default(d);
+/**
+ * config.screen.modes.sleep: per machine (placement in the room, volume, brightness curve, hardware extras) and the
+ * group-wide blocks (the phone writes the same values to every member). S2 uses the machine part, `times` and the
+ * page's `volume`/`layers`; group (S3), alarm (S4), velour/notify (S5) and reminder (S6) are stored for later phases.
+ */
+export const sleepSettingsSchema = z.object({
+  join: z.boolean().default(true),
+  side: z.enum(["left", "right", "foot", "head"]).default("left"),
+  distance: z.enum(["near", "mid", "far"]).default("mid"),
+  volume: pct(0, 100, 35),
+  /** Percent of full brightness: at the start, at night (the floor of the fade) and in the morning (sunrise end). */
+  brightness: z.object({ start: pct(1, 100, 25), night: pct(0, 30, 3), morning: pct(10, 100, 70) }).prefault({}),
+  /** DDC/CI monitor (no backlight): I²C bus (null = detect once and store it here) and the lowest VCP 0x10 percent used. */
+  ddc: z.object({ bus: z.number().int().min(0).max(255).nullable().default(null), min: pct(0, 100, 0) }).prefault({}),
+  quietPower: z.boolean().default(false),
+  holdVolume: z.number().int().min(0).max(100).nullable().default(null),
+  leds: z.boolean().default(false),
+  group: z
+    .strictObject({ members: z.array(hostId).min(1).max(4), leader: hostId })
+    .refine((g) => g.members.includes(g.leader), { message: "leader must be a member" })
+    .nullable()
+    .default(null),
+  times: z
+    .object({ settleMin: pct(1, 30, 3), fadeMin: pct(10, 120, 30), soundFadeMin: pct(10, 180, 45), nightSound: z.enum(["hum", "off"]).default("hum") })
+    .prefault({}),
+  layers: z
+    .object({ hum: z.boolean().default(true), crackle: z.boolean().default(true), logs: z.boolean().default(true), wind: z.boolean().default(false), rain: z.boolean().default(false) })
+    .prefault({}),
+  velour: z.object({ playlistId: z.string().min(1).max(200).nullable().default(null), volume: pct(0, 100, 30), fadeMin: pct(5, 120, 30) }).prefault({}),
+  alarm: z
+    .object({
+      enabled: z.boolean().default(false),
+      time: z.string().regex(HHMM).default("07:00"),
+      days: z.union([z.enum(["once", "weekdays", "daily"]), z.array(z.number().int().min(0).max(6)).min(1).max(7)]).default("weekdays"),
+      sunriseMin: pct(10, 45, 25),
+      sound: z.enum(["birds", "chime", "velour"]).default("birds"),
+      velourTrack: z.string().min(1).max(200).nullable().default(null),
+      rampMin: pct(1, 10, 3),
+      snoozeMin: pct(1, 30, 9),
+      autoStopMin: pct(5, 60, 20),
+      morningScreen: z.boolean().default(false),
+    })
+    .prefault({}),
+  notify: z.object({ critical: z.array(z.enum(SLEEP_CRITICAL)).max(4).default(() => [...SLEEP_CRITICAL]), morningSummary: z.boolean().default(true) }).prefault({}),
+  reminder: z.object({ enabled: z.boolean().default(false), time: z.string().regex(HHMM).default("22:30") }).prefault({}),
+});
+export type SleepSettings = z.infer<typeof sleepSettingsSchema>;
+
 /** Key of a Hyprland bind in classic form "MODS,key" (mods space/underscore separated), e.g. "SUPER,grave". */
 export const SCRATCH_BIND = /^(?:(?:SUPER|SHIFT|CTRL|CONTROL|ALT|MOD2|MOD3|MOD5)(?:[ _](?:SUPER|SHIFT|CTRL|CONTROL|ALT|MOD2|MOD3|MOD5)){0,3})?,[A-Za-z0-9_]{1,32}$/;
 
@@ -278,7 +335,7 @@ export const screenSchema = z.object({
   scratchBind: z.string().regex(SCRATCH_BIND).default("SUPER,grave"),
   lastMode: z.enum(SCREEN_MODES).default("work"),
   modes: z
-    .object({ game: MODE_SCHEMAS.game.prefault({}), work: MODE_SCHEMAS.work.prefault({}), focus: MODE_SCHEMAS.focus.prefault({}) })
+    .object({ game: MODE_SCHEMAS.game.prefault({}), work: MODE_SCHEMAS.work.prefault({}), focus: MODE_SCHEMAS.focus.prefault({}), sleep: sleepSettingsSchema.prefault({}) })
     .prefault({}),
   batterySaver: z.boolean().default(true),
 });

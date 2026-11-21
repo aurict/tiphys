@@ -298,6 +298,29 @@ describe("doctor (K6)", () => {
     expect(await screen(["systemctl", "gh"], 0)).toBeNull();
   });
 
+  it("sleep mode: backlight, else ddcutil with a working display (doctor.sleep.ddcUnavailable), pw-play, powerprofilesctl if on", async () => {
+    const sleep = async (which: string[], map: Record<string, { stdout?: string; code?: number }>, quietPower = false) => {
+      const d = deps({ which: (c) => which.includes(c), exec: fakeExec(map) });
+      d.config!.features.screen = true;
+      d.config!.screen.modes.sleep.quietPower = quietPower;
+      const r = await runDoctor(d);
+      return Object.fromEntries(r.checks.filter((c) => c.id.startsWith("feature.sleep")).map((c) => [c.id, c]));
+    };
+    const laptop = await sleep(["brightnessctl", "pw-play", "ddcutil"], { "brightnessctl -m -c backlight": { stdout: "intel_backlight,backlight,96000,100%,96000\n" } });
+    expect(laptop).toEqual({});
+    const noLight = "Failed to read any devices of class 'backlight'.\n";
+    // This PC today: the monitor answers EDID but not DDC.
+    const theloth = await sleep(["brightnessctl", "pw-play", "ddcutil"], { "brightnessctl -m": { stdout: noLight }, "ddcutil detect": { stdout: "Invalid display\n   I2C bus:  /dev/i2c-3\n   DDC communication failed\n" } });
+    expect(theloth).toEqual({ "feature.sleep.dimming": expect.objectContaining({ status: "warn", code: "doctor.sleep.ddcUnavailable" }) });
+    const fixed = await sleep(["brightnessctl", "pw-play", "ddcutil"], { "brightnessctl -m": { stdout: noLight }, "ddcutil detect": { stdout: "Display 1\n   I2C bus:  /dev/i2c-3\n" } });
+    expect(fixed).toEqual({});
+    const bare = await sleep(["powerprofilesctl"], {}, true);
+    expect(bare["feature.sleep.dimming"]).toMatchObject({ status: "warn", code: "doctor.feature.toolsMissing", params: { tools: ["ddcutil"] } });
+    expect(bare["feature.sleep.audio"]).toMatchObject({ status: "warn", params: { tools: ["pw-play"] } });
+    expect(bare["feature.sleep.power"]).toBeUndefined();
+    expect((await sleep([], {}, true))["feature.sleep.power"]).toMatchObject({ status: "warn", params: { tools: ["powerprofilesctl"] } });
+  });
+
   it("missing Tailscale and missing config", async () => {
     const r = await runDoctor(deps({ exec: fakeExec({}), config: null }));
     const by = Object.fromEntries(r.checks.map((c) => [c.id, c]));
