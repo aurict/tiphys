@@ -239,8 +239,8 @@ describe("shared helpers", () => {
 describe("unsupported features and parts", () => {
   it("support table: nothing missing on Linux, macOS lacks only Game mode; Windows lacks Unix sockets, signals and per-user services", () => {
     expect(unsupportedOn("linux")).toEqual([]);
-    expect(unsupportedOn("darwin")).toEqual(["gamemode"]);
-    expect(unsupportedOn("win32")).toContain("gamemode");
+    expect(unsupportedOn("darwin")).toEqual(["screen"]);
+    expect(unsupportedOn("win32")).toContain("screen");
     expect(unsupportedOn("win32")).toEqual(expect.arrayContaining(["services.user", "services.logs", "desktop.velour", "desktop.firefoxBridge"]));
     expect(isSupported("services", "win32")).toBe(true);
     expect(isSupported("services.user", "win32")).toBe(false);

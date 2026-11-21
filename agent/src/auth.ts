@@ -39,9 +39,9 @@ export type Caller = { device: Device; service?: undefined } | { device?: undefi
 
 /**
  * Validates the request. Device tokens open every route; a service token opens only routes whose
- * `scope` it holds (anything else: 403 agent.auth.scopeDenied). Throws AppError on failure.
+ * `scope` it holds (a route may list several; anything else: 403 agent.auth.scopeDenied). Throws AppError on failure.
  */
-export function authenticate(config: AgentConfig, req: FastifyRequest, routeScope?: string): Caller {
+export function authenticate(config: AgentConfig, req: FastifyRequest, routeScope?: string | readonly string[]): Caller {
   if (config.requireTailscaleLogin !== null) {
     const login = req.headers["tailscale-user-login"];
     if (login !== config.requireTailscaleLogin) {
@@ -55,7 +55,8 @@ export function authenticate(config: AgentConfig, req: FastifyRequest, routeScop
   if (typeof token === "string" && token.startsWith(SERVICE_TOKEN_PREFIX) && match) {
     const service = findServiceToken(config, token);
     if (!service) throw new AppError("agent.auth.invalidToken", 401);
-    if (!routeScope || !(service.scopes as string[]).includes(routeScope)) throw new AppError("agent.auth.scopeDenied", 403);
+    const want: readonly string[] = routeScope === undefined ? [] : typeof routeScope === "string" ? [routeScope] : routeScope;
+    if (!want.some((s) => (service.scopes as string[]).includes(s))) throw new AppError("agent.auth.scopeDenied", 403);
     return { service };
   }
   if (typeof token !== "string" || !token.startsWith(TOKEN_PREFIX)) {
@@ -72,7 +73,7 @@ const lastReload = new WeakMap<ConfigStore, number>();
  * authenticate() against the store; on an unknown token the settings file is re-read (at most once per second per
  * store) in case another process just paired that device (`tiphys-agent pair`), then checked once more.
  */
-export async function authenticateFresh(store: ConfigStore, req: FastifyRequest, routeScope?: string): Promise<Caller> {
+export async function authenticateFresh(store: ConfigStore, req: FastifyRequest, routeScope?: string | readonly string[]): Promise<Caller> {
   try {
     return authenticate(store.get(), req, routeScope);
   } catch (e) {

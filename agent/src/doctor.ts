@@ -179,7 +179,7 @@ async function featureChecks(d: DoctorDeps): Promise<Check[]> {
   if (f.services && d.platform === "linux" && !d.which("systemctl")) missing("services", ["systemctl"]);
   if (f.git && !d.which("git")) missing("git", ["git"]);
   if (f.claude && !d.which("claude") && !(await d.exists(expandHome("~/.claude/local/claude")))) missing("claude", ["claude"], "npm install -g @anthropic-ai/claude-code");
-  if (f.gamemode && d.platform === "linux") out.push(...(await gamemodeChecks(d, c)));
+  if (f.screen && d.platform === "linux") out.push(...(await screenChecks(d, c)));
   if (f.transcribe && !(await d.exists(expandHome(c.transcribe.command)))) {
     out.push(fail("feature.transcribe", "doctor.feature.transcribeMissing", { command: c.transcribe.command }));
   }
@@ -187,24 +187,26 @@ async function featureChecks(d: DoctorDeps): Promise<Check[]> {
 }
 
 /**
- * Game mode: a machine with a source configured is a display (kiosk tools; brightnessctl optional), otherwise a source
- * (pw-record for the spectrum; the ETS2 plugin when the game is installed).
+ * Screen modes: the kiosk tools on a display host (missing = failure when remote sources are set, as on the laptop;
+ * a warning otherwise, the host may only be a source), brightnessctl optional; the source side's pw-record (spectrum)
+ * and the ETS2 plugin when the game is installed.
  */
-async function gamemodeChecks(d: DoctorDeps, c: AgentConfig): Promise<Check[]> {
-  if (c.gamemode.source) {
-    const need = ["systemd-run", "systemd-inhibit", "hyprctl"].filter((t) => !d.which(t));
-    if (!d.which("firefox") && !d.which("firefox-esr")) need.push("firefox");
-    const out: Check[] = need.length ? [fail("feature.gamemode", "doctor.feature.toolsMissing", { feature: "gamemode", tools: need })] : [];
-    if (!d.which("brightnessctl")) out.push(warn("feature.gamemode.brightness", "doctor.feature.toolsMissing", { feature: "gamemode", tools: ["brightnessctl"] }));
-    return out;
-  }
+async function screenChecks(d: DoctorDeps, c: AgentConfig): Promise<Check[]> {
   const out: Check[] = [];
-  if (!d.which("pw-record")) out.push(warn("feature.gamemode.audio", "doctor.feature.toolsMissing", { feature: "gamemode", tools: ["pw-record"] }));
-  const { findGameDir, pluginStatus } = await import("./gamemode/ets2.ts");
+  const display = Object.keys(c.screen.sources).length > 0;
+  const need = ["systemd-run", "systemd-inhibit", "hyprctl"].filter((t) => !d.which(t));
+  if (!d.which("firefox") && !d.which("firefox-esr")) need.push("firefox");
+  if (need.length) {
+    const check = display || c.screen.placement === "scratch" ? fail : warn;
+    out.push(check("feature.screen", "doctor.feature.toolsMissing", { feature: "screen", tools: need }));
+  }
+  if (display && !d.which("brightnessctl")) out.push(warn("feature.screen.brightness", "doctor.feature.toolsMissing", { feature: "screen", tools: ["brightnessctl"] }));
+  if (!d.which("pw-record")) out.push(warn("feature.screen.audio", "doctor.feature.toolsMissing", { feature: "screen", tools: ["pw-record"] }));
+  const { findGameDir, pluginStatus } = await import("./screen/ets2.ts");
   const game = await findGameDir();
   if (game) {
     const p = await pluginStatus(game);
-    if (p.plugin !== "installed") out.push(warn("feature.gamemode.ets2", "doctor.gamemode.pluginMissing", { status: p.plugin }, "tiphys-agent gamemode install-plugin"));
+    if (p.plugin !== "installed") out.push(warn("feature.screen.ets2", "doctor.gamemode.pluginMissing", { status: p.plugin }, "tiphys-agent gamemode install-plugin"));
   }
   return out;
 }

@@ -1,10 +1,13 @@
-// Game mode source side (PLAN.md §19, runs on the PC): WS /v1/gamemode/feed (scope "gamemode") with ONE shared
-// producer for all subscribers. It starts with the first subscriber and stops (children killed, sockets dropped) when
-// the last one leaves:
+// Screen mode source side (PLAN.md §19, §20; e.g. the PC): WS /v1/screen/feed with ONE shared producer for all
+// subscribers, local ones included (the display agent's `self` source subscribes in-process). Each subscriber holds a
+// topic set (`{type:"subscribe", topics}` replaces it); a topic's loop starts with its first subscriber and stops
+// (children killed) with its last:
 // - music: Velour state long-poll (`wait`), lyrics + next 2 tracks on track change. Titles/lyrics are never logged.
+//   It also runs for spectrum alone (the capture follows Velour's playing state).
 // - spectrum: pw-record on the default output's monitor → FFT → binary frames, only while Velour plays.
 // - truck: ETS2 shared memory, 20 Hz while driving and 1 Hz otherwise, plus derived events.
-// GET /v1/gamemode/source and POST /v1/gamemode/plugin are for the phone (device token).
+// WS /v1/gamemode/feed is the 0.5 feed for one release: every Game mode topic at once, nothing accepted.
+// GET /v1/screen/game/source and POST /v1/screen/game/plugin (+ the /v1/gamemode/… aliases) are for the phone.
 import { spawn } from "node:child_process";
 import type { Readable } from "node:stream";
 import type { FastifyInstance } from "fastify";
@@ -19,6 +22,7 @@ import { velourRequest, velourSocketPath, type VelourOp } from "../routes/velour
 import type { Ctx } from "../server.ts";
 import { findGameDir, installPlugin, parseTelemetry, pluginStatus, removePlugin, TelemetryReader, TruckEvents, type Sample } from "./ets2.ts";
 import { parseSinkName, pwRecordArgs, SpectrumAnalyzer } from "./spectrum.ts";
+import { GAMEMODE_TOPICS, parseTopics, TOPICS, type Topic } from "./topics.ts";
 
 /** The WebSocket surface used (ws). */
 export interface Sock {
@@ -65,6 +69,8 @@ export interface SourceOpts {
   driveMs?: number;
   idleMs?: number;
   killGraceMs?: number;
+  /** Heartbeat to /v1/screen/feed subscribers: their idle watchdog must not fire on quiet topics. */
+  heartbeatMs?: number;
 }
 
 type Rec = Record<string, unknown>;
@@ -129,20 +135,25 @@ interface Capture {
   stop: boolean;
 }
 
-/** Shared producer: runs only while it has subscribers. */
+interface Loop {
+  abort: AbortController;
+  done: Promise<unknown>;
+}
+
+/** Shared producer: each loop runs only while a subscriber wants its topic. */
 export class FeedProducer {
   readonly #io: SourceIo;
-  readonly #o: Required<Omit<SourceOpts, "io">>;
+  readonly #o: Required<Omit<SourceOpts, "io" | "heartbeatMs">>;
   readonly #log: (msg: string, err?: unknown) => void;
-  readonly #subs = new Set<Sock>();
-  #abort: AbortController | null = null;
-  /** Latest messages, sent to a new subscriber at once. */
-  #music: string | null = null;
+  readonly #subs = new Map<Sock, Set<Topic>>();
+  #music: Loop | null = null;
+  #truck: Loop | null = null;
+  /** Latest messages, sent at once to a subscriber that adds the topic. */
+  #musicMsg: string | null = null;
   #lyrics: string | null = null;
-  #truck: string | null = null;
+  #truckMsg: string | null = null;
   #playing = false;
   #spectrum: Capture | null = null;
-  #loops: Promise<unknown>[] = [];
 
   constructor(io: SourceIo, o: SourceOpts, log: (msg: string, err?: unknown) => void) {
     this.#io = io;
@@ -163,7 +174,12 @@ export class FeedProducer {
   }
 
   get running() {
-    return this.#abort !== null;
+    return this.#music !== null || this.#truck !== null;
+  }
+
+  /** Topics with a running producer (tests). */
+  get producing(): Topic[] {
+    return [...(this.#music ? ["music" as const] : []), ...(this.#spectrum ? ["spectrum" as const] : []), ...(this.#truck ? ["truck" as const] : [])];
   }
 
   /** The spectrum capture child (tests). */
@@ -171,46 +187,82 @@ export class FeedProducer {
     return this.#spectrum?.child ?? null;
   }
 
-  add(sock: Sock) {
-    this.#subs.add(sock);
-    for (const m of [this.#music, this.#lyrics, this.#truck]) if (m) sock.send(m);
-    if (!this.#abort) this.#start();
+  add(sock: Sock, topics: readonly Topic[] = GAMEMODE_TOPICS) {
+    this.#subs.set(sock, new Set());
+    return this.setTopics(sock, topics);
+  }
+
+  /** Replaces a subscriber's topics; the latest state of each added topic is sent at once. */
+  setTopics(sock: Sock, topics: readonly Topic[]) {
+    const old = this.#subs.get(sock);
+    if (!old) return Promise.resolve();
+    const next = new Set(topics);
+    this.#subs.set(sock, next);
+    if (next.has("music") && !old.has("music")) for (const m of [this.#musicMsg, this.#lyrics]) if (m) sock.send(m);
+    if (next.has("truck") && !old.has("truck") && this.#truckMsg) sock.send(this.#truckMsg);
+    return this.#apply();
   }
 
   async remove(sock: Sock) {
-    if (!this.#subs.delete(sock) || this.#subs.size > 0) return;
-    await this.stop();
+    if (!this.#subs.delete(sock)) return;
+    await this.#apply();
   }
 
   async stop() {
-    const a = this.#abort;
-    this.#abort = null;
-    a?.abort();
-    await this.#stopSpectrum();
-    await Promise.all(this.#loops.splice(0));
-    this.#music = this.#lyrics = this.#truck = null;
-    this.#playing = false;
+    this.#subs.clear();
+    await this.#apply();
   }
 
   async closeAll() {
-    for (const s of [...this.#subs]) if (s.readyState === 0 || s.readyState === 1) s.close(1001, "agent shutdown");
-    this.#subs.clear();
+    for (const s of [...this.#subs.keys()]) if (s.readyState === 0 || s.readyState === 1) s.close(1001, "agent shutdown");
     await this.stop();
   }
 
-  #broadcast(msg: Rec, droppable = false) {
+  #wanted(): Set<Topic> {
+    const w = new Set<Topic>();
+    for (const t of this.#subs.values()) for (const x of t) w.add(x);
+    return w;
+  }
+
+  /** Starts/stops loops to match what the subscribers want. */
+  async #apply() {
+    const w = this.#wanted();
+    const stops: Promise<unknown>[] = [];
+    if ((w.has("music") || w.has("spectrum")) && !this.#music) this.#music = this.#loop((s) => this.#musicLoop(s));
+    else if (!w.has("music") && !w.has("spectrum") && this.#music) {
+      stops.push(this.#end(this.#music));
+      this.#music = null;
+      this.#musicMsg = this.#lyrics = null;
+      this.#playing = false;
+    }
+    if (w.has("truck") && !this.#truck) this.#truck = this.#loop((s) => this.#truckLoop(s));
+    else if (!w.has("truck") && this.#truck) {
+      stops.push(this.#end(this.#truck));
+      this.#truck = null;
+      this.#truckMsg = null;
+    }
+    if (!w.has("spectrum") || !this.#playing) stops.push(this.#stopSpectrum());
+    else void this.#startSpectrum();
+    await Promise.all(stops);
+  }
+
+  #loop(fn: (signal: AbortSignal) => Promise<void>): Loop {
+    const abort = new AbortController();
+    return { abort, done: fn(abort.signal).catch((e) => this.#log("ekran modu akışı hata verdi", e)) };
+  }
+
+  async #end(l: Loop) {
+    l.abort.abort();
+    await l.done;
+  }
+
+  #broadcast(msg: Rec, topic: Topic, droppable = false) {
     const s = JSON.stringify(msg);
-    for (const sock of this.#subs) {
-      if (sock.readyState !== 1 || (droppable && sock.bufferedAmount > this.#o.maxBuffered)) continue;
+    for (const [sock, topics] of this.#subs) {
+      if (!topics.has(topic) || sock.readyState !== 1 || (droppable && sock.bufferedAmount > this.#o.maxBuffered)) continue;
       sock.send(s);
     }
     return s;
-  }
-
-  #start() {
-    const a = new AbortController();
-    this.#abort = a;
-    this.#loops = [this.#musicLoop(a.signal), this.#truckLoop(a.signal)].map((p) => p.catch((e) => this.#log("oyun modu akışı hata verdi", e)));
   }
 
   async #musicLoop(signal: AbortSignal) {
@@ -239,19 +291,19 @@ export class FeedProducer {
           queueRev = qr;
         }
         const music = musicMessage(s, id ? next : []);
-        this.#music = this.#broadcast(music);
+        this.#musicMsg = this.#broadcast(music, "music");
         if (id !== track) {
           track = id;
           const lyrics = id ? await this.#io.velour({ op: "lyrics" }, signal).catch(() => null) : null;
           if (signal.aborted) break;
-          this.#lyrics = this.#broadcast(id ? lyricsMessage(lyrics, music) : { type: "lyrics", artId: null, title: "", kind: "none", lines: [] });
+          this.#lyrics = this.#broadcast(id ? lyricsMessage(lyrics, music) : { type: "lyrics", artId: null, title: "", kind: "none", lines: [] }, "music");
         }
         this.#setPlaying(music.playing === true);
         if (r === null) await delay(2000, signal); // a Velour without `rev`: poll
       } catch {
         if (signal.aborted) break;
         if (!down) {
-          this.#music = this.#broadcast({ type: "music", none: true });
+          this.#musicMsg = this.#broadcast({ type: "music", none: true }, "music");
           this.#setPlaying(false);
           track = null;
         }
@@ -273,8 +325,8 @@ export class FeedProducer {
         sample = parseTelemetry(null, false);
       }
       if (signal.aborted) break;
-      this.#truck = this.#broadcast(sample.msg, true);
-      for (const e of events.update(sample)) this.#broadcast(e as unknown as Rec);
+      this.#truckMsg = this.#broadcast(sample.msg, "truck", true);
+      for (const e of events.update(sample)) this.#broadcast(e as unknown as Rec, "truck");
       await delay(sample.msg.state === "driving" ? this.#o.driveMs : this.#o.idleMs, signal);
     }
   }
@@ -282,19 +334,19 @@ export class FeedProducer {
   #setPlaying(on: boolean) {
     if (on === this.#playing) return;
     this.#playing = on;
-    if (on) void this.#startSpectrum();
-    else void this.#stopSpectrum();
+    if (on && this.#wanted().has("spectrum")) void this.#startSpectrum();
+    else if (!on) void this.#stopSpectrum();
   }
 
   async #startSpectrum() {
-    if (this.#spectrum || !this.#abort) return;
+    if (this.#spectrum || !this.#music) return;
     const analyzer = new SpectrumAnalyzer();
     const sp: Capture = {
       child: null,
       stop: false,
       timer: setInterval(() => {
         const frame = analyzer.frame();
-        for (const sock of this.#subs) if (sock.readyState === 1 && sock.bufferedAmount <= this.#o.maxBuffered) sock.send(frame);
+        for (const [sock, topics] of this.#subs) if (topics.has("spectrum") && sock.readyState === 1 && sock.bufferedAmount <= this.#o.maxBuffered) sock.send(frame);
       }, this.#o.frameMs),
     };
     sp.timer.unref?.();
@@ -303,13 +355,15 @@ export class FeedProducer {
     const sink = parseSinkName((await this.#io.exec("wpctl", ["inspect", "@DEFAULT_AUDIO_SINK@"], { env, timeoutMs: 5000, allowFail: true }).catch(() => ({ stdout: "" }))).stdout);
     if (sp.stop || this.#spectrum !== sp) return;
     if (!sink) {
-      this.#log("oyun modu: varsayılan ses çıkışı bulunamadı");
+      this.#log("ekran modu: varsayılan ses çıkışı bulunamadı");
       return;
     }
     const child = this.#io.spawn("pw-record", pwRecordArgs(sink), env);
     sp.child = child;
     child.stdout?.on("data", (b: Buffer) => analyzer.pushBytes(b));
     child.on("error", () => {});
+    // Stopped while pw-record was being spawned: it must not outlive the capture.
+    if (sp.stop) await killChild(child, this.#o.killGraceMs);
   }
 
   async #stopSpectrum() {
@@ -318,17 +372,20 @@ export class FeedProducer {
     this.#spectrum = null;
     sp.stop = true;
     clearInterval(sp.timer);
-    const c = sp.child;
-    if (!c || c.exitCode !== null || c.signalCode !== null) return;
-    const exited = new Promise<void>((r) => c.on("exit", () => r()));
-    c.kill("SIGTERM");
-    const t = setTimeout(() => c.kill("SIGKILL"), this.#o.killGraceMs);
-    await exited;
-    clearTimeout(t);
+    if (sp.child) await killChild(sp.child, this.#o.killGraceMs);
   }
 }
 
-/** GET /v1/gamemode/source body. */
+async function killChild(c: Child, graceMs: number) {
+  if (c.exitCode !== null || c.signalCode !== null) return;
+  const exited = new Promise<void>((r) => c.on("exit", () => r()));
+  c.kill("SIGTERM");
+  const t = setTimeout(() => c.kill("SIGKILL"), graceMs);
+  await exited;
+  clearTimeout(t);
+}
+
+/** GET /v1/screen/game/source body. */
 export async function sourceStatus(io: SourceIo) {
   const velour = await io.velour({ op: "state" }).then(() => true, () => false);
   const audio =
@@ -344,30 +401,62 @@ export async function sourceStatus(io: SourceIo) {
   };
 }
 
-export function sourceRoutes(app: FastifyInstance, _ctx: Ctx, o: SourceOpts = {}) {
+const HEARTBEAT = JSON.stringify({ type: "hb" });
+
+/** Source routes on a shared producer (the display side's `self` source uses the same one). */
+export function sourceRoutes(app: FastifyInstance, _ctx: Ctx, o: SourceOpts & { feed?: FeedProducer } = {}) {
   const io = o.io ?? realSourceIo();
-  const feed = new FeedProducer(io, o, (msg, err) => app.log.warn({ err }, msg));
+  const feed = o.feed ?? new FeedProducer(io, o, (msg, err) => app.log.warn({ err }, msg));
   app.addHook("onClose", async () => feed.closeAll());
 
-  app.get("/v1/gamemode/feed", { websocket: true, config: { scope: "gamemode" } }, (socket) => {
+  // Topics come with `{type:"subscribe", topics, project?}` (replaces the set). A token with only the older
+  // "gamemode" scope gets the Game mode topics; devices and "screen" tokens get every topic.
+  app.get("/v1/screen/feed", { websocket: true, config: { scope: ["screen", "gamemode"] } }, (socket, req) => {
     const sock = socket as unknown as Sock;
-    feed.add(sock);
+    const allowed = !req.service || (req.service.scopes as string[]).includes("screen") ? TOPICS : GAMEMODE_TOPICS;
+    void feed.add(sock, []);
+    const hb = setInterval(() => sock.readyState === 1 && sock.send(HEARTBEAT), o.heartbeatMs ?? 5000);
+    hb.unref?.();
+    const gone = () => {
+      clearInterval(hb);
+      void feed.remove(sock);
+    };
+    socket.on("close", gone);
+    socket.on("error", gone);
+    socket.on("message", (d: Buffer) => {
+      if (d.length > 4096) return;
+      let m: { type?: unknown; topics?: unknown };
+      try {
+        m = JSON.parse(d.toString()) as typeof m;
+      } catch {
+        return;
+      }
+      const topics = m?.type === "subscribe" ? parseTopics(m.topics, allowed) : null;
+      if (topics) void feed.setTopics(sock, topics);
+    });
+  });
+
+  // The 0.5 feed (one release): every Game mode topic from the start, nothing accepted from subscribers.
+  app.get("/v1/gamemode/feed", { websocket: true, config: { scope: ["gamemode", "screen"] } }, (socket) => {
+    const sock = socket as unknown as Sock;
+    void feed.add(sock, GAMEMODE_TOPICS);
     const gone = () => void feed.remove(sock);
     socket.on("close", gone);
     socket.on("error", gone);
-    socket.on("message", () => {}); // nothing is accepted from subscribers
+    socket.on("message", () => {});
   });
 
-  app.get("/v1/gamemode/source", async () => sourceStatus(io));
-
-  app.post("/v1/gamemode/plugin", async (req) => {
-    const { action } = z.strictObject({ action: z.enum(["install", "remove"]) }).parse(req.body);
-    const dir = await findGameDir();
-    if (!dir) throw new AppError("agent.gamemode.noGame", 404);
-    if (action === "install") await installPlugin(dir);
-    else await removePlugin(dir);
-    return sourceStatus(io);
-  });
+  for (const base of ["/v1/screen/game", "/v1/gamemode"]) {
+    app.get(`${base}/source`, async () => sourceStatus(io));
+    app.post(`${base}/plugin`, async (req) => {
+      const { action } = z.strictObject({ action: z.enum(["install", "remove"]) }).parse(req.body);
+      const dir = await findGameDir();
+      if (!dir) throw new AppError("agent.gamemode.noGame", 404);
+      if (action === "install") await installPlugin(dir);
+      else await removePlugin(dir);
+      return sourceStatus(io);
+    });
+  }
 
   return feed;
 }

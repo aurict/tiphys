@@ -9,7 +9,7 @@ import type { Ctx } from "../server.ts";
 export function redact(c: AgentConfig) {
   return {
     name: c.name,
-    features: c.features,
+    features: { ...c.features, gamemode: c.features.screen }, // old name of "screen", one release
     requireTailscaleLogin: c.requireTailscaleLogin,
     allowedRoots: c.allowedRoots,
     claude: c.claude,
@@ -39,7 +39,8 @@ const shape = agentConfigSchema.shape;
 /** Fields the phone can change. The device list and listen address can't be changed from here. */
 const patchSchema = z.strictObject({
   name: shape.name.optional(),
-  features: shape.features.partial().optional(),
+  // gamemode: the old name of "screen" (app 1.2), one release.
+  features: shape.features.partial().extend({ gamemode: z.boolean().optional() }).optional(),
   allowedRoots: shape.allowedRoots.optional(),
   claude: shape.claude.optional(),
   homepage: shape.homepage.optional(),
@@ -95,7 +96,12 @@ export function configRoutes(app: FastifyInstance, ctx: Ctx) {
     const p = patchSchema.parse(req.body);
     const next = await ctx.store.update((c) => {
       if (p.name !== undefined) c.name = p.name;
-      if (p.features) c.features = { ...c.features, ...p.features };
+      if (p.features) {
+        const { gamemode, ...rest } = p.features;
+        // zod fills every absent flag with its default, so "screen sent?" is read from the raw body.
+        const sent = (req.body as { features?: Record<string, unknown> }).features ?? {};
+        c.features = { ...c.features, ...rest, ...(gamemode !== undefined && !("screen" in sent) ? { screen: gamemode } : {}) };
+      }
       if (p.allowedRoots) c.allowedRoots = p.allowedRoots;
       if (p.claude) c.claude = p.claude;
       if (p.homepage) c.homepage = p.homepage;
