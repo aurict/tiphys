@@ -5,8 +5,9 @@
 //                                  route to the destination company is known: route.js, /gamemode/map/route.json)
 //   map.setMotion('low'|'normal'|'high'), map.setTone([r,g,b])
 //   map.frame(now)                 called from the page's animation loop
+//   map.destroy()                  the Game card is unmounted (mode switch): MapLibre, its WebGL context, the radar
 // The real map is MapLibre GL (vendor/) over the PMTiles the agent serves from ~/.local/share/tiphys/gamemode/map/
-// (/gamemode/map/…). Until it has loaded — and for good when the map files are missing or WebGL fails — the radar
+// (/screen/map/…). Until it has loaded — and for good when the map files are missing or WebGL fails — the radar
 // (radar.js) is shown instead. The camera follows the truck heading-up; MapLibre only renders when this module moves
 // the camera (≤30 times a second, every frame with motion=high) or a tile arrives. The trail is in memory only.
 import { createRadar } from './radar.js';
@@ -14,7 +15,7 @@ import { gameToLngLat, headingBearing } from './projection.js';
 import { citiesInTile, findCity } from './cities.js';
 import { createNavigator } from './route.js';
 
-const MAP = new URL('map/', import.meta.url).href;      // /gamemode/map/
+const MAP = new URL('map/', import.meta.url).href;      // /screen/map/
 const VENDOR = new URL('vendor/', import.meta.url).href;
 const TRAIL_STEP = 8;        // game m between trail points
 const TRAIL_MAX = 5000;
@@ -188,10 +189,13 @@ export function createMap(el) {
     truckEl.style.top = `${top + (h - top) / 2}px`;
   }
 
+  let destroyed = false, ro = null;
   createGl(el, { tone, motion }).then((g) => {
+    if (destroyed) { try { g.map.remove(); } catch {} g.box.remove(); return; }
     gl = g;
     el.append(truckEl);
-    new ResizeObserver(() => { gl.map.resize(); layout(); }).observe(el);
+    ro = new ResizeObserver(() => { gl.map.resize(); layout(); });
+    ro.observe(el);
     layout();
     gl.map.on('webglcontextlost', () => fallBack('WebGL context lost'));
     pushTrail(true);
@@ -205,6 +209,7 @@ export function createMap(el) {
   });
 
   function fallBack(why) {
+    if (destroyed) return; // map.remove() loses the context on purpose
     console.warn('[map] falling back to the radar:', why);
     if (gl) { try { gl.map.remove(); } catch {} gl.box.remove(); gl = null; }
     truckEl.remove();
@@ -351,5 +356,12 @@ export function createMap(el) {
     },
     setTone(rgb) { tone = rgb; radar?.setTone(rgb); applyTone(); },
     frame,
+    destroy() {
+      destroyed = true;
+      ro?.disconnect();
+      if (gl) { try { gl.map.remove(); } catch {} gl.box.remove(); gl = null; }
+      radar?.destroy(); radar = null;
+      truckEl.remove();
+    },
   };
 }

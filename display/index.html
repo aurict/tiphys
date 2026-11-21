@@ -4,12 +4,18 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="referrer" content="no-referrer">
-<title>Tiphys · Oyun Modu</title>
+<title>Tiphys · Ekran Modu</title>
 <link rel="stylesheet" href="tokens.css">
 <link rel="stylesheet" href="app.css">
+<link rel="stylesheet" href="shell.css">
 <script type="module" src="main.js"></script>
 </head>
-<body data-scene="connecting" data-motion="normal">
+<body data-motion="normal">
+<!-- The current mode's view (main.js builds it from the agent's `layout` message). -->
+<div id="views"></div>
+
+<!-- Game mode scenes (cards/game.js clones this into its view). -->
+<template id="tpl-game">
 <canvas id="ambient" aria-hidden="true"></canvas>
 
 <main id="stage">
@@ -151,6 +157,7 @@
     </div>
   </section>
 </main>
+</template>
 
 <!-- Source down / page connection lost -->
 <div id="problem" class="problem" hidden>

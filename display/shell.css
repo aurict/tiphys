@@ -1,0 +1,35 @@
+/* Screen mode shell (PLAN.md §20 E-1): views, mode switch fade, pause, and the Work/Focus layout shells (W1: Day card;
+   W2+ fill the rest). Same tokens and glass as the Game mode page (tokens.css, app.css). No live blur under moving
+   content; the views are opaque black underneath. */
+
+#views { position: fixed; inset: 0; }
+.view { position: fixed; inset: 0; transition: opacity 600ms ease; }
+.view.entering, .view.leaving { opacity: 0; }
+.view.leaving { pointer-events: none; }
+body[data-motion="low"] .view { transition: none; }
+
+/* Not on screen (scratch hidden, dimmed): nothing animates, not even CSS. */
+body.paused *, body.paused *::before, body.paused *::after { animation-play-state: paused !important; }
+
+/* ---------- Work / Focus shells ---------- */
+.stage { position: fixed; inset: 0; z-index: 1; transition: opacity 600ms ease;
+  background: radial-gradient(120% 80% at 100% 0%, rgba(var(--tone-rgb), .10), transparent 60%), var(--background); }
+body.has-problem .stage { opacity: .12; }
+.topbar { position: absolute; left: 40px; right: 40px; top: 30px; height: 92px; display: flex; align-items: flex-end; justify-content: space-between; }
+.topbar .title { font-size: 46px; font-weight: 800; letter-spacing: -0.025em; line-height: 1.12; margin-top: 2px; }
+
+.work-grid { position: absolute; left: 40px; right: 40px; top: 140px; bottom: 36px; display: grid; grid-template-columns: 60fr 40fr; gap: var(--gutter); }
+.work-main { min-height: 0; background: rgba(8, 8, 12, 0.42); }
+.side-col { display: flex; flex-direction: column; gap: var(--gutter); min-width: 0; min-height: 0; }
+
+.focus-center { position: absolute; left: 40px; right: 40px; top: 140px; bottom: 36px; display: flex; align-items: center; justify-content: center; }
+
+/* ---------- Day card ---------- */
+.day-card { padding: 26px 30px 30px; display: flex; flex-direction: column; gap: 6px; flex: none; }
+.day-clock { font-size: 112px; font-weight: 800; letter-spacing: -0.045em; line-height: 1; }
+.day-suffix { font-size: 30px; font-weight: 700; color: var(--label); margin-left: 12px; letter-spacing: 0; }
+.day-card.big { padding: 40px 64px 52px; align-items: center; background: transparent; border-color: transparent; backdrop-filter: none; }
+.day-card.big::before { display: none; }
+.day-card.big .overline { font-size: 26px; letter-spacing: .07em; }
+.day-card.big .day-clock { font-size: 236px; }
+.day-card.big .day-suffix { font-size: 44px; margin-left: 18px; }

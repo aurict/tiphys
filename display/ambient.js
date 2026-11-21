@@ -113,6 +113,11 @@ export function createAmbient(canvas) {
     /** Night (0..1): 20 % dimmer and cooler at full night. */
     setNight(n) { dimTarget = n * 0.2; coolTarget = n; },
     setMotion(m) { motion = m; dirty = true; },
+    /** Unmounted (mode switch): the listener goes and the WebGL context is given back at once. */
+    destroy() {
+      removeEventListener('resize', resize);
+      gl?.getExtension('WEBGL_lose_context')?.loseContext();
+    },
     frame(now) {
       const step = (a, b) => (Math.abs(b - a) < 0.002 ? b : a + (b - a) * 0.04);
       const nd = step(dim, dimTarget), nc = step(cool, coolTarget);
