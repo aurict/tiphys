@@ -15,7 +15,7 @@ Source of truth: `agent/src/server.ts` (registration), `agent/src/routes/*.ts`, 
   - [Always available](#always-available)
   - [system](#system) · [services](#services) · [docker](#docker) · [power](#power) · [wake](#wake) · [ports](#ports) · [transcribe](#transcribe) · [git](#git) · [homepage](#homepage)
   - [desktop](#desktop): [clipboard, screenshot, open](#clipboard-screenshot-open) · [media](#media) · [windows and apps](#windows-and-apps) · [Sunshine](#sunshine) · [Firefox bridge](#firefox-bridge) · [mobile view](#mobile-view-at-spi) · [live screen](#live-screen)
-  - [claude](#claude) · [agy](#agy) · [watch](#watch) · [alerts](#alerts) · [backups](#backups) · [uptime](#uptime) · [research](#research) · [analysis](#analysis) · [telegram](#telegram) · [incidents](#incidents) · [configfiles](#configfiles) · [databases](#databases) · [security](#security) · [gamemode](#gamemode)
+  - [claude](#claude) · [agy](#agy) · [watch](#watch) · [alerts](#alerts) · [backups](#backups) · [uptime](#uptime) · [research](#research) · [analysis](#analysis) · [telegram](#telegram) · [incidents](#incidents) · [configfiles](#configfiles) · [databases](#databases) · [security](#security) · [screen](#screen) · [gamemode](#gamemode)
 - [Protocols](#protocols)
   - [Live screen WebSocket](#live-screen-websocket)
   - [Claude session WebSocket](#claude-session-websocket)
@@ -37,9 +37,9 @@ Source of truth: `agent/src/server.ts` (registration), `agent/src/routes/*.ts`, 
 
 | Mechanism | Applies to | Details |
 | --- | --- | --- |
-| Service token | only routes that declare its scope (today: `research` → `POST /v1/research/jobs`, `GET`/`DELETE /v1/research/jobs/:id`; `analysis` → `POST /v1/analysis/jobs`, `GET`/`DELETE /v1/analysis/jobs/:id`; `security-report` → `GET /v1/security/raw`; `blackbox` → `POST /v1/blackbox/append`; `lockdown` → `POST /v1/security/lockdown/remote`; `gamemode` → `WS /v1/gamemode/feed`) | `Authorization: Bearer tps_…` (header only, never `?token=`). Issued for another agent with `tiphys-agent service-token create` or `POST /v1/service-tokens`; shown once, stored as a SHA-256 hash. Any other route, including unknown paths, returns `403 agent.auth.scopeDenied`. The Tailscale identity check applies as for devices. The audit log records the caller as `service:<id>`. A request with an unknown `tps_`/`tph_` token on any route is the same `401 agent.auth.invalidToken`, and if the token is a security-center decoy it also raises an alarm (see [traps](#traps-and-alerts)). |
+| Service token | only routes that declare its scope (today: `research` → `POST /v1/research/jobs`, `GET`/`DELETE /v1/research/jobs/:id`; `analysis` → `POST /v1/analysis/jobs`, `GET`/`DELETE /v1/analysis/jobs/:id`; `security-report` → `GET /v1/security/raw`; `blackbox` → `POST /v1/blackbox/append`; `lockdown` → `POST /v1/security/lockdown/remote`; `screen` → `WS /v1/screen/feed` (every topic); `gamemode` → `WS /v1/screen/feed` (music, spectrum and truck topics only) and `WS /v1/gamemode/feed`) | `Authorization: Bearer tps_…` (header only, never `?token=`). Issued for another agent with `tiphys-agent service-token create` or `POST /v1/service-tokens`; shown once, stored as a SHA-256 hash. Any other route, including unknown paths, returns `403 agent.auth.scopeDenied`. The Tailscale identity check applies as for devices. The audit log records the caller as `service:<id>`. A request with an unknown `tps_`/`tph_` token on any route is the same `401 agent.auth.invalidToken`, and if the token is a security-center decoy it also raises an alarm (see [traps](#traps-and-alerts)). |
 | None (own credential) | `POST /v1/security/lockdown` only (route config `public`) | Needs no token, because the phone and its token are lost: the body's recovery code is the credential (see [lost phone](#lost-phone-and-lockdown)). The Tailscale-login check **still applies** (`403 agent.auth.tailnetUserNotAllowed` when `requireTailscaleLogin` is set and the header differs). Rate limited per address and in total, see the error table. |
-| Display token (Game mode kiosk) | `WS /v1/gamemode/live`, `GET /v1/gamemode/art`, static `GET /gamemode/*` (route config `kiosk`) | The local kiosk Firefox reaches the agent on `127.0.0.1` without Tailscale headers, so these routes skip the device-token **and** Tailscale-identity checks. Static files hold no secrets. The live socket and the art proxy need `?t=<display token>`: 32 random bytes (hex), made at each start, in memory only, invalid after stop. See [gamemode](#gamemode). |
+| Display token (screen mode kiosk) | `WS /v1/screen/live`, `GET /v1/screen/art`, static `GET /screen/*` and their `/v1/gamemode/live`, `/v1/gamemode/art`, `/gamemode/*` aliases (route config `kiosk`) | The local kiosk Firefox reaches the agent on `127.0.0.1` without Tailscale headers, so these routes skip the device-token **and** Tailscale-identity checks. Static files hold no secrets. The live socket and the art proxy need `?t=<display token>`: 32 random bytes (hex), made at each start, in memory only, invalid after stop. See [screen](#screen). |
 | Device token | every route except `GET /v1/health` | `Authorization: Bearer tph_…`. Created by `tiphys-agent pair`; only its SHA-256 hash is stored, and comparison is constant-time. For WebSockets the token may also be sent as the `?token=` query parameter. |
 | Tailscale identity | every route except `GET /v1/health` | When `requireTailscaleLogin` is set, the `Tailscale-User-Login` header (added by `tailscale serve`) must equal it. Otherwise `403 agent.auth.tailnetUserNotAllowed`. |
 | Control token | mutating desktop routes, live screen, Firefox tabs, mobile view, Sunshine actions, Claude PC sessions | `X-Tiphys-Control: tpc_…`, obtained from `POST /v1/desktop/control/session`. It must belong to the calling device and not be expired, and the `control` feature must be on. |
@@ -170,6 +170,12 @@ Every error has the same envelope. The agent sends codes, never sentences; the a
 | `agent.db.countChanged` | 409 | Write commit: the statement now affects a different number of rows than previewed (`params.expected`, `actual`); rolled back |
 | `agent.db.failed` | 502 | Unexpected driver/child failure (`params.reason` or `message`) |
 | `agent.research.busy` | 429 | Research queue full (1 running + 5 waiting) |
+| `agent.screen.noSource` | 409 | Start or mode switch whose layout reads a source that isn't configured (`params.sources`) |
+| `agent.screen.noDisplay` | 503 | Screen mode start without a Hyprland session |
+| `agent.screen.startFailed` | 502 | `systemd-run` could not start the kiosk unit (`params.stderr`) |
+| `agent.screen.bindTaken` | 409 | `scratch` placement: `screen.scratchBind` is already bound in Hyprland (`params.bind`); nothing was changed |
+| `agent.screen.badLayout` | 400 | A layout whose template doesn't belong to the mode, or a card kind the template can't hold or twice (`params.mode`, `template`, `kind`) |
+| `agent.screen.noArt` | 404 | As `agent.gamemode.noArt`, on `/v1/screen/art` |
 | `agent.gamemode.noSource` | 409 | Game mode start without a source agent configured |
 | `agent.gamemode.noDisplay` | 503 | Game mode start without a Hyprland session |
 | `agent.gamemode.startFailed` | 502 | `systemd-run` could not start the kiosk unit (`params.stderr`) |
@@ -1149,9 +1155,80 @@ Device tokens only. Behaviour: [Outside view](../features/security.md#outside-vi
 
 Overview of the keys above, all sent by the monitoring server's agent (or whichever agent runs the feature): `security.vulns`, `security.secretFound`, `security.trap`, `security.exposure`, `security.attack`, `blackbox.broken`, `security.lockdown`. `security.trap`, `security.secretFound`, `blackbox.broken`, `security.lockdown` and `security.change` with `severity: critical` are relayed to the owner's Telegram as a title only (`🚨 Tiphys güvenlik · <host> · <title>`, Turkish text). Notices that are not `sensitive` are also appended to the black box as `event` records.
 
+### screen
+
+Feature `screen` (`screen/*.ts`; Linux only; was `gamemode`, PLAN.md §20). One kiosk framework for the screen modes
+`game`, `work` and `focus` (`sleep` is reserved). A **display host** shows a mode in a Firefox kiosk; a **source host**
+produces the data. One host can be both: its display reads its own producer in-process as the source `self` (no
+network, no token). Nothing runs until a mode is started (display) or a topic is subscribed (source).
+
+**Display host**
+
+| Method | Path | Auth | Description |
+| --- | --- | --- | --- |
+| GET | `/v1/screen` | device | `{running, mode\|null, startedAt\|null, placement, visible\|null, settings: {placement, scratchBind, lastMode, batterySaver, share, modes}, sources: [{name, url\|null, state: off\|connecting\|ok\|down, topics}], focus: {phase, endsAt, pausedLeft, round, task}, map: {present}, live: {music\|null, truck\|null}}`. `sources` starts with `self`. `visible` is whether the kiosk is on screen (false = the page is paused). `focus` is a placeholder until the Focus timer (W5). Tokens are never returned. |
+| PUT | `/v1/screen` | device | Strict `{settings?: {placement?, scratchBind?, lastMode?, batterySaver?, share?: {code}, modes?: {game?, work?, focus?: partial settings incl. layout}}, sources?: {<name>: {url, token}\|null}}` → same as GET. Only the fields sent change; `null` removes a source. A layout is checked (`400 agent.screen.badLayout`). While running: the page gets `settings` (or `layout`), the backlight follows, a changed source reconnects, subscriptions follow. |
+| POST | `/v1/screen/start` | device | `{mode?}` (default `lastMode`) → same as GET. Idempotent; while running a different mode is a switch. `409 agent.screen.noSource`, `409 agent.screen.bindTaken`, `503 agent.screen.noDisplay`, `502 agent.screen.startFailed` (everything done so far is undone). |
+| POST | `/v1/screen/mode` | device | `{mode}` → same as GET. Hot switch: the page gets a `layout` message (and the latest data again), the source subscriptions and the backlight follow; Firefox is not restarted. Not running: only `lastMode` is stored. |
+| POST | `/v1/screen/stop` | device | Idempotent → same as GET. |
+| WS | `/v1/screen/live?t=<display token>` | display token | Kiosk page socket. On connect: `layout`, every source's `source` state, the latest relayed messages, `pause` if hidden. Then relayed messages and binary spectrum frames. Page → agent: `{"type":"stop"}`. Closed with `4410` on stop. |
+| GET | `/v1/screen/art?t=…&id=…` | display token | Cover proxy, as `/v1/gamemode/art` below. |
+| GET | `/screen/`, `/screen/<file>`, `/screen/map/<file>` | none (kiosk) | The kiosk page and map data, as `/gamemode/…` below. |
+
+Kiosk messages (agent → page): `{type:"layout", mode, template, cards:[{kind, source, enabled}], settings}`,
+`{type:"settings", ...}`, `{type:"source", name, state, retryInSec?}`, `{type:"pause"}`, `{type:"resume"}`, and relayed
+topic messages with their source added as `src` (`{"src":"main","type":"music",…}`); spectrum frames are binary.
+
+Lifecycle: as described for Game mode below, with the unit, app id, rule and tmpfs dir `tiphys-screen`
+(`$XDG_RUNTIME_DIR/tiphys-screen/`), `--why=Tiphys Ekran Modu`, the page at `/screen/`, and these additions:
+- **Light Firefox profile:** one content process, no Fission, no process prelaunch, 32 MB memory cache and no disk
+  cache (the profile is on tmpfs), no prefetching, telemetry/updates/studies off.
+- **Placement** (`screen.placement`, read at start): `fullscreen` puts the window on the mode's named workspace
+  (`yol` / `is` / `odak` for the mode it was started in) and focuses it; `scratch` sends it silently to `special:tiphys`
+  (rule `workspace special:tiphys silent`) and binds `screen.scratchBind` to `togglespecialworkspace tiphys`
+  (classic: `hyprctl keyword bind MODS,key,togglespecialworkspace,tiphys`; Lua: `hyprctl eval 'hl.bind("MODS + key",
+  hl.dsp.workspace.toggle_special("tiphys"))'`) after checking `hyprctl -j binds` (taken → `409 agent.screen.bindTaken`).
+  When the page first connects the window is moved there if needed (`movetoworkspacesilent special:tiphys,address:…`)
+  and the workspace is shown once. Stop: unbind (`keyword unbind MODS,key` / `hl.unbind("MODS + key")`), rule off.
+- **Visibility:** while running, the Hyprland event socket is watched (workspace, special workspace and monitor
+  events → `hyprctl -j monitors`). Not on screen (scratch hidden, another workspace in front, DPMS off) → `pause` to
+  the page, which stops all drawing, timers and CSS animations, and the pausable topics (spectrum) are unsubscribed;
+  `resume` when shown again.
+- **State file:** every side effect (unit, work dir, rule, keybind, previous workspace, backlight) is written before it
+  is made; stop and the next agent start after a crash undo it. A 0.5 Game mode left in `tiphys-gamemode/` is cleaned
+  up the same way. Events: only `screen.started {mode}` and `screen.stopped`.
+- **Sources:** for the running mode's layout the display sums the topics of the enabled cards the page draws, per
+  source, and keeps one connection per remote source with a non-empty topic set (none for `self`, which subscribes
+  in-process). On open, and whenever the set changes, it sends `{"type":"subscribe","topics":[…]}`. A source that
+  never opens `/v1/screen/feed` (an older agent) is tried on `/v1/gamemode/feed` next (all Game topics, no subscribe).
+  Reconnect after 1, 2, 4, 8, 15, 30 s; a feed silent for 15 s is reconnected. Messages of topics not subscribed are
+  dropped.
+
+**Source host**
+
+| Method | Path | Auth | Description |
+| --- | --- | --- | --- |
+| WS | `/v1/screen/feed` | service (`screen`; `gamemode` = music, spectrum, truck only) or device | Client → source: `{"type":"subscribe","topics":[…],"project"?:…}` replaces the topic set (unknown or not allowed topics are dropped; ≤ 4 KB). Starts with no topics. A topic's producer starts with its first subscriber and stops with its last; a subscriber adding a topic gets its latest messages at once. `{"type":"hb"}` every 5 s. |
+| GET | `/v1/screen/game/source` | device | As `/v1/gamemode/source`. |
+| POST | `/v1/screen/game/plugin` | device | As `/v1/gamemode/plugin`. |
+
+Topics (`screen/topics.ts`): `music` (messages `music`, `lyrics`), `spectrum` (binary frames, only while Velour plays;
+dropped while the kiosk is hidden), `truck` (`truck`, `event`). Card kinds → topics: `map`, `cockpit` → truck;
+`lyrics` → music; `music` → music (+ spectrum in Game mode when `spectrum` is on). Templates: `game` (map, cockpit,
+music, lyrics), `work` (city, day, system, jobs, git, music, servers), `focus` (focus, task, day, music, servers). This
+version's page draws the Game cards and the Day card (clock and date); the others subscribe nothing yet.
+
+**Compatibility (one release):** `/v1/gamemode`, `/v1/gamemode/{start,stop,live,art,feed,source,plugin}` and
+`/gamemode/*` keep the 0.5 shapes and `agent.gamemode.*` error codes; their "source" is `screen.sources.main`
+(`PUT /v1/gamemode {source}` also points the Game cards at it). `/v1/health` and `GET /v1/config` report
+`features.gamemode` (= `screen`); `PATCH /v1/config` and `init --features` accept `gamemode` for `screen`.
+
 ### gamemode
 
-Feature `gamemode` (`gamemode/*.ts`; Linux only). The laptop next to the PC becomes an ambient second screen: the
+> The routes below are the 0.5 Game mode API, kept as aliases for one release; the feature is now `screen` (see
+> [screen](#screen)). Where this section says `gamemode` unit/dir/events, read `tiphys-screen` / `screen.*`.
+
+Feature `gamemode` (now `screen`, `screen/*.ts`; Linux only). The laptop next to the PC becomes an ambient second screen: the
 song playing in Velour (cover colours, spectrum, synced lyrics), the ETS2 cockpit and the truck's position. Both sides
 load with the flag; which one a machine plays depends on use: the **source** (PC) serves the feed, the **display**
 (laptop) runs the kiosk and relays the feed. Nothing runs until a feed subscriber connects (source) or the mode is

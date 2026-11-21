@@ -22,6 +22,11 @@ phone ──> display agent (laptop) ──systemd-run──> Firefox kiosk ─�
 
 API details: [api.md › gamemode](../agent/api.md#gamemode). Security rationale: [Security › Game mode](../security.md#game-mode).
 
+> **Screen modes (after agent 0.5.0):** Game mode is now one of the screen modes (Game, Work, Focus). The feature flag is
+> `screen`, the settings live under `screen` in `agent.json` (moved automatically) and the routes are `/v1/screen/*`
+> ([api.md › screen](../agent/api.md#screen)); the `gamemode` flag name, scope and the `/v1/gamemode/*` routes below
+> keep working for one release. The event log now says `screen.started` / `screen.stopped`.
+
 ## Requirements
 
 | Host | Need | Used for |
@@ -51,7 +56,7 @@ and on the PC, either:
 - on the machine: `tiphys-agent init --features gamemode` (adds it; nothing else is turned off).
 
 Then restart the agent. Without the flag the app shows *Game mode is off on this host* with a link to the agent
-settings. All keys: [Agent configuration](../agent/configuration.md#gamemode).
+settings. All keys: [Agent configuration](../agent/configuration.md#screen).
 
 ### 2. Connect the two hosts (setup wizard)
 

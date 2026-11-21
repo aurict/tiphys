@@ -130,7 +130,7 @@ rely on the package manager's own checks plus the checksums copied from the sign
 Each area of functionality is a flag in `agent.json`. If a flag is off, its routes are not registered and heavy
 modules such as the Claude SDK are not even loaded. On a new configuration only `system`, `services`, `docker` and
 `power` are on. Everything that runs code on your behalf or touches the desktop (`claude`, `agy`, `git`, `desktop`,
-`control`, `ports`, `transcribe`, `wake`, `watch`, `uptime`, `alerts`, `backups`, `homepage`, `security`, `securityFix`, `gamemode`) must be enabled
+`control`, `ports`, `transcribe`, `wake`, `watch`, `uptime`, `alerts`, `backups`, `homepage`, `security`, `securityFix`, `screen`) must be enabled
 explicitly. Enable only what a machine needs. A server usually needs no `claude`, `agy`, `desktop` or `control`.
 
 ## Path restrictions
@@ -511,8 +511,14 @@ validated operation to the Velour player's local socket, `$XDG_RUNTIME_DIR/velou
 
 ## Game mode
 
-The `gamemode` flag (off by default, never turned on by `init --detect`) turns a laptop into a second screen for the PC
-(see [api.md](agent/api.md#gamemode)). Two agents take part; each side's rules:
+The `screen` flag (was `gamemode`; off by default, never turned on by `init --detect`) turns a laptop into a second
+screen for the PC (see [api.md](agent/api.md#screen)). Two agents take part; each side's rules below are written for
+Game mode and hold for every screen mode: the routes are now `/v1/screen/*` and `/screen/*` (the `/v1/gamemode/*` and
+`/gamemode/*` ones stay for one release), the unit, app id and work dir are `tiphys-screen`, the events
+`screen.started {mode}` / `screen.stopped`. The `scratch` placement adds a temporary Hyprland keybind (fixed
+dispatcher `togglespecialworkspace tiphys`, key from the validated `screen.scratchBind`, refused if already bound,
+recorded in the state file and unbound on stop or after a crash). A `gamemode` service token opens only the Game mode
+topics of `WS /v1/screen/feed`.
 
 **No control session.** Starting the mode shows a fullscreen window, holds an idle/sleep inhibitor and may change the
 backlight on the display host, which is the kind of desktop change a control session normally guards. It is not

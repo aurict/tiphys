@@ -55,7 +55,7 @@ The file is validated with a zod schema (`agent/src/config.ts`) when it loads. I
 | `requireTailscaleLogin` | string or `null` | `null` | If set, every authenticated request must carry a `Tailscale-User-Login` header equal to this value. `tailscale serve` adds that header. `null` disables the check. |
 | `features` | object | see below | Feature flags. Routes for a disabled feature are not registered at all. |
 | `devices` | array | `[]` | Paired devices: `{id, name, tokenHash, createdAt}`. Only the SHA-256 hash of each token is stored. Managed by `pair`/`revoke`. Do not edit by hand. |
-| `serviceTokens` | array | `[]` | Scoped tokens for other agents: `{id, name, scopes: ["research" | "analysis" | "security-report" | "blackbox" | "lockdown" | "gamemode"], tokenHash, createdAt, lastUsedAt?}`. Only the hash is stored; `lastUsedAt` is updated at most hourly. Managed by `service-token` and the app. A service token can call only routes of its scopes (see [api.md](api.md#authentication)). |
+| `serviceTokens` | array | `[]` | Scoped tokens for other agents: `{id, name, scopes: ["research" | "analysis" | "security-report" | "blackbox" | "lockdown" | "gamemode" | "screen"], tokenHash, createdAt, lastUsedAt?}`. Only the hash is stored; `lastUsedAt` is updated at most hourly. Managed by `service-token` and the app. A service token can call only routes of its scopes (see [api.md](api.md#authentication)). |
 | `allowedRoots` | string[] | `["~"]` | Directories that path-based features may touch: git, the Claude working directory and the folder picker. Paths are resolved with `realpath` (symlinks followed) before the check. `~` is expanded. |
 | `claude` | object | see [claude](#claude) | Claude Code profiles. |
 | `securityFix` | object | `{"targets": [], "sudoCacheMinutes": 15}` | Machines Claude may fix security findings on, and the sudo password cache time. See [securityFix](#securityfix). |
@@ -71,7 +71,7 @@ The file is validated with a zod schema (`agent/src/config.ts`) when it loads. I
 | `transcribe` | object | see [transcribe](#transcribe) | Voice-to-text command. |
 | `telegram` | object or `null` | `null` | Telegram bot (`{botToken, botUsername, botId}`). Set with `PUT /v1/telegram/bot`; the token is never returned. See [telegram](#telegram-and-research). |
 | `research` | object or `null` | `null` | The PC agent that runs research jobs for the `telegram` feature. See [telegram](#telegram-and-research). |
-| `gamemode` | object | `{source: null, display: {…}}` | Game mode: the source agent (URL + `gamemode` service token, never returned) and the kiosk settings. See [gamemode](#gamemode). |
+| `screen` | object | see [screen](#screen) | Screen modes (Game, Work, Focus): source agents (URL + `screen` service token, never returned), placement and per-mode settings and layouts. Was `gamemode` (moved automatically, see [screen](#screen)). |
 | `stacks` | object | `{roots: ["~/stack"]}` | Where compose stacks are discovered. See [stacks](#stacks). |
 | `incidents` | object | `{links: [], analysis: {mode: "off", language: "tr"}}` | Incident room options (links, AI analysis). See [incidents](#incidents). |
 | `configFiles` | object | `{extraPaths: []}` | Extra `.env` files for the config editor. See [configFiles](#configfiles). |
@@ -118,7 +118,7 @@ Risk levels below are a guide to how much a holder of a device token can do with
 | `analysis` | `false` | Incident analysis jobs (`/v1/analysis/jobs`) for another agent holding an `analysis` service token (a server's incident room in `remote` mode): a tool-less `claude -p` (no built-in tools, no MCP, no user settings) reads the redacted bundle; output is schema-checked. Turn on only where Claude Code is installed. See [Incidents › AI analysis](../features/incidents.md#ai-analysis-i-3). | low (spends the user's Claude subscription; the model can't act) |
 | `update` | `false` | Self-update from signed GitHub releases: `POST /v1/update/apply` (`GET /v1/update` and `GET /v1/doctor` are always on). Works only for installs made by `install.sh` / `install.ps1` (the `versions/<v>` + `current` layout); `init --detect` turns it on there. A git checkout, a package or the Docker image never updates itself. See [Security › Releases](../security.md#releases-installer-and-self-update). | medium (replaces the agent's code, but only with a release signed by the release key) |
 | `research` | `false` | Web research jobs (`/v1/research/jobs`) run with `agy` (Gemini) and `claude` for another agent holding a `research` service token. The tools may only use the searxng/firecrawl MCP servers and write in the job's work directory; shell commands are denied. See [Research](../features/research.md). | medium (spends the user's AI subscriptions) |
-| `gamemode` | `false` | Game mode (Linux): as a **source**, `WS /v1/gamemode/feed` for another agent holding a `gamemode` service token (Velour state and lyrics, a `pw-record` spectrum of the default output while music plays, ETS2 telemetry from shared memory) plus the ETS2 plugin installer; as a **display**, a Firefox kiosk in one transient `systemd-run --user` unit with temporary Hyprland window rules, an idle/sleep inhibitor and the backlight setting, started and stopped from the phone. No control session (see [Security](../security.md#game-mode)). Starts no process until a feed subscriber connects or the mode is started. See [api.md](api.md#gamemode). | medium (shows a fullscreen window and changes the backlight on the display host; reads music and game state on the source) |
+| `screen` | `false` | Screen modes (Linux; was `gamemode`, the old name is still accepted by `init --features` and `PATCH /v1/config` and reported by `/v1/health` for one release): as a **source**, `WS /v1/screen/feed` for another agent holding a `screen` (or older `gamemode`) service token, producing only the subscribed topics (Velour state and lyrics, a `pw-record` spectrum of the default output while music plays, ETS2 telemetry) plus the ETS2 plugin installer; as a **display**, a Firefox kiosk in one transient `systemd-run --user` unit with temporary Hyprland window rules (and for the `scratch` placement a temporary keybind), an idle/sleep inhibitor and the backlight setting, started, switched and stopped from the phone. No control session (see [Security](../security.md#game-mode)). Starts no process until a topic is subscribed or a mode is started. See [api.md](api.md#screen). | medium (shows a fullscreen window, binds a key while running and changes the backlight on the display host; reads music and game state on the source) |
 
 Endpoints that are always on, whatever the flags: health, config, devices, push endpoint registration, events, audit log and agent status. See [api.md](api.md#always-available).
 
@@ -289,29 +289,40 @@ Used by the `telegram` feature (the agent that sends the newsletters, e.g. atlas
 
 Example: `"research": {"url": "https://pc.my-tailnet.ts.net", "token": "tps_…", "wakeHostId": "pc"}`.
 
-### gamemode
+### screen
 
 ```json
-"gamemode": {
-  "source": { "url": "https://pc.my-tailnet.ts.net", "token": "tps_…" },
-  "display": { "scene": "auto", "lyrics": true, "spectrum": true, "motion": "normal", "brightness": null, "clock24": true, "dimIdleMinutes": 10 }
+"screen": {
+  "sources": { "main": { "url": "https://pc.my-tailnet.ts.net", "token": "tps_…" } },
+  "placement": "fullscreen", "scratchBind": "SUPER,grave", "lastMode": "work",
+  "share": { "code": false }, "batterySaver": true,
+  "modes": {
+    "game":  { "scene": "auto", "lyrics": true, "spectrum": true, "motion": "normal", "brightness": null, "clock24": true, "dimIdleMinutes": 10,
+               "layout": { "template": "game", "cards": [{ "kind": "map", "source": "main", "enabled": true }, …] } },
+    "work":  { "project": "auto", "city": "3d", "diff": true, "ci": false, "motion": "normal", "brightness": null, "dimIdleMinutes": 10, "clock24": true, "layout": { … } },
+    "focus": { "focusMin": 25, "shortMin": 5, "longMin": 15, "longEvery": 4, "ambient": "off", "ambientVolume": 30, "chime": true, "quietPhone": true, "motion": "normal", "brightness": null, "clock24": true, "layout": { … } }
+  }
 }
 ```
 
 | Field | Default | Meaning |
 | --- | --- | --- |
-| `source` | `null` | Set on the **display** host (the laptop): the source agent's base URL (`http`/`https`) and a service token with the `gamemode` scope from it (`tiphys-agent service-token create --name laptop --scope gamemode`). Set with `PUT /v1/gamemode`; never returned by any API (only `configured` and `url`). `POST /v1/gamemode/start` needs it. |
-| `display.scene` | `"auto"` | `auto` (drive while ETS2 is played, music otherwise), `drive` or `music`. |
-| `display.lyrics` | `true` | Show synced lyrics. |
-| `display.spectrum` | `true` | Spectrum frames are relayed to the page only when on. |
-| `display.motion` | `"normal"` | Animation level: `low`, `normal`, `high`. |
-| `display.brightness` | `null` | Backlight percent (5–100) while the mode runs, set with `brightnessctl` and restored on stop; `null` leaves it alone. Without permission on the backlight the mode runs without changing it. |
-| `display.clock24` | `true` | 24-hour clock. |
-| `display.dimIdleMinutes` | `10` | Dim the idle scene after this many minutes (0–120, 0 = never). |
+| `sources` | `{}` | Named source agents (`[a-z0-9-]{1,32}`; `self` = this host, reserved): base URL (`http`/`https`) and a service token with the `screen` scope from it (`tiphys-agent service-token create --name laptop --scope screen`; an older `gamemode` token gets only the Game mode topics). Set with `PUT /v1/screen`; the token is never returned. |
+| `placement` | `"fullscreen"` | `fullscreen`: the mode's own named workspace (`yol` / `is` / `odak`), focused at start. `scratch`: the Hyprland special workspace `special:tiphys`, shown and hidden with `scratchBind` while the mode runs. Read at start. |
+| `scratchBind` | `"SUPER,grave"` | Temporary keybind of the `scratch` placement in classic form `MODS,key`. A combination already bound refuses the start (`409 agent.screen.bindTaken`). |
+| `lastMode` | `"work"` | Mode of a start without one; updated on each start/switch. |
+| `modes.game` | | The Game mode kiosk settings: `scene` (`auto`/`drive`/`music`), `lyrics`, `spectrum` (frames relayed only when on), `motion` (`low`/`normal`/`high`), `brightness` (5–100 while running, restored on stop; `null` = untouched), `clock24`, `dimIdleMinutes` (0–120). |
+| `modes.work`, `modes.focus` | | Their settings (used from W2/W5 on; W1 shows the Day card). |
+| `modes.*.layout` | per mode | `{template, cards: [{kind, source, enabled}]}`; `source` is `self` or a `sources` name. The display subscribes each source to the topics of the cards it serves. |
+| `share.code`, `batterySaver` | `false`, `true` | Reserved for later phases (diffs to displays, battery saving). |
 
-The source host needs nothing here: the flag plus a `gamemode` service token for the display host. Map data for the
-page lives in `~/.local/share/tiphys/gamemode/map/` (program data, not a trace). Settings are read on every use; only
-the flag needs a restart.
+**Migration from `gamemode` (once, at the first start of this version; the file is rewritten without the old keys):**
+`features.gamemode` → `features.screen`; `gamemode.source` → `screen.sources.main` with the Game cards reading `main`;
+`gamemode.display` → `screen.modes.game`; `lastMode` becomes `game`. Values already under `screen` win.
+
+The source host needs nothing here: the flag plus a service token for the display host. Map data for the page lives in
+`~/.local/share/tiphys/gamemode/map/` (program data, not a trace). Settings are read on every use; only the flag needs
+a restart.
 
 ### stacks
 
