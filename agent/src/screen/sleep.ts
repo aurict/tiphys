@@ -24,6 +24,7 @@ import { hostId, sleepSettingsSchema, type SleepSettings } from "../config.ts";
 import { AppError } from "../errors.ts";
 import { Hardware, NO_SAVED, sanitizeSaved, Throttle, type HwKind, type HwSaved } from "./sleep_hw.ts";
 import { nextAlarm } from "./sleep_alarm.ts";
+import { parseVelourHeld, type VelourHeld } from "./sleep_velour.ts";
 
 export const SLEEP_PHASES = ["settle", "fade", "night", "sunrise", "ring", "snoozed", "morning"] as const;
 export type SleepPhase = (typeof SLEEP_PHASES)[number];
@@ -258,8 +259,8 @@ export interface SleepFile {
   saved: HwSaved;
   /** The last alarm transition handled ("ring:<span start>", …): an adopting agent doesn't push it again. */
   reported: string | null;
-  /** Velour's volume before the alarm played on it (the leader; put back at the end). */
-  velour: { volume: number } | null;
+  /** Velour's volume before the mode took it, who holds it, who started playback (the leader; sleep_velour.ts). */
+  velour: VelourHeld | null;
 }
 
 const SESSION_ID = /^[A-Za-z0-9_-]{8,64}$/;
@@ -312,7 +313,7 @@ export function parseSleepFile(v: unknown): SleepFile | null {
     hw: o.hw === "backlight" || o.hw === "ddc" ? o.hw : null,
     saved: sanitizeSaved(o.saved),
     reported: typeof o.reported === "string" && /^[a-z]{1,10}:\d{1,16}$/.test(o.reported) ? o.reported : null,
-    velour: o.velour && typeof o.velour === "object" && Number.isFinite((o.velour as Record<string, unknown>).volume) ? { volume: Math.max(0, Math.min(100, Number((o.velour as Record<string, unknown>).volume))) } : null,
+    velour: parseVelourHeld(o.velour),
   };
 }
 
@@ -456,6 +457,8 @@ export interface SleepDeps {
   onEnd?: () => void;
   /** The page's alarm gain (0..1; 0 = another player plays it, e.g. Velour on the leader). */
   alarmGain?: () => number;
+  /** More fields of the page's `sleep` message (S5: `music` = the pages duck, `morning` = the summary). */
+  extra?: () => Record<string, unknown>;
   now?: () => number;
   setTimeout?: (fn: () => void, ms: number) => unknown;
   clearTimeout?: (h: unknown) => void;
@@ -679,6 +682,11 @@ export class SleepRun {
 
   /** The alarm's gain on the page changed (e.g. Velour failed on the leader): a fresh `sleep` message. */
   alarmGainChanged() {
+    this.resend();
+  }
+
+  /** Something in the page's `sleep` message changed (music, the morning summary): sent again. */
+  resend() {
     if (!this.#stopped) this.#d.send(this.sleepMessage());
   }
 
@@ -741,6 +749,7 @@ export class SleepRun {
       offsetMs: this.#offset,
       plan: f.plan,
       alarm: { gain: this.#d.alarmGain?.() ?? 1 },
+      ...this.#d.extra?.(),
       ...this.#phaseFields(),
       brightness: Math.max(0, this.#content),
       settings: { volume: s.volume, layers: s.layers, nightSound: s.times.nightSound },

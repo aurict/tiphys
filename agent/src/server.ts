@@ -58,6 +58,8 @@ export interface Ctx {
   uptime?: import("./uptime/bridge.ts").UptimeBridge;
   /** Incident room (set by incidentRoutes; the screen feed's `servers` topic counts the open ones). */
   incidents?: import("./incidents/service.ts").IncidentService;
+  /** Backup monitor (set by backupRoutes; the sleep mode's morning summary reads its checks). */
+  backups?: import("./backups.ts").BackupMonitor;
 }
 
 declare module "fastify" {

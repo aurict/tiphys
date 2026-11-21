@@ -40,6 +40,12 @@
 // Velour on the leader, the WAV fallback) follow the run's transitions. While sleeping, a dead kiosk doesn't end the
 // mode (the alarm must still ring): it is relaunched at sunrise/ring when the page's heartbeat is missing. When the
 // page connects the kiosk window gets the keyboard focus (Hyprland doesn't give it to a new window on the laptop).
+// Sleep night and morning (S5, sleep_night.ts): while a sleep run is on, this host's notifications pass a night filter
+// (critical kinds only; the rest held in memory and counted) and a collector counts the night (jobs, backups,
+// incidents); at the dismiss (or a user stop) the members send their counts to the leader, which sends the one
+// `sleep.morning` push and keeps the summary 12 h (GET /v1/sleep/summary; the morning screen shows it). Velour (S5,
+// sleep_velour.ts): one owner of Velour's volume for the run (sleep playlist + Velour alarm), the playlist on the
+// leader, the pages duck under it.
 import { randomBytes, timingSafeEqual } from "node:crypto";
 import { createReadStream, existsSync } from "node:fs";
 import { mkdir, readFile, realpath, rename, rm, stat, writeFile } from "node:fs/promises";
@@ -73,6 +79,9 @@ import { AlarmEffects, nextAlarm, type AlarmState } from "./sleep_alarm.ts";
 import { dispatchArgs } from "../hyprctl.ts";
 import { velourRequest, velourSocketPath, type VelourOp } from "../routes/velour.ts";
 import { leaderSource, LeaderGroup, MemberGroup, parseGroupMessage, type SleepGroup } from "./sleep_group.ts";
+import { MorningWait, NIGHT_JOBS_MS, NightLog, parseNight, parseSummary, passesAtNight, SUMMARY_KEEP_MS, summaryParams, type SleepSummary } from "./sleep_night.ts";
+import { parseVelourHeld, restoreVelour, SleepPlaylist, VelourVolume, type VelourCall } from "./sleep_velour.ts";
+import { JobsProducer } from "./producers/jobs.ts";
 
 export const UNIT = "tiphys-screen";
 export { APP_ID } from "./placement.ts";
@@ -363,9 +372,21 @@ export interface DisplayOpts {
    * Sleep mode: the test-only time scale (default TIPHYS_SLEEP_SCALE, else 1; every phase length is divided by it),
    * where the LEDs are (default /sys/class/leds) and the clock (tests).
    */
-  sleep?: { scale?: number; ledsDir?: string; syncLog?: boolean; staleMs?: number; now?: () => number; setTimeout?: (fn: () => void, ms: number) => unknown; clearTimeout?: (h: unknown) => void };
+  sleep?: {
+    scale?: number; ledsDir?: string; syncLog?: boolean; staleMs?: number; now?: () => number; setTimeout?: (fn: () => void, ms: number) => unknown; clearTimeout?: (h: unknown) => void;
+    /** S5: the night's jobs source (default: the jobs producer every 30 s; null = none) and the leader's wait for the members. */
+    jobs?: (() => NightJobs) | null; morningWaitMs?: number;
+    /** S5 tests: Velour's control socket (default: the real one unless headless). */
+    velour?: VelourCall | null;
+  };
   /** Test-only headless kiosk: a browser path (default TIPHYS_SCREEN_HEADLESS); null = the real kiosk. */
   headless?: string | null;
+}
+
+/** What the night collector needs of the jobs producer. */
+export interface NightJobs {
+  start(emit: (m: Record<string, unknown>) => void): void;
+  stop(): Promise<void>;
 }
 
 /** TIPHYS_SLEEP_SCALE (test only, unset by default; docs/agent/configuration.md): 1..1000, anything else 1. */
@@ -416,7 +437,7 @@ export class ScreenDisplay {
   readonly #feed: FeedProducer | null;
   readonly #o: {
     backoff: number[]; idleMs: number; watchMs: number; maxBuffered: number; visibility: VisibilityOpts; summaryMinMs: number; power: { dir: string; everyMs: number; io: FileIo };
-    sleep: { scale: number; ledsDir: string; syncLog: boolean; staleMs?: number; now?: () => number; setTimeout?: (fn: () => void, ms: number) => unknown; clearTimeout?: (h: unknown) => void };
+    sleep: NonNullable<DisplayOpts["sleep"]> & { scale: number; ledsDir: string; syncLog: boolean };
     headless: string | null;
   };
   readonly #names: Names;
@@ -458,6 +479,16 @@ export class ScreenDisplay {
   #relaunchedAt = 0;
   /** Sessions stopped by a user (here or relayed): session id → when (memory only). */
   readonly #ended = new Map<string, number>();
+  /** S5: the run's night (held notifications, counts; memory only) and its jobs source. */
+  #night: NightLog | null = null;
+  #nightJobs: NightJobs | null = null;
+  /** S5 leader: the wait for the members' counts (outlives the run by a few seconds); the last summary (12 h). */
+  #morning: MorningWait | null = null;
+  #morningSummary: SleepSummary | null = null;
+  /** S5: Velour's volume owner and the sleep playlist (leader); the pages duck while `#music`. */
+  #velour: VelourVolume | null = null;
+  #playlist: SleepPlaylist | null = null;
+  #music = false;
 
   constructor(ctx: Ctx, io: DisplayIo, o: DisplayOpts, log: (msg: string, err?: unknown) => void) {
     this.#ctx = ctx;
@@ -683,11 +714,21 @@ export class ScreenDisplay {
         if (sleep) {
           // The plan first (the session's, from the leader, else from this host's settings): the alarm effects read it.
           const plan = sleep.session.plan ?? planOf(sleep.session.t0, this.#cfg.modes.sleep, this.#o.sleep.scale);
+          const ref: { run: SleepRun | null } = { run: null };
+          this.#velour = this.#velourVolume(ref);
           this.#alarm = this.#alarmEffects(env, () => this.#sleep?.file.plan ?? plan);
-          this.#sleep = await SleepRun.begin(this.#sleepDeps(env), { ...sleep.session, plan }, sleep.me, this.#o.sleep.scale);
+          this.#sleep = ref.run = await SleepRun.begin(this.#sleepDeps(env), { ...sleep.session, plan }, sleep.me, this.#o.sleep.scale);
           this.#group = this.#makeGroup(this.#sleep.file);
+          this.#nightBegin(this.#sleep.file);
+          // Velour may take seconds (or be gone): the start doesn't wait for it.
+          this.#playlist = this.#makePlaylist(this.#sleep.file);
+          void this.#playlist?.begin().catch((e) => this.#log("uyku listesi başlatılamadı", e));
         }
       } catch (e) {
+        this.#nightOff();
+        this.#playlist?.detach();
+        this.#playlist = null;
+        this.#velour = null;
         this.#alarm?.detach();
         this.#alarm = null;
         this.#sleep?.detach();
@@ -776,6 +817,8 @@ export class ScreenDisplay {
     const state = this.#running;
     if (!state) return;
     if (state.mode === "sleep" && this.#sleep && why !== "local") {
+      // The night's counts first (a member's go to the leader before its link closes; the leader starts the summary).
+      this.#nightEnd(Date.now());
       // A user stop ends the whole group: told before this host's link closes; a late hello gets `stop` (leader).
       if (why === "user") this.#group?.user("stop");
       const now = Date.now();
@@ -794,12 +837,18 @@ export class ScreenDisplay {
   async #stopNow(state: SavedState) {
     const sleep = this.#sleep;
     const alarm = this.#alarm;
+    const playlist = this.#playlist, velour = this.#velour;
     this.#alarm = null; // stopped below, not just detached by #let
+    this.#playlist = null;
+    this.#velour = null;
     this.#let(4410, "stopped");
     await this.#focusSave;
     // Sleep: the alarm's sound off (WAV file gone, Velour back), every saved hardware value back; its file then goes
     // (the cleanup would restore it once more).
     if (alarm) await alarm.stop().catch((e) => this.#log("uyku alarmı durdurulamadı", e));
+    // Velour: the playlist off (if the mode started it), whatever is still held let go (the volume back once).
+    await playlist?.stop().catch((e) => this.#log("uyku listesi durdurulamadı", e));
+    await velour?.releaseAll().catch((e) => this.#log("Velour geri alınamadı", e));
     if (sleep) {
       await sleep.stop().catch((e) => this.#log("uyku modu donanımı geri alınamadı", e));
       await rm(this.#sleepFile(), { force: true }).catch(() => {});
@@ -825,6 +874,11 @@ export class ScreenDisplay {
     this.#sleep = null;
     this.#group?.close();
     this.#group = null;
+    this.#nightOff();
+    this.#playlist?.detach();
+    this.#playlist = null;
+    this.#velour = null;
+    this.#music = false;
     this.#summary = null;
     if (this.#powerTimer) clearInterval(this.#powerTimer);
     this.#powerTimer = null;
@@ -848,10 +902,15 @@ export class ScreenDisplay {
       const raw = await readFile(this.#sleepFile(dir), "utf8").catch(() => null);
       if (raw !== null) {
         let saved: HwSaved | null = null;
+        let velour = null;
         try {
-          saved = sanitizeSaved((JSON.parse(raw) as Rec).saved);
+          const f = JSON.parse(raw) as Rec;
+          saved = sanitizeSaved(f.saved);
+          velour = parseVelourHeld(f.velour);
         } catch {}
         if (saved) await this.#hardware(env).restore(saved).catch((e) => this.#log("uyku modu donanımı geri alınamadı", e));
+        // Velour as the mode found it: what it started paused, its playlist timer off, the volume back (S5).
+        if (velour) await restoreVelour(this.#velourCall(), velour, this.#log);
       }
     }
     await this.#io.exec("systemctl", ["--user", "stop", `${names.unit}.service`], { env, timeoutMs: 20_000, allowFail: true }).catch((e) => this.#log("ekran modu birimi durdurulamadı", e));
@@ -935,9 +994,15 @@ export class ScreenDisplay {
       const file = parseSleepFile(await readFile(this.#sleepFile(), "utf8").then((t) => JSON.parse(t) as unknown, () => null));
       if (!file) return false;
       const env = await this.#env();
+      const ref: { run: SleepRun | null } = { run: null };
+      this.#velour = this.#velourVolume(ref);
       this.#alarm = this.#alarmEffects(env, () => this.#sleep?.file.plan ?? file.plan);
-      this.#sleep = SleepRun.adopt(this.#sleepDeps(env), file);
+      this.#sleep = ref.run = SleepRun.adopt(this.#sleepDeps(env), file);
       this.#group = this.#makeGroup(file);
+      // The night starts over (held counts were memory only); a playlist still fading goes on.
+      if (file.plan.dismissedAt === null) this.#nightBegin(file);
+      this.#playlist = this.#makePlaylist(file);
+      this.#playlist?.adopt();
     }
     let focus: FocusTimes | null = null;
     if (state.mode === "focus") {
@@ -1139,6 +1204,15 @@ export class ScreenDisplay {
         const p = parsePlan(raw);
         if (p) this.#sleep?.setPlan(p);
       },
+      // S5: the leader's music (the pages duck) and its morning summary (for this member's morning screen).
+      music: () => this.#music,
+      onMusic: (on: boolean) => this.#setMusic(on),
+      onSummary: (raw: unknown) => {
+        const sum = parseSummary(raw);
+        if (!sum || sum.session !== s.id) return;
+        this.#morningSummary = sum;
+        this.#sleep?.resend();
+      },
       log: this.#log,
       ...this.#clock(),
     };
@@ -1168,6 +1242,12 @@ export class ScreenDisplay {
   #groupIn(sock: Sock, raw: unknown) {
     const m = parseGroupMessage(raw);
     if (!m) return;
+    // S5: a member's night counts (also after this host's run stopped: the summary waits a few seconds for them).
+    if (m.action === "night") {
+      const c = parseNight(m.night);
+      if (c && m.host && this.#morning?.session === m.sessionId) this.#morning.report(m.host, c);
+      return;
+    }
     const g = this.#group;
     if (g instanceof LeaderGroup && this.#sleep?.file.session.id === m.sessionId) return g.message(sock, m);
     if ((m.action !== "hello" && m.action !== "state") || sock.readyState !== 1) return;
@@ -1202,9 +1282,13 @@ export class ScreenDisplay {
       log: this.#log,
       onAlarm: (t: Parameters<AlarmEffects["on"]>[0]) => {
         if (t.kind === "ring") void this.#focusKiosk().catch(() => {});
+        // The alarm's turn: the sleep playlist (if still fading) ends first, so the alarm saves no faded volume.
+        if (t.kind === "sunrise" || t.kind === "ring") void this.#playlist?.end().catch(() => {});
         this.#alarm?.on(t);
+        if (t.kind === "dismissed") this.#nightEnd(t.at);
       },
       alarmGain: () => this.#alarm?.gain() ?? 1,
+      extra: () => ({ music: this.#music, morning: this.#morningFor(this.#sleep?.file.session.id) }),
       onEnd: () => {
         const id = this.#sleep?.file.session.id;
         // Each member reaches the same end by its own clock: no relay; a late hello still hears `stop`.
@@ -1242,18 +1326,143 @@ export class ScreenDisplay {
         play: async (volume) => (await this.#io.exec("pw-play", ["--volume", String(volume), wavFile], { env, timeoutMs: 15_000, allowFail: true })).code === 0,
         remove: () => rm(wavFile, { force: true }),
       },
-      velour: headless ? null : (op) => velourRequest(velourSocketPath({ XDG_RUNTIME_DIR: this.#io.runtimeDir }), op as VelourOp),
-      velourSaved: {
-        get: () => this.#sleep?.file.velour ?? null,
-        set: (v) => {
-          if (!this.#sleep) return;
-          this.#sleep.file.velour = v;
-          void this.#sleep.persist();
-        },
-      },
+      velour: this.#velourCall(),
+      velourVolume: this.#velour!,
       log: this.#log,
       ...this.#clock(),
     });
+  }
+
+  // ---- sleep: Velour (S5, sleep_velour.ts) ----
+
+  /** Velour's control socket; null on the headless test kiosk (never a sound from a test leader). */
+  #velourCall(): VelourCall | null {
+    if (this.#o.sleep.velour !== undefined) return this.#o.sleep.velour;
+    if (this.#o.headless) return null;
+    const path = velourSocketPath({ XDG_RUNTIME_DIR: this.#io.runtimeDir });
+    return (op) => velourRequest(path, op as VelourOp);
+  }
+
+  /** The run's owner of Velour's volume; its state lives in the run's file (`ref.run` once the run exists). */
+  #velourVolume(ref: { run: SleepRun | null }) {
+    return new VelourVolume({
+      call: this.#velourCall(),
+      get: () => ref.run?.file.velour ?? null,
+      set: (v) => {
+        if (!ref.run) return;
+        ref.run.file.velour = v;
+        void ref.run.persist();
+      },
+      log: this.#log,
+    });
+  }
+
+  /** The leader's sleep playlist (null on a member). Velour only with the "desktop" feature (its remote's feature). */
+  #makePlaylist(file: SleepFile): SleepPlaylist | null {
+    if (file.session.leader !== file.me || !this.#velour) return null;
+    const call = this.#ctx.store.get().features.desktop ? this.#velourCall() : null;
+    return new SleepPlaylist({
+      call,
+      volume: this.#velour,
+      settings: () => this.#cfg.modes.sleep.velour,
+      fadeMs: Math.round((this.#cfg.modes.sleep.velour.fadeMin * 60_000) / file.scale),
+      duck: (on) => this.#setMusic(on),
+      log: this.#log,
+      ...this.#clock(),
+    });
+  }
+
+  /** Music on/off: the page ducks its sounds; the leader tells the members. */
+  #setMusic(on: boolean) {
+    if (on === this.#music) return;
+    this.#music = on;
+    this.#sleep?.resend();
+    if (this.#group instanceof LeaderGroup) this.#group.music(on);
+  }
+
+  // ---- sleep: night and morning (S5, sleep_night.ts) ----
+
+  /** The night filter and collector of a run (and the leader's wait for its members' counts). */
+  #nightBegin(file: SleepFile) {
+    this.#nightOff();
+    const night = new NightLog(file.session.t0);
+    this.#night = night;
+    this.#ctx.notifier.setGate((n) => {
+      night.seen(n);
+      if (night.ended || passesAtNight(n, this.#cfg.modes.sleep.notify.critical)) return false;
+      night.hold(n);
+      return true;
+    });
+    const make = this.#o.sleep.jobs === undefined ? () => new JobsProducer({ intervalMs: NIGHT_JOBS_MS }) : this.#o.sleep.jobs;
+    this.#nightJobs = make?.() ?? null;
+    this.#nightJobs?.start((m) => night.jobDone(m));
+    if (file.session.leader === file.me && this.#morning?.session !== file.session.id) {
+      this.#morning?.cancel();
+      this.#morning = new MorningWait({
+        session: file.session.id, me: file.me, members: file.session.members.map((m) => m.host),
+        ...(this.#o.sleep.morningWaitMs !== undefined ? { waitMs: this.#o.sleep.morningWaitMs } : {}), ...this.#clock(),
+      });
+    }
+  }
+
+  /** Filter lifted, jobs source off; the held counts go with the NightLog (memory only). */
+  #nightOff() {
+    this.#ctx.notifier.setGate(null);
+    void this.#nightJobs?.stop().catch(() => {});
+    this.#nightJobs = null;
+    this.#night = null;
+  }
+
+  /**
+   * The night is over (the dismiss, or a user stop without one): the filter lifts; a member sends its counts to the
+   * leader, the leader waits for them and makes the summary. Once per run.
+   */
+  #nightEnd(at: number) {
+    const night = this.#night, run = this.#sleep;
+    if (!night || night.ended || !run) return;
+    const counts = night.counts(this.#nightSources(), at);
+    night.end(at);
+    this.#ctx.notifier.setGate(null);
+    void this.#nightJobs?.stop().catch(() => {});
+    this.#nightJobs = null;
+    const f = run.file;
+    if (this.#group instanceof MemberGroup) {
+      if (!this.#group.night(counts)) this.#log("uyku: gece sayıları lidere gönderilemedi (bağlantı yok)");
+      return;
+    }
+    if (f.session.leader !== f.me) return;
+    this.#morning?.finish(f.session.t0, at, counts, (sum) => this.#morningDone(sum));
+  }
+
+  #nightSources() {
+    const b = this.#ctx.backups, inc = this.#ctx.incidents;
+    return {
+      ...(b ? { backups: () => [...b.states.entries()].map(([id, st]) => ({ id, status: st.status, lastAt: st.lastAt })) } : {}),
+      ...(inc ? { incidents: () => inc.list(undefined, 500).map((i) => ({ id: i.id, openedAt: i.openedAt, test: i.test })) } : {}),
+    };
+  }
+
+  /** The leader's summary: kept 12 h, ONE push (transient), to its page and the members' pages. */
+  #morningDone(sum: SleepSummary) {
+    this.#morningSummary = sum;
+    if (this.#sleep?.file.session.id === sum.session) {
+      this.#sleep.resend();
+      if (this.#group instanceof LeaderGroup) this.#group.summary(sum);
+    }
+    if (!this.#cfg.modes.sleep.notify.morningSummary) return;
+    void this.#ctx.notifier.send({ key: "sleep.morning", params: summaryParams(sum), data: { agent: this.#ctx.store.get().name, session: sum.session }, transient: true }).catch((e) => this.#log("sabah özeti gönderilemedi", e));
+  }
+
+  /** The summary while it is fresh (12 h), optionally only for one session. */
+  #morningFor(session?: string): SleepSummary | null {
+    const s = this.#morningSummary;
+    if (!s || (this.#o.sleep.now ?? Date.now)() - s.at > SUMMARY_KEEP_MS) return null;
+    return session === undefined || s.session === session ? s : null;
+  }
+
+  /** GET /v1/sleep/summary: the last morning summary (memory only, 12 h), or null. */
+  sleepSummary() {
+    return { summary: this.#morningFor() };
   }
 
   #previewFile = () => join(this.#io.runtimeDir, PREVIEW_FILE);
@@ -1305,6 +1514,11 @@ export class ScreenDisplay {
       group: g ? { role: g.role, link: g.link, offsetMs: g.offsetMs, appliedOffsetMs: g.appliedOffsetMs, rttMs: g.rttMs, syncedAt: g.syncedAt, error: g.error } : null,
       brightness: r?.brightness ?? null,
       warning: r?.warning ?? null,
+      // S5: the leader's sleep playlist (null elsewhere; warning agent.sleep.velourUnavailable when it was skipped),
+      // whether the pages duck, and how many notifications the night filter holds.
+      velour: r ? (this.#playlist?.status() ?? null) : null,
+      music: r ? this.#music : false,
+      night: r ? { held: this.#night?.held ?? 0, filtering: this.#night !== null && !this.#night.ended } : null,
       page: r?.page ?? null,
       scale: this.#o.sleep.scale,
       settings: this.#cfg.modes.sleep,
@@ -1977,6 +2191,7 @@ export async function displayRoutes(app: FastifyInstance, ctx: Ctx, o: DisplayOp
   app.post("/v1/sleep/stop", async (req) => display.stopSleep(req.device?.id));
   app.post("/v1/sleep/preview", async (req) => display.previewSleep(sleepPreviewSchema.parse(req.body).brightness));
   app.post("/v1/sleep/alarm", async (req) => display.alarmAction(sleepAlarmSchema.parse(req.body).action));
+  app.get("/v1/sleep/summary", async () => display.sleepSummary());
 
   // /v1/gamemode: the 0.5 routes for app 1.2, one release; the old error codes and shapes.
   const legacy = <T>(p: () => Promise<T>) => p().catch((e) => Promise.reject(legacyError(e)));

@@ -185,6 +185,7 @@ export class BackupMonitor {
 }
 
 export function backupRoutes(app: FastifyInstance, ctx: Ctx, monitor = new BackupMonitor(ctx), startTimer = true) {
+  ctx.backups = monitor;
   if (startTimer) {
     monitor.start();
     app.addHook("onClose", async () => monitor.stop());

@@ -10,6 +10,10 @@
 //   both ways        {type:"sleepGroup", sessionId, action:"stop"|"snooze"|"dismiss"|"phase", host, at[, phase]}
 //                    (snooze/dismiss, S4: `at` is the moment on the sender's clock; every member applies the same `at`)
 //   member → leader  {type:"clockPing", t}  →  leader → member {type:"clockPong", t, peer}   (source.ts answers at once)
+//   S5: member → leader {type:"sleepGroup", sessionId, action:"night", host, night:{counts}} (at the dismiss / a user
+//                    stop: the member's night for the morning summary, sleep_night.ts)
+//       leader → member {…, action:"music", host, on} (the sleep playlist plays: the pages duck; also `music` on
+//                    hello/members) and {…, action:"summary", host, summary} (the merged morning summary, for the page)
 // A user stop (API or the page's Esc hold) on any member stops the group: the leader relays it to every other member,
 // and answers a late hello of a session it stopped that way with `stop` (memory only). A member that loses the link
 // keeps running on its own timeline and reports `agent.sleep.memberDown`; the link reconnects with the source's
@@ -61,20 +65,24 @@ const SID = /^[A-Za-z0-9_-]{8,64}$/;
 
 export interface GroupMsg {
   sessionId: string;
-  action: "hello" | "state" | "members" | "unknown" | UserAction;
+  action: "hello" | "state" | "members" | "unknown" | "night" | "music" | "summary" | UserAction;
   host: string | null;
   at: number | null;
   phase: string | null;
   members: Array<{ host: string; state: MemberState }>;
   /** The leader's plan (unvalidated here: sleep.ts parsePlan), or undefined. */
   plan: unknown;
+  /** S5: a member's night counts / the leader's summary (unvalidated here: sleep_night.ts), the music flag. */
+  night: unknown;
+  summary: unknown;
+  music: boolean | null;
 }
 
 /** A received `sleepGroup` message → validated fields, or null. */
 export function parseGroupMessage(v: unknown): GroupMsg | null {
   if (!v || typeof v !== "object") return null;
   const m = v as Rec;
-  const actions = ["hello", "state", "members", "unknown", ...USER_ACTIONS];
+  const actions = ["hello", "state", "members", "unknown", "night", "music", "summary", ...USER_ACTIONS];
   if (m.type !== "sleepGroup" || typeof m.sessionId !== "string" || !SID.test(m.sessionId) || !actions.includes(m.action as string)) return null;
   const host = typeof m.host === "string" && HOST.test(m.host) ? m.host : null;
   if (m.action !== "unknown" && !host) return null;
@@ -93,6 +101,9 @@ export function parseGroupMessage(v: unknown): GroupMsg | null {
     phase: typeof m.phase === "string" && /^[a-z]{1,16}$/.test(m.phase) ? m.phase : null,
     members,
     plan: m.plan,
+    night: m.night,
+    summary: m.summary,
+    music: typeof m.on === "boolean" ? m.on : typeof m.music === "boolean" ? m.music : null,
   };
 }
 
@@ -119,6 +130,10 @@ export interface GroupDeps extends GroupClock {
   onPlan?: (raw: unknown) => void;
   /** The page's offset changed (member only). */
   onOffset?: (appliedMs: number) => void;
+  /** Leader: is the sleep playlist playing (sent with hello/members). Member: the leader's music / summary arrived. */
+  music?: () => boolean;
+  onMusic?: (on: boolean) => void;
+  onSummary?: (raw: unknown) => void;
   log?: (msg: string, err?: unknown) => void;
 }
 
@@ -204,8 +219,9 @@ export class LeaderGroup extends GroupBase {
     this.#peers.set(sock, { host: m.host, seen: t });
     this.#seen.set(m.host, t);
     const plan = this.d.plan?.();
-    if (m.action === "hello") return void sock.send(JSON.stringify(this.msg("hello", { members: this.#members(), ...(plan ? { plan } : {}) })));
-    if (m.action === "state") return void sock.send(JSON.stringify(this.msg("members", { members: this.#members(), ...(plan ? { plan } : {}) })));
+    const music = this.d.music?.() ?? false;
+    if (m.action === "hello") return void sock.send(JSON.stringify(this.msg("hello", { members: this.#members(), music, ...(plan ? { plan } : {}) })));
+    if (m.action === "state") return void sock.send(JSON.stringify(this.msg("members", { members: this.#members(), music, ...(plan ? { plan } : {}) })));
     if ((USER_ACTIONS as readonly string[]).includes(m.action)) {
       // Relay to the other members first, then act on it here.
       this.#broadcast(JSON.stringify({ type: "sleepGroup", sessionId: m.sessionId, action: m.action, host: m.host, at: m.at, ...(m.phase ? { phase: m.phase } : {}) }), sock);
@@ -229,6 +245,16 @@ export class LeaderGroup extends GroupBase {
   user(action: UserAction, extra: Rec = {}) {
     if (this.closed) return;
     this.#broadcast(JSON.stringify(this.msg(action, { at: this.now(), ...extra })));
+  }
+
+  /** S5: the sleep playlist started/ended (the members' pages duck with it). */
+  music(on: boolean) {
+    if (!this.closed) this.#broadcast(JSON.stringify(this.msg("music", { on })));
+  }
+
+  /** S5: the merged morning summary, for the members' morning screens. */
+  summary(summary: object) {
+    if (!this.closed) this.#broadcast(JSON.stringify(this.msg("summary", { summary })));
   }
 
   status(): GroupStatus {
@@ -333,7 +359,14 @@ export class MemberGroup extends GroupBase {
       this.#leader = "running";
       this.#others = new Map(m.members.filter((x) => x.host !== this.d.me && x.host !== this.d.session.leader).map((x) => [x.host, x.state]));
       if (m.plan !== undefined) this.d.onPlan?.(m.plan);
+      if (m.music !== null) this.d.onMusic?.(m.music);
       if (first) this.#burst();
+      return;
+    }
+    if (m.action === "music" || m.action === "summary") {
+      if (m.host !== this.d.session.leader) return;
+      if (m.action === "music" && m.music !== null) this.d.onMusic?.(m.music);
+      if (m.action === "summary") this.d.onSummary?.(m.summary);
       return;
     }
     if (m.host === this.d.me || !(USER_ACTIONS as readonly string[]).includes(m.action)) return;
@@ -392,6 +425,12 @@ export class MemberGroup extends GroupBase {
   user(action: UserAction, extra: Rec = {}) {
     if (this.closed) return;
     if (this.#link === "ok") this.#send(this.msg(action, { at: this.now(), ...extra }));
+  }
+
+  /** S5: this member's night counts to the leader (false: no link, they are lost — the summary counts it missing). */
+  night(counts: object): boolean {
+    if (this.closed || this.#link !== "ok") return false;
+    return this.#send(this.msg("night", { night: counts }));
   }
 
   status(): GroupStatus {

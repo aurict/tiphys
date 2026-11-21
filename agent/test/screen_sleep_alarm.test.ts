@@ -18,6 +18,7 @@ import {
 } from "../src/screen/sleep.ts";
 import { AlarmEffects, alarmWav, MEMBER_GAIN, nextAlarm, STALE_MS, VELOUR_START, WAV_GAP_MS, type AlarmDeps } from "../src/screen/sleep_alarm.ts";
 import { Hardware } from "../src/screen/sleep_hw.ts";
+import { VelourVolume, type VelourHeld } from "../src/screen/sleep_velour.ts";
 import { testApp } from "./helpers.ts";
 
 const MIN = 60_000;
@@ -379,7 +380,16 @@ function effects(o: { role?: "leader" | "member"; link?: boolean; plan?: SleepPl
   let plan = o.plan ?? alarmPlan(t0);
   const log = { pushes: [] as Array<{ state: string; data: Record<string, number>; high: boolean }>, records: [] as string[], once: 0, relaunch: 0, gain: 0, wav: [] as string[], velour: [] as string[] };
   const vstate = { volume: 33, playing: true };
-  let saved: { volume: number } | null = null;
+  let held: VelourHeld | null = null;
+  const velour = async (op: Record<string, unknown>) => {
+    log.velour.push(JSON.stringify(op));
+    if (o.velourFails) throw new Error("unavailable");
+    if (op.op === "state") return { ...vstate };
+    if (op.op === "toggle") vstate.playing = !vstate.playing;
+    if (op.op === "play-target") vstate.playing = true;
+    if (op.op === "volume") vstate.volume = op.percent as number;
+    return { ...vstate };
+  };
   const deps: AlarmDeps = {
     plan: () => plan,
     role: () => o.role ?? "leader",
@@ -396,16 +406,8 @@ function effects(o: { role?: "leader" | "member"; link?: boolean; plan?: SleepPl
       play: async (v) => (log.wav.push(`play ${v}`), true),
       remove: async () => void log.wav.push("remove"),
     },
-    velour: async (op) => {
-      log.velour.push(JSON.stringify(op));
-      if (o.velourFails) throw new Error("unavailable");
-      if (op.op === "state") return { ...vstate };
-      if (op.op === "toggle") vstate.playing = !vstate.playing;
-      if (op.op === "play-target") vstate.playing = true;
-      if (op.op === "volume") vstate.volume = op.percent as number;
-      return { ...vstate };
-    },
-    velourSaved: { get: () => saved, set: (v) => void (saved = v) },
+    velour,
+    velourVolume: new VelourVolume({ call: velour, get: () => held, set: (v) => void (held = v), log: () => {} }),
     log: () => {},
     now: c.now, setTimeout: c.setTimeout, clearTimeout: c.clearTimeout,
   };
@@ -416,7 +418,7 @@ function effects(o: { role?: "leader" | "member"; link?: boolean; plan?: SleepPl
   return { c, fx, log, vstate, ring, R, next, get plan() {
     return plan;
   }, get saved() {
-    return saved;
+    return held ? { volume: held.volume } : null;
   } };
 }
 

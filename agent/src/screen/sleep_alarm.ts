@@ -13,7 +13,8 @@
 //   * `once` alarms switch themselves off in the settings at the first ring;
 //   * Velour (`sound: "velour"`, the leader only, a `velourTrack` set): the track starts at a low volume and is ramped
 //     to the sleep volume over rampMin; snooze pauses it, the next ring plays it again; dismiss / auto-stop / stop
-//     pause it and put Velour's volume back. Velour unreachable → the page plays the birds instead (gain 1). Other
+//     pause it and let go of Velour's volume (S5: sleep_velour.ts VelourVolume owns it for the whole run, shared with
+//     the sleep playlist: saved once, put back when the last user lets go). Velour unreachable → the page plays the birds instead (gain 1). Other
 //     members play the birds quietly (gain 0.4): the song is the leader's, but a member still wakes the room if the
 //     leader's machine is down.
 //   * WAV fallback: at a ring, if the page's heartbeat is older than 30 s (Firefox crashed), a short synthesized WAV
@@ -22,6 +23,7 @@
 //     heartbeat is back; the kiosk unit is relaunched (also at sunrise when stale). The file is deleted when it stops.
 import type { SleepSettings } from "../config.ts";
 import type { AlarmTransition, SleepPlan } from "./sleep.ts";
+import type { VelourVolume } from "./sleep_velour.ts";
 
 export const DAYS = { weekdays: [1, 2, 3, 4, 5], daily: [0, 1, 2, 3, 4, 5, 6] } as const;
 /** The page's heartbeat is "missing" after this long (it beats every 10 s). */
@@ -130,8 +132,8 @@ export interface AlarmDeps {
   wav: { write: (bytes: Buffer) => Promise<void>; play: (volume: number) => Promise<boolean>; remove: () => Promise<void> } | null;
   /** Velour's control socket (the leader's); null = none here. */
   velour: ((op: Record<string, unknown>) => Promise<unknown>) | null;
-  /** Velour's volume before the alarm took it (kept in the state file). */
-  velourSaved: { get: () => { volume: number } | null; set: (v: { volume: number } | null) => void };
+  /** The run's owner of Velour's volume (kept in the state file; shared with the sleep playlist). */
+  velourVolume: VelourVolume;
   log: (msg: string, err?: unknown) => void;
   now?: () => number;
   setTimeout?: (fn: () => void, ms: number) => unknown;
@@ -236,7 +238,7 @@ export class AlarmEffects {
   #quiet(end: boolean) {
     this.#ring = null;
     this.#wavStop();
-    if (this.#velourOn || (end && this.#d.velourSaved.get())) void this.#velourStop(end);
+    if (this.#velourOn || (end && this.#d.velourVolume.holds("alarm"))) void this.#velourStop(end);
   }
 
   // ---- WAV fallback ----
@@ -290,11 +292,12 @@ export class AlarmEffects {
     try {
       const st = (await v({ op: "state" })) as Record<string, unknown> | null;
       if (this.#ring !== start || this.#closed) return;
-      if (!this.#d.velourSaved.get()) this.#d.velourSaved.set({ volume: num(st?.volume) ?? 50 });
+      this.#d.velourVolume.take("alarm", num(st?.volume) ?? 50);
       await v({ op: "volume", percent: VELOUR_START });
       // The first ring starts the track; after a snooze it plays on from where it paused.
       if (!this.#velourOn && (this.#d.plan().snoozes.length === 0 || st?.playing !== false)) await v({ op: "play-target", target: { kind: "watch", videoId: track } });
       else if (st?.playing === false) await v({ op: "toggle" });
+      this.#d.velourVolume.started("alarm");
       this.#velourOn = true;
     } catch (e) {
       this.#d.log("Velour alarmı başlatılamadı; sayfa kuş seslerini çalıyor", e);
@@ -323,15 +326,9 @@ export class AlarmEffects {
     const v = this.#d.velour;
     if (!v) return;
     try {
-      if (this.#velourOn) {
-        const st = (await v({ op: "state" })) as Record<string, unknown> | null;
-        if (st?.playing === true) await v({ op: "toggle" });
-      }
-      const saved = this.#d.velourSaved.get();
-      if (end && saved) {
-        await v({ op: "volume", percent: saved.volume });
-        this.#d.velourSaved.set(null);
-      }
+      // Snooze: paused, the volume stays held. End: paused and let go (the last user puts the volume back).
+      if (end) await this.#d.velourVolume.release("alarm");
+      else await this.#d.velourVolume.pause("alarm");
     } catch (e) {
       this.#d.log("Velour alarmı durdurulamadı", e);
     }
@@ -352,7 +349,7 @@ export class AlarmEffects {
     this.#ring = null;
     this.#wavStop();
     this.#closed = true;
-    if (this.#velourOn || this.#d.velourSaved.get()) await this.#velourStop(true);
+    if (this.#velourOn || this.#d.velourVolume.holds("alarm")) await this.#velourStop(true);
     if (this.#wavWritten || this.#d.wav) await this.#d.wav?.remove().catch((e) => this.#d.log("yedek alarm dosyası silinemedi", e));
     this.#wavWritten = false;
   }
