@@ -118,6 +118,12 @@ describe("topics and layouts", () => {
     expect([...layoutTopics("work", wl, ws, true).get("self")!]).toEqual(["city", "claude", "diff", "jobs", "git", "music", "servers"]);
     // W4: the brain comes with the city; the diff card only with work.diff on (the display side's switch).
     expect([...layoutTopics("work", wl, { ...ws, diff: false }).get("self")!]).toEqual(["city", "claude", "system", "jobs", "git", "music", "servers"]);
+    // W8: the Focus card hears `music` only with the ambient sound on (it stays silent while Velour plays), also
+    // when the Music card is off.
+    const { layout: fl, ...fs } = c.focus;
+    const noMusic = { ...fl, cards: fl.cards.map((x) => ({ ...x, enabled: x.kind === "focus" })) };
+    expect([...layoutTopics("focus", noMusic, fs).get("self")!]).toEqual(["claude", "servers"]);
+    expect([...layoutTopics("focus", noMusic, { ...fs, ambient: "rain" }).get("self")!]).toEqual(["claude", "servers", "music"]);
   });
 
   it("checkLayout and parseTopics", () => {

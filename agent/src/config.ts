@@ -254,6 +254,7 @@ export const focusSettingsSchema = z.object({
 /** Per-mode settings without the layout (what the kiosk page gets as `settings`). */
 export const MODE_SETTINGS = { game: gameSettingsSchema, work: workSettingsSchema, focus: focusSettingsSchema } as const;
 export type WorkSettings = z.infer<typeof workSettingsSchema>;
+export type FocusSettings = z.infer<typeof focusSettingsSchema>;
 export type ModeSettings = z.infer<(typeof MODE_SETTINGS)[ScreenMode]>;
 /** Per-mode settings with the layout (config.screen.modes.<mode>). */
 export const MODE_SCHEMAS = {

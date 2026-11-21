@@ -3,7 +3,7 @@
 // each source only those (`{type:"subscribe", topics}`); a producer runs only while a subscriber wants its topic.
 // W2 adds the Work mode state topics (system, jobs, git, servers), W3 the city, W4 claude and diff (with the city card),
 // W5 the Focus card (claude and servers, for its critical pills only).
-import type { CardKind, GameSettings, Layout, ModeSettings, ScreenMode, WorkSettings } from "../config.ts";
+import type { CardKind, FocusSettings, GameSettings, Layout, ModeSettings, ScreenMode, WorkSettings } from "../config.ts";
 import { AppError } from "../errors.ts";
 
 export const TOPICS = ["music", "spectrum", "truck", "system", "jobs", "git", "servers", "city", "claude", "diff"] as const;
@@ -64,8 +64,9 @@ export function cardTopics(mode: ScreenMode, kind: CardKind, settings: ModeSetti
       return [kind];
     case "focus":
       // The timer itself is the display agent's; the card only needs the critical pills of PLAN.md §20 E-3: a
-      // Claude session waiting for approval and a server going down (a failed job has no exit code yet, W2).
-      return ["claude", "servers"];
+      // Claude session waiting for approval and a server going down (a failed job has no exit code yet, W2). With the
+      // ambient sound on also `music`: the noise stays off while Velour plays, even with the Music card turned off.
+      return (settings as FocusSettings).ambient !== "off" ? ["claude", "servers", "music"] : ["claude", "servers"];
     case "city":
       // The brain lives on the city; the diff card replaces it while a permission waits (work.diff, default on).
       return mode === "work" && (settings as WorkSettings).diff === false ? ["city", "claude"] : ["city", "claude", "diff"];
