@@ -182,6 +182,7 @@ Every error has the same envelope. The agent sends codes, never sentences; the a
 | `agent.sleep.noGroup` | 409 | `POST /v1/sleep/start` with a group session this host can't join: `params.reason` `notMember` (`host`: this host's id is not in `members`) or `noLeaderSource` (`leader`: a non-leader has no `screen.sources` entry reaching the leader) |
 | `agent.sleep.memberDown` | — | Not a response: `GET /v1/sleep` `group.error` while a member (on a member: the leader link) is down; the scene goes on |
 | `agent.sleep.notRinging` | 409 | `POST /v1/sleep/alarm` with nothing to snooze/dismiss now (`params.phase`): snooze only while it rings, dismiss during sunrise, ring or snooze |
+| `agent.sleep.velourUnavailable` | — | Not a response: `GET /v1/sleep` `velour.warning` on the leader when the sleep playlist was skipped (no "desktop" feature, Velour unreachable or failing) |
 | `agent.sleep.ddcUnavailable` | 409 | `POST /v1/sleep/preview` with the mode off on a host with nothing to dim (`params.reason`: `missing` = no backlight and no `ddcutil`, `failed` = no working DDC/CI display). Also `GET /v1/sleep` `warning` while the page dims alone |
 | `agent.gamemode.noSource` | 409 | Game mode start without a source agent configured |
 | `agent.gamemode.noDisplay` | 503 | Game mode start without a Hyprland session |
@@ -1302,18 +1303,19 @@ Work topics (`screen/producers/*.ts`; each starts with its first subscriber, sto
 
 #### Sleep mode
 
-PLAN.md §21 (`screen/sleep.ts`, `screen/sleep_hw.ts`, `screen/sleep_group.ts`, `screen/sleep_alarm.ts`; S2: one host; S3: the group; S4: the alarm). A fourth run mode of
+PLAN.md §21 (`screen/sleep.ts`, `screen/sleep_hw.ts`, `screen/sleep_group.ts`, `screen/sleep_alarm.ts`, `screen/sleep_night.ts`, `screen/sleep_velour.ts`; S2: one host; S3: the group; S4: the alarm; S5: night notifications, the morning summary, the Velour sleep playlist). A fourth run mode of
 the same kiosk: always `fullscreen` on the workspace `uyku` (whatever `screen.placement` says), a fixed view (no
 layout cards, no topic subscription: no producer runs while sleeping), settings in `screen.modes.sleep`
 (configuration.md).
 
 | Method | Path | Auth | Description |
 | --- | --- | --- | --- |
-| GET | `/v1/sleep` | device | `{running, session\|null, phase: settle\|fade\|night\|sunrise\|ring\|snoozed\|morning\|null, phaseStartedAt\|null, phaseEndsAt\|null (ms; null = open-ended), alarm: {next (ms: the next or current ring start; off: the next one the settings would ring)\|null, sunriseAt\|null, ringing (sounding now), silenced (rang past its auto-stop), snoozedUntil\|null, snoozes (count), dismissedAt\|null, gain (this page's share of the birds/chime, 0..1), fallback (the WAV plays)}, members: [{host, side, distance, leader, state: running\|connecting\|down\|stopped\|unknown}] (off: `[{host, state: "off"}]`), group: {role: leader\|member, link: connecting\|ok\|down\|null (leader), offsetMs (leader − this clock)\|null, appliedOffsetMs, rttMs\|null, syncedAt\|null, error: "agent.sleep.memberDown"\|null}\|null (alone or off), brightness: {dimming: backlight\|ddc\|content, hardware (percent)\|null, content (0..1), preview\|null}\|null, warning: "agent.sleep.ddcUnavailable"\|null, page: {heartbeatAt\|null}\|null, scale, settings, now}`. |
+| GET | `/v1/sleep` | device | `{running, session\|null, phase: settle\|fade\|night\|sunrise\|ring\|snoozed\|morning\|null, phaseStartedAt\|null, phaseEndsAt\|null (ms; null = open-ended), alarm: {next (ms: the next or current ring start; off: the next one the settings would ring)\|null, sunriseAt\|null, ringing (sounding now), silenced (rang past its auto-stop), snoozedUntil\|null, snoozes (count), dismissedAt\|null, gain (this page's share of the birds/chime, 0..1), fallback (the WAV plays)}, members: [{host, side, distance, leader, state: running\|connecting\|down\|stopped\|unknown}] (off: `[{host, state: "off"}]`), group: {role: leader\|member, link: connecting\|ok\|down\|null (leader), offsetMs (leader − this clock)\|null, appliedOffsetMs, rttMs\|null, syncedAt\|null, error: "agent.sleep.memberDown"\|null}\|null (alone or off), brightness: {dimming: backlight\|ddc\|content, hardware (percent)\|null, content (0..1), preview\|null}\|null, warning: "agent.sleep.ddcUnavailable"\|null, velour: {state: off\|starting\|playing\|done\|busy\|unavailable, endsAt (ms, the fade's end)\|null, warning: "agent.sleep.velourUnavailable"\|null}\|null (the leader's sleep playlist; null on a member or off; `busy` = Velour was already playing, left alone), music (the pages duck: the leader's playlist plays), night: {held (notifications held by the night filter), filtering}\|null, page: {heartbeatAt\|null}\|null, scale, settings, now}`. |
 | PUT | `/v1/sleep` | device | Strict `{settings: <partial screen.modes.sleep>}` → same as GET. Nested blocks merge field by field; arrays and `group` are replaced whole; unknown keys and out-of-range values → 400. While running the page gets a new `sleep` message and a changed brightness curve applies at once; `times` apply at the next start. |
 | POST | `/v1/sleep/start` | device | Strict `{session?: {id ([A-Za-z0-9_-]{8,64}), seed (uint32), t0 (ms, within 12 h before / 10 min after the agent's clock), members: [{host (host id), side: left\|right\|foot\|head, distance: near\|mid\|far (default mid)}] (1–4, distinct hosts; a bare host id is accepted: first left, last right, others foot), leader (a member), plan? (the group's plan, see Phases; its `t0` must be the session's)}}` → same as GET; the response's `session.plan` is the plan this host runs. The phone starts the **leader first** with the session without `plan` (the leader computes it from its own settings: times, alarm), then sends the leader's returned `session` (with `plan`) to every other member, so all members run the same phases and alarm. A member started without `plan` (an older phone) computes its own and takes the leader's from the leader's `hello` as soon as its link is up. Without `session` the agent makes one (this host alone with its own `side`/`distance`, `t0` = now). This host (its config `name`, as a host id) not in `members` → `409 agent.sleep.noGroup {reason: "notMember"}`; a non-leader without a source to the leader → `409 agent.sleep.noGroup {reason: "noLeaderSource", leader}`. Already sleeping: the status (idempotent). A running Game/Work/Focus mode is stopped first (with its own events). Kiosk errors as `POST /v1/screen/start`. |
 | POST | `/v1/sleep/stop` | device | → same as GET. Stops the sleep mode only (a layout mode running instead is left alone); `POST /v1/screen/stop` also stops it. In a group it stops every member (see Group). |
 | POST | `/v1/sleep/alarm` | device | Strict `{action: "snooze"\|"dismiss"}` → same as GET. `snooze` while it rings (also after its auto-stop): quiet and bright for `snoozeMin`, then it rings again; `dismiss` during sunrise, ring or snooze: the morning screen for 10 min if `alarm.morningScreen`, then the mode ends on every member by itself (without it: at once). Goes to the whole group (any member may be asked). Not running → `409 agent.screen.notRunning`; nothing to snooze/dismiss now (before sunrise, already dismissed, snooze while snoozed) → `409 agent.sleep.notRinging {phase}`. |
+| GET | `/v1/sleep/summary` | device | `{summary: {at (ms, made), session, t0, end (the dismiss, else the stop), minutes, jobs, jobsFailed, backups, backupsFailed, incidents, held, titles: [≤ 3 strings], jobList: [{name, durationSec, exitCode\|null, host}] (≤ 10), members (group size), missing (members whose counts didn't arrive)}\|null}`: the last morning summary, memory only, for 12 h (null before / after). Made by the leader; a member keeps the copy the leader relayed. |
 | POST | `/v1/sleep/preview` | device | `{brightness: 0..100}` → same as GET (+ `preview: {dimming, until}` when not running). Running: hardware and page at that level for 5 s, then the curve. Not running: the hardware alone for 5 s (each call extends it), then the previous value; the value is kept in `$XDG_RUNTIME_DIR/tiphys-sleep-preview.json` (0600) until restored, also across a crash. Nothing to dim → `409 agent.sleep.ddcUnavailable {reason: missing\|failed}`. |
 
 While sleep runs, `POST /v1/screen/start {mode}` and `POST /v1/screen/mode` → `409 agent.sleep.running`. `GET
@@ -1353,7 +1355,9 @@ While sleep runs, `POST /v1/screen/start {mode}` and `POST /v1/screen/mode` → 
   the next agent adopts the run (Firefox still up: same session, no new reads, restored at its stop) or restores the
   values from the file. Events: `sleep.started` / `sleep.stopped`, and `sleep.alarm {state: rang|autoStopped|dismissed}`
   on every member (no content; no `screen.*` event, no session summary). The state file also keeps the last alarm
-  transition handled (an adopting agent doesn't push it again) and Velour's volume before the alarm.
+  transition handled (an adopting agent doesn't push it again) and Velour's held state (`velour: {volume, users:
+  [playlist|alarm], started: [...], playlistEnds}`: the volume before the mode took it, who holds it, who started
+  playback); a crash is undone from it (playlist timer cancelled, paused if the mode started playback, volume back).
 - **Alarm effects** (`sleep_alarm.ts`): push `sleep.alarm` (transient, never recorded or stored), `params: {state:
   ringing|snoozed|autoStopped|dismissed, at (ms: ringing = this ring's start; snoozed = the snooze; autoStopped = when
   the sound stopped; dismissed = the dismiss), snoozeMin, snoozedUntil (snoozed only), count + ringAt (ringing only)}`,
@@ -1362,7 +1366,7 @@ While sleep runs, `POST /v1/screen/start {mode}` and `POST /v1/screen/mode` → 
   link to the leader is down. Sound: the page synthesizes the birds or the chime (each chirp with a light
   mote). `sound: "velour"` with `velourTrack` (a Velour `videoId`): the leader plays the track on Velour
   (`play-target`), volume ramped from 4 % to the sleep `volume` over `rampMin`; snooze pauses it, the next ring plays on;
-  dismiss / auto-stop / stop pause it and put Velour's volume back. The leader's page is silent meanwhile (`alarm.gain`
+  dismiss / auto-stop / stop pause it and let go of Velour's volume (S5: one owner for the run, see Velour below). The leader's page is silent meanwhile (`alarm.gain`
   0); other members play the birds at 0.4 (a member still wakes the room if the leader's machine is down); Velour
   unreachable or no track → birds at 1. **WAV fallback:** at a ring, if the page's heartbeat is older than 30 s
   (Firefox crashed), the agent writes a 3 s synthesized WAV (birds/chime, 16-bit mono) to `alarm.wav` (0600) in the
@@ -1372,6 +1376,33 @@ While sleep runs, `POST /v1/screen/start {mode}` and `POST /v1/screen/mode` → 
   (`systemctl --user reset-failed` + the same `systemd-run`, same token; at most once a minute). When the page connects
   (and at each ring) the kiosk window gets the keyboard focus (`hyprctl dispatch focuswindow address:…` / Lua
   `hl.dsp.focus`).
+- **Night filter** (S5, `sleep_night.ts`, every member for its own notifications): while a run is on and before its
+  dismiss, a notification goes out only if it is one of the sleep mode's own (`sleep.*`), `push.test`, or of a kind in
+  `modes.sleep.notify.critical`: `hostDown` (`host.offline`, `uptime.down`), `securityTrap` (`security.trap`,
+  `security.secretFound`, `security.lockdown`, `blackbox.broken`, critical `security.change`), `incident` (an incident
+  opener the incident room attached an incident to), `diskFull` (`disk.full`). The rest is held: recorded in the event
+  stream as always (unless sensitive/transient), not sent; the run keeps only the count and the first 3 titles (the
+  key and its subject — name/container/unit/mount/… — run through redact(); a sensitive one: the key only) in memory.
+  Nothing of it is written anywhere; an agent restart loses the counts; the stop drops them. The filter lifts at the
+  dismiss.
+- **Morning summary** (S5): each member counts its night in memory — jobs finished (the `jobs` producer every 30 s:
+  name, duration, exit code when known), backups (checks whose last run fell in the night: ok / failed; backup failure
+  notices), incidents opened in the night (the incident room's list), held notifications. At the dismiss (or at a user
+  stop of a run that had none) a member sends its counts to the leader (`night` group message); the leader waits up to
+  5 s for every member, merges (sums; titles leader first, ≤ 3) and sends ONE push `sleep.morning` (transient: never
+  recorded), `params: {minutes, jobs, jobsFailed, backups, backupsFailed, incidents, held, titles (one per line),
+  members, missing, at}`, `data: {agent, session}`, unless `notify.morningSummary` is off; it keeps the summary 12 h
+  for `GET /v1/sleep/summary` and the morning screens (its page's `sleep` message `morning`, relayed to the members).
+  A member down at that time is counted in `missing`; a member that ends locally (agent exit) sends nothing.
+- **Velour** (S5, `sleep_velour.ts`, the leader): one owner of Velour's volume for the run — the first user (the sleep
+  playlist or the Velour alarm) saves the volume as it was, later users share that value, it is put back once when the
+  last one lets go (or at the stop / crash recovery / by the adopting agent's stop). **Sleep playlist** (`velour.playlistId`,
+  the "desktop" feature on): at the start, if Velour isn't already playing (then it is left alone, `busy`), the
+  playlist plays (`play-target {kind:"watch", playlistId}`) at `velour.volume`, Velour's sleep timer is set to
+  `velour.fadeMin` (rounded up to whole minutes) and the volume fades linearly to 0 over `fadeMin` (scaled by
+  `TIPHYS_SLEEP_SCALE`); at the end (or at sunrise/ring, or the stop) the timer is cancelled, Velour paused (the mode
+  started it) and the volume let go. Velour unreachable or the feature off → skipped, `velour.warning`. While it plays
+  every page ducks its ember sounds −12 dB (back up over 20 s after).
 - **Group** (S3, more than one member): the scene needs no network (every member computes the same timeline from
   `seed` and `t0`); the leader (normally theloth) never connects to a member. A non-leader uses its source connection
   to the leader (`WS /v1/screen/feed` with a `screen` token; the source is the one named like the leader, else the one
@@ -1380,7 +1411,11 @@ While sleep runs, `POST /v1/screen/start {mode}` and `POST /v1/screen/mode` → 
   `{type:"sleepGroup", sessionId, action:"hello"|"members", host, members:[{host, state}], plan}` (leader → member;
   `plan` is the leader's; the member merges it with its own: the leader's base, both sides' snoozes/dismiss replayed
   in time order),
-  `{type:"sleepGroup", sessionId, action:"unknown"}` (the leader doesn't run that session), and both ways
+  `{type:"sleepGroup", sessionId, action:"unknown"}` (the leader doesn't run that session), S5:
+  `{type:"sleepGroup", sessionId, action:"night", host, night:{jobs, jobsFailed, backups, backupsFailed, incidents, held,
+  titles, jobList}}` (member → leader, at the dismiss / a user stop; also accepted a few seconds after the leader's run
+  stopped), `{…, action:"music", host, on}` (leader → member; `music` also on hello/members) and `{…, action:"summary",
+  host, summary}` (leader → member, the merged summary), and both ways
   `{type:"sleepGroup", sessionId, action:"stop"|"snooze"|"dismiss"|"phase", host, at}` (snooze/dismiss: every member
   applies the same `at`, the sender's shared clock; the leader relays a member's to the others; `phase` is not sent). Clock: `{type:"clockPing", t}` → `{type:"clockPong", t, peer}` (answered at once by the source
   side); 8 pings 150 ms apart on every (re)connect and every 10 min; offset = `peer − (t_send + t_recv)/2` averaged
@@ -1394,8 +1429,8 @@ While sleep runs, `POST /v1/screen/start {mode}` and `POST /v1/screen/mode` → 
   `sleep.json`.
 - **Kiosk messages** (agent → page): `{type:"layout", mode:"sleep", template:"sleep", cards:[], settings:{}}`, then
   `{type:"sleep", session:{id, seed, t0, leader, members (ids), layout:[{id, side, distance}]}, me, offsetMs (shared time = this clock + offsetMs; sent again when it changes),
-  plan (as above), alarm:{gain}, phase, phaseStartedAt, phaseEndsAt, brightness (content), settings:{volume, layers,
-  nightSound}, scale}` (on connect, on a settings change and on a plan change: snooze, dismiss, the leader's plan), `{type:"phase", phase, phaseStartedAt, phaseEndsAt}` and `{type:"brightness", content}` (while
+  plan (as above), alarm:{gain}, music (S5: duck the ember sounds), morning (S5: the summary of this session or null),
+  phase, phaseStartedAt, phaseEndsAt, brightness (content), settings:{volume, layers, nightSound}, scale}` (on connect, on a settings change and on a plan change: snooze, dismiss, the leader's plan), `{type:"phase", phase, phaseStartedAt, phaseEndsAt}` and `{type:"brightness", content}` (while
   the curve moves at most every 2 s; in a flat phase the exact value).
 - **Test-only time scale:** `TIPHYS_SLEEP_SCALE` (configuration.md) divides every phase length; the hardware rate
   limits stay.

@@ -149,6 +149,22 @@ other screen adds quiet birds). If Firefox crashed during the night, the agent p
 (`pw-play`) and starts the kiosk again. The alarm only exists while the sleep mode runs; the phone keeps its own
 backup alarm. The alarm time is the machine's local time; the leader's settings decide for the group.
 
+**Night notifications and the morning summary:** while the mode runs, each machine sends only the kinds chosen as
+critical (`notify.critical`: a host down, a security trap, a new incident, a full disk); the rest wait. The waiting
+ones are kept in memory only (count and three short titles) and still appear in the event history as usual. When
+the alarm is turned off (or the mode is stopped, if there was no alarm) every machine reports its night to the
+leader, and the leader sends **one** morning notification: how long the night was, the jobs that finished, backups
+(ok / failed), new incidents, and how many notifications waited with the first three. The phone opens it as a
+summary card (`GET /v1/sleep/summary`, kept 12 hours); the morning screen shows the same. A machine that was
+unreachable is counted as missing. Notifications on the PC desktop itself (Quickshell bubbles) are not touched.
+
+**Velour sleep playlist:** with a playlist chosen (`velour.playlistId`), the leader starts it on Velour at the
+beginning (unless Velour is already playing something: then it is left alone), at `velour.volume`, fades it out over
+`velour.fadeMin` and lets Velour's own sleep timer stop it; the fireplace sounds sit 12 dB lower while it plays. The
+Velour alarm and the playlist share one saved volume: whatever Velour's volume was before the night is what it gets
+back, once, at the end (also after a crash). Needs the "desktop" feature on the leader; otherwise the playlist is
+skipped and the sleep status says so.
+
 **DDC/CI on a desktop monitor:** install `ddcutil` (its udev rule gives the logged-in user the I²C device) and turn
 DDC/CI on in the monitor's own menu. `tiphys-agent doctor` warns with `doctor.sleep.ddcUnavailable` when `ddcutil
 detect` finds no working display; the mode still runs and the page dims alone. With the NVIDIA proprietary driver the
