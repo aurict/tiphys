@@ -1,23 +1,29 @@
-// Sleep mode on one display host (PLAN.md §21 A-2, A-3, A-10; S2): the phase machine and the brightness curve.
-// Phases follow from the session's start `t0` and the settings' times (Kararlar 4: settle 3 min, fade 30 min), not from
-// ticks: settle → fade → night (open-ended in S2). sunrise / ring / snoozed / morning exist as types and in the pure
-// functions (a plan with `ringAt`) for S4's alarm; S2 never sets it.
+// Sleep mode on one display host (PLAN.md §21 A-2, A-3, A-4, A-10; S2, S4): the phase machine, the alarm's phases
+// and the brightness curve.
+// Phases follow from the plan (the session's start `t0`, the times and the alarm), not from ticks: settle → fade →
+// night → sunrise (alarm − sunriseMin) → ring → (snoozed → ring)* → morning (after a dismiss, if morningScreen) → end.
+// The plan is the group's: the leader computes it from its settings at start and it travels with the session
+// (`session.plan`, and the leader's `hello`), so every member computes the same sunrise/ring/snooze times. User events
+// (snooze, dismiss) are timestamps in the plan (`snoozes`, `dismissedAt`); applying the same event twice changes
+// nothing, and the past never changes. The alarm's sound stops `autoStopMs` after each ring start (the screens stay
+// bright, the phase stays `ring`). sleep_alarm.ts holds the next-alarm computation and the alarm's side effects.
 // Brightness: a target level L(t) in percent of full brightness — `start` in settle, eased out to `night` over the
-// fade, eased in from `night` to `morning` during sunrise. Two layers: the hardware (backlight via brightnessctl, at
-// most one call per 2 s; DDC/CI via ddcutil, at most one step per 15 s, only on a change) never below its floor, and
-// the page's content multiplier L / hardware (0..1), which fills between hardware steps and does the darkest part of
-// the night. Without hardware dimming (no backlight, DDC unavailable) the page dims alone and the status carries the
-// warning `agent.sleep.ddcUnavailable`. The page gets `sleep` (everything), `phase` and `brightness` messages; it
-// sends `heartbeat` every 10 s (kept for S4's WAV fallback).
+// fade, eased in from `night` to `morning` during sunrise, `morning` from the ring on. Two layers: the hardware
+// (backlight via brightnessctl, at most one call per 2 s; DDC/CI via ddcutil, at most one step per 15 s, only on a
+// change) never below its floor, and the page's content multiplier L / hardware (0..1), which fills between hardware
+// steps and does the darkest part of the night. Without hardware dimming (no backlight, DDC unavailable) the page dims
+// alone and the status carries the warning `agent.sleep.ddcUnavailable`. The page gets `sleep` (everything; again on
+// a plan change), `phase` and `brightness` messages; it sends `heartbeat` every 10 s (the WAV fallback listens).
 // Trace-free: the state file (sleep.json in the screen mode's tmpfs work dir, 0600, written whole before every side
 // effect) holds the session, the plan and every previous hardware value; stop restores them and removes it, and after
 // a crash the next agent either adopts the run (kiosk still up) or restores from it.
-// Test-only time scale (`scale`, from TIPHYS_SLEEP_SCALE; unset = 1): every phase length is divided by it. The
-// hardware rate limits are not scaled.
+// Test-only time scale (`scale`, from TIPHYS_SLEEP_SCALE; unset = 1): every phase length is divided by it (the alarm's
+// clock time itself is not). The hardware rate limits are not scaled.
 import { z } from "zod";
 import { hostId, sleepSettingsSchema, type SleepSettings } from "../config.ts";
 import { AppError } from "../errors.ts";
 import { Hardware, NO_SAVED, sanitizeSaved, Throttle, type HwKind, type HwSaved } from "./sleep_hw.ts";
+import { nextAlarm } from "./sleep_alarm.ts";
 
 export const SLEEP_PHASES = ["settle", "fade", "night", "sunrise", "ring", "snoozed", "morning"] as const;
 export type SleepPhase = (typeof SLEEP_PHASES)[number];
@@ -38,6 +44,8 @@ export interface SleepSession {
   t0: number;
   members: SleepMember[];
   leader: string;
+  /** The group's plan (S4): sent by the phone (copied from the leader's start response); none = computed here. */
+  plan?: SleepPlan;
 }
 
 /** The timeline of a run (ms since the epoch / ms); the page's timeline.js takes the same shape. */
@@ -52,6 +60,13 @@ export interface SleepPlan {
   ringAt: number | null;
   rampMs: number;
   alarmSound: "birds" | "chime" | "velour";
+  /** A snooze's length, how long a ring sounds before it goes quiet by itself, the morning screen's length (0 = none). */
+  snoozeMs: number;
+  autoStopMs: number;
+  morningMs: number;
+  /** User events (shared clock, ms): each snooze's time (sorted), the dismiss. */
+  snoozes: number[];
+  dismissedAt: number | null;
 }
 
 const MIN = 60_000;
@@ -65,18 +80,30 @@ export const TICK_MS = 2000;
 export const PREVIEW_MS = 5000;
 export const DDC_UNAVAILABLE = "agent.sleep.ddcUnavailable";
 
-/** The plan of a run started at `t0` with the settings' times (and alarm, S4) divided by `scale`. */
+export const MORNING_MIN = 10;
+
+/**
+ * The plan of a run started at `t0` with the settings' times and alarm, lengths divided by `scale`. The alarm rings at
+ * the next `alarm.time` on an allowed day after `t0` in this machine's local time (sleep_alarm.ts nextAlarm).
+ */
 export function planOf(t0: number, s: SleepSettings, scale = 1): SleepPlan {
+  const ms = (min: number) => Math.round((min * MIN) / scale);
+  const ringAt = s.alarm.enabled ? nextAlarm(s.alarm, t0) : null;
   return {
     t0,
-    settleMs: Math.round((s.times.settleMin * MIN) / scale),
-    fadeMs: Math.round((s.times.fadeMin * MIN) / scale),
-    soundFadeMs: Math.round((s.times.soundFadeMin * MIN) / scale),
+    settleMs: ms(s.times.settleMin),
+    fadeMs: ms(s.times.fadeMin),
+    soundFadeMs: ms(s.times.soundFadeMin),
     nightSound: s.times.nightSound,
-    sunriseAt: null,
-    ringAt: null,
-    rampMs: Math.round((s.alarm.rampMin * MIN) / scale),
+    sunriseAt: ringAt === null ? null : ringAt - ms(s.alarm.sunriseMin),
+    ringAt,
+    rampMs: ms(s.alarm.rampMin),
     alarmSound: s.alarm.sound,
+    snoozeMs: ms(s.alarm.snoozeMin),
+    autoStopMs: ms(s.alarm.autoStopMin),
+    morningMs: s.alarm.morningScreen ? ms(MORNING_MIN) : 0,
+    snoozes: [],
+    dismissedAt: null,
   };
 }
 
@@ -86,16 +113,96 @@ export interface PhaseSpan {
   endsAt: number | null;
 }
 
-/** The phase spans of a plan in order (zero-length ones dropped; the last is open-ended). */
+/**
+ * The phase spans of a plan in order (zero-length ones dropped). Without an alarm: settle, fade, night (open-ended).
+ * With one, everything before the ring is cut at `ringAt` (a short night shortens sunrise first, then the fade), each
+ * snooze turns a ring into `snoozed` for `snoozeMs`, and a dismiss ends the list (+ `morning` for `morningMs`).
+ * display/sleep/timeline.js phasesOf is the same function for the page.
+ */
 export function phasesOf(p: SleepPlan): PhaseSpan[] {
   const settleEnd = p.t0 + p.settleMs, fadeEnd = settleEnd + p.fadeMs;
-  const out: PhaseSpan[] = [{ phase: "settle", startedAt: p.t0, endsAt: settleEnd }, { phase: "fade", startedAt: settleEnd, endsAt: fadeEnd }];
-  if (p.ringAt === null) out.push({ phase: "night", startedAt: fadeEnd, endsAt: null });
+  let out: PhaseSpan[];
+  if (p.ringAt === null) out = [{ phase: "settle", startedAt: p.t0, endsAt: settleEnd }, { phase: "fade", startedAt: settleEnd, endsAt: fadeEnd }, { phase: "night", startedAt: fadeEnd, endsAt: null }];
   else {
-    const sun = Math.min(p.ringAt, Math.max(fadeEnd, p.sunriseAt ?? p.ringAt));
-    out.push({ phase: "night", startedAt: fadeEnd, endsAt: sun }, { phase: "sunrise", startedAt: sun, endsAt: p.ringAt }, { phase: "ring", startedAt: p.ringAt, endsAt: null });
+    const R = Math.max(p.ringAt, p.t0);
+    const cut = (x: number) => Math.min(x, R);
+    const sun = Math.min(R, Math.max(fadeEnd, p.sunriseAt ?? R));
+    out = [
+      { phase: "settle", startedAt: p.t0, endsAt: cut(settleEnd) },
+      { phase: "fade", startedAt: cut(settleEnd), endsAt: cut(fadeEnd) },
+      { phase: "night", startedAt: cut(fadeEnd), endsAt: sun },
+      { phase: "sunrise", startedAt: sun, endsAt: R },
+    ];
+    let cur = R;
+    for (const s of p.snoozes) {
+      if (s < cur) continue; // not inside a ring (refused when applied; a hand-made plan may have it)
+      out.push({ phase: "ring", startedAt: cur, endsAt: s }, { phase: "snoozed", startedAt: s, endsAt: s + p.snoozeMs });
+      cur = s + p.snoozeMs;
+    }
+    out.push({ phase: "ring", startedAt: cur, endsAt: null });
+  }
+  const D = p.dismissedAt;
+  if (D !== null && p.ringAt !== null) {
+    out = out.filter((x) => x.startedAt < D).map((x) => (x.endsAt === null || x.endsAt > D ? { ...x, endsAt: D } : x));
+    if (p.morningMs > 0) out.push({ phase: "morning", startedAt: D, endsAt: D + p.morningMs });
   }
   return out.filter((x) => x.endsAt === null || x.endsAt > x.startedAt);
+}
+
+/** When the run ends by itself (the morning is over, or the dismiss without a morning screen); null = never. */
+export function endOf(p: SleepPlan): number | null {
+  return p.dismissedAt === null || p.ringAt === null ? null : p.dismissedAt + p.morningMs;
+}
+
+/** Does the alarm sound at `t` (a ring span, before its auto-stop)? */
+export function soundingAt(p: SleepPlan, t: number): boolean {
+  const s = phaseAt(p, t);
+  return s.phase === "ring" && t < s.startedAt + p.autoStopMs && (endOf(p) === null || t < endOf(p)!);
+}
+
+/** The run's alarm at `t` for GET /v1/sleep: the next (or current) ring start, ringing, until when snoozed. */
+export function alarmAt(p: SleepPlan, t: number) {
+  const s = phaseAt(p, t);
+  const done = endOf(p) !== null && t >= p.dismissedAt!;
+  const next = p.ringAt === null || done ? null : s.phase === "ring" ? s.startedAt : s.phase === "snoozed" ? s.endsAt : t < p.ringAt ? p.ringAt : null;
+  return {
+    next,
+    sunriseAt: p.ringAt === null || done ? null : phasesOf(p).find((x) => x.phase === "sunrise")?.startedAt ?? p.ringAt,
+    ringing: !done && soundingAt(p, t),
+    silenced: !done && s.phase === "ring" && t >= s.startedAt + p.autoStopMs,
+    snoozedUntil: !done && s.phase === "snoozed" ? s.endsAt : null,
+    snoozes: p.snoozes.length,
+    dismissedAt: p.dismissedAt,
+  };
+}
+
+export type AlarmAction = "snooze" | "dismiss";
+
+/**
+ * A user's snooze or dismiss at `at` → the new plan, or null when it doesn't apply: snooze only while it rings (also
+ * after the auto-stop), dismiss during sunrise, ring or snooze; the same event twice (within a second) is null too.
+ */
+export function applyAlarm(p: SleepPlan, action: AlarmAction, at: number): SleepPlan | null {
+  if (p.ringAt === null || p.dismissedAt !== null) return null;
+  const s = phaseAt(p, at);
+  if (action === "snooze") {
+    if (s.phase !== "ring" || p.snoozes.some((x) => Math.abs(x - at) < 1000)) return null;
+    return { ...p, snoozes: [...p.snoozes, at].sort((a, b) => a - b) };
+  }
+  if (s.phase !== "sunrise" && s.phase !== "ring" && s.phase !== "snoozed") return null;
+  return { ...p, dismissedAt: at };
+}
+
+/**
+ * Two members' plans after a missed message (the leader's hello): the leader's base with both sides' events replayed
+ * in time order (each one checked as it was when made).
+ */
+export function mergePlans(mine: SleepPlan, leader: SleepPlan): SleepPlan {
+  let p: SleepPlan = { ...leader, snoozes: [], dismissedAt: null };
+  const evs: Array<[number, AlarmAction]> = [...new Set([...mine.snoozes, ...leader.snoozes])].map((t) => [t, "snooze"]);
+  for (const d of [mine.dismissedAt, leader.dismissedAt]) if (d !== null) evs.push([d, "dismiss"]);
+  for (const [t, a] of evs.sort((x, y) => x[0] - y[0])) p = applyAlarm(p, a, t) ?? p;
+  return p;
 }
 
 /** The phase at `t` (before t0: settle, starting at t0). */
@@ -111,17 +218,16 @@ export const easeIn = (k: number) => k * k;
 /** Target brightness (percent of full, may be fractional) at `t`. */
 export function levelAt(p: SleepPlan, b: SleepSettings["brightness"], t: number): number {
   const s = phaseAt(p, t);
-  const k = s.endsAt === null ? 1 : clamp01((t - s.startedAt) / (s.endsAt - s.startedAt));
   switch (s.phase) {
     case "settle":
       return b.start;
-    case "fade":
-      return b.start + (Math.min(b.night, b.start) - b.start) * easeOut(k);
+    case "fade": // over the planned fade (an early alarm cuts the span, not the curve)
+      return b.start + (Math.min(b.night, b.start) - b.start) * easeOut(clamp01((t - p.t0 - p.settleMs) / Math.max(1, p.fadeMs)));
     case "night":
       return Math.min(b.night, b.start);
-    case "sunrise":
-      return Math.min(b.night, b.start) + (b.morning - Math.min(b.night, b.start)) * easeIn(k);
-    default:
+    case "sunrise": // toward the alarm (a dismiss during sunrise cuts the span, not the curve)
+      return Math.min(b.night, b.start) + (b.morning - Math.min(b.night, b.start)) * easeIn(clamp01((t - s.startedAt) / Math.max(1, Math.max(p.ringAt ?? t, p.t0) - s.startedAt)));
+    default: // ring, snoozed, morning
       return b.morning;
   }
 }
@@ -150,35 +256,63 @@ export interface SleepFile {
   /** Which hardware dims (null: content only); `ddc` with `saved.ddc` set. */
   hw: HwKind | null;
   saved: HwSaved;
+  /** The last alarm transition handled ("ring:<span start>", …): an adopting agent doesn't push it again. */
+  reported: string | null;
+  /** Velour's volume before the alarm played on it (the leader; put back at the end). */
+  velour: { volume: number } | null;
 }
 
 const SESSION_ID = /^[A-Za-z0-9_-]{8,64}$/;
 const HOST = /^[A-Za-z0-9_.-]{1,64}$/;
+
+const DAY = 24 * 60 * MIN;
+const ms = (x: unknown): x is number => typeof x === "number" && Number.isSafeInteger(x) && x >= 0;
+const len = (x: unknown, def: number) => (x === undefined ? def : ms(x) && x <= DAY ? x : NaN);
+
+/**
+ * A plan from outside (the session, the leader's hello, the state file) → a valid plan, or null. Fields S4 added may
+ * be missing (an S3 file or phone): no snooze/auto-stop/morning lengths given → the defaults (9, 20, 0 min).
+ */
+export function parsePlan(v: unknown): SleepPlan | null {
+  if (!v || typeof v !== "object" || Array.isArray(v)) return null;
+  const p = v as Record<string, unknown>;
+  const lens = [len(p.settleMs, NaN), len(p.fadeMs, NaN), len(p.soundFadeMs, NaN), len(p.rampMs, NaN), len(p.snoozeMs, 9 * MIN), len(p.autoStopMs, 20 * MIN), len(p.morningMs, 0)];
+  if (!ms(p.t0) || lens.some((x) => Number.isNaN(x))) return null;
+  const at = (x: unknown) => (x === null || x === undefined ? null : ms(x) ? x : NaN);
+  const sunriseAt = at(p.sunriseAt), ringAt = at(p.ringAt), dismissedAt = at(p.dismissedAt);
+  if ([sunriseAt, ringAt, dismissedAt].some((x) => Number.isNaN(x))) return null;
+  if (ringAt !== null && (ringAt < p.t0 || ringAt - p.t0 > 2 * DAY || (sunriseAt !== null && (sunriseAt > ringAt || ringAt - sunriseAt > DAY)))) return null;
+  const snoozes = p.snoozes === undefined ? [] : Array.isArray(p.snoozes) && p.snoozes.length <= 50 && p.snoozes.every(ms) ? [...(p.snoozes as number[])].sort((a, b) => a - b) : null;
+  if (!snoozes) return null;
+  const [settleMs, fadeMs, soundFadeMs, rampMs, snoozeMs, autoStopMs, morningMs] = lens as number[];
+  return {
+    t0: p.t0, settleMs: settleMs!, fadeMs: fadeMs!, soundFadeMs: soundFadeMs!, nightSound: p.nightSound === "off" ? "off" : "hum",
+    sunriseAt: ringAt === null ? null : sunriseAt, ringAt, rampMs: rampMs!, alarmSound: p.alarmSound === "chime" || p.alarmSound === "velour" ? p.alarmSound : "birds",
+    snoozeMs: snoozeMs!, autoStopMs: autoStopMs!, morningMs: morningMs!, snoozes: ringAt === null ? [] : snoozes, dismissedAt: ringAt === null ? null : dismissedAt,
+  };
+}
 
 /** A state file's content → a valid file, or null (the run can't be adopted; its hardware is still restored). */
 export function parseSleepFile(v: unknown): SleepFile | null {
   if (!v || typeof v !== "object") return null;
   const o = v as Record<string, unknown>;
   const s = o.session as Record<string, unknown> | undefined;
-  const p = o.plan as Record<string, unknown> | undefined;
-  const ms = (x: unknown) => typeof x === "number" && Number.isSafeInteger(x) && x >= 0;
-  if (!s || !p || typeof s.id !== "string" || !SESSION_ID.test(s.id) || !ms(s.seed) || !ms(s.t0)) return null;
+  if (!s || typeof s.id !== "string" || !SESSION_ID.test(s.id) || !ms(s.seed) || !ms(s.t0)) return null;
   const members = Array.isArray(s.members) ? membersOf(s.members.filter((m) => (typeof m === "string" ? HOST.test(m) : !!m && typeof m === "object" && HOST.test(String((m as Record<string, unknown>).host)))).slice(0, 4)) : [];
   if (!members.length || typeof s.leader !== "string" || !members.some((m) => m.host === s.leader) || typeof o.me !== "string" || !HOST.test(o.me)) return null;
-  if (![p.t0, p.settleMs, p.fadeMs, p.soundFadeMs, p.rampMs].every(ms) || !(p.sunriseAt === null || ms(p.sunriseAt)) || !(p.ringAt === null || ms(p.ringAt))) return null;
+  const plan = parsePlan(o.plan);
+  if (!plan) return null;
   const scale = typeof o.scale === "number" && o.scale >= 1 && o.scale <= 1000 ? o.scale : 1;
   return {
     v: 1,
     session: { id: s.id, seed: s.seed as number, t0: s.t0 as number, members, leader: s.leader },
     me: o.me,
-    plan: {
-      t0: p.t0 as number, settleMs: p.settleMs as number, fadeMs: p.fadeMs as number, soundFadeMs: p.soundFadeMs as number,
-      nightSound: p.nightSound === "off" ? "off" : "hum", sunriseAt: (p.sunriseAt as number | null) ?? null, ringAt: (p.ringAt as number | null) ?? null,
-      rampMs: p.rampMs as number, alarmSound: p.alarmSound === "chime" || p.alarmSound === "velour" ? p.alarmSound : "birds",
-    },
+    plan,
     scale,
     hw: o.hw === "backlight" || o.hw === "ddc" ? o.hw : null,
     saved: sanitizeSaved(o.saved),
+    reported: typeof o.reported === "string" && /^[a-z]{1,10}:\d{1,16}$/.test(o.reported) ? o.reported : null,
+    velour: o.velour && typeof o.velour === "object" && Number.isFinite((o.velour as Record<string, unknown>).volume) ? { volume: Math.max(0, Math.min(100, Number((o.velour as Record<string, unknown>).volume))) } : null,
   };
 }
 
@@ -316,9 +450,24 @@ export interface SleepDeps {
   log: (msg: string, err?: unknown) => void;
   /** Test only (TIPHYS_SLEEP_SYNCLOG): the page reports its crackle timings. */
   syncLog?: boolean;
+  /** An alarm transition (sleep_alarm.ts AlarmEffects): once per transition, also across an adopting agent. */
+  onAlarm?: (t: AlarmTransition) => void;
+  /** The plan's end (the morning is over / dismissed without a morning screen): the mode stops. */
+  onEnd?: () => void;
+  /** The page's alarm gain (0..1; 0 = another player plays it, e.g. Velour on the leader). */
+  alarmGain?: () => number;
   now?: () => number;
   setTimeout?: (fn: () => void, ms: number) => unknown;
   clearTimeout?: (h: unknown) => void;
+}
+
+export interface AlarmTransition {
+  kind: "sunrise" | "ring" | "silenced" | "snoozed" | "dismissed";
+  /** When it began (span start, or the dismiss). */
+  at: number;
+  /** Rings so far in this run including this one (ring), snoozes so far (snoozed). */
+  count: number;
+  plan: SleepPlan;
 }
 
 export class SleepRun {
@@ -338,6 +487,8 @@ export class SleepRun {
   #heartbeatAt: number | null = null;
   #offset = 0;
   #stopped = false;
+  #ended = false;
+  readonly #createdAt: number;
   #saving: Promise<unknown> = Promise.resolve();
 
   private constructor(d: SleepDeps, file: SleepFile) {
@@ -346,12 +497,14 @@ export class SleepRun {
     this.#setT = d.setTimeout ?? ((fn, ms) => setTimeout(fn, ms));
     this.#clearT = d.clearTimeout ?? ((h) => clearTimeout(h as NodeJS.Timeout));
     this.file = file;
+    this.#createdAt = this.#now();
   }
 
   /** A new run: reads and saves every previous hardware value, applies the extras, then follows the curve. */
   static async begin(d: SleepDeps, session: SleepSession, me: string, scale: number): Promise<SleepRun> {
     const s = d.settings();
-    const run = new SleepRun(d, { v: 1, session, me, plan: planOf(session.t0, s, scale), scale, hw: null, saved: { ...NO_SAVED, leds: [] } });
+    const { plan, ...bare } = session;
+    const run = new SleepRun(d, { v: 1, session: bare, me, plan: plan ?? planOf(session.t0, s, scale), scale, hw: null, saved: { ...NO_SAVED, leds: [] }, reported: null, velour: null });
     await run.#save();
     await run.#takeHardware(s);
     await run.#extras(s);
@@ -364,6 +517,11 @@ export class SleepRun {
     const run = new SleepRun(d, file);
     run.#start(null);
     return run;
+  }
+
+  /** Writes the state file now (a field changed outside, e.g. Velour's saved volume). */
+  persist() {
+    return this.#save();
   }
 
   async #save() {
@@ -448,15 +606,80 @@ export class SleepRun {
     this.#phase = span;
     if (this.#phaseTimer !== null) this.#clearT(this.#phaseTimer);
     this.#phaseTimer = null;
-    if (span.endsAt !== null) {
+    // The next moment anything changes: the span's end, the ring's auto-stop, the run's end.
+    const plan = this.file.plan;
+    const end = endOf(plan);
+    const next = [span.endsAt, span.phase === "ring" ? span.startedAt + plan.autoStopMs : null, end].filter((x): x is number => x !== null && x > now);
+    if (next.length) {
       this.#phaseTimer = this.#setT(() => {
         this.#phaseTimer = null;
         this.#enter();
-      }, Math.max(0, span.endsAt - now));
+      }, Math.max(0, Math.min(...next) - now));
       (this.#phaseTimer as NodeJS.Timeout)?.unref?.();
     }
     if (changed) this.#d.send(JSON.stringify({ type: "phase", ...this.#phaseFields() }));
     this.#follow();
+    this.#alarmTick(span, now);
+    if (end !== null && now >= end && !this.#ended) {
+      this.#ended = true;
+      this.#d.onEnd?.();
+    }
+  }
+
+  /** Reports an alarm transition once (the key is kept in the state file: an adopting agent doesn't repeat it). */
+  #alarmTick(span: PhaseSpan, now: number) {
+    const p = this.file.plan;
+    if (p.ringAt === null) return;
+    let t: Omit<AlarmTransition, "plan"> | null = null;
+    if (p.dismissedAt !== null && now >= p.dismissedAt) t = { kind: "dismissed", at: p.dismissedAt, count: p.snoozes.length };
+    else if (span.phase === "sunrise") t = { kind: "sunrise", at: span.startedAt, count: 0 };
+    else if (span.phase === "snoozed") t = { kind: "snoozed", at: span.startedAt, count: p.snoozes.filter((x) => x <= span.startedAt).length };
+    else if (span.phase === "ring") {
+      const count = p.snoozes.filter((x) => x < span.startedAt).length + 1;
+      t = now < span.startedAt + p.autoStopMs ? { kind: "ring", at: span.startedAt, count } : { kind: "silenced", at: span.startedAt + p.autoStopMs, count };
+    }
+    if (!t) return;
+    const key = `${t.kind}:${t.at}`;
+    if (key === this.file.reported) return;
+    this.file.reported = key;
+    void this.#save();
+    this.#d.onAlarm?.({ ...t, plan: p });
+  }
+
+  /**
+   * A snooze or dismiss (API, the page's keys, another member) at `at` (shared clock): the plan changes, the page gets
+   * it, the phase follows. false = it didn't apply (not ringing, already done).
+   */
+  alarm(action: AlarmAction, at: number): boolean {
+    if (this.#stopped) return false;
+    const next = applyAlarm(this.file.plan, action, at);
+    if (!next) return false;
+    this.#replan(next);
+    return true;
+  }
+
+  /** The leader's plan (its hello): merged with this member's events; a change goes to the page. */
+  setPlan(leader: SleepPlan) {
+    if (this.#stopped || leader.t0 !== this.file.plan.t0) return;
+    const next = mergePlans(this.file.plan, leader);
+    if (JSON.stringify(next) !== JSON.stringify(this.file.plan)) this.#replan(next);
+  }
+
+  #replan(next: SleepPlan) {
+    this.file.plan = next;
+    void this.#save();
+    this.#d.send(this.sleepMessage());
+    this.#enter();
+  }
+
+  /** ms since the page's last heartbeat (since this run object began if none came yet). */
+  heartbeatAge(): number {
+    return this.#now() - (this.#heartbeatAt ?? this.#createdAt);
+  }
+
+  /** The alarm's gain on the page changed (e.g. Velour failed on the leader): a fresh `sleep` message. */
+  alarmGainChanged() {
+    if (!this.#stopped) this.#d.send(this.sleepMessage());
   }
 
   get #ramping() {
@@ -517,6 +740,7 @@ export class SleepRun {
       // shared time = this host's clock + offsetMs (the leader's clock; sleep_group.ts: 0 unless it is off by more than 20 ms).
       offsetMs: this.#offset,
       plan: f.plan,
+      alarm: { gain: this.#d.alarmGain?.() ?? 1 },
       ...this.#phaseFields(),
       brightness: Math.max(0, this.#content),
       settings: { volume: s.volume, layers: s.layers, nightSound: s.times.nightSound },
@@ -560,8 +784,10 @@ export class SleepRun {
     const t = this.#throttle;
     const f = this.file;
     return {
-      session: f.session,
+      // The plan travels with the session: the phone sends the leader's to the other members (one plan for the group).
+      session: { ...f.session, plan: f.plan },
       ...this.#phaseFields(),
+      alarm: alarmAt(f.plan, this.#now()),
       brightness: {
         dimming: f.hw && !this.#broken ? f.hw : "content",
         hardware: t && !this.#broken ? t.current : null,
@@ -659,11 +885,21 @@ export const sessionSchema = z
     t0: z.number().int().positive(),
     members: z.array(memberSchema).min(1).max(4),
     leader: hostId,
+    plan: z.unknown().optional(),
   })
-  .transform((s): SleepSession => ({ ...s, members: membersOf(s.members) }))
+  .transform((s, ctx): SleepSession => {
+    const { plan: raw, ...rest } = s;
+    const plan = raw === undefined ? undefined : parsePlan(raw);
+    if (plan === null || (plan && plan.t0 !== s.t0)) {
+      ctx.addIssue({ code: "custom", message: "bad plan", path: ["plan"] });
+      return z.NEVER;
+    }
+    return { ...rest, members: membersOf(s.members), ...(plan ? { plan } : {}) };
+  })
   .refine((s) => s.members.some((m) => m.host === s.leader), { message: "leader must be a member", path: ["leader"] })
   .refine((s) => new Set(s.members.map((m) => m.host)).size === s.members.length, { message: "members repeat", path: ["members"] })
   .refine((s) => s.t0 > Date.now() - T0_PAST_MS && s.t0 < Date.now() + T0_FUTURE_MS, { message: "t0 too far from now", path: ["t0"] });
 
 export const sleepStartSchema = z.strictObject({ session: sessionSchema.optional() });
 export const sleepPreviewSchema = z.strictObject({ brightness: z.number().int().min(0).max(100) });
+export const sleepAlarmSchema = z.strictObject({ action: z.enum(["snooze", "dismiss"]) });

@@ -34,7 +34,12 @@
 // first. The page sends `heartbeat` every 10 s on its live socket.
 // Sleep group (S3, sleep_group.ts): a non-leader member keeps a topic-less source connection to the leader for the
 // group messages; the leader takes them from its own feed (`feed.group`). A user stop ends the group, a local end
-// (kiosk died, agent exit) doesn't. Test only: TIPHYS_SCREEN_HEADLESS runs the kiosk headless (see headlessBrowser).
+// (agent exit) doesn't. Test only: TIPHYS_SCREEN_HEADLESS runs the kiosk headless (see headlessBrowser).
+// Sleep alarm (S4, sleep_alarm.ts): POST /v1/sleep/alarm {action} and the page's keys (Space = snooze, Esc held =
+// dismiss while it rings) change the run's plan and go to the group; the alarm's effects (push from the leader, events,
+// Velour on the leader, the WAV fallback) follow the run's transitions. While sleeping, a dead kiosk doesn't end the
+// mode (the alarm must still ring): it is relaunched at sunrise/ring when the page's heartbeat is missing. When the
+// page connects the kiosk window gets the keyboard focus (Hyprland doesn't give it to a new window on the laptop).
 import { randomBytes, timingSafeEqual } from "node:crypto";
 import { createReadStream, existsSync } from "node:fs";
 import { mkdir, readFile, realpath, rename, rm, stat, writeFile } from "node:fs/promises";
@@ -63,7 +68,10 @@ import { realFileIo, type FileIo } from "./producers/common.ts";
 import { findBattery, powerSupplyDir, readBattery } from "./producers/system.ts";
 import { SessionSummary, SUMMARY_MIN_MS } from "./summary.ts";
 import { Hardware, sanitizeSaved, type HwSaved } from "./sleep_hw.ts";
-import { HardwarePreview, hostIdOf, mergeSettings, parseSleepFile, SleepRun, sleepPreviewSchema, sleepPutSchema, sleepStartSchema, type SleepFile, type SleepSession } from "./sleep.ts";
+import { HardwarePreview, hostIdOf, mergeSettings, parsePlan, parseSleepFile, planOf, SleepRun, sleepAlarmSchema, sleepPreviewSchema, sleepPutSchema, sleepStartSchema, type AlarmAction, type SleepFile, type SleepPlan, type SleepSession } from "./sleep.ts";
+import { AlarmEffects, nextAlarm, type AlarmState } from "./sleep_alarm.ts";
+import { dispatchArgs } from "../hyprctl.ts";
+import { velourRequest, velourSocketPath, type VelourOp } from "../routes/velour.ts";
 import { leaderSource, LeaderGroup, MemberGroup, parseGroupMessage, type SleepGroup } from "./sleep_group.ts";
 
 export const UNIT = "tiphys-screen";
@@ -355,7 +363,7 @@ export interface DisplayOpts {
    * Sleep mode: the test-only time scale (default TIPHYS_SLEEP_SCALE, else 1; every phase length is divided by it),
    * where the LEDs are (default /sys/class/leds) and the clock (tests).
    */
-  sleep?: { scale?: number; ledsDir?: string; syncLog?: boolean; now?: () => number; setTimeout?: (fn: () => void, ms: number) => unknown; clearTimeout?: (h: unknown) => void };
+  sleep?: { scale?: number; ledsDir?: string; syncLog?: boolean; staleMs?: number; now?: () => number; setTimeout?: (fn: () => void, ms: number) => unknown; clearTimeout?: (h: unknown) => void };
   /** Test-only headless kiosk: a browser path (default TIPHYS_SCREEN_HEADLESS); null = the real kiosk. */
   headless?: string | null;
 }
@@ -408,7 +416,7 @@ export class ScreenDisplay {
   readonly #feed: FeedProducer | null;
   readonly #o: {
     backoff: number[]; idleMs: number; watchMs: number; maxBuffered: number; visibility: VisibilityOpts; summaryMinMs: number; power: { dir: string; everyMs: number; io: FileIo };
-    sleep: { scale: number; ledsDir: string; syncLog: boolean; now?: () => number; setTimeout?: (fn: () => void, ms: number) => unknown; clearTimeout?: (h: unknown) => void };
+    sleep: { scale: number; ledsDir: string; syncLog: boolean; staleMs?: number; now?: () => number; setTimeout?: (fn: () => void, ms: number) => unknown; clearTimeout?: (h: unknown) => void };
     headless: string | null;
   };
   readonly #names: Names;
@@ -444,6 +452,10 @@ export class ScreenDisplay {
   #preview: HardwarePreview | null = null;
   /** Sleep group (S3): the leader's peers or a member's link; null alone. */
   #group: SleepGroup | null = null;
+  /** The sleep run's alarm effects (S4). */
+  #alarm: AlarmEffects | null = null;
+  /** Last kiosk relaunch (sleep: a dead kiosk is relaunched at sunrise/ring, at most once a minute). */
+  #relaunchedAt = 0;
   /** Sessions stopped by a user (here or relayed): session id → when (memory only). */
   readonly #ended = new Map<string, number>();
 
@@ -666,15 +678,18 @@ export class ScreenDisplay {
         await writeFile(startFile, startHtml(`${this.#pageBase()}#t=${token}`), { mode: 0o600 });
         // Show the empty named workspace first: Firefox maps straight onto it (no flash of the old workspace).
         if (placement === "fullscreen" && !headless) await this.#hypr(env, focusWorkspaceArgs(state.hypr!, `name:${state.ws}`)).catch(() => {});
-        const profile = join(this.workDir, "profile");
-        const args = headless ? headlessArgs({ browser: headless, profile, url: `file://${startFile}` }) : kioskArgs({ firefox, profile, url: `file://${startFile}`, env });
-        const r = await this.#io.exec("systemd-run", args, { env, timeoutMs: 15_000, allowFail: true });
+        const r = await this.#io.exec("systemd-run", this.#kioskArgs(firefox, env), { env, timeoutMs: 15_000, allowFail: true });
         if (r.code !== 0) throw new AppError("agent.screen.startFailed", 502, { stderr: r.stderr.slice(0, 300) });
         if (sleep) {
-          this.#sleep = await SleepRun.begin(this.#sleepDeps(env), sleep.session, sleep.me, this.#o.sleep.scale);
+          // The plan first (the session's, from the leader, else from this host's settings): the alarm effects read it.
+          const plan = sleep.session.plan ?? planOf(sleep.session.t0, this.#cfg.modes.sleep, this.#o.sleep.scale);
+          this.#alarm = this.#alarmEffects(env, () => this.#sleep?.file.plan ?? plan);
+          this.#sleep = await SleepRun.begin(this.#sleepDeps(env), { ...sleep.session, plan }, sleep.me, this.#o.sleep.scale);
           this.#group = this.#makeGroup(this.#sleep.file);
         }
       } catch (e) {
+        this.#alarm?.detach();
+        this.#alarm = null;
         this.#sleep?.detach();
         this.#sleep = null;
         this.#group?.close();
@@ -685,6 +700,13 @@ export class ScreenDisplay {
       this.#token = Buffer.from(token, "utf8");
       this.#shown = false;
       this.#began(state, null);
+  }
+
+  /** systemd-run arguments of the kiosk (its profile and start page in the work dir; also for a relaunch). */
+  #kioskArgs(firefox: string, env: NodeJS.ProcessEnv) {
+    const profile = join(this.workDir, "profile");
+    const url = `file://${join(this.workDir, "start.html")}`;
+    return this.#o.headless ? headlessArgs({ browser: this.#o.headless, profile, url }) : kioskArgs({ firefox, profile, url, env });
   }
 
   /** Hot switch: new layout on the page, subscriptions and backlight follow; Firefox stays. */
@@ -771,9 +793,13 @@ export class ScreenDisplay {
 
   async #stopNow(state: SavedState) {
     const sleep = this.#sleep;
+    const alarm = this.#alarm;
+    this.#alarm = null; // stopped below, not just detached by #let
     this.#let(4410, "stopped");
     await this.#focusSave;
-    // Sleep: every saved hardware value back first; its file then goes (the cleanup would restore it once more).
+    // Sleep: the alarm's sound off (WAV file gone, Velour back), every saved hardware value back; its file then goes
+    // (the cleanup would restore it once more).
+    if (alarm) await alarm.stop().catch((e) => this.#log("uyku alarmı durdurulamadı", e));
     if (sleep) {
       await sleep.stop().catch((e) => this.#log("uyku modu donanımı geri alınamadı", e));
       await rm(this.#sleepFile(), { force: true }).catch(() => {});
@@ -793,6 +819,8 @@ export class ScreenDisplay {
     this.#paused = false;
     this.#focus?.stop();
     this.#focus = null;
+    this.#alarm?.detach();
+    this.#alarm = null;
     this.#sleep?.detach();
     this.#sleep = null;
     this.#group?.close();
@@ -906,7 +934,9 @@ export class ScreenDisplay {
       // The run goes on from its file (its saved hardware values stay as they were at the start); unreadable → stop.
       const file = parseSleepFile(await readFile(this.#sleepFile(), "utf8").then((t) => JSON.parse(t) as unknown, () => null));
       if (!file) return false;
-      this.#sleep = SleepRun.adopt(this.#sleepDeps(await this.#env()), file);
+      const env = await this.#env();
+      this.#alarm = this.#alarmEffects(env, () => this.#sleep?.file.plan ?? file.plan);
+      this.#sleep = SleepRun.adopt(this.#sleepDeps(env), file);
       this.#group = this.#makeGroup(file);
     }
     let focus: FocusTimes | null = null;
@@ -925,7 +955,39 @@ export class ScreenDisplay {
     if (!this.#running) return;
     const r = await this.#io.exec("systemctl", ["--user", "is-active", `${this.#names.unit}.service`], { env: await this.#env(), timeoutMs: 5000, allowFail: true }).catch(() => null);
     // Firefox gone (closed or crashed): finish the stop so nothing is left behind (a sleep group goes on without us).
-    if (r && r.stdout.trim() !== "active" && r.stdout.trim() !== "activating") void this.stop(undefined, "local");
+    // Sleep goes on without its page (the alarm must ring: WAV fallback, relaunch at sunrise/ring; S4).
+    if (!r || r.stdout.trim() === "active" || r.stdout.trim() === "activating") return;
+    if (this.#running.mode === "sleep" && this.#sleep) return;
+    void this.stop(undefined, "local");
+  }
+
+  /** Sleep: the kiosk unit is gone (Firefox crashed or was closed) → start it again (same token and profile). */
+  async #relaunchKiosk() {
+    if (this.#running?.mode !== "sleep" || Date.now() - this.#relaunchedAt < 60_000) return;
+    this.#relaunchedAt = Date.now();
+    const env = this.#o.headless ? await this.#env() : { ...(await this.#io.waylandEnv()), ...(await this.#io.hyprEnv()), ...this.#io.busEnv() };
+    const unit = `${this.#names.unit}.service`;
+    const r = await this.#io.exec("systemctl", ["--user", "is-active", unit], { env, timeoutMs: 5000, allowFail: true });
+    if (r.stdout.trim() === "active" || r.stdout.trim() === "activating") return;
+    const firefox = this.#o.headless ?? ["firefox", "firefox-esr"].find((c) => this.#io.which(c));
+    if (!firefox || !this.#running) return;
+    await this.#io.exec("systemctl", ["--user", "reset-failed", unit], { env, timeoutMs: 5000, allowFail: true });
+    // A fresh profile: the crashed one would restore its old tab next to the new one (two pages, the visible one stale).
+    const profile = join(this.workDir, "profile");
+    await rm(profile, { recursive: true, force: true });
+    await mkdir(profile, { recursive: true, mode: 0o700 });
+    await writeFile(join(profile, "user.js"), userJs(), { mode: 0o600 });
+    const out = await this.#io.exec("systemd-run", this.#kioskArgs(firefox, env), { env, timeoutMs: 15_000, allowFail: true });
+    this.#log(out.code === 0 ? "uyku: kiosk yeniden açıldı" : "uyku: kiosk yeniden açılamadı");
+  }
+
+  /** Sleep: the kiosk window gets the keyboard focus (Space / Esc reach the page; Hyprland doesn't focus it itself). */
+  async #focusKiosk() {
+    const st = this.#running;
+    if (st?.mode !== "sleep" || !st.hypr || this.#o.headless) return;
+    const env = await this.#env();
+    const w = kioskWindow(await this.#hypr(env, ["-j", "clients"]).catch(() => ""));
+    if (w) await this.#hypr(env, dispatchArgs(st.hypr, [{ op: "focusWindow", address: w.address }])).catch((e) => this.#log("uyku: kiosk penceresi odaklanamadı", e));
   }
 
   /** Agent exit: a restart leaves the mode for the next agent (adopted in recover()); any other exit stops it. */
@@ -1067,8 +1129,16 @@ export class ScreenDisplay {
       onStop: () => void this.#serial(async () => {
         if (this.#running?.mode === "sleep" && this.#sleep?.file.session.id === s.id) await this.#stopInner(undefined, "group");
       }),
-      // snooze / dismiss / phase: the alarm's (S4); S3 carries them only.
-      onEvent: () => {},
+      // snooze / dismiss from another member: the same `at` here (phase: informational, the plan says it already).
+      onEvent: (action: string, at: number | null) => {
+        if (action === "snooze" || action === "dismiss") this.#sleep?.alarm(action, at ?? Date.now());
+      },
+      // Leader: its plan rides on hello/members. Member: the leader's plan merged with ours (a missed snooze/dismiss).
+      plan: () => this.#sleep?.file.plan,
+      onPlan: (raw: unknown) => {
+        const p = parsePlan(raw);
+        if (p) this.#sleep?.setPlan(p);
+      },
       log: this.#log,
       ...this.#clock(),
     };
@@ -1130,8 +1200,60 @@ export class ScreenDisplay {
       },
       storeBus: this.#storeBus,
       log: this.#log,
+      onAlarm: (t: Parameters<AlarmEffects["on"]>[0]) => {
+        if (t.kind === "ring") void this.#focusKiosk().catch(() => {});
+        this.#alarm?.on(t);
+      },
+      alarmGain: () => this.#alarm?.gain() ?? 1,
+      onEnd: () => {
+        const id = this.#sleep?.file.session.id;
+        // Each member reaches the same end by its own clock: no relay; a late hello still hears `stop`.
+        void this.#serial(async () => {
+          if (this.#running?.mode === "sleep" && this.#sleep?.file.session.id === id) await this.#stopInner(undefined, "group");
+        });
+      },
       ...this.#clock(),
     };
+  }
+
+  /** The run's alarm effects: push (leader), events, `once`, Velour (leader), WAV fallback, kiosk relaunch. */
+  #alarmEffects(env: NodeJS.ProcessEnv, plan: () => SleepPlan) {
+    const headless = this.#o.headless !== null;
+    const wavFile = join(this.workDir, "alarm.wav");
+    const name = () => this.#ctx.store.get().name;
+    return new AlarmEffects({
+      plan,
+      role: () => (this.#group instanceof MemberGroup ? "member" : "leader"),
+      linkUp: () => (this.#group instanceof MemberGroup ? this.#group.status().link === "ok" : true),
+      settings: () => this.#cfg.modes.sleep,
+      push: (state: AlarmState, params: Record<string, number>, high: boolean) => {
+        const session = this.#sleep?.file.session.id ?? "";
+        void this.#ctx.notifier.send({ key: "sleep.alarm", params: { state, ...params }, data: { agent: name(), session }, priority: high ? "high" : "default", transient: true }).catch((e) => this.#log("uyku alarmı bildirimi gönderilemedi", e));
+      },
+      record: (state) => this.#event("sleep.alarm", undefined, { state }),
+      disableOnce: () => void this.#ctx.store.update((c) => ((c.screen.modes.sleep.alarm.enabled = false), c)).catch((e) => this.#log("tek seferlik alarm kapatılamadı", e)),
+      heartbeatAge: () => this.#sleep?.heartbeatAge() ?? Infinity,
+      ...(this.#o.sleep.staleMs !== undefined ? { staleMs: this.#o.sleep.staleMs } : {}),
+      restartKiosk: () => this.#relaunchKiosk(),
+      gainChanged: () => this.#sleep?.alarmGainChanged(),
+      // Never a sound from the headless test kiosk's agent (a desktop running a test leader).
+      wav: headless || !this.#io.which("pw-play") ? null : {
+        write: (bytes) => writeFile(wavFile, bytes, { mode: 0o600 }),
+        play: async (volume) => (await this.#io.exec("pw-play", ["--volume", String(volume), wavFile], { env, timeoutMs: 15_000, allowFail: true })).code === 0,
+        remove: () => rm(wavFile, { force: true }),
+      },
+      velour: headless ? null : (op) => velourRequest(velourSocketPath({ XDG_RUNTIME_DIR: this.#io.runtimeDir }), op as VelourOp),
+      velourSaved: {
+        get: () => this.#sleep?.file.velour ?? null,
+        set: (v) => {
+          if (!this.#sleep) return;
+          this.#sleep.file.velour = v;
+          void this.#sleep.persist();
+        },
+      },
+      log: this.#log,
+      ...this.#clock(),
+    });
   }
 
   #previewFile = () => join(this.#io.runtimeDir, PREVIEW_FILE);
@@ -1176,8 +1298,8 @@ export class ScreenDisplay {
       phase: r?.phase ?? null,
       phaseStartedAt: r?.phaseStartedAt ?? null,
       phaseEndsAt: r?.phaseEndsAt ?? null,
-      // S4: the alarm; S3: the other members.
-      alarm: { next: null, ringing: false, snoozedUntil: null },
+      // S4: the run's alarm (off: the next one the settings would ring, if the mode were started now).
+      alarm: r ? { ...r.alarm, gain: this.#alarm?.gain() ?? 1, fallback: this.#alarm?.wavActive ?? false } : this.#idleAlarm(),
       members: g?.members ?? alone ?? [{ host: hostIdOf(name), state: "off" }],
       // S3: the group link, clock offset and `agent.sleep.memberDown` (null alone or off).
       group: g ? { role: g.role, link: g.link, offsetMs: g.offsetMs, appliedOffsetMs: g.appliedOffsetMs, rttMs: g.rttMs, syncedAt: g.syncedAt, error: g.error } : null,
@@ -1241,9 +1363,29 @@ export class ScreenDisplay {
     });
   }
 
+  #idleAlarm() {
+    const a = this.#cfg.modes.sleep.alarm;
+    return { next: a.enabled ? nextAlarm(a, Date.now()) : null, sunriseAt: null, ringing: false, silenced: false, snoozedUntil: null, snoozes: 0, dismissedAt: null, gain: 1, fallback: false };
+  }
+
+  /**
+   * POST /v1/sleep/alarm and the page's keys: snooze or dismiss now (this host's view of the shared clock), on this
+   * host and on the rest of the group. Not running → 409 agent.screen.notRunning; nothing to snooze/dismiss now →
+   * 409 agent.sleep.notRinging.
+   */
+  alarmAction(action: AlarmAction) {
+    const run = this.#sleep;
+    if (!run || this.#running?.mode !== "sleep") throw new AppError("agent.screen.notRunning", 409);
+    const at = Date.now() + (this.#group instanceof MemberGroup ? this.#group.applied : 0);
+    if (!run.alarm(action, at)) throw new AppError("agent.sleep.notRinging", 409, { phase: run.status().phase });
+    this.#group?.user(action, { at });
+    return this.sleepStatus();
+  }
+
   /** The kiosk page's heartbeat (every 10 s while the sleep view runs). */
   heartbeat() {
     this.#sleep?.heartbeat();
+    this.#alarm?.heartbeat();
   }
 
   // ---- privacy veil (W5) ----
@@ -1606,6 +1748,7 @@ export class ScreenDisplay {
     if (this.#paused) sock.send(JSON.stringify({ type: "pause" }));
     if (this.#saver) sock.send(this.#powerMsg());
     void this.#showScratch().catch(() => {});
+    if (st.mode === "sleep") void this.#focusKiosk().catch(() => {});
   }
 
   removePage(sock: Sock) {
@@ -1827,12 +1970,13 @@ export async function displayRoutes(app: FastifyInstance, ctx: Ctx, o: DisplayOp
   });
   app.post("/v1/screen/veil", async (req) => display.setVeil(z.strictObject({ on: z.boolean() }).parse(req.body).on));
 
-  // Sleep mode (PLAN.md §21 Sözleşme; S2: this host alone).
+  // Sleep mode (PLAN.md §21 Sözleşme; S2: this host alone, S3: the group, S4: the alarm).
   app.get("/v1/sleep", async () => display.sleepStatus());
   app.put("/v1/sleep", async (req) => display.updateSleep(sleepPutSchema.parse(req.body).settings));
   app.post("/v1/sleep/start", async (req) => display.startSleep(sleepStartSchema.parse(req.body ?? {}).session, req.device?.id));
   app.post("/v1/sleep/stop", async (req) => display.stopSleep(req.device?.id));
   app.post("/v1/sleep/preview", async (req) => display.previewSleep(sleepPreviewSchema.parse(req.body).brightness));
+  app.post("/v1/sleep/alarm", async (req) => display.alarmAction(sleepAlarmSchema.parse(req.body).action));
 
   // /v1/gamemode: the 0.5 routes for app 1.2, one release; the old error codes and shapes.
   const legacy = <T>(p: () => Promise<T>) => p().catch((e) => Promise.reject(legacyError(e)));
@@ -1866,8 +2010,13 @@ export async function displayRoutes(app: FastifyInstance, ctx: Ctx, o: DisplayOp
         socket.on("message", (d: Buffer) => {
           if (d.length > 2048) return;
           try {
-            const m = JSON.parse(d.toString()) as { type?: unknown; lines?: unknown };
+            const m = JSON.parse(d.toString()) as { type?: unknown; lines?: unknown; action?: unknown };
             if (m?.type === "stop") void display.stop().catch(() => {});
+            else if (m?.type === "alarm" && (m.action === "snooze" || m.action === "dismiss")) {
+              try {
+                display.alarmAction(m.action);
+              } catch {} // not ringing any more (e.g. the phone was first)
+            }
             else if (m?.type === "heartbeat") display.heartbeat();
             else if (m?.type === "syncLog") display.syncLog(m.lines);
           } catch {}

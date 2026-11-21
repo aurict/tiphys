@@ -395,7 +395,7 @@ describe("sleep group: two agents", () => {
     await until(async () => !(await leader.sleep()).running);
     await until(async () => !(await member.sleep()).running);
     for (const h of [leader, member]) {
-      expect(existsSync(join(h.runtime, "tiphys-screen"))).toBe(false);
+      await until(() => !existsSync(join(h.runtime, "tiphys-screen"))); // the stop finishes after `running` is false
       await until(async () => (await h.events()).length === 2);
       expect(await h.events()).toEqual(["sleep.started", "sleep.stopped"]);
     }
@@ -462,6 +462,47 @@ describe("sleep group: two agents", () => {
     expect((await again.sleep()).session.id).toBe(s.id);
     await again.req("POST", "/v1/sleep/stop");
     await until(async () => !(await leader.sleep()).running);
+  });
+});
+
+describe("sleep group: the alarm (S4)", () => {
+  it("the leader's plan reaches a member started without one; both ring; snooze on the leader's API → both snoozed; the member page's dismiss → both morning → both end; one push per transition, from the leader", async () => {
+    const leader = await host("theloth");
+    const member = await host("laptop", { leader });
+    const s = groupSession();
+    const R = s.t0 + 900;
+    const plan = {
+      t0: s.t0, settleMs: 20, fadeMs: 20, soundFadeMs: 20, nightSound: "hum", sunriseAt: R - 100, ringAt: R, rampMs: 200, alarmSound: "birds",
+      snoozeMs: 400, autoStopMs: 60_000, morningMs: 300, snoozes: [], dismissedAt: null,
+    };
+    const started = (await leader.req("POST", "/v1/sleep/start", { session: { ...s, plan } })).json();
+    expect(started.session.plan).toMatchObject({ ringAt: R });
+    // The S3 shape on the member (an old phone): its own plan (no alarm here), then the leader's through hello.
+    expect((await member.req("POST", "/v1/sleep/start", { session: s })).json().session.plan.ringAt).toBeNull();
+    await until(async () => (await member.sleep()).session.plan.ringAt === R);
+    const p = await member.page();
+    await until(() => p.got.some((x) => x.type === "sleep" && x.plan.ringAt === R));
+    await until(async () => (await leader.sleep()).phase === "ring" && (await member.sleep()).phase === "ring");
+    const pushes = (h: typeof leader) => (h.sent as Array<{ key: string; params: { state: string } }>).filter((n) => n.key === "sleep.alarm").map((n) => n.params.state);
+    expect(pushes(leader)).toEqual(["ringing"]);
+    expect(pushes(member)).toEqual([]);
+    expect((await leader.req("POST", "/v1/sleep/alarm", { action: "snooze" })).json()).toMatchObject({ phase: "snoozed" });
+    await until(async () => (await member.sleep()).phase === "snoozed");
+    const [ls, ms] = [await leader.sleep(), await member.sleep()];
+    expect(ms.session.plan.snoozes).toEqual(ls.session.plan.snoozes); // the same moment on both
+    expect(ms.alarm.snoozedUntil).toBe(ls.alarm.snoozedUntil);
+    await until(async () => (await leader.sleep()).phase === "ring" && (await member.sleep()).phase === "ring");
+    // The laptop's Esc hold while it rings: both dismissed → morning → the mode ends on both by itself.
+    p.ws.send(JSON.stringify({ type: "alarm", action: "dismiss" }));
+    await until(async () => (await leader.sleep()).phase === "morning");
+    expect((await leader.sleep()).session.plan.dismissedAt).toBe((await member.sleep()).session.plan.dismissedAt);
+    await until(async () => !(await leader.sleep()).running && !(await member.sleep()).running);
+    expect(pushes(leader)).toEqual(["ringing", "snoozed", "ringing", "dismissed"]);
+    expect(pushes(member)).toEqual([]);
+    for (const h of [leader, member]) {
+      await until(async () => (await h.events()).includes("sleep.stopped"));
+      expect((await h.events()).filter((k) => k === "sleep.alarm")).toHaveLength(3); // rang, rang, dismissed
+    }
   });
 });
 

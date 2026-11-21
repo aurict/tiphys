@@ -4,9 +4,11 @@
 // Channel: each non-leader member's EXISTING source connection to the leader (WS /v1/screen/feed, scope screen),
 // both directions; the leader never connects to a member. Messages (JSON, small):
 //   member → leader  {type:"sleepGroup", sessionId, action:"hello"|"state", host}          (state: every 5 s, keepalive)
-//   leader → member  {type:"sleepGroup", sessionId, action:"hello"|"members", host, members:[{host, state}]}
+//   leader → member  {type:"sleepGroup", sessionId, action:"hello"|"members", host, members:[{host, state}], plan}
+//                    (plan, S4: the group's plan with its snoozes/dismiss; a member merges it with its own)
 //                    {type:"sleepGroup", sessionId, action:"unknown"}  (the leader doesn't run this session)
 //   both ways        {type:"sleepGroup", sessionId, action:"stop"|"snooze"|"dismiss"|"phase", host, at[, phase]}
+//                    (snooze/dismiss, S4: `at` is the moment on the sender's clock; every member applies the same `at`)
 //   member → leader  {type:"clockPing", t}  →  leader → member {type:"clockPong", t, peer}   (source.ts answers at once)
 // A user stop (API or the page's Esc hold) on any member stops the group: the leader relays it to every other member,
 // and answers a late hello of a session it stopped that way with `stop` (memory only). A member that loses the link
@@ -64,6 +66,8 @@ export interface GroupMsg {
   at: number | null;
   phase: string | null;
   members: Array<{ host: string; state: MemberState }>;
+  /** The leader's plan (unvalidated here: sleep.ts parsePlan), or undefined. */
+  plan: unknown;
 }
 
 /** A received `sleepGroup` message → validated fields, or null. */
@@ -88,6 +92,7 @@ export function parseGroupMessage(v: unknown): GroupMsg | null {
     at: typeof m.at === "number" && Number.isFinite(m.at) ? m.at : null,
     phase: typeof m.phase === "string" && /^[a-z]{1,16}$/.test(m.phase) ? m.phase : null,
     members,
+    plan: m.plan,
   };
 }
 
@@ -109,6 +114,9 @@ export interface GroupDeps extends GroupClock {
   /** A user event from another member: stop this host (no relay back), or snooze/dismiss/phase (S4). */
   onStop: (from: string) => void;
   onEvent?: (action: Exclude<UserAction, "stop">, at: number | null, from: string) => void;
+  /** Leader: the plan to send with hello/members. Member: the leader's plan arrived (raw). */
+  plan?: () => unknown;
+  onPlan?: (raw: unknown) => void;
   /** The page's offset changed (member only). */
   onOffset?: (appliedMs: number) => void;
   log?: (msg: string, err?: unknown) => void;
@@ -195,8 +203,9 @@ export class LeaderGroup extends GroupBase {
     const t = this.now();
     this.#peers.set(sock, { host: m.host, seen: t });
     this.#seen.set(m.host, t);
-    if (m.action === "hello") return void sock.send(JSON.stringify(this.msg("hello", { members: this.#members() })));
-    if (m.action === "state") return void sock.send(JSON.stringify(this.msg("members", { members: this.#members() })));
+    const plan = this.d.plan?.();
+    if (m.action === "hello") return void sock.send(JSON.stringify(this.msg("hello", { members: this.#members(), ...(plan ? { plan } : {}) })));
+    if (m.action === "state") return void sock.send(JSON.stringify(this.msg("members", { members: this.#members(), ...(plan ? { plan } : {}) })));
     if ((USER_ACTIONS as readonly string[]).includes(m.action)) {
       // Relay to the other members first, then act on it here.
       this.#broadcast(JSON.stringify({ type: "sleepGroup", sessionId: m.sessionId, action: m.action, host: m.host, at: m.at, ...(m.phase ? { phase: m.phase } : {}) }), sock);
@@ -323,6 +332,7 @@ export class MemberGroup extends GroupBase {
       this.#acked = true;
       this.#leader = "running";
       this.#others = new Map(m.members.filter((x) => x.host !== this.d.me && x.host !== this.d.session.leader).map((x) => [x.host, x.state]));
+      if (m.plan !== undefined) this.d.onPlan?.(m.plan);
       if (first) this.#burst();
       return;
     }
