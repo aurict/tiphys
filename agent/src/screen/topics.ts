@@ -1,11 +1,11 @@
 // Screen feed topics (PLAN.md §20 "Konular ve üreticiler"): what a source agent produces, what each kiosk card needs
 // and which layouts are valid. The display agent sums the topics of the active layout's cards per source and sends
 // each source only those (`{type:"subscribe", topics}`); a producer runs only while a subscriber wants its topic.
-// W2 adds the Work mode state topics (system, jobs, git, servers), W3 the city; W4 adds claude and diff.
-import type { CardKind, GameSettings, Layout, ModeSettings, ScreenMode } from "../config.ts";
+// W2 adds the Work mode state topics (system, jobs, git, servers), W3 the city, W4 claude and diff (with the city card).
+import type { CardKind, GameSettings, Layout, ModeSettings, ScreenMode, WorkSettings } from "../config.ts";
 import { AppError } from "../errors.ts";
 
-export const TOPICS = ["music", "spectrum", "truck", "system", "jobs", "git", "servers", "city"] as const;
+export const TOPICS = ["music", "spectrum", "truck", "system", "jobs", "git", "servers", "city", "claude", "diff"] as const;
 export type Topic = (typeof TOPICS)[number];
 
 /** A token with only the older "gamemode" scope gets these (PLAN.md §20 A-1). */
@@ -19,13 +19,15 @@ export const MESSAGE_TOPIC: Readonly<Record<string, Topic>> = {
   music: "music", lyrics: "music", truck: "truck", event: "truck",
   system: "system", jobs: "jobs", jobDone: "jobs", git: "git", servers: "servers",
   city: "city", cityPatch: "city", touch: "city", commit: "city",
+  claude: "claude", diff: "diff", diffResolved: "diff",
 };
 
 /**
  * Message types that are a topic's whole current state (replayed to a new page or layout); the rest are events.
- * `cityPatch` is folded into the latest `city` by the display agent (display.ts), so the replayed city is current.
+ * `cityPatch` is folded into the latest `city` by the display agent (display.ts), so the replayed city is current;
+ * pending `diff`s are kept per request until their `diffResolved` (or a `claude` state without that request).
  */
-export const STATE_TYPES: ReadonlySet<string> = new Set(["music", "lyrics", "truck", "system", "jobs", "git", "servers", "city"]);
+export const STATE_TYPES: ReadonlySet<string> = new Set(["music", "lyrics", "truck", "system", "jobs", "git", "servers", "city", "claude"]);
 
 /** Templates per mode and the card kinds each one can hold (anything else: 400 agent.screen.badLayout). */
 export const TEMPLATES: Readonly<Record<ScreenMode, Readonly<Record<string, readonly CardKind[]>>>> = {
@@ -58,8 +60,10 @@ export function cardTopics(mode: ScreenMode, kind: CardKind, settings: ModeSetti
     case "jobs":
     case "git":
     case "servers":
-    case "city":
       return [kind];
+    case "city":
+      // The brain lives on the city; the diff card replaces it while a permission waits (work.diff, default on).
+      return mode === "work" && (settings as WorkSettings).diff === false ? ["city", "claude"] : ["city", "claude", "diff"];
     default:
       return [];
   }

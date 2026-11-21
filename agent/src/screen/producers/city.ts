@@ -243,6 +243,8 @@ export class CityWatch {
   readonly socks = new Set<Sock>();
   /** Called when a working tree file changed (the git topic refreshes its status). */
   onWorktree: (() => void) | null = null;
+  /** Who changed a file (a Claude session's short id from the claude topic), for `touch.by`; null = unknown. */
+  by: ((rel: string) => string | null) | null = null;
   readonly #io: CityIo;
   readonly #send: (data: string) => void;
   readonly #o: Required<CityWatchOpts>;
@@ -307,6 +309,19 @@ export class CityWatch {
 
   #out(p: string) {
     return this.#key ? maskPath(this.#key, p) : p;
+  }
+
+  /** Whether names leave masked (the host didn't share code when the city started). */
+  get masked() {
+    return this.#key !== null;
+  }
+
+  /**
+   * A root-relative file path as this city names it (the claude topic's paths hit the same building): masked with
+   * this city's key, and at folder level its folder's building.
+   */
+  pathOf(rel: string): string {
+    return this.#out(this.#truncated && this.#depth ? groupKey(rel, this.#depth) : rel);
   }
 
   /** The whole current city (sent to a new subscriber). */
@@ -602,7 +617,8 @@ export class CityWatch {
       if (this.#lastTouch.has(p) || this.#inSecond >= this.#o.touchesPerSec) continue;
       this.#lastTouch.set(p, now);
       this.#inSecond++;
-      this.#send(JSON.stringify({ type: "touch", path: this.#out(p), kind, by: null }));
+      const by = kind !== "delete" && !this.#truncated ? (this.by?.(p) ?? null) : null;
+      this.#send(JSON.stringify({ type: "touch", path: this.#out(p), kind, by }));
     }
     this.onWorktree?.();
   }

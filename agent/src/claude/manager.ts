@@ -194,6 +194,8 @@ export class LiveSession {
   options: Options | null = null;
   readonly pending = new Map<string, (r: PermissionResult) => void>();
   readonly listeners = new Set<(e: ClaudeEvent) => void>();
+  /** The manager's observers (screen feed's `claude`/`diff` topics); kept apart from the phone's listeners. */
+  onEvent: ((e: ClaudeEvent) => void) | null = null;
   /** Recently received message ids (to filter out resends; at most 200). */
   readonly seenClientIds = new Set<string>();
   kind: SessionKind = "code";
@@ -228,6 +230,7 @@ export class LiveSession {
     }
     this.lastActivity = Date.now();
     for (const l of this.listeners) l(e);
+    this.onEvent?.(e);
   }
 
   /** History events from the on-disk transcript (on restore). */
@@ -382,6 +385,11 @@ export function translate(s: LiveSession, m: SDKMessage) {
 
 export class ClaudeManager {
   readonly sessions = new Map<string, LiveSession>();
+  /**
+   * Every event of every session (the screen feed's claude/diff topics, PLAN.md §20 A-2). A new session shows up with
+   * its first status event; a closed one ends with status "stopped".
+   */
+  readonly observers = new Set<(s: LiveSession, e: ClaudeEvent) => void>();
   #getConfig: () => AgentConfig;
   #notifier: Notifier;
   #query: QueryFn;
@@ -600,6 +608,9 @@ export class ClaudeManager {
     const mode = pc ? "default" : (req.permissionMode ?? "default");
     const s = new LiveSession(req.cwd, req.profileId, req.model ?? "", mode, title, id);
     s.effort = req.effort;
+    s.onEvent = (e) => {
+      for (const o of this.observers) o(s, e);
+    };
     if (pc) return this.#createPc(s, req);
     if (sec) return this.#createSecurity(s, req, sec);
     const canUseTool: CanUseTool = (toolName, input, opts) => this.#ask(s, toolName, input, opts.decisionReason ?? null, opts.signal);

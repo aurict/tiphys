@@ -31,6 +31,7 @@ const until = async (f: () => boolean, ms = 3000) => {
     await new Promise((r) => setTimeout(r, 10));
   }
 };
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
 // ---------------------------------------------------------------- migration
 
@@ -111,8 +112,10 @@ describe("topics and layouts", () => {
     expect([...layoutTopics("game", split, gs).entries()].map(([k, v]) => [k, [...v]])).toEqual([["argo", ["truck"]], ["self", ["truck", "music", "spectrum"]]]);
     // Work (W2, W3): the topics of its cards; hidden → no system gauge (the city keeps its state).
     const { layout: wl, ...ws } = c.work;
-    expect([...layoutTopics("work", wl, ws).get("self")!]).toEqual(["city", "system", "jobs", "git", "music", "servers"]);
-    expect([...layoutTopics("work", wl, ws, true).get("self")!]).toEqual(["city", "jobs", "git", "music", "servers"]);
+    expect([...layoutTopics("work", wl, ws).get("self")!]).toEqual(["city", "claude", "diff", "system", "jobs", "git", "music", "servers"]);
+    expect([...layoutTopics("work", wl, ws, true).get("self")!]).toEqual(["city", "claude", "diff", "jobs", "git", "music", "servers"]);
+    // W4: the brain comes with the city; the diff card only with work.diff on (the display side's switch).
+    expect([...layoutTopics("work", wl, { ...ws, diff: false }).get("self")!]).toEqual(["city", "claude", "system", "jobs", "git", "music", "servers"]);
   });
 
   it("checkLayout and parseTopics", () => {
@@ -231,6 +234,12 @@ function fakeProducers(): Producers {
       },
       resolve: async () => ({ none: "notRepo" }),
     },
+    claude: {
+      manager: () => null,
+      configDirs: () => [],
+      io: { session: async () => null, list: async () => [], watch: () => null, transcript: async () => null, stat: async () => null, range: async () => null, text: async () => null },
+      share: () => false,
+    },
   };
 }
 
@@ -333,14 +342,18 @@ describe("screen feed", () => {
     expect(feed.producing).toEqual(["truck"]);
     ws.send(JSON.stringify({ type: "subscribe", topics: ["music"] }));
     await until(() => feed.producing.join() === "music");
+    ws.send(JSON.stringify({ type: "subscribe", topics: ["claude", "diff"] }));
+    await until(() => feed.producing.join() === "claude,diff");
     ws.send(JSON.stringify({ type: "subscribe", topics: [] }));
     await until(() => !feed.running);
     ws.terminate();
     await until(() => feed.subscribers === 0);
     // The older scope: only music/spectrum/truck, also on the new feed (W2 topics would be dropped).
     const gm = await t.app.injectWS("/v1/screen/feed", { headers: { authorization: `Bearer ${gmTok}` } });
-    gm.send(JSON.stringify({ type: "subscribe", topics: ["truck"] }));
+    gm.send(JSON.stringify({ type: "subscribe", topics: ["truck", "claude", "diff", "city"] }));
     await until(() => feed.producing.join() === "truck");
+    await sleep(50);
+    expect(feed.producing).toEqual(["truck"]); // W4: no brain or diff for the old scope
     gm.terminate();
     await until(() => !feed.running);
   });
@@ -354,7 +367,7 @@ describe("screen display", () => {
     const feed = t.feed();
     const s = await t.req("POST", "/v1/screen/start", { mode: "work" });
     expect(s.statusCode).toBe(200);
-    expect(s.json()).toMatchObject({ running: true, mode: "work", placement: "fullscreen", sources: [{ name: "self", state: "ok", topics: ["city", "git", "jobs", "music", "servers", "system"] }] });
+    expect(s.json()).toMatchObject({ running: true, mode: "work", placement: "fullscreen", sources: [{ name: "self", state: "ok", topics: ["city", "claude", "diff", "git", "jobs", "music", "servers", "system"] }] });
     expect(t.hypr()).toContain("keyword windowrule[tiphys-screen]:workspace name:is");
     expect(t.hypr()).toContain("dispatch workspace name:is");
     await until(() => ["system", "jobs", "servers", "git"].every((x) => feed.producing.includes(x as never)));
@@ -433,7 +446,7 @@ describe("screen display", () => {
     await t.req("POST", "/v1/screen/start", { mode: "work" });
     const up = t.ups[0]!;
     up.open();
-    expect(JSON.parse(up.sent[0]!)).toEqual({ type: "subscribe", topics: ["city"], project: "/home/u/p", ci: false });
+    expect(JSON.parse(up.sent[0]!)).toEqual({ type: "subscribe", topics: ["city", "claude", "diff"], project: "/home/u/p", ci: false });
     const p = await t.page();
     // ~1.6 MB: over the 1 MB limit of other messages.
     const files = Array.from({ length: 20_000 }, (_, i) => [`packages/module-${i % 50}/src/some/deeper/folder/file-${i}.ts`, i % 300, "code"]);
@@ -452,6 +465,21 @@ describe("screen display", () => {
     expect(got.get(files[0]![0] as string)).toBe(999);
     expect(got.has(files[1]![0] as string)).toBe(false);
     expect(q.msgs().some((m) => m.type === "touch" || m.type === "cityPatch")).toBe(false);
+    // W4: pending diffs are replayed to a new page until resolved or no longer pending in the claude state.
+    const sess = (pending: string[]) => ({ type: "claude", sessions: [{ id: "s1", name: "n", project: "p", status: "waiting", origin: "tiphys", recent: [], waiting: null, pending }] });
+    up.onmessage!({ data: JSON.stringify(sess(["r1", "r2"])) });
+    up.onmessage!({ data: JSON.stringify({ type: "diff", sessionId: "s1", requestId: "r1", tool: "Bash", command: "ls", reason: null }) });
+    up.onmessage!({ data: JSON.stringify({ type: "diff", sessionId: "s1", requestId: "r2", tool: "Bash", command: "pwd", reason: null }) });
+    up.onmessage!({ data: JSON.stringify({ type: "diffResolved", requestId: "r1", allow: false }) });
+    await until(() => p.msgs().some((m) => m.type === "diffResolved"));
+    const r = await t.page();
+    await until(() => r.msgs().some((m) => m.type === "claude"));
+    expect(r.msgs().filter((m) => m.type === "diff").map((m) => m.requestId)).toEqual(["r2"]);
+    up.onmessage!({ data: JSON.stringify(sess([])) });
+    await until(() => p.msgs().filter((m) => m.type === "claude").length === 2);
+    const r2 = await t.page();
+    await until(() => r2.msgs().some((m) => m.type === "claude"));
+    expect(r2.msgs().some((m) => m.type === "diff")).toBe(false);
     await t.req("POST", "/v1/screen/stop");
   });
 

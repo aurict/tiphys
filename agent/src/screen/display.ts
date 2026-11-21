@@ -929,6 +929,14 @@ export class ScreenDisplay {
       l.city.stale = true;
     }
     if (STATE_TYPES.has(msg.type)) l.raw.set(msg.type, tagged);
+    // Pending approval previews are replayed until resolved (or no longer pending in the source's claude state).
+    if (msg.type === "diff" && typeof msg.requestId === "string") l.raw.set(`diff:${msg.requestId}`, tagged);
+    else if (msg.type === "diffResolved") l.raw.delete(`diff:${String(msg.requestId)}`);
+    else if (msg.type === "claude") {
+      const open = new Set<string>();
+      for (const x of Array.isArray(msg.sessions) ? msg.sessions : []) for (const r of Array.isArray((x as Rec)?.pending) ? ((x as Rec).pending as unknown[]) : []) open.add(String(r));
+      for (const k of [...l.raw.keys()]) if (k.startsWith("diff:") && !open.has(k.slice(5))) l.raw.delete(k);
+    }
     this.#sendPages(tagged, msg.type === "truck");
   }
 

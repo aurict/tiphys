@@ -295,10 +295,12 @@ export async function resolveProject(config: AgentConfig, path: string): Promise
 /** Topics that follow the subscriber's project. */
 export type ProjectTopicName = "git" | "city";
 const PROJECT_TOPICS: readonly ProjectTopicName[] = ["git", "city"];
+/** "root": only the project root is wanted (the claude/diff topics place their paths with it); no watcher. */
+export type ProjectWant = ProjectTopicName | "root";
 
 interface Sub {
   spec: ProjectSpec;
-  want: Set<ProjectTopicName>;
+  want: Set<ProjectWant>;
   /** The resolved project (null: none, see `none`). */
   root: string | null;
   none: string | null;
@@ -324,6 +326,10 @@ export class GitTopic {
   readonly #subs = new Map<Sock, Sub>();
   readonly #watches = new Map<string, RootWatch>();
   #selector: Selector | null = null;
+  /** A subscriber's root was (re)assigned (the claude topic re-renders its paths). */
+  onRoot: ((sock: Sock) => void) | null = null;
+  /** Absolute path → the Claude session that just changed it (the city's `touch.by`). */
+  attribute: ((abs: string) => string | null) | null = null;
 
   constructor(d: GitTopicDeps) {
     this.#d = d;
@@ -351,10 +357,16 @@ export class GitTopic {
     return this.#watches.get(root)?.city ?? null;
   }
 
+  /** The subscriber's resolved root (undefined: not resolved yet or not subscribed; null: no project). */
+  rootOf(sock: Sock): string | null | undefined {
+    const s = this.#subs.get(sock);
+    return s?.resolved ? s.root : undefined;
+  }
+
   /** The subscriber's project and the project topics it wants (null or none = it wants neither any more). */
-  set(sock: Sock, spec: ProjectSpec | null, want: readonly ProjectTopicName[] = ["git"]) {
+  set(sock: Sock, spec: ProjectSpec | null, want: readonly ProjectWant[] = ["git"]) {
     const old = this.#subs.get(sock);
-    const w = new Set(want.filter((t) => t === "git" || (t === "city" && this.#d.city)));
+    const w = new Set(want.filter((t) => t === "git" || t === "root" || (t === "city" && this.#d.city)));
     if (!spec || !w.size) {
       if (!old) return;
       this.#subs.delete(sock);
@@ -416,10 +428,11 @@ export class GitTopic {
     sub.resolved = true;
     this.#place(sock, sub);
     if (root) this.#fitCi(root);
+    this.onRoot?.(sock);
   }
 
   /** Moves the subscriber's memberships to its root; `fresh` topics without a project get the "none" message. */
-  #place(sock: Sock, sub: Sub, fresh: ReadonlySet<ProjectTopicName> = sub.want) {
+  #place(sock: Sock, sub: Sub, fresh: ReadonlySet<ProjectWant> = sub.want) {
     for (const t of PROJECT_TOPICS) {
       const target = sub.want.has(t) ? sub.root : null;
       if (sub.at[t] !== target) {
@@ -463,6 +476,7 @@ export class GitTopic {
       for (const s of city.socks) send(s, data);
     }, { ...d.watch, masked: !d.share() });
     city.onWorktree = () => this.#watches.get(root)?.git?.poke();
+    city.by = (rel) => this.attribute?.(join(root, rel)) ?? null;
     e.city = city;
     city.socks.add(sock);
     e.git?.setWorktreeEvents(true);

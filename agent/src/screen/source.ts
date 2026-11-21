@@ -9,6 +9,8 @@
 // - system, jobs, servers: state producers (producers/*.ts), the latest message replayed to a new subscriber.
 // - git, city: per subscriber project (`project`, `ci` in the subscribe message), one watcher of each per git root
 //   (producers/git.ts, producers/city.ts); the city's working tree watchers also refresh the git status.
+// - claude, diff: one shared topic (producers/claude.ts) rendered per subscriber with its project root (from the git
+//   topic's selection) and that root's city path tokens; it names the session behind a city touch (`by`).
 // WS /v1/gamemode/feed is the 0.5 feed for one release: every Game mode topic at once, nothing accepted.
 // GET /v1/screen/game/source and POST /v1/screen/game/plugin (+ the /v1/gamemode/… aliases) are for the phone.
 import { spawn } from "node:child_process";
@@ -31,7 +33,8 @@ import type { Ctx } from "../server.ts";
 import { findGameDir, installPlugin, parseTelemetry, pluginStatus, removePlugin, TelemetryReader, TruckEvents, type Sample } from "./ets2.ts";
 import type { StateProducer } from "./producers/common.ts";
 import { realCityIo } from "./producers/city.ts";
-import { GitTopic, realGitIo, resolveProject, type GitTopicDeps, type ProjectTopicName } from "./producers/git.ts";
+import { ClaudeTopic, realClaudeIo, type ClaudeDeps, type ManagerLike } from "./producers/claude.ts";
+import { GitTopic, realGitIo, resolveProject, type GitTopicDeps, type ProjectTopicName, type ProjectWant } from "./producers/git.ts";
 import { JobsProducer } from "./producers/jobs.ts";
 import { parseProject, ProjectSelector, realSelectorIo, type ProjectSpec } from "./producers/project.ts";
 import { ServersProducer, type ServersState } from "./producers/servers.ts";
@@ -97,6 +100,7 @@ export type StateTopic = (typeof STATE_TOPICS)[number];
 export interface Producers {
   make: Record<StateTopic, () => StateProducer>;
   git: GitTopicDeps;
+  claude?: ClaudeDeps;
 }
 
 type Rec = Record<string, unknown>;
@@ -174,6 +178,7 @@ export class FeedProducer {
   /** Running state producers and their latest state message. */
   readonly #state = new Map<StateTopic, { p: StateProducer; last: string | null }>();
   readonly #git: GitTopic | null;
+  readonly #claude: ClaudeTopic | null;
   readonly #projects = new Map<Sock, ProjectSpec>();
   readonly #log: (msg: string, err?: unknown) => void;
   readonly #subs = new Map<Sock, Set<Topic>>();
@@ -200,6 +205,22 @@ export class FeedProducer {
     };
     this.#make = o.producers?.make ?? null;
     this.#git = o.producers ? new GitTopic(o.producers.git) : null;
+    const git = this.#git;
+    this.#claude =
+      git && o.producers?.claude
+        ? new ClaudeTopic(o.producers.claude, {
+            rootOf: (sock) => git.rootOf(sock),
+            cityOf: (root) => {
+              const c = git.cityOf(root);
+              return c ? { out: (rel) => c.pathOf(rel) } : null;
+            },
+          })
+        : null;
+    if (git && this.#claude) {
+      const claude = this.#claude;
+      git.onRoot = (sock) => claude.refresh(sock);
+      git.attribute = (abs) => claude.attribute(abs);
+    }
   }
 
   get subscribers() {
@@ -207,7 +228,7 @@ export class FeedProducer {
   }
 
   get running() {
-    return this.#music !== null || this.#truck !== null || this.#state.size > 0 || this.#git?.active === true;
+    return this.#music !== null || this.#truck !== null || this.#state.size > 0 || this.#git?.active === true || this.#claude?.active === true;
   }
 
   /** Topics with a running producer (tests). */
@@ -219,7 +240,14 @@ export class FeedProducer {
       ...STATE_TOPICS.filter((t) => this.#state.has(t)),
       ...(this.#git?.has("git") ? ["git" as const] : []),
       ...(this.#git?.has("city") ? ["city" as const] : []),
+      ...(this.#claude?.has("claude") ? ["claude" as const] : []),
+      ...(this.#claude?.has("diff") ? ["diff" as const] : []),
     ];
+  }
+
+  /** The claude and diff topics (tests). */
+  get claude() {
+    return this.#claude;
   }
 
   /** A running state producer (tests). */
@@ -255,8 +283,11 @@ export class FeedProducer {
       const last = this.#state.get(t)?.last;
       if (next.has(t) && !old.has(t) && last) sock.send(last);
     }
-    const proj = [...next].filter((t): t is ProjectTopicName => t === "git" || t === "city");
+    const brain = [...next].filter((t): t is "claude" | "diff" => (t === "claude" || t === "diff") && this.#claude !== null);
+    const proj: ProjectWant[] = [...next].filter((t): t is ProjectTopicName => t === "git" || t === "city");
+    if (brain.length) proj.push("root");
     this.#git?.set(sock, proj.length ? project : null, proj);
+    this.#claude?.set(sock, brain);
     return this.#apply();
   }
 
@@ -264,6 +295,7 @@ export class FeedProducer {
     if (!this.#subs.delete(sock)) return;
     this.#projects.delete(sock);
     this.#git?.set(sock, null);
+    this.#claude?.set(sock, []);
     await this.#apply();
   }
 
@@ -271,6 +303,7 @@ export class FeedProducer {
     this.#subs.clear();
     this.#projects.clear();
     this.#git?.stop();
+    this.#claude?.stop();
     await this.#apply();
   }
 
@@ -574,6 +607,13 @@ export function realProducers(ctx: Ctx): Producers {
           onChange,
         ),
       city: { io: realCityIo, share: () => ctx.store.get().screen.share.code },
+    },
+    claude: {
+      // The manager is registered with the claude feature (maybe later than the screen routes): read when it starts.
+      manager: () => (ctx.claude ?? null) as ManagerLike | null,
+      configDirs: () => [...new Set([claudeDir, ...Object.values(ctx.store.get().claude.profiles).map((d) => expandHome(d))])],
+      io: realClaudeIo(),
+      share: () => ctx.store.get().screen.share.code,
     },
   };
 }
