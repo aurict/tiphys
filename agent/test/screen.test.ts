@@ -498,6 +498,10 @@ describe("screen display", () => {
     const r2 = await t.page();
     await until(() => r2.msgs().some((m) => m.type === "claude"));
     expect(r2.msgs().some((m) => m.type === "diff")).toBe(false);
+    // W6: the phone's one-line summary counts sessions (waiting ones) and running jobs.
+    up.onmessage!({ data: JSON.stringify({ type: "claude", sessions: [{ id: "a", status: "waiting" }, { id: "b", status: "running" }] }) });
+    await until(() => p.msgs().filter((m) => m.type === "claude").length === 3);
+    expect((await t.req("GET", "/v1/screen")).json().live).toMatchObject({ claude: { sessions: 2, waiting: 1 }, jobs: 0 }); // jobs: the "self" source's (fake: none running)
     await t.req("POST", "/v1/screen/stop");
   });
 
@@ -648,14 +652,21 @@ describe("screen focus timer and privacy veil", () => {
     expect(notices.filter((n) => n.key === "screen.focus.phase").map((n) => [n.params.phase, n.params.from, n.params.cause])).toEqual([["focus", "idle", "action"], ["short", "focus", "action"]]);
     expect(JSON.stringify(notices)).not.toContain(TASK);
 
+    // W6: the push data (never recorded) tells the phone whether to quiet and when the phase ends.
+    const sentFull = t.sent as Array<{ key: string; params: Record<string, unknown>; data?: Record<string, string> }>;
+    expect(sentFull.filter((n) => n.key === "screen.focus.phase").map((n) => n.data?.quiet)).toEqual(["1", "1"]);
+    expect(Number(sentFull.find((n) => n.key === "screen.focus.phase")!.data!.endsAt)).toBe(s.endsAt);
     // Leaving Focus: the timer and its file are gone; back in Focus it starts idle.
     await t.req("POST", "/v1/screen/mode", { mode: "work" });
+    // A running timer that ends with the mode: one "stop" push (the phone ends its quiet).
+    expect(sentFull.filter((n) => n.key === "screen.focus.phase").at(-1)).toMatchObject({ params: { phase: "idle", from: "short", cause: "stop" }, data: { quiet: "1" } });
     await until(() => !existsSync(focusFile(t.runtime)));
     expect((await t.req("GET", "/v1/screen")).json().focus).toMatchObject({ phase: "idle", task: null });
     await t.req("POST", "/v1/screen/mode", { mode: "focus" });
     await t.req("POST", "/v1/screen/focus", { action: "start", task: TASK });
     await until(() => existsSync(focusFile(t.runtime)));
     await t.req("POST", "/v1/screen/stop");
+    expect(sentFull.filter((n) => n.key === "screen.focus.phase").at(-1)).toMatchObject({ params: { phase: "idle", from: "focus", cause: "stop" } });
     expect(await stat(join(t.runtime, "tiphys-screen")).catch(() => null)).toBeNull();
     // The task is nowhere on disk: config, events, audit, runtime dir.
     for (const dir of [t.dir, t.runtime]) {

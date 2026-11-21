@@ -282,6 +282,9 @@ type Rec = Record<string, unknown>;
 interface Latest {
   music: Rec | null;
   truck: Rec | null;
+  /** Counts for the phone's one-line summary (GET live): Claude sessions / waiting ones, running jobs. */
+  claude: { sessions: number; waiting: number } | null;
+  jobs: number | null;
   /** Latest tagged state message per type (STATE_TYPES), replayed to a new page or layout. */
   raw: Map<string, string>;
   /** The latest city with the patches since folded in (path → entry); `raw` "city" is rebuilt from it when stale. */
@@ -304,7 +307,7 @@ export interface DisplayOpts {
   visibility?: VisibilityOpts;
 }
 
-const emptyLatest = (): Latest => ({ music: null, truck: null, raw: new Map(), city: null });
+const emptyLatest = (): Latest => ({ music: null, truck: null, claude: null, jobs: null, raw: new Map(), city: null });
 /** A city snapshot may be large (20 000 files ≈ 1.5 MB); every other message stays under 1 MB. */
 const maxMessage = (data: string) => (data.startsWith('{"type":"city"') ? 16 * 1024 * 1024 : 1024 * 1024);
 const sameSet = (a: Set<Topic>, b: Set<Topic>) => a.size === b.size && [...a].every((x) => b.has(x));
@@ -411,14 +414,21 @@ export class ScreenDisplay {
   #live() {
     let m: Rec | null = null;
     let t: Rec | null = null;
-    for (const l of this.#latest.values()) {
+    const latest = [...this.#latest.values()];
+    for (const l of latest) {
       m ??= l.music;
       t ??= l.truck;
     }
+    const withClaude = latest.filter((l) => l.claude);
+    const withJobs = latest.filter((l) => l.jobs !== null);
+    const claude = withClaude.length ? { sessions: withClaude.reduce((a, l) => a + l.claude!.sessions, 0), waiting: withClaude.reduce((a, l) => a + l.claude!.waiting, 0) } : null;
+    const jobs = withJobs.length ? withJobs.reduce((a, l) => a + l.jobs!, 0) : null;
     const job = t && typeof t.job === "object" && t.job ? (t.job as Rec) : null;
     return {
       music: m && !m.none ? { title: m.title ?? "", artist: m.artist ?? "", playing: m.playing === true } : null,
       truck: t ? { state: t.state, from: job?.from ?? null, to: job?.to ?? null, speedKmh: typeof t.speed === "number" ? Math.round(Math.abs(t.speed) * 3.6) : null } : null,
+      claude,
+      jobs,
     };
   }
 
@@ -593,6 +603,7 @@ export class ScreenDisplay {
     return this.#serial(async () => {
       const state = this.#running;
       if (!state) return this.status();
+      this.#focusEnded();
       await this.#stopNow(state);
       this.#event("screen.stopped", device);
       return this.status();
@@ -750,6 +761,7 @@ export class ScreenDisplay {
   #focusFor(mode: ScreenMode, restored: FocusTimes | null) {
     if (mode !== "focus") {
       if (!this.#focus) return;
+      this.#focusEnded();
       this.#focus.stop();
       this.#focus = null;
       this.#saveFocus(null);
@@ -796,7 +808,22 @@ export class ScreenDisplay {
     if (!cause) return;
     // No task text: the phone shows the phase (W6); the record says which phase began and why.
     const params = { phase: t.phase, from, round: t.round, cause };
-    void this.#ctx.notifier.send({ key: "screen.focus.phase", params }).catch((e) => this.#log("odak bildirimi gönderilemedi", e));
+    this.#focusPush(params, t.endsAt);
+  }
+
+  /**
+   * The phase push. `data` (sent, never recorded) tells the phone whether to quiet its notifications (`quiet`), when the
+   * phase ends (`endsAt`, ms) and which agent runs the timer (`agent`), for its ongoing notification and its Pause button.
+   */
+  #focusPush(params: { phase: FocusPhase; from: FocusPhase; round: number; cause: string }, endsAt: number | null) {
+    const data = { agent: this.#ctx.store.get().name, quiet: this.#cfg.modes.focus.quietPhone ? "1" : "0", ...(endsAt !== null ? { endsAt: String(endsAt) } : {}) };
+    void this.#ctx.notifier.send({ key: "screen.focus.phase", params, data }).catch((e) => this.#log("odak bildirimi gönderilemedi", e));
+  }
+
+  /** Focus ends with a running timer (mode stopped or switched): one `cause: "stop"` push so the phone ends its quiet. */
+  #focusEnded() {
+    const t = this.#focus?.times;
+    if (t && t.phase !== "idle") this.#focusPush({ phase: "idle", from: t.phase, round: t.round, cause: "stop" }, null);
   }
 
   /** POST /v1/screen/focus. Only while the Focus mode runs (409 agent.screen.notFocus otherwise). */
@@ -1086,6 +1113,7 @@ export class ScreenDisplay {
     this.#latest.set(src, l);
     if (msg.type === "music") l.music = msg;
     else if (msg.type === "truck") l.truck = msg;
+    else if (msg.type === "jobs") l.jobs = Array.isArray(msg.running) ? msg.running.length : 0;
     else if (msg.type === "city") {
       const { files, ...head } = msg;
       l.city = Array.isArray(files) ? { msg: head, files: new Map(files.filter(Array.isArray).map((f: unknown[]) => [String(f[0]), f])), stale: false } : null;
@@ -1099,6 +1127,8 @@ export class ScreenDisplay {
     if (msg.type === "diff" && typeof msg.requestId === "string") l.raw.set(`diff:${msg.requestId}`, tagged);
     else if (msg.type === "diffResolved") l.raw.delete(`diff:${String(msg.requestId)}`);
     else if (msg.type === "claude") {
+      const list = Array.isArray(msg.sessions) ? msg.sessions : [];
+      l.claude = { sessions: list.length, waiting: list.filter((x) => (x as Rec)?.status === "waiting").length };
       const open = new Set<string>();
       for (const x of Array.isArray(msg.sessions) ? msg.sessions : []) for (const r of Array.isArray((x as Rec)?.pending) ? ((x as Rec).pending as unknown[]) : []) open.add(String(r));
       for (const k of [...l.raw.keys()]) if (k.startsWith("diff:") && !open.has(k.slice(5))) l.raw.delete(k);
