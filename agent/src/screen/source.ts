@@ -11,6 +11,8 @@
 //   (producers/git.ts, producers/city.ts); the city's working tree watchers also refresh the git status.
 // - claude, diff: one shared topic (producers/claude.ts) rendered per subscriber with its project root (from the git
 //   topic's selection) and that root's city path tokens; it names the session behind a city touch (`by`).
+// Sleep group (PLAN.md §21 S3, sleep_group.ts): on a `screen` feed a member's `clockPing` is answered at once with
+// `clockPong` (this clock) and `sleepGroup` messages go to the display side (`feed.group`).
 // WS /v1/gamemode/feed is the 0.5 feed for one release: every Game mode topic at once, nothing accepted.
 // GET /v1/screen/game/source and POST /v1/screen/game/plugin (+ the /v1/gamemode/… aliases) are for the phone.
 import { spawn } from "node:child_process";
@@ -190,6 +192,8 @@ export class FeedProducer {
   #truckMsg: string | null = null;
   #playing = false;
   #spectrum: Capture | null = null;
+  /** The sleep group's leader side (display.ts sets it): `sleepGroup` messages of feed subscribers go here. */
+  group: { message(sock: Sock, msg: unknown): void; gone(sock: Sock): void } | null = null;
 
   constructor(io: SourceIo, o: SourceOpts, log: (msg: string, err?: unknown) => void) {
     this.#io = io;
@@ -529,18 +533,25 @@ export function sourceRoutes(app: FastifyInstance, ctx: Ctx, o: SourceOpts & { f
     hb.unref?.();
     const gone = () => {
       clearInterval(hb);
+      feed.group?.gone(sock);
       void feed.remove(sock);
     };
     socket.on("close", gone);
     socket.on("error", gone);
     socket.on("message", (d: Buffer) => {
       if (d.length > 4096) return;
-      let m: { type?: unknown; topics?: unknown; project?: unknown; ci?: unknown };
+      let m: { type?: unknown; topics?: unknown; project?: unknown; ci?: unknown; t?: unknown };
       try {
         m = JSON.parse(d.toString()) as typeof m;
       } catch {
         return;
       }
+      // Sleep group (PLAN.md §21 S3, sleep_group.ts): a member's clock ping is answered at once with this clock.
+      if (allowed === TOPICS && m?.type === "clockPing") {
+        if (typeof m.t === "number" && Number.isFinite(m.t) && sock.readyState === 1) sock.send(JSON.stringify({ type: "clockPong", t: m.t, peer: Date.now() }));
+        return;
+      }
+      if (allowed === TOPICS && m?.type === "sleepGroup") return void feed.group?.message(sock, m);
       const topics = m?.type === "subscribe" ? parseTopics(m.topics, allowed) : null;
       const project = topics ? parseProject(m.project, m.ci) : null;
       if (topics && project) void feed.setTopics(sock, topics, project);

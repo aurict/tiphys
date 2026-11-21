@@ -22,11 +22,21 @@ import { Hardware, NO_SAVED, sanitizeSaved, Throttle, type HwKind, type HwSaved 
 export const SLEEP_PHASES = ["settle", "fade", "night", "sunrise", "ring", "snoozed", "morning"] as const;
 export type SleepPhase = (typeof SLEEP_PHASES)[number];
 
+export const SIDES = ["left", "right", "foot", "head"] as const;
+export const DISTANCES = ["near", "mid", "far"] as const;
+
+/** A group member and its place in the room (the phone sends the same list to every member: one shared layout). */
+export interface SleepMember {
+  host: string;
+  side: (typeof SIDES)[number];
+  distance: (typeof DISTANCES)[number];
+}
+
 export interface SleepSession {
   id: string;
   seed: number;
   t0: number;
-  members: string[];
+  members: SleepMember[];
   leader: string;
 }
 
@@ -153,8 +163,8 @@ export function parseSleepFile(v: unknown): SleepFile | null {
   const p = o.plan as Record<string, unknown> | undefined;
   const ms = (x: unknown) => typeof x === "number" && Number.isSafeInteger(x) && x >= 0;
   if (!s || !p || typeof s.id !== "string" || !SESSION_ID.test(s.id) || !ms(s.seed) || !ms(s.t0)) return null;
-  const members = Array.isArray(s.members) ? s.members.filter((m): m is string => typeof m === "string" && HOST.test(m)).slice(0, 4) : [];
-  if (!members.length || typeof s.leader !== "string" || !members.includes(s.leader) || typeof o.me !== "string" || !HOST.test(o.me)) return null;
+  const members = Array.isArray(s.members) ? membersOf(s.members.filter((m) => (typeof m === "string" ? HOST.test(m) : !!m && typeof m === "object" && HOST.test(String((m as Record<string, unknown>).host)))).slice(0, 4)) : [];
+  if (!members.length || typeof s.leader !== "string" || !members.some((m) => m.host === s.leader) || typeof o.me !== "string" || !HOST.test(o.me)) return null;
   if (![p.t0, p.settleMs, p.fadeMs, p.soundFadeMs, p.rampMs].every(ms) || !(p.sunriseAt === null || ms(p.sunriseAt)) || !(p.ringAt === null || ms(p.ringAt))) return null;
   const scale = typeof o.scale === "number" && o.scale >= 1 && o.scale <= 1000 ? o.scale : 1;
   return {
@@ -304,6 +314,8 @@ export interface SleepDeps {
   /** A DDC bus found by `ddcutil detect` (stored in the config: a setting, not a trace). */
   storeBus?: (bus: number) => Promise<void>;
   log: (msg: string, err?: unknown) => void;
+  /** Test only (TIPHYS_SLEEP_SYNCLOG): the page reports its crackle timings. */
+  syncLog?: boolean;
   now?: () => number;
   setTimeout?: (fn: () => void, ms: number) => unknown;
   clearTimeout?: (h: unknown) => void;
@@ -324,6 +336,7 @@ export class SleepRun {
   #content = -1;
   #warning: string | null = null;
   #heartbeatAt: number | null = null;
+  #offset = 0;
   #stopped = false;
   #saving: Promise<unknown> = Promise.resolve();
 
@@ -496,17 +509,29 @@ export class SleepRun {
     const f = this.file;
     return JSON.stringify({
       type: "sleep",
-      session: { id: f.session.id, seed: f.session.seed, t0: f.session.t0, leader: f.session.leader, members: f.session.members, layout: [{ id: f.me, side: s.side, distance: s.distance }] },
+      session: {
+        id: f.session.id, seed: f.session.seed, t0: f.session.t0, leader: f.session.leader, members: f.session.members.map((m) => m.host),
+        layout: f.session.members.map((m) => ({ id: m.host, side: m.side, distance: m.distance })),
+      },
       me: f.me,
-      // S3 measures the offset to the leader; alone it is 0.
-      offsetMs: 0,
+      // shared time = this host's clock + offsetMs (the leader's clock; sleep_group.ts: 0 unless it is off by more than 20 ms).
+      offsetMs: this.#offset,
       plan: f.plan,
       ...this.#phaseFields(),
       brightness: Math.max(0, this.#content),
       settings: { volume: s.volume, layers: s.layers, nightSound: s.times.nightSound },
       scale: f.scale,
+      ...(this.#d.syncLog ? { syncLog: true } : {}),
     });
   }
+
+  /** The page's clock correction to the leader (ms); a change goes to the page at once. */
+  setOffset(ms: number) {
+    if (ms === this.#offset) return;
+    this.#offset = ms;
+    if (!this.#stopped) this.#d.send(this.sleepMessage());
+  }
+
 
   /** Settings changed (PUT /v1/sleep): the page gets them; a new brightness curve applies at once. Times apply at the next start. */
   settingsChanged() {
@@ -608,17 +633,36 @@ export function hostIdOf(name: string): string {
 export const T0_PAST_MS = 12 * 60 * MIN;
 export const T0_FUTURE_MS = 10 * MIN;
 
-/** The session object the phone sends to every member (PLAN.md §21 Mimari). */
+/**
+ * Members as sent → the layout every member computes alike. A bare host id (the S2 draft's form) gets its side from
+ * its place in the list (first left, last right, others at the foot) and distance "mid".
+ */
+export function membersOf(list: ReadonlyArray<unknown>): SleepMember[] {
+  return list.map((m, i) => {
+    if (typeof m === "string") return { host: m, side: i === 0 ? "left" : i === list.length - 1 ? "right" : "foot", distance: "mid" };
+    const o = m as Record<string, unknown>;
+    return {
+      host: String(o.host),
+      side: SIDES.includes(o.side as SleepMember["side"]) ? (o.side as SleepMember["side"]) : "left",
+      distance: DISTANCES.includes(o.distance as SleepMember["distance"]) ? (o.distance as SleepMember["distance"]) : "mid",
+    };
+  });
+}
+
+const memberSchema = z.union([hostId, z.strictObject({ host: hostId, side: z.enum(SIDES), distance: z.enum(DISTANCES).default("mid") })]);
+
+/** The session object the phone sends to every member (PLAN.md §21 Mimari): members [{host, side, distance}]. */
 export const sessionSchema = z
   .strictObject({
     id: z.string().regex(SESSION_ID),
     seed: z.number().int().min(0).max(0xffffffff),
     t0: z.number().int().positive(),
-    members: z.array(hostId).min(1).max(4),
+    members: z.array(memberSchema).min(1).max(4),
     leader: hostId,
   })
-  .refine((s) => s.members.includes(s.leader), { message: "leader must be a member", path: ["leader"] })
-  .refine((s) => new Set(s.members).size === s.members.length, { message: "members repeat", path: ["members"] })
+  .transform((s): SleepSession => ({ ...s, members: membersOf(s.members) }))
+  .refine((s) => s.members.some((m) => m.host === s.leader), { message: "leader must be a member", path: ["leader"] })
+  .refine((s) => new Set(s.members.map((m) => m.host)).size === s.members.length, { message: "members repeat", path: ["members"] })
   .refine((s) => s.t0 > Date.now() - T0_PAST_MS && s.t0 < Date.now() + T0_FUTURE_MS, { message: "t0 too far from now", path: ["t0"] });
 
 export const sleepStartSchema = z.strictObject({ session: sessionSchema.optional() });

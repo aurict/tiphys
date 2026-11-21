@@ -12,7 +12,7 @@ import type { ExecResult } from "../src/exec.ts";
 import { displayRoutes, sleepScale, type DisplayIo } from "../src/screen/display.ts";
 import {
   BACKLIGHT_GAP_MS, contentFor, DDC_GAP_MS, easeIn, easeOut, HardwarePreview, hardwareFor, levelAt, mergeSettings, parseSleepFile, phaseAt, phasesOf, planOf,
-  PREVIEW_MS, SleepRun, sleepPutSchema, sessionSchema, type SleepFile, type SleepPlan,
+  PREVIEW_MS, SleepRun, sleepPutSchema, sessionSchema, type SleepFile, type SleepPlan, type SleepSession,
 } from "../src/screen/sleep.ts";
 import { activeTrigger, Hardware, parseBacklight, parseDetect, parseVcp, parseVolume, Throttle } from "../src/screen/sleep_hw.ts";
 import { testApp } from "./helpers.ts";
@@ -263,7 +263,7 @@ function runDeps(m: ReturnType<typeof fakeMachine>, c: ReturnType<typeof fakeClo
     },
   };
 }
-const session = (t0: number) => ({ id: "sess-0001", seed: 42, t0, members: ["laptop"], leader: "laptop" });
+const session = (t0: number): SleepSession => ({ id: "sess-0001", seed: 42, t0, members: [{ host: "laptop", side: "left", distance: "mid" }], leader: "laptop" });
 
 describe("SleepRun", () => {
   it("laptop: saves the backlight first, follows the curve (≤ 1 call / 2 s, only on change), phases on time, restores exactly", async () => {
@@ -496,8 +496,13 @@ describe("hardware preview (mode off)", () => {
 
 describe("sleep request bodies", () => {
   it("session shape, PUT patch (nested, strict, ranges), merge", () => {
-    const ok = { id: "abcdefgh", seed: 1, t0: Date.now(), members: ["theloth", "laptop"], leader: "theloth" };
-    expect(sessionSchema.safeParse(ok).success).toBe(true);
+    const ok = { id: "abcdefgh", seed: 1, t0: Date.now(), members: [{ host: "theloth", side: "left", distance: "near" }, { host: "laptop", side: "right" }], leader: "theloth" };
+    expect(sessionSchema.parse(ok).members).toEqual([{ host: "theloth", side: "left", distance: "near" }, { host: "laptop", side: "right", distance: "mid" }]);
+    // The S2 draft's bare ids: sides by place (first left, last right, others at the foot).
+    expect(sessionSchema.parse({ ...ok, members: ["a", "b", "c"], leader: "a" }).members.map((m) => m.side)).toEqual(["left", "foot", "right"]);
+    for (const bad of [{ ...ok, members: [{ host: "theloth", side: "up" }] }, { ...ok, members: [{ host: "theloth", side: "left", x: 1 }] }, { ...ok, members: [{ host: "theloth", side: "left" }, { host: "theloth", side: "right" }] }]) {
+      expect(sessionSchema.safeParse(bad).success).toBe(false);
+    }
     for (const bad of [{ ...ok, id: "short" }, { ...ok, leader: "x" }, { ...ok, members: [] }, { ...ok, members: ["a", "a"], leader: "a" }, { ...ok, t0: Date.now() - 13 * 60 * MIN },
       { ...ok, t0: Date.now() + 11 * MIN }, { ...ok, seed: -1 }, { ...ok, extra: 1 }, { ...ok, members: ["bad host"], leader: "bad host" }]) {
       expect(sessionSchema.safeParse(bad).success).toBe(false);
@@ -592,7 +597,7 @@ describe("sleep routes", () => {
     expect(g).toMatchObject({ running: false, session: null, phase: null, members: [{ host: "test", state: "off" }], settings: { side: "left", brightness: { start: 25, night: 3, morning: 70 }, group: null }, scale: 1000 });
     const s = await t.req("POST", "/v1/sleep/start", {});
     expect(s.statusCode).toBe(200);
-    expect(s.json()).toMatchObject({ running: true, phase: "settle", session: { members: ["test"], leader: "test" }, brightness: { dimming: "backlight" }, warning: null });
+    expect(s.json()).toMatchObject({ running: true, phase: "settle", session: { members: [{ host: "test", side: "left", distance: "mid" }], leader: "test" }, brightness: { dimming: "backlight" }, warning: null });
     expect((await t.req("GET", "/v1/screen")).json()).toMatchObject({ running: true, mode: "sleep", placement: "fullscreen", sources: [{ name: "self", state: "off", topics: [] }] });
     expect(t.hypr()).toContain("keyword windowrule[tiphys-screen]:workspace name:uyku");
     expect(t.hypr().some((a) => a.includes("bind"))).toBe(false);
@@ -621,13 +626,14 @@ describe("sleep routes", () => {
     expect((await t.req("POST", "/v1/sleep/stop")).json()).toMatchObject({ running: false }); // nothing running: fine
   });
 
-  it("validation: bad sessions 400, a group session 409 agent.sleep.noGroup; PUT merges and refuses unknown keys", async () => {
+  it("validation: bad sessions 400, not a member / no source to the leader 409 agent.sleep.noGroup; PUT merges and refuses unknown keys", async () => {
     const t = await sleepApp();
     const base = { id: "abcdefgh12", seed: 7, t0: Date.now(), members: ["test"], leader: "test" };
     for (const bad of [{ ...base, id: "x" }, { ...base, leader: "other" }, { ...base, t0: 5 }, { ...base, extra: true }]) {
       expect((await t.req("POST", "/v1/sleep/start", { session: bad })).statusCode).toBe(400);
     }
-    expect((await t.req("POST", "/v1/sleep/start", { session: { ...base, members: ["test", "laptop"] } })).json()).toMatchObject({ error: { code: "agent.sleep.noGroup" } });
+    expect((await t.req("POST", "/v1/sleep/start", { session: { ...base, members: ["theloth", "laptop"], leader: "theloth" } })).json()).toMatchObject({ error: { code: "agent.sleep.noGroup", params: { reason: "notMember", host: "test" } } });
+    expect((await t.req("POST", "/v1/sleep/start", { session: { ...base, members: ["theloth", "test"], leader: "theloth" } })).json()).toMatchObject({ error: { code: "agent.sleep.noGroup", params: { reason: "noLeaderSource", leader: "theloth" } } });
     expect((await t.req("GET", "/v1/screen")).json().running).toBe(false);
     const put = await t.req("PUT", "/v1/sleep", { settings: { brightness: { night: 6 }, side: "right", times: { fadeMin: 45 } } });
     expect(put.statusCode).toBe(200);
@@ -638,7 +644,7 @@ describe("sleep routes", () => {
     expect((await t.req("PUT", "/v1/sleep", {})).statusCode).toBe(400);
     // The phone's session with this host alone.
     const s = await t.req("POST", "/v1/sleep/start", { session: base });
-    expect(s.json()).toMatchObject({ running: true, session: base });
+    expect(s.json()).toMatchObject({ running: true, session: { ...base, members: [{ host: "test", side: "left", distance: "mid" }] }, group: null });
     // A live setting change reaches the page.
     const p = await t.page();
     await until(() => p.got.some((x) => x.type === "sleep"));

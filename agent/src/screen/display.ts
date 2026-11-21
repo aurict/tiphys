@@ -32,6 +32,9 @@
 // sleep.ts with its state in sleep.json next to state.json. Its events are sleep.started / sleep.stopped only. While it
 // runs, a layout mode can't be switched to (409 agent.sleep.running); POST /v1/sleep/start stops a running layout mode
 // first. The page sends `heartbeat` every 10 s on its live socket.
+// Sleep group (S3, sleep_group.ts): a non-leader member keeps a topic-less source connection to the leader for the
+// group messages; the leader takes them from its own feed (`feed.group`). A user stop ends the group, a local end
+// (kiosk died, agent exit) doesn't. Test only: TIPHYS_SCREEN_HEADLESS runs the kiosk headless (see headlessBrowser).
 import { randomBytes, timingSafeEqual } from "node:crypto";
 import { createReadStream, existsSync } from "node:fs";
 import { mkdir, readFile, realpath, rename, rm, stat, writeFile } from "node:fs/promises";
@@ -60,13 +63,16 @@ import { realFileIo, type FileIo } from "./producers/common.ts";
 import { findBattery, powerSupplyDir, readBattery } from "./producers/system.ts";
 import { SessionSummary, SUMMARY_MIN_MS } from "./summary.ts";
 import { Hardware, sanitizeSaved, type HwSaved } from "./sleep_hw.ts";
-import { HardwarePreview, hostIdOf, mergeSettings, parseSleepFile, SleepRun, sleepPreviewSchema, sleepPutSchema, sleepStartSchema, type SleepSession } from "./sleep.ts";
+import { HardwarePreview, hostIdOf, mergeSettings, parseSleepFile, SleepRun, sleepPreviewSchema, sleepPutSchema, sleepStartSchema, type SleepFile, type SleepSession } from "./sleep.ts";
+import { leaderSource, LeaderGroup, MemberGroup, parseGroupMessage, type SleepGroup } from "./sleep_group.ts";
 
 export const UNIT = "tiphys-screen";
 export { APP_ID } from "./placement.ts";
 /** What a 0.5 Game mode left behind (crash recovery only). */
 const LEGACY = { unit: "tiphys-gamemode", rule: "tiphys-gamemode", appId: "tiphys-gamemode", dir: "tiphys-gamemode" };
 const CURRENT = { unit: UNIT, rule: "tiphys-screen", appId: APP_ID, dir: "tiphys-screen" };
+/** Test-only headless kiosk (TIPHYS_SCREEN_HEADLESS): its own unit and work dir, so it never meets a real mode. */
+const HEADLESS = { unit: "tiphys-screen-headless", rule: "tiphys-screen-headless", appId: "tiphys-screen-headless", dir: "tiphys-screen-headless" };
 type Names = typeof CURRENT;
 const ART_MAX = 5 * 1024 * 1024;
 
@@ -228,6 +234,25 @@ export function kioskArgs(o: { firefox: string; profile: string; url: string; en
   ];
 }
 
+/**
+ * TIPHYS_SCREEN_HEADLESS (test only, unset by default; docs/agent/configuration.md): the absolute path of a
+ * Chromium-family browser. The kiosk then runs headless and muted in its own unit/work dir, with no Hyprland step, no
+ * visibility watch and no hardware (backlight, DDC, extras): a second agent on a desktop can run a mode without
+ * opening a window or making a sound (PLAN.md §21 S3's temporary group leader).
+ */
+export function headlessBrowser(v = process.env.TIPHYS_SCREEN_HEADLESS): string | null {
+  return v && /^\/[A-Za-z0-9_.\/-]{1,300}$/.test(v) ? v : null;
+}
+
+/** systemd-run arguments of the headless test kiosk (no window, no sound, autoplay allowed). */
+export function headlessArgs(o: { browser: string; profile: string; url: string }): string[] {
+  return [
+    "--user", `--unit=${HEADLESS.unit}`, "--collect", "-p", "StandardOutput=null", "-p", "StandardError=null",
+    "--", o.browser, "--headless", "--mute-audio", "--autoplay-policy=no-user-gesture-required", "--no-first-run", "--no-default-browser-check",
+    `--user-data-dir=${o.profile}`, o.url,
+  ];
+}
+
 /** Workspace target remembered at start: "3" or "name:foo" (validated; anything else isn't restored). */
 const WS_TARGET = /^(?:[1-9]\d{0,2}|name:[A-Za-z0-9_.-]{1,64})$/;
 
@@ -275,6 +300,7 @@ interface SavedState {
 }
 
 export type SourceState = "off" | "connecting" | "ok" | "down";
+type StopWhy = "user" | "group" | "local";
 
 interface Conn {
   name: string;
@@ -289,6 +315,8 @@ interface Conn {
   /** Talk the 0.5 feed (/v1/gamemode/feed, every topic, no subscribe): a source that has no /v1/screen/feed yet. */
   legacy: boolean;
   opened: boolean;
+  /** The sleep group's link to its leader (sleep_group.ts): no topics, group messages both ways. */
+  group: boolean;
 }
 
 type Rec = Record<string, unknown>;
@@ -327,7 +355,9 @@ export interface DisplayOpts {
    * Sleep mode: the test-only time scale (default TIPHYS_SLEEP_SCALE, else 1; every phase length is divided by it),
    * where the LEDs are (default /sys/class/leds) and the clock (tests).
    */
-  sleep?: { scale?: number; ledsDir?: string; now?: () => number; setTimeout?: (fn: () => void, ms: number) => unknown; clearTimeout?: (h: unknown) => void };
+  sleep?: { scale?: number; ledsDir?: string; syncLog?: boolean; now?: () => number; setTimeout?: (fn: () => void, ms: number) => unknown; clearTimeout?: (h: unknown) => void };
+  /** Test-only headless kiosk: a browser path (default TIPHYS_SCREEN_HEADLESS); null = the real kiosk. */
+  headless?: string | null;
 }
 
 /** TIPHYS_SLEEP_SCALE (test only, unset by default; docs/agent/configuration.md): 1..1000, anything else 1. */
@@ -335,6 +365,12 @@ export function sleepScale(v = process.env.TIPHYS_SLEEP_SCALE): number {
   const n = Number(v);
   return v && Number.isFinite(n) && n >= 1 && n <= 1000 ? n : 1;
 }
+
+/** TIPHYS_SLEEP_SYNCLOG=1 (test only, unset by default): the page reports crackle timings into the work dir (S3 measurement). */
+export const sleepSyncLog = (v = process.env.TIPHYS_SLEEP_SYNCLOG) => v === "1";
+const SYNC_FILE = "sync.jsonl";
+/** How long a user-stopped session is remembered (a member's late hello gets `stop`); memory only. */
+const ENDED_MS = 12 * 60 * 60_000;
 
 /** The fixed sleep view: no cards, no topics; the page builds it from the `sleep` message. */
 const SLEEP_LAYOUT = { template: "sleep", cards: [] as unknown[] };
@@ -372,8 +408,10 @@ export class ScreenDisplay {
   readonly #feed: FeedProducer | null;
   readonly #o: {
     backoff: number[]; idleMs: number; watchMs: number; maxBuffered: number; visibility: VisibilityOpts; summaryMinMs: number; power: { dir: string; everyMs: number; io: FileIo };
-    sleep: { scale: number; ledsDir: string; now?: () => number; setTimeout?: (fn: () => void, ms: number) => unknown; clearTimeout?: (h: unknown) => void };
+    sleep: { scale: number; ledsDir: string; syncLog: boolean; now?: () => number; setTimeout?: (fn: () => void, ms: number) => unknown; clearTimeout?: (h: unknown) => void };
+    headless: string | null;
   };
+  readonly #names: Names;
   readonly #log: (msg: string, err?: unknown) => void;
   readonly workDir: string;
   readonly #mapFile: string;
@@ -404,6 +442,10 @@ export class ScreenDisplay {
   /** Sleep mode: the run while it runs; the hardware-only preview while it doesn't. */
   #sleep: SleepRun | null = null;
   #preview: HardwarePreview | null = null;
+  /** Sleep group (S3): the leader's peers or a member's link; null alone. */
+  #group: SleepGroup | null = null;
+  /** Sessions stopped by a user (here or relayed): session id → when (memory only). */
+  readonly #ended = new Map<string, number>();
 
   constructor(ctx: Ctx, io: DisplayIo, o: DisplayOpts, log: (msg: string, err?: unknown) => void) {
     this.#ctx = ctx;
@@ -413,9 +455,12 @@ export class ScreenDisplay {
     this.#o = {
       backoff: o.backoff ?? [1, 2, 4, 8, 15, 30], idleMs: o.idleMs ?? 15_000, watchMs: o.watchMs ?? 5000, maxBuffered: o.maxBuffered ?? 256 * 1024, visibility: o.visibility ?? {},
       summaryMinMs: o.summaryMinMs ?? SUMMARY_MIN_MS, power: { dir: o.power?.dir ?? powerSupplyDir(), everyMs: o.power?.everyMs ?? 30_000, io: o.power?.io ?? realFileIo },
-      sleep: { ...o.sleep, scale: o.sleep?.scale ?? sleepScale(), ledsDir: o.sleep?.ledsDir ?? "/sys/class/leds" },
+      sleep: { ...o.sleep, scale: o.sleep?.scale ?? sleepScale(), ledsDir: o.sleep?.ledsDir ?? "/sys/class/leds", syncLog: o.sleep?.syncLog ?? sleepSyncLog() },
+      headless: o.headless === undefined ? headlessBrowser() : o.headless,
     };
-    this.workDir = join(io.runtimeDir, CURRENT.dir);
+    this.#names = this.#o.headless ? HEADLESS : CURRENT;
+    this.workDir = join(io.runtimeDir, this.#names.dir);
+    if (this.#feed) this.#feed.group = { message: (sock, m) => this.#groupIn(sock, m), gone: (sock) => (this.#group instanceof LeaderGroup ? this.#group.gone(sock) : undefined) };
     this.#mapFile = join(o.mapDir ?? defaultMapDir(), "ets2.pmtiles");
   }
 
@@ -576,16 +621,17 @@ export class ScreenDisplay {
 
   /** Starts the kiosk for `m`; sleep also begins its run once the kiosk unit is up. Every step undone on failure. */
   async #launch(m: RunMode, sleep: { session: SleepSession; me: string } | null) {
+      const headless = this.#o.headless;
       let env: NodeJS.ProcessEnv;
       try {
-        env = { ...(await this.#io.waylandEnv()), ...(await this.#io.hyprEnv()), ...this.#io.busEnv() };
+        env = headless ? await this.#env() : { ...(await this.#io.waylandEnv()), ...(await this.#io.hyprEnv()), ...this.#io.busEnv() };
       } catch {
         throw new AppError("agent.screen.noDisplay", 503);
       }
-      const firefox = ["firefox", "firefox-esr"].find((c) => this.#io.which(c));
+      const firefox = headless ?? ["firefox", "firefox-esr"].find((c) => this.#io.which(c));
       if (!firefox) throw new AppError("agent.exec.commandMissing", 500, { command: "firefox" });
       // A leftover unit (e.g. from a crash) would make systemd-run fail.
-      await this.#io.exec("systemctl", ["--user", "stop", `${UNIT}.service`], { env, timeoutMs: 15_000, allowFail: true });
+      await this.#io.exec("systemctl", ["--user", "stop", `${this.#names.unit}.service`], { env, timeoutMs: 15_000, allowFail: true });
       await rm(this.workDir, { recursive: true, force: true });
       await mkdir(join(this.workDir, "profile"), { recursive: true, mode: 0o700 });
       const token = randomBytes(32).toString("hex");
@@ -596,35 +642,43 @@ export class ScreenDisplay {
       };
       await this.#save(state);
       try {
-        const hypr = new Hyprctl(this.#io.exec, async () => env);
-        state.hypr = await hypr.mode(env);
-        if (placement === "scratch") {
-          const bind = this.#cfg.scratchBind;
-          if (bindTaken(await this.#hypr(env, ["-j", "binds"]), bind)) throw new AppError("agent.screen.bindTaken", 409, { bind });
-          state.bind = bind;
+        // The headless test kiosk has no window: no Hyprland step, no backlight.
+        if (!headless) {
+          const hypr = new Hyprctl(this.#io.exec, async () => env);
+          state.hypr = await hypr.mode(env);
+          if (placement === "scratch") {
+            const bind = this.#cfg.scratchBind;
+            if (bindTaken(await this.#hypr(env, ["-j", "binds"]), bind)) throw new AppError("agent.screen.bindTaken", 409, { bind });
+            state.bind = bind;
+            await this.#save(state);
+            await this.#hypr(env, bindOnArgs(state.hypr, bind));
+          } else state.workspace = workspaceTarget(await this.#hypr(env, ["-j", "activeworkspace"]).catch(() => ""));
+          state.rules = true;
           await this.#save(state);
-          await this.#hypr(env, bindOnArgs(state.hypr, bind));
-        } else state.workspace = workspaceTarget(await this.#hypr(env, ["-j", "activeworkspace"]).catch(() => ""));
-        state.rules = true;
-        await this.#save(state);
-        for (const args of ruleOnArgs(state.hypr, placement, state.ws)) await this.#hypr(env, args);
-        // Sleep dims along its own curve (sleep.ts); the layout modes have one fixed backlight setting.
-        const b = m === "sleep" ? null : this.#settings(m).brightness;
-        if (b !== null) state.brightness = await this.#setBrightness(b, null);
-        await this.#save(state);
+          for (const args of ruleOnArgs(state.hypr, placement, state.ws)) await this.#hypr(env, args);
+          // Sleep dims along its own curve (sleep.ts); the layout modes have one fixed backlight setting.
+          const b = m === "sleep" ? null : this.#settings(m).brightness;
+          if (b !== null) state.brightness = await this.#setBrightness(b, null);
+          await this.#save(state);
+        }
         await writeFile(join(this.workDir, "profile", "user.js"), userJs(), { mode: 0o600 });
         const startFile = join(this.workDir, "start.html");
         await writeFile(startFile, startHtml(`${this.#pageBase()}#t=${token}`), { mode: 0o600 });
         // Show the empty named workspace first: Firefox maps straight onto it (no flash of the old workspace).
-        if (placement === "fullscreen") await this.#hypr(env, focusWorkspaceArgs(state.hypr, `name:${state.ws}`)).catch(() => {});
-        const r = await this.#io.exec("systemd-run", kioskArgs({ firefox, profile: join(this.workDir, "profile"), url: `file://${startFile}`, env }), {
-          env, timeoutMs: 15_000, allowFail: true,
-        });
+        if (placement === "fullscreen" && !headless) await this.#hypr(env, focusWorkspaceArgs(state.hypr!, `name:${state.ws}`)).catch(() => {});
+        const profile = join(this.workDir, "profile");
+        const args = headless ? headlessArgs({ browser: headless, profile, url: `file://${startFile}` }) : kioskArgs({ firefox, profile, url: `file://${startFile}`, env });
+        const r = await this.#io.exec("systemd-run", args, { env, timeoutMs: 15_000, allowFail: true });
         if (r.code !== 0) throw new AppError("agent.screen.startFailed", 502, { stderr: r.stderr.slice(0, 300) });
-        if (sleep) this.#sleep = await SleepRun.begin(this.#sleepDeps(env), sleep.session, sleep.me, this.#o.sleep.scale);
+        if (sleep) {
+          this.#sleep = await SleepRun.begin(this.#sleepDeps(env), sleep.session, sleep.me, this.#o.sleep.scale);
+          this.#group = this.#makeGroup(this.#sleep.file);
+        }
       } catch (e) {
         this.#sleep?.detach();
         this.#sleep = null;
+        this.#group?.close();
+        this.#group = null;
         await this.#cleanup(state, env).catch(() => {});
         throw e;
       }
@@ -687,17 +741,25 @@ export class ScreenDisplay {
     await this.#ctx.store.update((c) => ((c.screen.lastMode = mode), c)).catch((e) => this.#log("ekran modu ayarı yazılamadı", e));
   }
 
-  stop(device?: string) {
+  /** `why`: "user" (API, the page's Esc hold: a sleep group stops with it), "local" (the kiosk died, the agent exits). */
+  stop(device?: string, why: StopWhy = "user") {
     return this.#serial(async () => {
-      await this.#stopInner(device);
+      await this.#stopInner(device, why);
       return this.status();
     });
   }
 
   /** Stops the running mode (any), with its events and the summary push; inside the serial chain. */
-  async #stopInner(device?: string) {
+  async #stopInner(device?: string, why: StopWhy = "user") {
     const state = this.#running;
     if (!state) return;
+    if (state.mode === "sleep" && this.#sleep && why !== "local") {
+      // A user stop ends the whole group: told before this host's link closes; a late hello gets `stop` (leader).
+      if (why === "user") this.#group?.user("stop");
+      const now = Date.now();
+      for (const [id, at] of this.#ended) if (now - at > ENDED_MS) this.#ended.delete(id);
+      this.#ended.set(this.#sleep.file.session.id, now);
+    }
     const summary = this.#summary?.params(Date.now(), this.#o.summaryMinMs) ?? null;
     this.#focusEnded(summary !== null);
     await this.#stopNow(state);
@@ -733,6 +795,8 @@ export class ScreenDisplay {
     this.#focus = null;
     this.#sleep?.detach();
     this.#sleep = null;
+    this.#group?.close();
+    this.#group = null;
     this.#summary = null;
     if (this.#powerTimer) clearInterval(this.#powerTimer);
     this.#powerTimer = null;
@@ -749,10 +813,10 @@ export class ScreenDisplay {
   }
 
   /** Undoes everything the state says was done; every step is best effort. */
-  async #cleanup(state: SavedState, env: NodeJS.ProcessEnv, names: Names = CURRENT) {
+  async #cleanup(state: SavedState, env: NodeJS.ProcessEnv, names: Names = this.#names) {
     const dir = join(this.#io.runtimeDir, names.dir);
     // A sleep run's hardware (crash, or a failed start): what its state file says was there before.
-    if (names === CURRENT) {
+    if (names === this.#names) {
       const raw = await readFile(this.#sleepFile(dir), "utf8").catch(() => null);
       if (raw !== null) {
         let saved: HwSaved | null = null;
@@ -812,12 +876,13 @@ export class ScreenDisplay {
       let found = false;
       let slept = false;
       await this.#recoverPreview();
-      for (const names of [CURRENT, LEGACY]) {
+      // The headless test kiosk never touches the real ones (nor a 0.5 Game mode's).
+      for (const names of this.#o.headless ? [this.#names] : [CURRENT, LEGACY]) {
         const dir = join(this.#io.runtimeDir, names.dir);
         let state: SavedState;
         try {
           state = sanitizeState(JSON.parse(await readFile(this.#stateFile(dir), "utf8")) as Rec);
-          if (names === CURRENT && (await this.#adopt(state))) continue;
+          if (names === this.#names && (await this.#adopt(state))) continue;
           slept ||= state.mode === "sleep";
         } catch {
           // No state file: a stray work dir or unit from an older run is still removed.
@@ -835,13 +900,14 @@ export class ScreenDisplay {
   /** The previous agent left a running mode (restart or crash) and its Firefox still runs: carry on with it. */
   async #adopt(state: SavedState): Promise<boolean> {
     if (!state.token || this.#running) return false;
-    const r = await this.#io.exec("systemctl", ["--user", "is-active", `${UNIT}.service`], { env: await this.#env(), timeoutMs: 5000, allowFail: true }).catch(() => null);
+    const r = await this.#io.exec("systemctl", ["--user", "is-active", `${this.#names.unit}.service`], { env: await this.#env(), timeoutMs: 5000, allowFail: true }).catch(() => null);
     if (r?.stdout.trim() !== "active") return false;
     if (state.mode === "sleep") {
       // The run goes on from its file (its saved hardware values stay as they were at the start); unreadable → stop.
       const file = parseSleepFile(await readFile(this.#sleepFile(), "utf8").then((t) => JSON.parse(t) as unknown, () => null));
       if (!file) return false;
       this.#sleep = SleepRun.adopt(this.#sleepDeps(await this.#env()), file);
+      this.#group = this.#makeGroup(file);
     }
     let focus: FocusTimes | null = null;
     if (state.mode === "focus") {
@@ -857,16 +923,16 @@ export class ScreenDisplay {
 
   async #checkUnit() {
     if (!this.#running) return;
-    const r = await this.#io.exec("systemctl", ["--user", "is-active", `${UNIT}.service`], { env: await this.#env(), timeoutMs: 5000, allowFail: true }).catch(() => null);
-    // Firefox gone (closed or crashed): finish the stop so nothing is left behind.
-    if (r && r.stdout.trim() !== "active" && r.stdout.trim() !== "activating") void this.stop();
+    const r = await this.#io.exec("systemctl", ["--user", "is-active", `${this.#names.unit}.service`], { env: await this.#env(), timeoutMs: 5000, allowFail: true }).catch(() => null);
+    // Firefox gone (closed or crashed): finish the stop so nothing is left behind (a sleep group goes on without us).
+    if (r && r.stdout.trim() !== "active" && r.stdout.trim() !== "activating") void this.stop(undefined, "local");
   }
 
   /** Agent exit: a restart leaves the mode for the next agent (adopted in recover()); any other exit stops it. */
   async shutdown() {
     await this.#preview?.end();
     const restarting = this.#running !== null && (await this.#io.restarting?.().catch(() => false)) === true;
-    if (!restarting) return void (await this.stop());
+    if (!restarting) return void (await this.stop(undefined, "local"));
     await this.#serial(async () => {
       if (!this.#running) return;
       this.#let(1012, "restart");
@@ -975,7 +1041,9 @@ export class ScreenDisplay {
   #sleepFile = (dir = this.workDir) => join(dir, "sleep.json");
 
   #hardware(env: NodeJS.ProcessEnv) {
-    return new Hardware({ exec: (cmd, args, opts) => this.#io.exec(cmd, args, { ...opts, env }), which: (c) => this.#io.which(c), ledsDir: this.#o.sleep.ledsDir }, this.#log);
+    // The headless test kiosk touches no hardware: no tool is "there".
+    const which = this.#o.headless ? () => false : (c: string) => this.#io.which(c);
+    return new Hardware({ exec: (cmd, args, opts) => this.#io.exec(cmd, args, { ...opts, env }), which, ledsDir: this.#o.sleep.ledsDir }, this.#log);
   }
 
   #clock() {
@@ -988,9 +1056,69 @@ export class ScreenDisplay {
     await this.#ctx.store.update((c) => ((c.screen.modes.sleep.ddc.bus = bus), c));
   };
 
+  /** The group of a run with more than one member: the leader's peers, or a member's link (null alone). */
+  #makeGroup(file: SleepFile): SleepGroup | null {
+    const s = file.session;
+    if (s.members.length < 2) return null;
+    const deps = {
+      session: s,
+      me: file.me,
+      // Another member's user stop: this host stops too (no relay back).
+      onStop: () => void this.#serial(async () => {
+        if (this.#running?.mode === "sleep" && this.#sleep?.file.session.id === s.id) await this.#stopInner(undefined, "group");
+      }),
+      // snooze / dismiss / phase: the alarm's (S4); S3 carries them only.
+      onEvent: () => {},
+      log: this.#log,
+      ...this.#clock(),
+    };
+    if (s.leader === file.me) return new LeaderGroup(deps);
+    return new MemberGroup({ ...deps, send: (m) => this.#sendLeader(m), onOffset: (ms) => this.#sleep?.setOffset(ms) });
+  }
+
+  /** The source name of the link to the leader (a member of a running group), or null. */
+  #leaderConn(): string | null {
+    const g = this.#group;
+    return g instanceof MemberGroup && this.#sleep ? leaderSource(this.#cfg.sources, this.#sleep.file.session.leader) : null;
+  }
+
+  #sendLeader(m: object): boolean {
+    const name = this.#leaderConn();
+    const ws = name ? this.#conns.get(name)?.ws : null;
+    if (!ws || ws.readyState !== 1) return false;
+    try {
+      ws.send(JSON.stringify(m));
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
+  /** A `sleepGroup` message on this host's feed (the leader's side). Not this host's running session: stop or unknown. */
+  #groupIn(sock: Sock, raw: unknown) {
+    const m = parseGroupMessage(raw);
+    if (!m) return;
+    const g = this.#group;
+    if (g instanceof LeaderGroup && this.#sleep?.file.session.id === m.sessionId) return g.message(sock, m);
+    if ((m.action !== "hello" && m.action !== "state") || sock.readyState !== 1) return;
+    const ended = this.#ended.get(m.sessionId);
+    const me = hostIdOf(this.#ctx.store.get().name);
+    sock.send(JSON.stringify(ended !== undefined ? { type: "sleepGroup", sessionId: m.sessionId, action: "stop", host: me, at: ended } : { type: "sleepGroup", sessionId: m.sessionId, action: "unknown" }));
+  }
+
+  /** Test only (TIPHYS_SLEEP_SYNCLOG): the page's crackle timings, appended to the work dir (gone with the mode). */
+  syncLog(lines: unknown) {
+    if (!this.#o.sleep.syncLog || !this.#sleep || !Array.isArray(lines)) return;
+    const ok = lines.slice(0, 64).filter((l) => Array.isArray(l) && l.length <= 8 && l.every((x) => typeof x === "string" || (typeof x === "number" && Number.isFinite(x))));
+    if (!ok.length) return;
+    const me = this.#sleep.file.me;
+    void writeFile(join(this.workDir, SYNC_FILE), ok.map((l) => JSON.stringify([me, ...(l as unknown[])])).join("\n") + "\n", { flag: "a", mode: 0o600 }).catch(() => {});
+  }
+
   #sleepDeps(env: NodeJS.ProcessEnv) {
     return {
       hw: this.#hardware(env),
+      syncLog: this.#o.sleep.syncLog,
       settings: () => this.#cfg.modes.sleep,
       // Whole or nothing (rename), 0600 in the 0700 tmpfs work dir (written only while the run begins).
       save: async (f: unknown) => {
@@ -1039,6 +1167,9 @@ export class ScreenDisplay {
   sleepStatus() {
     const r = this.#sleep?.status() ?? null;
     const name = this.#ctx.store.get().name;
+    const g = this.#group?.status() ?? null;
+    const me = this.#sleep?.file.me;
+    const alone = r ? r.session.members.map((m) => ({ host: m.host, side: m.side, distance: m.distance, leader: true, state: m.host === me ? "running" : "unknown" })) : null;
     return {
       running: r !== null,
       session: r?.session ?? null,
@@ -1047,7 +1178,9 @@ export class ScreenDisplay {
       phaseEndsAt: r?.phaseEndsAt ?? null,
       // S4: the alarm; S3: the other members.
       alarm: { next: null, ringing: false, snoozedUntil: null },
-      members: r ? r.session.members.map((host) => ({ host, state: host === this.#sleep!.file.me ? "running" : "unknown" })) : [{ host: name, state: "off" }],
+      members: g?.members ?? alone ?? [{ host: hostIdOf(name), state: "off" }],
+      // S3: the group link, clock offset and `agent.sleep.memberDown` (null alone or off).
+      group: g ? { role: g.role, link: g.link, offsetMs: g.offsetMs, appliedOffsetMs: g.appliedOffsetMs, rttMs: g.rttMs, syncedAt: g.syncedAt, error: g.error } : null,
       brightness: r?.brightness ?? null,
       warning: r?.warning ?? null,
       page: r?.page ?? null,
@@ -1058,19 +1191,24 @@ export class ScreenDisplay {
   }
 
   /**
-   * POST /v1/sleep/start. Without a session: one made here (this host alone). A group session (more than one member)
-   * needs S3: 409 agent.sleep.noGroup. Already sleeping: the status (the phone may retry). A running layout mode is
-   * stopped first (its own events and summary).
+   * POST /v1/sleep/start. Without a session: one made here (this host alone, its own side/distance). A group session
+   * (S3): this host must be a member (else 409 agent.sleep.noGroup {reason: "notMember"}), and a non-leader needs a
+   * source to the leader (sleep_group.ts leaderSource; else 409 agent.sleep.noGroup {reason: "noLeaderSource",
+   * leader}). Already sleeping: the status (the phone may retry). A running layout mode is stopped first.
    */
   startSleep(session: SleepSession | undefined, device?: string) {
     return this.#serial(async () => {
       if (this.#running?.mode === "sleep") return this.sleepStatus();
-      const name = this.#ctx.store.get().name;
-      const s: SleepSession = session ?? { id: randomBytes(12).toString("base64url"), seed: randomBytes(4).readUInt32BE(0), t0: Date.now(), members: [hostIdOf(name)], leader: hostIdOf(name) };
-      if (s.members.length > 1) throw new AppError("agent.sleep.noGroup", 409);
+      const me = hostIdOf(this.#ctx.store.get().name);
+      const set = this.#cfg.modes.sleep;
+      const s: SleepSession = session ?? {
+        id: randomBytes(12).toString("base64url"), seed: randomBytes(4).readUInt32BE(0), t0: Date.now(), members: [{ host: me, side: set.side, distance: set.distance }], leader: me,
+      };
+      if (!s.members.some((m) => m.host === me)) throw new AppError("agent.sleep.noGroup", 409, { reason: "notMember", host: me });
+      if (s.members.length > 1 && s.leader !== me && !leaderSource(this.#cfg.sources, s.leader)) throw new AppError("agent.sleep.noGroup", 409, { reason: "noLeaderSource", leader: s.leader });
       await this.#preview?.end();
       if (this.#running) await this.#stopInner(device);
-      await this.#launch("sleep", { session: s, me: s.members[0]! });
+      await this.#launch("sleep", { session: s, me });
       this.#event("sleep.started", device);
       return this.sleepStatus();
     });
@@ -1141,7 +1279,7 @@ export class ScreenDisplay {
   // ---- visibility ----
 
   #watchVisibility(st: SavedState) {
-    if (!this.#io.hyprEvents) return;
+    if (!this.#io.hyprEvents || this.#o.headless) return;
     const io = { exec: this.#io.exec, hyprEnv: () => this.#io.hyprEnv(), connect: this.#io.hyprEvents.bind(this.#io) };
     const where = st.placement === "scratch" ? ({ placement: "scratch" } as const) : ({ placement: "fullscreen", workspace: st.ws } as const);
     this.#vis = new VisibilityWatcher(io, where, (visible) => this.#setPaused(!visible), this.#o.visibility);
@@ -1235,6 +1373,9 @@ export class ScreenDisplay {
     const st = this.#running;
     // Sleep subscribes nothing (no producer runs while sleeping; Velour comes in S5).
     const need = st && st.mode !== "sleep" ? layoutTopics(st.mode, this.#cfg.modes[st.mode].layout, this.#settings(st.mode), this.#paused) : new Map<string, Set<Topic>>();
+    // A sleep group member: the link to the leader (no topics; group messages only).
+    const lead = this.#leaderConn();
+    if (st?.mode === "sleep" && lead) need.set(lead, new Set());
     const project = this.#project(st?.mode ?? "work");
     const self = need.get("self");
     if (self && this.#feed) {
@@ -1257,7 +1398,7 @@ export class ScreenDisplay {
       if (name === "self" || !(name in this.#cfg.sources)) continue;
       const c = this.#conns.get(name);
       if (!c) {
-        const conn: Conn = { name, topics, project, ws: null, state: "off", attempt: 0, timer: null, idle: null, legacy: false, opened: false };
+        const conn: Conn = { name, topics, project, ws: null, state: "off", attempt: 0, timer: null, idle: null, legacy: false, opened: false, group: name === lead };
         this.#conns.set(name, conn);
         this.#connect(conn);
       } else if (!sameSet(c.topics, topics) || !sameProject(c.project, project)) {
@@ -1316,10 +1457,18 @@ export class ScreenDisplay {
       this.#setState(c, "ok");
       this.#subscribe(c);
       this.#kick(c);
+      if (c.group && this.#group instanceof MemberGroup) this.#group.linkUp();
     };
     ws.onmessage = (ev) => {
       if (!mine()) return;
       this.#kick(c);
+      if (c.group && typeof ev.data === "string" && /^\{"type":"(?:sleepGroup|clockPong)"/.test(ev.data)) {
+        if (ev.data.length > 4096 || !(this.#group instanceof MemberGroup)) return;
+        try {
+          this.#group.message(JSON.parse(ev.data));
+        } catch {}
+        return;
+      }
       this.#relay(c.name, ev.data, c.topics);
     };
     ws.onclose = ws.onerror = () => {
@@ -1328,8 +1477,9 @@ export class ScreenDisplay {
       try {
         ws.close();
       } catch {}
-      // Never opened: maybe a 0.5 source without /v1/screen/feed; the next attempt tries the other feed.
-      if (!c.opened) c.legacy = !c.legacy;
+      // Never opened: maybe a 0.5 source without /v1/screen/feed; the next attempt tries the other feed (not for a
+      // sleep group's leader: that one has the feed).
+      if (!c.opened && !c.group) c.legacy = !c.legacy;
       this.#retry(c);
     };
   }
@@ -1350,6 +1500,7 @@ export class ScreenDisplay {
 
   #retry(c: Conn) {
     if (!this.#running || this.#conns.get(c.name) !== c) return;
+    if (c.group && this.#group instanceof MemberGroup) this.#group.linkDown();
     if (c.idle) clearTimeout(c.idle);
     c.idle = null;
     const b = this.#o.backoff;
@@ -1713,11 +1864,12 @@ export async function displayRoutes(app: FastifyInstance, ctx: Ctx, o: DisplayOp
         socket.on("close", () => display.removePage(sock));
         socket.on("error", () => display.removePage(sock));
         socket.on("message", (d: Buffer) => {
-          if (d.length > 1024) return;
+          if (d.length > 2048) return;
           try {
-            const type = (JSON.parse(d.toString()) as { type?: unknown })?.type;
-            if (type === "stop") void display.stop().catch(() => {});
-            else if (type === "heartbeat") display.heartbeat();
+            const m = JSON.parse(d.toString()) as { type?: unknown; lines?: unknown };
+            if (m?.type === "stop") void display.stop().catch(() => {});
+            else if (m?.type === "heartbeat") display.heartbeat();
+            else if (m?.type === "syncLog") display.syncLog(m.lines);
           } catch {}
         });
       },
