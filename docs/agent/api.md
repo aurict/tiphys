@@ -1208,15 +1208,32 @@ Lifecycle: as described for Game mode below, with the unit, app id, rule and tmp
 
 | Method | Path | Auth | Description |
 | --- | --- | --- | --- |
-| WS | `/v1/screen/feed` | service (`screen`; `gamemode` = music, spectrum, truck only) or device | Client → source: `{"type":"subscribe","topics":[…],"project"?:…}` replaces the topic set (unknown or not allowed topics are dropped; ≤ 4 KB). Starts with no topics. A topic's producer starts with its first subscriber and stops with its last; a subscriber adding a topic gets its latest messages at once. `{"type":"hb"}` every 5 s. |
+| WS | `/v1/screen/feed` | service (`screen`; `gamemode` = music, spectrum, truck only) or device | Client → source: `{"type":"subscribe","topics":[…],"project"?:"auto"\|<absolute path>,"ci"?:bool}` replaces the topic set (`project`/`ci` only matter for `git`; a fixed path must be inside `allowedRoots`) (unknown or not allowed topics are dropped; ≤ 4 KB). Starts with no topics. A topic's producer starts with its first subscriber and stops with its last; a subscriber adding a topic gets its latest messages at once. `{"type":"hb"}` every 5 s. |
 | GET | `/v1/screen/game/source` | device | As `/v1/gamemode/source`. |
 | POST | `/v1/screen/game/plugin` | device | As `/v1/gamemode/plugin`. |
 
 Topics (`screen/topics.ts`): `music` (messages `music`, `lyrics`), `spectrum` (binary frames, only while Velour plays;
 dropped while the kiosk is hidden), `truck` (`truck`, `event`). Card kinds → topics: `map`, `cockpit` → truck;
-`lyrics` → music; `music` → music (+ spectrum in Game mode when `spectrum` is on). Templates: `game` (map, cockpit,
-music, lyrics), `work` (city, day, system, jobs, git, music, servers), `focus` (focus, task, day, music, servers). This
-version's page draws the Game cards and the Day card (clock and date); the others subscribe nothing yet.
+`lyrics` → music; `music` → music (+ spectrum in Game mode when `spectrum` is on); `system`, `jobs`, `git`,
+`servers` → the topic of the same name. Templates: `game` (map, cockpit, music, lyrics), `work` (city, day, system,
+jobs, git, music, servers), `focus` (focus, task, day, music, servers). This version's page draws everything but the
+city (W3) and the Focus timer/task (W5); those subscribe nothing yet. `system` is dropped while the kiosk is hidden.
+
+Work topics (`screen/producers/*.ts`; each starts with its first subscriber, stops with its last, sends only changes):
+- `system` (every 2 s from `/proc` and `/sys`, no process per sample; NVIDIA through one long-lived
+  `nvidia-smi -lms 2000`, Intel from the GT idle residency): `{type:"system", cpu (0..1), cores, mem:{used,total}
+  (bytes), temp|null (°C), gpu:{util, temp|null, memUsed|null, memTotal|null}|null, battery:{level, charging}|null}`.
+- `jobs` (every 3 s: `run-*.scope` user cgroups, `tools/limited.sh` jobs and known build/test processes older than
+  30 s; environments are never read): `{type:"jobs", running:[{id, name, cmd (≤120, paths cut to their last part,
+  redacted), dir (basename)|null, startedAt (ms), cpu (cores), mem (bytes), kind: scope|proc|limited}]}`;
+  `{type:"jobDone", id, name, cmd, dir, kind, durationSec, exitCode: null}`.
+- `git` (non-recursive `fs.watch` on the git dir and refs, 500 ms debounce, one `git status` + `git log -3`; a
+  60 s refresh; `gh run list` every 5 min only with `ci`): `{type:"git", root (basename), branch|null, head, upstream,
+  ahead, behind, changed, untracked, conflicts, commits:[{hash7, subject (≤80), at}], ci:{state, at}|null}` or
+  `{type:"git", root|null, none: noProject|notRepo|notAllowed}`. `auto` = the most recently active Claude session's
+  working directory (Tiphys or terminal), else the focused terminal's shell, walked up to the git root.
+- `servers` (uptime bridge + incident room, compared every 5 s in memory): `{type:"servers", available, hosts:[{name,
+  up, since|null}], incidents}`.
 
 **Compatibility (one release):** `/v1/gamemode`, `/v1/gamemode/{start,stop,live,art,feed,source,plugin}` and
 `/gamemode/*` keep the 0.5 shapes and `agent.gamemode.*` error codes; their "source" is `screen.sources.main`
