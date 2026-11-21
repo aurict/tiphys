@@ -289,7 +289,7 @@ Nothing about your music or your drives is saved:
 | Radar instead of a map | No (or incomplete) map data in `~/.local/share/tiphys/gamemode/map/` on the **laptop** (see [Map data](#map-data)), or Firefox has no WebGL2 (check `about:support` → Graphics). The reason is logged in the page console. |
 | No route line | `route.json` is missing from the map folder on the **laptop** (see [Route line](#route-line)), there is no job, or the destination company is not in it (the console logs `[route] …`). An agent older than this feature doesn't send `job.toCompanyId`. |
 | No destination marker | The marker is placed by matching the job's destination name against the map's city names (English, from the game data). A city name the game shows in another language (e.g. *München* for *Munich*) is not matched; the rest of the map works. |
-| Brightness does not change | `brightnessctl` is missing or your user may not write the backlight (e.g. not in the `video` group). The mode runs without changing it. |
+| Brightness does not change | `brightnessctl` is missing, your user may not write the backlight (e.g. not in the `video` group), or the machine has no backlight at all (a desktop monitor: `GET /v1/screen` says `backlight: false`). The mode runs without changing it; only a `backlight` class device is ever written, never an LED. |
 | The screen went to sleep / Firefox window is not fullscreen | `systemd-inhibit` is missing, or another tool overrides the Hyprland window rule. `tiphys-agent doctor` on the laptop lists missing tools. |
 | The mode stopped by itself | Firefox exited (closed, crashed) or the agent restarted; start it again. |
 

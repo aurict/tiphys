@@ -73,7 +73,7 @@ import { FOCUS_ACTIONS, FocusClock, IDLE, parseTimes, TASK_MAX, type FocusAction
 import { realFileIo, type FileIo } from "./producers/common.ts";
 import { findBattery, powerSupplyDir, readBattery } from "./producers/system.ts";
 import { SessionSummary, SUMMARY_MIN_MS } from "./summary.ts";
-import { Hardware, sanitizeSaved, type HwSaved } from "./sleep_hw.ts";
+import { Hardware, parseBacklight, sanitizeSaved, type HwSaved } from "./sleep_hw.ts";
 import { HardwarePreview, hostIdOf, mergeSettings, parsePlan, parseSleepFile, planOf, SleepRun, sleepAlarmSchema, sleepPreviewSchema, sleepPutSchema, sleepStartSchema, type AlarmAction, type SleepFile, type SleepPlan, type SleepSession } from "./sleep.ts";
 import { AlarmEffects, nextAlarm, type AlarmState } from "./sleep_alarm.ts";
 import { dispatchArgs } from "../hyprctl.ts";
@@ -289,10 +289,13 @@ export function focusWorkspaceArgs(mode: HyprMode, target: string): string[] {
   return mode === "lua" ? ["eval", `hl.dispatch(hl.dsp.focus({ workspace = "${target}" }))`] : ["dispatch", "workspace", target];
 }
 
-/** `brightnessctl -m` → the current raw value ("intel_backlight,backlight,96000,100%,96000"). */
-export function parseBrightness(out: string): string | null {
-  const v = out.trim().split("\n")[0]?.split(",")[2];
-  return v && /^\d{1,9}$/.test(v) ? v : null;
+/**
+ * brightnessctl arguments on the saved backlight device. A plain `brightnessctl` picks the first device of any class,
+ * on a desktop a keyboard LED (`input24::compose`, PLAN.md §21 S0): always the backlight class or its device. A state
+ * file from before the device was saved: the backlight class.
+ */
+export function backlightArgs(device: string | null, args: string[]): string[] {
+  return ["-q", ...(device ? ["-d", device] : ["-c", "backlight"]), ...args];
 }
 
 // ---- state ----
@@ -310,6 +313,8 @@ interface SavedState {
   bind: string | null;
   workspace: string | null;
   brightness: string | null;
+  /** The backlight device `brightness` belongs to (null: none set, or a state file from before it was saved). */
+  backlight?: string | null;
   /** The page's display token (also in start.html): lets the next agent adopt the mode after a restart. */
   token: string | null;
   /** Privacy veil on (W5): kept across an agent restart, gone with the mode. */
@@ -466,6 +471,9 @@ export class ScreenDisplay {
   #lastStop: { at: number; summary: boolean } | null = null;
   /** Battery saver: on, the battery directory found at start, the /sys read timer. */
   #saver = false;
+  /** Is there a backlight for the modes' `brightness` setting (null: not looked yet; GET /v1/screen). */
+  #backlight: boolean | null = null;
+  #backlightLooking = false;
   #battery: string | null = null;
   #powerTimer: NodeJS.Timeout | null = null;
   /** Sleep mode: the run while it runs; the hardware-only preview while it doesn't. */
@@ -585,6 +593,15 @@ export class ScreenDisplay {
     };
   }
 
+  /** `#backlight`, looked up in the background on the first GET (null until then; a mode start looks too). */
+  #lookBacklight() {
+    if (this.#backlight === null && !this.#backlightLooking) {
+      this.#backlightLooking = true;
+      void this.#backlightNow().finally(() => (this.#backlightLooking = false));
+    }
+    return this.#backlight;
+  }
+
   status() {
     const c = this.#cfg;
     const r = this.#running;
@@ -605,6 +622,8 @@ export class ScreenDisplay {
       ],
       veil: r?.veil ?? false,
       power: { saver: this.#saver },
+      // The modes' `brightness` setting needs a backlight; false (a desktop monitor): it does nothing. Looked up once.
+      backlight: this.#lookBacklight(),
       lastStop: this.#lastStop,
       focus: this.#focusState(),
       // The map files live on this (display) host, next to the page that draws them.
@@ -701,7 +720,7 @@ export class ScreenDisplay {
           for (const args of ruleOnArgs(state.hypr, placement, state.ws)) await this.#hypr(env, args);
           // Sleep dims along its own curve (sleep.ts); the layout modes have one fixed backlight setting.
           const b = m === "sleep" ? null : this.#settings(m).brightness;
-          if (b !== null) state.brightness = await this.#setBrightness(b, null);
+          if (b !== null) Object.assign(state, await this.#setBrightness(b, null));
           await this.#save(state);
         }
         await writeFile(join(this.workDir, "profile", "user.js"), userJs(), { mode: 0o600 });
@@ -929,25 +948,40 @@ export class ScreenDisplay {
         if (name === state.ws) await this.#hypr(env, focusWorkspaceArgs(mode, state.workspace)).catch(() => {});
       }
     }
-    if (state.brightness) await this.#brightnessctl(["-q", "set", state.brightness]).catch(() => {});
+    if (state.brightness) await this.#brightnessctl(backlightArgs(state.backlight ?? null, ["set", state.brightness])).catch(() => {});
   }
 
-  /** Sets the backlight to `percent`; returns the value to restore later (the saved one, or the current one). */
-  async #setBrightness(percent: number, saved: string | null): Promise<string | null> {
-    const old = saved ?? parseBrightness((await this.#brightnessctl(["-m"]).catch(() => ({ stdout: "" }))).stdout);
+  /** The backlight device (class `backlight` only, never an LED) and its raw value; null = none. Remembered for GET. */
+  async #backlightNow() {
+    const r = await this.#brightnessctl(["-m", "-c", "backlight"]).catch(() => null);
+    const dev = r && r.code === 0 ? parseBacklight(r.stdout) : null;
+    this.#backlight = dev !== null;
+    return dev;
+  }
+
+  /**
+   * Sets the backlight to `percent`; returns the value to restore later (the saved one, or the current one) and its
+   * device. No backlight (a desktop monitor): nothing is written, GET /v1/screen says `backlight: false`.
+   */
+  async #setBrightness(percent: number, saved: { brightness: string | null; backlight?: string | null } | null) {
+    const keep = { brightness: saved?.brightness ?? null, backlight: saved?.backlight ?? null };
+    const dev = await this.#backlightNow();
+    if (!dev) return keep;
+    const old = keep.brightness ? keep : { brightness: String(dev.raw), backlight: dev.device };
     // No permission on the backlight (no udev rule / video group): the mode runs without touching it.
-    const r = await this.#brightnessctl(["-q", "set", `${percent}%`]).catch(() => ({ code: -1 }));
-    return r.code === 0 ? old : saved;
+    const r = await this.#brightnessctl(backlightArgs(dev.device, ["set", `${percent}%`])).catch(() => ({ code: -1 }));
+    return r.code === 0 ? old : keep;
   }
 
   /** The running mode's backlight setting changed (or the mode did): set it, or restore the saved value. */
   async #applyBrightness(percent: number | null) {
     const st = this.#running;
     if (!st) return;
-    if (percent !== null) st.brightness = await this.#setBrightness(percent, st.brightness);
+    if (percent !== null) Object.assign(st, await this.#setBrightness(percent, st));
     else if (st.brightness) {
-      await this.#brightnessctl(["-q", "set", st.brightness]).catch(() => {});
+      await this.#brightnessctl(backlightArgs(st.backlight ?? null, ["set", st.brightness])).catch(() => {});
       st.brightness = null;
+      st.backlight = null;
     }
     await this.#save(st).catch(() => {});
   }
@@ -2014,6 +2048,7 @@ function sanitizeState(s: Rec): SavedState {
     bind: typeof s.bind === "string" && screenSchema.shape.scratchBind.safeParse(s.bind).success ? s.bind : null,
     workspace: typeof s.workspace === "string" && WS_TARGET.test(s.workspace) ? s.workspace : null,
     brightness: typeof s.brightness === "string" && /^\d{1,9}$/.test(s.brightness) ? s.brightness : null,
+    backlight: typeof s.backlight === "string" && /^[A-Za-z0-9_.:-]{1,64}$/.test(s.backlight) ? s.backlight : null,
     token: typeof s.token === "string" && /^[a-f0-9]{64}$/.test(s.token) ? s.token : null,
     veil: s.veil === true,
   };

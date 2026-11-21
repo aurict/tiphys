@@ -59,7 +59,7 @@ interface Call {
   env?: NodeJS.ProcessEnv;
 }
 
-function fakeExec(o: { lua?: boolean; unitActive?: () => boolean; fail?: (c: Call) => ExecResult | null } = {}) {
+function fakeExec(o: { lua?: boolean; unitActive?: () => boolean; fail?: (c: Call) => ExecResult | null; backlight?: boolean } = {}) {
   const calls: Call[] = [];
   const exec = async (cmd: string, args: string[], opts: { env?: NodeJS.ProcessEnv } = {}): Promise<ExecResult> => {
     const c = { cmd, args, env: opts.env };
@@ -75,7 +75,9 @@ function fakeExec(o: { lua?: boolean; unitActive?: () => boolean; fail?: (c: Cal
       }
       return ok("ok");
     }
-    if (cmd === "brightnessctl" && args[0] === "-m") return ok("intel_backlight,backlight,96000,100%,96000\n");
+    // A plain `brightnessctl -m` lists an LED first (a desktop's keyboard LED, PLAN.md §21 S0); only the class finds the backlight.
+    if (cmd === "brightnessctl" && args.join(" ") === "-m -c backlight") return ok(o.backlight === false ? "Failed to read any devices of class 'backlight'.\n" : "intel_backlight,backlight,96000,100%,96000\n");
+    if (cmd === "brightnessctl" && args[0] === "-m") return ok("input24::compose,leds,0,0%,1\n");
     if (cmd === "systemctl" && args[1] === "is-active") return { stdout: o.unitActive?.() === false ? "inactive\n" : "active\n", stderr: "", code: 0 };
     if (cmd === "wpctl") return ok('id 57\n  * media.class = "Audio/Sink"\n  * node.name = "alsa_output.test"\n');
     return ok("");
@@ -107,12 +109,12 @@ class FakeUpstream implements Upstream {
   }
 }
 
-async function displayApp(o: { lua?: boolean; fetch?: typeof fetch; fail?: (c: Call) => ExecResult | null; hypr?: boolean } = {}) {
+async function displayApp(o: { lua?: boolean; fetch?: typeof fetch; fail?: (c: Call) => ExecResult | null; hypr?: boolean; backlight?: boolean } = {}) {
   const runtime = await mkdtemp(join(tmpdir(), "tiphys-gm-run-"));
   const displayDir = await mkdtemp(join(tmpdir(), "tiphys-gm-display-"));
   const mapDir = await mkdtemp(join(tmpdir(), "tiphys-gm-map-"));
   let active = true;
-  const x = fakeExec({ lua: o.lua, unitActive: () => active, fail: o.fail });
+  const x = fakeExec({ lua: o.lua, unitActive: () => active, fail: o.fail, backlight: o.backlight });
   const ups: FakeUpstream[] = [];
   const io: DisplayIo = {
     exec: x.exec,
@@ -195,7 +197,10 @@ describe("gamemode display", () => {
     expect(hypr).toContain("keyword windowrule[tiphys-screen]:fullscreen on");
     expect(hypr).toContain("keyword windowrule[tiphys-screen]:enable true");
     expect(hypr).toContain("dispatch workspace name:yol");
-    expect(t.calls.filter((c) => c.cmd === "brightnessctl").map((c) => c.args.join(" "))).toEqual(["-m", "-q set 40%"]);
+    // The backlight class is looked up (on the first GET and at the start), then only its device is written.
+    const bl = t.calls.filter((c) => c.cmd === "brightnessctl").map((c) => c.args.join(" "));
+    expect(bl.filter((a) => a.includes(" set "))).toEqual(["-q -d intel_backlight set 40%"]);
+    expect(bl.every((a) => a === "-m -c backlight" || a.startsWith("-q -d intel_backlight "))).toBe(true);
     const runs = t.calls.filter((c) => c.cmd === "systemd-run");
     expect(runs).toHaveLength(1);
     const args = runs[0]!.args;
@@ -239,7 +244,7 @@ describe("gamemode display", () => {
     const closed = new Promise((r) => ws.on("close", r));
     ws.send(JSON.stringify({ type: "stop" }));
     await closed;
-    await until(() => t.calls.some((c) => c.cmd === "brightnessctl" && c.args.join(" ") === "-q set 96000"));
+    await until(() => t.calls.some((c) => c.cmd === "brightnessctl" && c.args.join(" ") === "-q -d intel_backlight set 96000"));
     expect((await t.req("GET", "/v1/gamemode")).json()).toMatchObject({ running: false, source: { state: "off" }, live: { music: null } });
     expect(await stat(work).catch(() => null)).toBeNull();
     const after = t.calls.map((c) => `${c.cmd} ${c.args.join(" ")}`);
@@ -266,6 +271,44 @@ describe("gamemode display", () => {
     expect(hypr.some((h) => h.startsWith('eval hl.window_rule({ name = "tiphys-screen"') && h.includes("enabled = false"))).toBe(true);
     expect(await stat(join(t.runtime, "tiphys-screen")).catch(() => null)).toBeNull();
     expect((await t.req("GET", "/v1/gamemode")).json().running).toBe(false);
+  });
+
+  it("brightness: the backlight class only; none (a desktop monitor) → nothing written, GET says backlight:false", async () => {
+    const t = await displayApp({ backlight: false });
+    await t.setSource();
+    await t.req("PUT", "/v1/gamemode", { settings: { brightness: 40 } });
+    expect((await t.req("POST", "/v1/gamemode/start")).statusCode).toBe(200);
+    const backlightOf = async (x: typeof t) => (await x.req("GET", "/v1/screen")).json().backlight as boolean | null;
+    const settle = async (x: typeof t, want: boolean) => {
+      for (let i = 0; i < 150 && (await backlightOf(x)) !== want; i++) await new Promise((r) => setTimeout(r, 20));
+      return backlightOf(x);
+    };
+    expect(await settle(t, false)).toBe(false);
+    expect((await t.req("POST", "/v1/gamemode/stop")).json().running).toBe(false);
+    // Only lookups, never a write (a plain `brightnessctl set` would have dimmed the keyboard LED).
+    const used = t.calls.filter((c) => c.cmd === "brightnessctl").map((c) => c.args.join(" "));
+    expect(used.length).toBeGreaterThan(0);
+    expect(used.every((a) => a === "-m -c backlight")).toBe(true);
+
+    const l = await displayApp();
+    expect(await backlightOf(l)).toBeNull(); // looked up in the background
+    expect(await settle(l, true)).toBe(true);
+  });
+
+  it("crash recovery: a state file from before the backlight device was saved restores on the backlight class", async () => {
+    const runtime = await mkdtemp(join(tmpdir(), "tiphys-gm-run-"));
+    const work = join(runtime, "tiphys-screen");
+    await mkdir(join(work, "profile"), { recursive: true });
+    await writeFile(join(work, "state.json"), JSON.stringify({ startedAt: "x", mode: "game", hypr: "legacy", placement: "fullscreen", ws: "yol", rules: false, bind: null, workspace: null, brightness: "50000", token: null, veil: false }));
+    const x = fakeExec({ unitActive: () => false });
+    const io: DisplayIo = {
+      exec: x.exec, runtimeDir: runtime, hyprEnv: async () => ({ HYPRLAND_INSTANCE_SIGNATURE: "sig" }), waylandEnv: async () => ({}),
+      busEnv: () => ({}), which: () => true, connect: () => new FakeUpstream("", ""), fetch,
+    };
+    const t = await testApp((c) => c, [async (a, ctx) => void (await displayRoutes(a, ctx, { io, displayDir: null, mapDir: runtime }))]);
+    cleanups.push(() => t.app.close());
+    await until(() => x.calls.some((c) => c.cmd === "brightnessctl"));
+    expect(x.calls.filter((c) => c.cmd === "brightnessctl").map((c) => c.args.join(" "))).toEqual(["-q -c backlight set 50000"]);
   });
 
   it("crash recovery: a 0.5 Game mode state file left in the work dir is cleaned up on start", async () => {
