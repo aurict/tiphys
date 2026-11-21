@@ -9,6 +9,51 @@ extension is `0.1.0`.
 
 ## [Unreleased]
 
+### Added
+
+**Screen modes: Work and Focus** (see [docs/features/screen-modes.md](docs/features/screen-modes.md))
+
+- Game mode became one of three screen modes, picked, switched (on the page, without restarting Firefox) and stopped
+  from the phone: **Work**, **Focus** and **Game**. Each display host has its own layout per mode; every card reads a
+  source of its own (`self` = the display host, in-process, or a named remote agent), with *Mirror <source>* and
+  *This machine itself* ready layouts. Placements `fullscreen` (a named workspace) or `scratch` (Hyprland special
+  workspace with a temporary Super+` bind); the page pauses completely while it is not visible.
+- **Work:** a code city of the project (WebGL with a 2D fallback; folders as districts, edits, new and deleted files,
+  commits as effects; folder-level above 20 000 files), the Claude brain (Tiphys and terminal sessions as spheres,
+  read/edit beams, waiting state), a diff card for a Tiphys session's Edit/Write/MultiEdit/NotebookEdit or Bash
+  permission (approval stays on the phone), and Day, Resources, Jobs, Git (optional CI dot via `gh`), Music and
+  Servers cards. Project `auto` (last active Claude session, else the focused terminal) or fixed.
+- **Focus:** a focus/break timer kept by the display agent (survives an agent restart), a task line (memory only),
+  synthesized ambient noise and a chime, only critical pills; on the phone an ongoing notification with *Pause* and an
+  optional quiet filter that holds non-critical Tiphys notifications until the mode ends.
+- Privacy veil (`POST /v1/screen/veil`): the page drops to a dim clock and gets no data until it is lifted.
+- Session summary: one `screen.summary` push (numbers and mode names only, never recorded) when a mode that ran
+  ≥ 2 minutes stops; *Last session* card in the app.
+- Battery saver: on battery below 30 % the display drops to low motion and the flat city.
+- Agent: `screen` feature with `GET`/`PUT /v1/screen`, `POST /v1/screen/{start,mode,stop,focus,veil}`,
+  `WS /v1/screen/live` and the source feed `WS /v1/screen/feed` (topic subscriptions; producers `system`, `jobs`,
+  `git`, `city`, `claude`, `diff`, `servers` run only while subscribed); `screen` service-token scope; doctor checks
+  (`doctor.screen.ciUnavailable`).
+- App: **Screen mode** home card, mode chooser, screen mode screen (Layout, Appearance, per-mode settings,
+  Connections, Setup) and a setup wizard with a separate code sharing consent step.
+
+### Changed
+
+- **Rename `gamemode` → `screen`, migrated automatically:** `features.gamemode` → `features.screen`,
+  `gamemode.source` → `screen.sources.main`, `gamemode.display` → `screen.modes.game` (once, on the first start; the
+  file is rewritten without the old keys). The kiosk unit and work dir are `tiphys-screen` (a 0.5 `tiphys-gamemode`
+  leftover is cleaned up); events are `screen.started {mode}` / `screen.stopped`. The app's Game mode home card is
+  replaced by the Screen mode card (home layouts migrate by themselves).
+- Code sharing is a source setting, `screen.share.code`, off by default: without it file names are opaque tokens and
+  no diff is sent.
+- Release bundles and `tools/deploy-agent.sh` no longer ship `display/draft/` (design mock-ups).
+
+### Deprecated
+
+- Kept for **one release** for the app 1.2: the `gamemode` feature name (`init --features`, `PATCH /v1/config`,
+  `/v1/health`), the `gamemode` service-token scope (Game topics only), the `/v1/gamemode/*` and `/gamemode/*` routes
+  with their 0.5 shapes and `agent.gamemode.*` error codes, and the `/v1/gamemode/feed` fallback for 0.5 sources.
+
 ## [0.5.0] - 2026-11-21
 
 ### Added

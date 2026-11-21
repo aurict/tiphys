@@ -1285,7 +1285,7 @@ Work topics (`screen/producers/*.ts`; each starts with its first subscriber, sto
   waiting:{tool|null, path|null, since}|null, pending:[requestId]}]}` (sent when it changes, ≤ every 150 ms). Paths
   are relative to the subscriber's project root (same selection as `git`); outside it `null`; without
   `screen.share.code` they are the city's masked tokens (or `null` without a city). A city `touch` after a session's
-  Edit/Write/MultiEdit/NotebookEdit of that file (≤ 30 s) carries `by: <session id>`.
+  Edit/Write/MultiEdit/NotebookEdit of that file (≤ 30 s) carries `by: <session id>`. The session file the SDK's own `claude` process writes for a Tiphys session is not a terminal session: it is skipped (or dropped as soon as the manager learns the session id), so each Tiphys session appears once.
 - `diff` (only with `screen.share.code` on the source, only Tiphys sessions; terminal sessions never get one):
   `{type:"diff", sessionId, session, requestId, tool, at, path, lang, added, removed, hunks:[{oldStart, newStart,
   lines}], truncated, more, binary, created}` for Edit/MultiEdit/Write/NotebookEdit of a file inside the project

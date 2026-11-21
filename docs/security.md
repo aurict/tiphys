@@ -509,11 +509,13 @@ validated operation to the Velour player's local socket, `$XDG_RUNTIME_DIR/velou
   Velour remote has been opened in this app run and can be turned off in the PC panel. While the remote screen is
   open, the phone's volume buttons change Velour's volume instead of the phone's.
 
-## Game mode
+## Screen modes
 
+<a id="game-mode"></a>
 The `screen` flag (was `gamemode`; off by default, never turned on by `init --detect`) turns a laptop into a second
-screen for the PC (see [api.md](agent/api.md#screen)). Two agents take part; each side's rules below are written for
-Game mode and hold for every screen mode: the routes are now `/v1/screen/*` and `/screen/*` (the `/v1/gamemode/*` and
+screen for the PC: the Work, Focus and Game modes (see [Screen modes](features/screen-modes.md) and
+[api.md](agent/api.md#screen)). Two agents take part; each side's rules below were written for Game mode and hold for
+every screen mode (the Work and Focus additions follow in [Work and Focus](#work-and-focus)): the routes are now `/v1/screen/*` and `/screen/*` (the `/v1/gamemode/*` and
 `/gamemode/*` ones stay for one release), the unit, app id and work dir are `tiphys-screen`, the events
 `screen.started {mode}` / `screen.stopped`. The `scratch` placement adds a temporary Hyprland keybind (fixed
 dispatcher `togglespecialworkspace tiphys`, key from the validated `screen.scratchBind`, refused if already bound,
@@ -557,6 +559,38 @@ drive. Every paired device can stop the mode, and so can the laptop's own keyboa
   game (MIT, [truckermudgeon/scs-sdk-plugin](https://github.com/truckermudgeon/scs-sdk-plugin)); the game shows its
   "SDK features" notice on start. The agent only reads the plugin's shared memory, at fixed offsets, and checks its
   layout revision.
+
+### Work and Focus
+
+- **Scopes.** A source opens `WS /v1/screen/feed` to a service token with the `screen` scope (or a device token).
+  A `gamemode` token from 0.5 gets only `music`, `spectrum` and `truck`, never `claude` or `diff`. The feed accepts
+  only a topic list (≤ 4 KB) and, for `git`/`city`, a project: `auto` or an absolute path that must be inside the
+  source's `allowedRoots` (`notAllowed` otherwise). Subscribers cannot send anything else.
+- **Code sharing is the source's decision (`screen.share.code`, off by default).** Without it the source sends no
+  file name (every path segment becomes an opaque HMAC token with a random key per city, made at start and kept in
+  memory) and never a `diff`. Paths outside the project root are never sent. The app turns it on only on the source's
+  own API, after a confirmation that says who will be able to read the code; cancelling sends nothing.
+- **No approvals on the display.** The diff card is a preview. The kiosk page and the display token have no route
+  that answers a Claude permission; approval stays on the phone (device token), as for any other Claude session.
+  Terminal Claude Code sessions never yield a diff (their transcript is not read for it, no hook is installed and
+  `~/.claude/settings.json` is not touched); for them only "waiting + tool + file" is shown.
+- **What is read.** `/proc` and `/sys` (no environment variables of other processes; a job's command line is cut to
+  120 characters, paths to their last part, and passed through the same secret redaction as logs), `git` in the
+  project, the project's files (line counts only, binaries/symlinks/FIFOs/files over 2 MB skipped, `O_NOFOLLOW`),
+  Claude Code's `sessions/` files and only the appended part of a session's transcript (tool names and file paths,
+  never content), and `gh run list` only with the CI setting on. A diff is redacted and limited to 400 lines / 64 KB.
+- **Privacy veil.** `POST /v1/screen/veil` stops every layout and topic message to the page until it is lifted (the
+  page keeps nothing to show but a clock); it survives an agent restart and ends with the mode.
+- **What is stored where.** Nothing about the work is written to disk: city, diffs, paths, Claude activity, jobs and
+  the session-summary counters live in memory only (source while subscribed, display while the mode runs, page while
+  open). The Focus task line is memory only (never in a file, event, push or log). On the display host's tmpfs
+  (`$XDG_RUNTIME_DIR/tiphys-screen/`, `0700`, removed on stop): the state file (side effects, and the display token
+  so a restarted agent can adopt the mode, `0600`), `start.html`, the Firefox profile and `focus.json` (the timer's
+  times only). The event log gets `screen.started {mode}`, `screen.stopped` and `screen.focus.phase {phase, from,
+  round, cause}`. The `screen.summary` push holds numbers and mode names only and is not recorded (not in the event
+  log, the black box or any file). Settings and source tokens are in `agent.json` (tokens never returned). On the
+  phone: the Focus quiet-filter record (host, round end, held count; no content); the last summary is kept only
+  in the notification and the app's memory (12 hours).
 
 ## Sunshine / Moonlight
 
