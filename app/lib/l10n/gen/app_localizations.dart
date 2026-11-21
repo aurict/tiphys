@@ -21775,6 +21775,138 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Screen mode stopped'**
   String get smEventStopped;
+
+  /// No description provided for @smSummaryTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'{modes} ended · {duration}'**
+  String smSummaryTitle(String modes, String duration);
+
+  /// No description provided for @smSummaryRounds.
+  ///
+  /// In en, this message translates to:
+  /// **'{n, plural, =1{1 focus round} other{{n} focus rounds}}'**
+  String smSummaryRounds(int n);
+
+  /// No description provided for @smSummaryCommits.
+  ///
+  /// In en, this message translates to:
+  /// **'{n, plural, =1{1 commit} other{{n} commits}}'**
+  String smSummaryCommits(int n);
+
+  /// No description provided for @smSummaryJobs.
+  ///
+  /// In en, this message translates to:
+  /// **'{n, plural, =1{1 job finished} other{{n} jobs finished}}'**
+  String smSummaryJobs(int n);
+
+  /// No description provided for @smSummaryJobsFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'{n} failed'**
+  String smSummaryJobsFailed(int n);
+
+  /// No description provided for @smSummarySessions.
+  ///
+  /// In en, this message translates to:
+  /// **'{n, plural, =1{1 Claude session} other{{n} Claude sessions}}'**
+  String smSummarySessions(int n);
+
+  /// No description provided for @smSummaryWaits.
+  ///
+  /// In en, this message translates to:
+  /// **'{n, plural, =1{1 approval asked} other{{n} approvals asked}}'**
+  String smSummaryWaits(int n);
+
+  /// No description provided for @smSummaryHeld.
+  ///
+  /// In en, this message translates to:
+  /// **'{n, plural, =1{1 notification waited} other{{n} notifications waited}}'**
+  String smSummaryHeld(int n);
+
+  /// No description provided for @smSummaryNothing.
+  ///
+  /// In en, this message translates to:
+  /// **'Nothing else to report.'**
+  String get smSummaryNothing;
+
+  /// No description provided for @smSummaryCardTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Last session'**
+  String get smSummaryCardTitle;
+
+  /// No description provided for @smSummaryCardNote.
+  ///
+  /// In en, this message translates to:
+  /// **'Only on this phone, in memory; gone after 12 hours.'**
+  String get smSummaryCardNote;
+
+  /// No description provided for @smSummaryDuration.
+  ///
+  /// In en, this message translates to:
+  /// **'Duration'**
+  String get smSummaryDuration;
+
+  /// No description provided for @smSummaryRoundsLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Focus rounds'**
+  String get smSummaryRoundsLabel;
+
+  /// No description provided for @smSummaryCommitsLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Commits'**
+  String get smSummaryCommitsLabel;
+
+  /// No description provided for @smSummaryJobsLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Jobs finished'**
+  String get smSummaryJobsLabel;
+
+  /// No description provided for @smSummarySessionsLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Claude sessions'**
+  String get smSummarySessionsLabel;
+
+  /// No description provided for @smSummaryWaitsLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Approvals asked'**
+  String get smSummaryWaitsLabel;
+
+  /// No description provided for @smSummaryHeldLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Notifications held'**
+  String get smSummaryHeldLabel;
+
+  /// No description provided for @smBatterySaver.
+  ///
+  /// In en, this message translates to:
+  /// **'Battery saver'**
+  String get smBatterySaver;
+
+  /// No description provided for @smBatterySaverHint.
+  ///
+  /// In en, this message translates to:
+  /// **'On battery below 30 %: low motion, 2D city.'**
+  String get smBatterySaverHint;
+
+  /// No description provided for @doctorScreenCiMissing.
+  ///
+  /// In en, this message translates to:
+  /// **'Screen modes: no CI dot on the Git card (gh is not installed).'**
+  String get doctorScreenCiMissing;
+
+  /// No description provided for @doctorScreenCiLoggedOut.
+  ///
+  /// In en, this message translates to:
+  /// **'Screen modes: no CI dot on the Git card (gh is not logged in).'**
+  String get doctorScreenCiLoggedOut;
 }
 
 class _AppLocalizationsDelegate

@@ -67,6 +67,10 @@ class FakeScreenState {
   int? claudeWaiting = 0;
   int? jobs = 1;
 
+  /// W7: the agent sends a `screen.summary` push when it stops (`lastStop.summary`).
+  bool summaryOnStop = false;
+  Map<String, dynamic>? lastStop;
+
   /// Thrown by every route of the display agent when set (e.g. unreachable); the others by their route.
   AgentError? error;
   AgentError? startError;
@@ -150,6 +154,8 @@ class FakeScreenState {
           for (final e in sources.entries) {'name': e.key, 'url': e.value, 'state': on ? (sourceStates[e.key] ?? 'off') : 'off', 'topics': <String>[]},
       ],
       'veil': on && veil,
+      'power': {'saver': false},
+      'lastStop': lastStop,
       'focus': _focus(),
       'map': {'present': display && mapPresent},
       'live': {
@@ -250,6 +256,7 @@ class FakeScreenState {
         settings['lastMode'] = m;
         return status(hostId);
       case '/v1/screen/stop':
+        lastStop = {'at': _now, 'summary': summaryOnStop};
         running = false;
         mode = null;
         veil = false;

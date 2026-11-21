@@ -13114,4 +13114,126 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get smEventStopped => 'Screen mode stopped';
+
+  @override
+  String smSummaryTitle(String modes, String duration) {
+    return '$modes ended · $duration';
+  }
+
+  @override
+  String smSummaryRounds(int n) {
+    String _temp0 = intl.Intl.pluralLogic(
+      n,
+      locale: localeName,
+      other: '$n focus rounds',
+      one: '1 focus round',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String smSummaryCommits(int n) {
+    String _temp0 = intl.Intl.pluralLogic(
+      n,
+      locale: localeName,
+      other: '$n commits',
+      one: '1 commit',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String smSummaryJobs(int n) {
+    String _temp0 = intl.Intl.pluralLogic(
+      n,
+      locale: localeName,
+      other: '$n jobs finished',
+      one: '1 job finished',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String smSummaryJobsFailed(int n) {
+    return '$n failed';
+  }
+
+  @override
+  String smSummarySessions(int n) {
+    String _temp0 = intl.Intl.pluralLogic(
+      n,
+      locale: localeName,
+      other: '$n Claude sessions',
+      one: '1 Claude session',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String smSummaryWaits(int n) {
+    String _temp0 = intl.Intl.pluralLogic(
+      n,
+      locale: localeName,
+      other: '$n approvals asked',
+      one: '1 approval asked',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String smSummaryHeld(int n) {
+    String _temp0 = intl.Intl.pluralLogic(
+      n,
+      locale: localeName,
+      other: '$n notifications waited',
+      one: '1 notification waited',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get smSummaryNothing => 'Nothing else to report.';
+
+  @override
+  String get smSummaryCardTitle => 'Last session';
+
+  @override
+  String get smSummaryCardNote =>
+      'Only on this phone, in memory; gone after 12 hours.';
+
+  @override
+  String get smSummaryDuration => 'Duration';
+
+  @override
+  String get smSummaryRoundsLabel => 'Focus rounds';
+
+  @override
+  String get smSummaryCommitsLabel => 'Commits';
+
+  @override
+  String get smSummaryJobsLabel => 'Jobs finished';
+
+  @override
+  String get smSummarySessionsLabel => 'Claude sessions';
+
+  @override
+  String get smSummaryWaitsLabel => 'Approvals asked';
+
+  @override
+  String get smSummaryHeldLabel => 'Notifications held';
+
+  @override
+  String get smBatterySaver => 'Battery saver';
+
+  @override
+  String get smBatterySaverHint =>
+      'On battery below 30 %: low motion, 2D city.';
+
+  @override
+  String get doctorScreenCiMissing =>
+      'Screen modes: no CI dot on the Git card (gh is not installed).';
+
+  @override
+  String get doctorScreenCiLoggedOut =>
+      'Screen modes: no CI dot on the Git card (gh is not logged in).';
 }

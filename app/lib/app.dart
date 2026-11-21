@@ -163,7 +163,10 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(path: '/vault', builder: (c, s) => const VaultScreen()),
       GoRoute(path: '/system/media', builder: (c, s) => MediaScreen(hostId: s.uri.queryParameters['host'] ?? '')),
       GoRoute(path: '/system/velour', builder: (c, s) => VelourScreen(hostId: s.uri.queryParameters['host'] ?? '', openPlayer: s.uri.queryParameters['player'] == '1')),
-      GoRoute(path: '/screen', builder: (c, s) => ScreenModeScreen(hostId: s.uri.queryParameters['host'] ?? '', tab: s.uri.queryParameters['tab'])),
+      GoRoute(
+        path: '/screen',
+        builder: (c, s) => ScreenModeScreen(hostId: s.uri.queryParameters['host'] ?? '', tab: s.uri.queryParameters['tab'], summary: s.uri.queryParameters['summary']),
+      ),
       // The Game mode screen's old address (§19): the screen modes, on the Game tab.
       GoRoute(path: '/gamemode', redirect: (c, s) => '/screen?host=${Uri.encodeQueryComponent(s.uri.queryParameters['host'] ?? '')}&tab=game'),
       GoRoute(path: '/system/desktop', builder: (c, s) => DesktopScreen(hostId: s.uri.queryParameters['host'] ?? '')),

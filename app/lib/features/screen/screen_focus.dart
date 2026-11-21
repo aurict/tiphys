@@ -81,7 +81,8 @@ class FocusSync {
     }
     final rec = await quiet.read();
     if (rec == null || rec.host != hostId) return;
-    if (active) {
+    // Between rounds, or stopped with a session summary on its way (W7: that one push carries the held count).
+    if (active || (!s.running && s.summarySent)) {
       await quiet.rest(hostId, t);
     } else {
       final held = await quiet.end();

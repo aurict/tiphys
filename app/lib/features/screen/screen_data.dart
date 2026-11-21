@@ -150,6 +150,9 @@ class ScreenSettings {
 
   /// This host as a source sends real file names and approval diffs.
   bool get shareCode => (raw['share'] as Map?)?['code'] == true;
+
+  /// On battery below 30 %: low motion and the flat city (W7; one setting for every mode).
+  bool get batterySaver => raw['batterySaver'] != false;
   ModeSettings mode(String m) => ModeSettings(m, Map<String, dynamic>.from((raw['modes'] as Map?)?[m] as Map? ?? const {}));
 
   /// A copy with [patch] (the shape of PUT's `settings`) laid over it.
@@ -283,6 +286,7 @@ class ScreenStatus {
     this.claudeSessions,
     this.claudeWaiting,
     this.jobs,
+    this.summarySent = false,
   });
 
   factory ScreenStatus.fromJson(Map j, {DateTime? receivedAt}) {
@@ -303,6 +307,7 @@ class ScreenStatus {
       claudeSessions: claude is Map ? (claude['sessions'] as num?)?.round() : null,
       claudeWaiting: claude is Map ? (claude['waiting'] as num?)?.round() : null,
       jobs: (live['jobs'] as num?)?.round(),
+      summarySent: (j['lastStop'] as Map?)?['summary'] == true,
     );
   }
 
@@ -364,6 +369,9 @@ class ScreenStatus {
   final int? claudeWaiting;
   final int? jobs;
 
+  /// The last stop sent a `screen.summary` push (W7, newer agents): it carries the Focus held count, not the app.
+  final bool summarySent;
+
   List<ScreenSource> get remoteSources => sources.where((s) => !s.isSelf).toList();
   ScreenSource? source(String name) => sources.where((s) => s.name == name).firstOrNull;
 
@@ -386,6 +394,7 @@ class ScreenStatus {
     claudeSessions: claudeSessions,
     claudeWaiting: claudeWaiting,
     jobs: jobs,
+    summarySent: summarySent,
   );
 
   /// Game: what the kiosk shows right now (scene "auto": driving when the truck is driving, else music or standby).

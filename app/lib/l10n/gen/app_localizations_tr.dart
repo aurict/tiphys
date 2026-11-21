@@ -12849,4 +12849,90 @@ class AppLocalizationsTr extends AppLocalizations {
 
   @override
   String get smEventStopped => 'Ekran modu kapandı';
+
+  @override
+  String smSummaryTitle(String modes, String duration) {
+    return '$modes bitti · $duration';
+  }
+
+  @override
+  String smSummaryRounds(int n) {
+    return '$n odak turu';
+  }
+
+  @override
+  String smSummaryCommits(int n) {
+    return '$n commit';
+  }
+
+  @override
+  String smSummaryJobs(int n) {
+    return '$n iş bitti';
+  }
+
+  @override
+  String smSummaryJobsFailed(int n) {
+    return '$n başarısız';
+  }
+
+  @override
+  String smSummarySessions(int n) {
+    return '$n Claude oturumu';
+  }
+
+  @override
+  String smSummaryWaits(int n) {
+    return '$n onay istendi';
+  }
+
+  @override
+  String smSummaryHeld(int n) {
+    return '$n bildirim bekletildi';
+  }
+
+  @override
+  String get smSummaryNothing => 'Başka bir şey olmadı.';
+
+  @override
+  String get smSummaryCardTitle => 'Son oturum';
+
+  @override
+  String get smSummaryCardNote =>
+      'Yalnız bu telefonda, bellekte; 12 saat sonra silinir.';
+
+  @override
+  String get smSummaryDuration => 'Süre';
+
+  @override
+  String get smSummaryRoundsLabel => 'Odak turu';
+
+  @override
+  String get smSummaryCommitsLabel => 'Commit';
+
+  @override
+  String get smSummaryJobsLabel => 'Biten iş';
+
+  @override
+  String get smSummarySessionsLabel => 'Claude oturumu';
+
+  @override
+  String get smSummaryWaitsLabel => 'İstenen onay';
+
+  @override
+  String get smSummaryHeldLabel => 'Bekletilen bildirim';
+
+  @override
+  String get smBatterySaver => 'Pilde tasarruf';
+
+  @override
+  String get smBatterySaverHint =>
+      'Pilde %30\'un altında: düşük hareket, 2D şehir.';
+
+  @override
+  String get doctorScreenCiMissing =>
+      'Ekran modları: Git kartında CI noktası yok (gh kurulu değil).';
+
+  @override
+  String get doctorScreenCiLoggedOut =>
+      'Ekran modları: Git kartında CI noktası yok (gh\'de oturum açılmamış).';
 }

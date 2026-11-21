@@ -12,8 +12,10 @@ import 'package:tiphys/core/push/focus_notices.dart';
 import 'package:tiphys/core/push/push_service.dart';
 import 'package:tiphys/core/security/app_lock.dart';
 import 'package:tiphys/features/screen/screen_data.dart';
+import 'package:tiphys/features/screen/screen_summary.dart';
 import 'package:tiphys/features/screen/screen_texts.dart';
 import 'package:tiphys/features/system/agent_providers.dart';
+import 'package:tiphys/features/system/doctor.dart';
 import 'package:tiphys/features/system/events.dart';
 import 'package:tiphys/l10n/gen/app_localizations_en.dart';
 import 'package:tiphys/l10n/gen/app_localizations_tr.dart';
@@ -370,6 +372,25 @@ void main() {
       expect(await q.read(), isNull);
     });
 
+    test('W7: mod özeti gelecekse uygulama bekletilenleri özete bırakır (tek bildirim)', () async {
+      final c = _container();
+      FakeAgent.screen.focus();
+      FakeAgent.screen.summaryOnStop = true;
+      await _status(c);
+      await Future<void>.delayed(const Duration(milliseconds: 20));
+      final q = FocusQuiet(_h.quietVault);
+      expect(await q.hold('claude.done', const {}, DateTime.now()), isTrue);
+      expect(await q.hold('git.committed', const {}, DateTime.now()), isTrue);
+      await c.read(screenProvider(screenDisplayHost).notifier).stop();
+      await Future<void>.delayed(const Duration(milliseconds: 20));
+      expect(_h.focusNotifications.shown.last, isNull);
+      expect(_h.focusNotifications.summaries, isEmpty, reason: 'özet bildirimini ajanın screen.summary push\'u yapar');
+      final rec = await q.read();
+      expect((rec!.held, rec.until), (2, null), reason: 'susturma bitti, sayı özete kaldı');
+      // The summary push takes the count (one notification) and the record goes.
+      expect(await q.end(), 2);
+    });
+
     test('quietPhone kapalıyken susturma yok; mola arası', () async {
       final c = _container();
       FakeAgent.screen.focus(phase: 'short');
@@ -407,6 +428,23 @@ void main() {
     expect(eventType('screen.started'), 'system');
     expect(eventType('screen.focus.phase'), 'system');
     expect(routeForPayload('{"link":"tiphys://screen","host":"argo"}'), '/screen?host=argo');
+    // W7: the session summary: numbers only, non-zero ones in the body, the held count merged in; the tap route.
+    final sum = ScreenSummary.fromParams(
+      {'minutes': 72, 'modes': 'work,focus', 'rounds': 2, 'commits': 3, 'jobs': 4, 'failed': 1, 'sessions': 2, 'waits': 0},
+      host: 'argo',
+      at: DateTime(2026, 11, 21, 12),
+      held: 5,
+    );
+    expect(screenSummaryNotice(tr, sum), ('Çalışma + Odak bitti · 1 sa 12 dk', '2 odak turu · 3 commit · 4 iş bitti (1 başarısız) · 2 Claude oturumu · 5 bildirim bekletildi'));
+    expect(screenSummaryNotice(en, sum).$2, '2 focus rounds · 3 commits · 4 jobs finished (1 failed) · 2 Claude sessions · 5 notifications waited');
+    expect(screenSummaryNotice(en, ScreenSummary.fromParams({'minutes': 3, 'modes': 'game,bogus'}, host: 'argo', at: DateTime(2026))), ('Game ended · 3 min', 'Nothing else to report.'));
+    final route = routeForPayload(jsonEncode({'link': 'tiphys://screen', 'host': 'argo', 'summary': sum.toJson()}))!;
+    expect(route, startsWith('/screen?host=argo&summary='));
+    expect(ScreenSummary.fromJson(Uri.parse(route).queryParameters['summary']), sum);
+    expect(sum.fresh(DateTime(2026, 11, 21, 23, 59)), isTrue);
+    expect(sum.fresh(DateTime(2026, 11, 22, 0, 1)), isFalse);
+    expect(ScreenSummary.fromJson('not json'), isNull);
+    expect(doctorText(tr, DoctorCheck.fromJson({'id': 'feature.screen.ci', 'status': 'ok', 'code': 'doctor.screen.ciUnavailable', 'params': {'reason': 'loggedOut'}})), tr.doctorScreenCiLoggedOut);
     expect(bindText('SUPER_SHIFT,F'), 'Super + Shift + F');
     expect(focusCritical('docker.died', const {}), isTrue);
   });

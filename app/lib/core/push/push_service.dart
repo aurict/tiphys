@@ -19,6 +19,7 @@ import '../../features/agy/agy_data.dart' show agyOptionFor;
 import '../../features/databases/db_texts.dart' show restoreNotificationReason;
 import '../../features/incidents/incident_texts.dart';
 import '../../features/incidents/incidents_data.dart' show exactHostFor;
+import '../../features/screen/screen_summary.dart';
 import '../../features/screen/screen_texts.dart' show focusPhaseNotice, screenModeName;
 import '../../features/security/security_more_texts.dart' show securityUrgentKeys;
 import '../../features/security/security_texts.dart';
@@ -334,8 +335,16 @@ String? routeForPayload(String? payload) {
       if (j['fileId'] is String && host is String && host.isNotEmpty && RegExp(r'^cf-[a-f0-9]{24}$').hasMatch(j['fileId'] as String)) {
         return '/configfiles/file?host=${Uri.encodeQueryComponent(host)}&id=${j['fileId']}';
       }
-      // The ongoing Focus notification: the screen mode screen of its display host.
-      if (route == '/screen') return host is String && host.isNotEmpty ? '/screen?host=${Uri.encodeQueryComponent(host)}' : route;
+      // The ongoing Focus notification: the screen mode screen of its display host; the session summary (W7) with its
+      // numbers (they live only in the notification and the route).
+      if (route == '/screen') {
+        final summary = ScreenSummary.fromJson(j['summary']);
+        final q = [
+          if (host is String && host.isNotEmpty) 'host=${Uri.encodeQueryComponent(host)}',
+          if (summary != null) 'summary=${Uri.encodeQueryComponent(jsonEncode(summary.toJson()))}',
+        ];
+        return q.isEmpty ? route : '$route?${q.join('&')}';
+      }
       if (route == '/db/restore') {
         final test = j['test'];
         return '/db/restore?host=${Uri.encodeQueryComponent('${host ?? ''}')}${test is String ? '&test=${Uri.encodeQueryComponent(test)}' : ''}';
@@ -1016,6 +1025,7 @@ class PushService {
     // Quiet notifications during Focus (PLAN.md §20 U5): a record nobody ended is summarized now.
     final stale = await quiet.endIfStale(now);
     if (stale > 0) await showFocusSummary(notifications, l, stale);
+    if (key == 'screen.summary') return _screenSummary(profile, l, params, data, now);
     if (key == 'screen.focus.phase') {
       await _focusPhase(profile, l, params, data, now);
       // Only a phase that ended by itself is worth a notification (an action was the user's own).
@@ -1092,9 +1102,11 @@ class PushService {
     final host = exactHostFor(agents, data?['agent'] as String?) ?? (agents.length == 1 ? agents.single : null);
     final phase = '${params['phase'] ?? 'idle'}';
     if (phase == 'idle' || params['cause'] == 'stop') {
+      await notifications.cancel(id: focusOngoingId);
+      // A `screen.summary` push follows (W7): it carries the held count, so the stop makes one notification.
+      if (data?['summary'] == '1') return quiet.rest(host?.id ?? '${data?['agent'] ?? ''}', now);
       final held = await quiet.end();
       if (held > 0) await showFocusSummary(notifications, l, held);
-      await notifications.cancel(id: focusOngoingId);
       return;
     }
     final endsAt = int.tryParse('${data?['endsAt'] ?? ''}');
@@ -1108,6 +1120,18 @@ class PushService {
       final o = focusOngoingFrom({...params, 'endsAt': endsAt}, hostId: host.id, hostName: host.name, now: now);
       if (o != null && o.endsAt != null) await showFocusOngoing(notifications, l, o);
     }
+  }
+
+  /// The session summary when a mode stopped (W7): one notification with the held count of the quiet filter merged in.
+  Future<void> _screenSummary(Profile profile, AppLocalizations l, Map<String, dynamic> params, Map<String, dynamic>? data, DateTime now) async {
+    final quiet = FocusQuiet(vault);
+    final held = await quiet.end();
+    await notifications.cancel(id: focusOngoingId);
+    final agents = profile.hosts.where((h) => h.agent != null).toList();
+    final host = exactHostFor(agents, data?['agent'] as String?) ?? (agents.length == 1 ? agents.single : null);
+    final s = ScreenSummary.fromParams(params, host: host?.id ?? '${data?['agent'] ?? ''}', at: now, held: held);
+    final (title, body) = screenSummaryNotice(l, s);
+    await showScreenSummary(notifications, title, body, jsonEncode({'link': 'tiphys://screen', if (host != null) 'host': host.id, 'summary': s.toJson()}));
   }
 
   /// The summary of the notifications held during Focus (the app ended the mode itself).

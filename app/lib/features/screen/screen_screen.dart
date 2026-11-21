@@ -23,17 +23,21 @@ import 'screen_card.dart';
 import 'screen_data.dart';
 import 'screen_setup.dart';
 import 'screen_sheet.dart';
+import 'screen_summary.dart';
 import 'screen_texts.dart';
 import 'screen_widgets.dart';
 
 class ScreenModeScreen extends ConsumerStatefulWidget {
-  const ScreenModeScreen({super.key, required this.hostId, this.tab});
+  const ScreenModeScreen({super.key, required this.hostId, this.tab, this.summary});
 
   /// The display host; empty: the home card's (the running one, else the first host with the feature).
   final String hostId;
 
   /// The tab to open (work | focus | game); null: the running or last mode.
   final String? tab;
+
+  /// A session summary (JSON) from its notification (W7): shown on top, kept in memory only.
+  final String? summary;
   @override
   ConsumerState<ScreenModeScreen> createState() => _ScreenModeScreenState();
 }
@@ -44,6 +48,21 @@ class _ScreenModeScreenState extends ConsumerState<ScreenModeScreen> {
 
   /// null: an older agent without a source shows the wizard; true: the wizard is open (add a source / its result).
   bool? _wizard;
+
+  /// The summary from the route until the memory provider has it.
+  late ScreenSummary? _summary = ScreenSummary.fromJson(widget.summary);
+
+  @override
+  void initState() {
+    super.initState();
+    final s = _summary;
+    if (s != null) Future.microtask(() => ref.read(screenSummaryProvider.notifier).show(s));
+  }
+
+  void _closeSummary() {
+    setState(() => _summary = null);
+    ref.read(screenSummaryProvider.notifier).show(null);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -74,7 +93,10 @@ class _ScreenModeScreenState extends ConsumerState<ScreenModeScreen> {
     }
     final wizard = _wizard ?? (s.legacy && s.remoteSources.isEmpty);
     final tab = _tab ?? (s.legacy ? 'game' : s.shownMode);
+    final summary = ref.watch(screenSummaryProvider) ?? _summary;
+    final showSummary = summary != null && summary.fresh(DateTime.now()) && (summary.host == host.id || profile.host(summary.host) == null);
     return _page(l, host, [
+      if (showSummary) Padding(padding: const EdgeInsets.only(bottom: 14), child: ScreenSummaryCard(summary: summary, onClose: _closeSummary)),
       if (status.hasError) ScreenErrorCard(error: status.error!, onRetry: () => ref.read(screenProvider(host.id).notifier).retry()),
       if (wizard)
         ScreenSetupWizard(
@@ -834,6 +856,15 @@ class _LookSectionState extends ConsumerState<_LookSection> {
             ],
           ),
         ),
+        if (!legacy)
+          SwitchRow(
+            title: l.smBatterySaver,
+            subtitle: l.smBatterySaverHint,
+            icon: LucideIcons.batteryLow,
+            iconBackground: const Color(0xFF34C759),
+            value: s.batterySaver,
+            onChanged: (v) => _save({'batterySaver': v}, global: true),
+          ),
         SwitchRow(
           title: l.gmClock24,
           icon: LucideIcons.clock,

@@ -12,6 +12,7 @@ import 'package:tiphys/core/agent/agent_client.dart';
 import 'package:tiphys/core/profile/model.dart';
 import 'package:tiphys/features/screen/screen_screen.dart';
 import 'package:tiphys/features/screen/screen_sheet.dart';
+import 'package:tiphys/features/screen/screen_summary.dart';
 import 'package:tiphys/l10n/gen/app_localizations.dart';
 import 'package:tiphys/l10n/gen/app_localizations_en.dart';
 import 'package:tiphys/l10n/gen/app_localizations_tr.dart';
@@ -228,6 +229,27 @@ void main() {
       expect(find.text(_tr.smFocusPaused), findsOneWidget);
       await golden('png/screen_focus_hero_paused_dark_tr.png');
     });
+
+    // W7: the session summary card, opened from its notification (the numbers ride in the route; memory only).
+    for (final (theme, dark, lang) in [('light', false, 'tr'), ('dark', true, 'en')]) {
+      _widgets('oturum özeti kartı $theme $lang', (tester) async {
+        final s = ScreenSummary.fromParams(
+          {'minutes': 72, 'modes': 'work,focus', 'rounds': 2, 'commits': 3, 'jobs': 4, 'failed': 1, 'sessions': 2, 'waits': 5},
+          host: 'argo',
+          at: DateTime.now(),
+          held: 6,
+        );
+        final q = Uri.encodeQueryComponent(jsonEncode(s.toJson()));
+        await _open(tester, dark: dark, lang: lang, h: 1100, route: '/screen?host=argo&summary=$q');
+        final l = _l(lang);
+        expect(find.text(l.smSummaryCardTitle), findsOneWidget);
+        expect(find.text('${l.smSummaryJobsLabel} · ${l.smSummaryJobsFailed(1)}'), findsOneWidget);
+        await golden('png/screen_summary_${theme}_$lang.png');
+        await tester.tap(find.byTooltip(l.commonClose));
+        await settle(tester);
+        expect(find.text(l.smSummaryCardTitle), findsNothing);
+      });
+    }
 
     _widgets('kapalı (açık, TR)', (tester) async {
       await _open(tester, h: 1000);

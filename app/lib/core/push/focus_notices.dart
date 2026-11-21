@@ -216,6 +216,17 @@ Future<void> showFocusSummary(FlutterLocalNotificationsPlugin n, AppLocalization
   notificationDetails: const NotificationDetails(android: AndroidNotificationDetails('tiphys', 'Tiphys')),
 );
 
+/// The session summary of a stopped screen mode (W7), in the same slot as the held-count summary it replaces.
+Future<void> showScreenSummary(FlutterLocalNotificationsPlugin n, String title, String body, String payload) => n.show(
+  id: focusSummaryId,
+  title: title,
+  body: body,
+  payload: payload,
+  notificationDetails: NotificationDetails(
+    android: AndroidNotificationDetails('tiphys', 'Tiphys', styleInformation: body.length > 60 ? BigTextStyleInformation(body) : null),
+  ),
+);
+
 /// Pause / Resume from the notification, with the display host's device token. Returns the new `focus` (null on failure).
 Future<Map?> focusActionFromNotification(AgentClient c, String action) async {
   try {
