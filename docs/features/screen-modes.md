@@ -144,15 +144,19 @@ Measured (2026-11-21):
 |---|---|---|---|
 | Source (8-core PC) | Work: city + claude + git + jobs + system, idle, 120 s | 0.04 % of all cores (0.33 % of one core), +1 MB | < 1 %, < 30 MB |
 | Source (8-core PC) | 40 file writes per second for 30 s | 1.8 % of all cores, +4 MB | < 3 % |
-| Source (PC) | Tiphys Claude permission → `diff` message | ≤ 3 ms in the agent | diff card < 500 ms |
-| Display (laptop, Firefox + agent) | Work, idle | ~1.4 % + 0.8 % of one core | < 5 % |
-| Display (laptop) | Work, a burst of reads / a running session's pulse | 5.6 % / 2.2 % of one core | < 20 % |
-| Display (laptop) | Work, a session waiting for approval (blinking label) | see below | < 5 % |
-| Display (laptop) | Focus counting / paused / veiled / ambient sound on | 3.0 / 0.5 / 0.1 / ~10.7 % of one core | |
-| Display (laptop) | Firefox memory (8 processes, PSS) | 540–560 MB | < 700 MB |
-| Display (laptop) | Game, visible / hidden | ~61 % / 0–1 % of one core (unchanged from 0.5.0) | |
+| Source (PC) | Tiphys Claude permission → `diff` message | a few ms in the agent | diff card < 500 ms |
+| Display (laptop, Firefox + agent) | Work, idle (steady state) | 1.0–1.6 % + 0.9 % of one core | < 5 % |
+| Display (laptop) | Work, the first minute after start (page load, first layout) | ~15 % + 1 % | |
+| Display (laptop) | Work, one edit (glow + camera, 14 s window) | 18.0 % + 1.2 % | < 20 % |
+| Display (laptop) | Work, an edit every 3 s plus commits, sustained | 32.7 % + 1.9 % | over budget, see below |
+| Display (laptop) | Work, a Claude session running / waiting for approval | 2.2 % / 3.2 % + 1.0 % | < 5 % |
+| Display (laptop) | Focus ready / counting / paused / veiled / ambient sound on | 1.3 / 3.0 / 0.5 / 0.1 / ~10.7 % | |
+| Display (laptop) | Firefox memory (8 processes, PSS) | 530–590 MB | < 700 MB |
+| Display (laptop) | Game, visible / hidden | 62 % / 0–1 % of one core (0.5.0: ~61 %) | unchanged |
 
-<!-- W8 laptop numbers are filled in below when measured. -->
+A sustained stream of edits keeps the 3D city animating all the time (one 3D frame costs ~15 ms of CPU on the laptop's
+Iris Xe at 2160×1440); the slow parts of an effect already run at 10 fps. Use the 2D city or motion *low* if the
+display host is weak; the battery saver does this by itself on battery.
 
 ## Requirements
 

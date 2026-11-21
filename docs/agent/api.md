@@ -1245,7 +1245,8 @@ dropped while the kiosk is hidden), `truck` (`truck`, `event`). Card kinds → t
 `servers` → the topic of the same name; `city` → city, claude and (with `modes.work.diff` on) diff. A `gamemode`
 token never gets `claude` or `diff`. Templates: `game` (map, cockpit, music, lyrics), `work` (city, day,
 system, jobs, git, music, servers), `focus` (focus, task, day, music, servers). `focus` → claude and servers (only
-for its critical pills: Claude waiting for approval, a server down); `task` → nothing (the task comes with `focus`).
+for its critical pills: Claude waiting for approval, a server down), plus music while `modes.focus.ambient` is on (the
+noise stays off while Velour plays, also without a Music card); `task` → nothing (the task comes with `focus`).
 `system` is dropped while the kiosk is hidden; while it is
 hidden the display host also drops `touch` events (the city state keeps following).
 
