@@ -36,7 +36,8 @@ import { imageType } from "../routes/media.ts";
 import type { Ctx } from "../server.ts";
 import { APP_ID, bindOffArgs, bindOnArgs, bindTaken, kioskWindow, moveToSpecialArgs, ruleOffArgs, ruleOnArgs, SPECIAL, toggleSpecialArgs, WORKSPACES, type Placement } from "./placement.ts";
 import type { FeedProducer, Sock } from "./source.ts";
-import { checkLayout, layoutTopics, MESSAGE_TOPIC, type Topic } from "./topics.ts";
+import type { ProjectSpec } from "./producers/project.ts";
+import { checkLayout, layoutTopics, MESSAGE_TOPIC, STATE_TYPES, type Topic } from "./topics.ts";
 import { VisibilityWatcher, type VisibilityOpts } from "./visibility.ts";
 
 export const UNIT = "tiphys-screen";
@@ -225,6 +226,7 @@ export type SourceState = "off" | "connecting" | "ok" | "down";
 interface Conn {
   name: string;
   topics: Set<Topic>;
+  project: ProjectSpec;
   ws: Upstream | null;
   state: SourceState;
   retryInSec?: number;
@@ -240,10 +242,9 @@ type Rec = Record<string, unknown>;
 
 interface Latest {
   music: Rec | null;
-  musicRaw: string | null;
-  lyrics: string | null;
   truck: Rec | null;
-  truckRaw: string | null;
+  /** Latest tagged state message per type (STATE_TYPES), replayed to a new page or layout. */
+  raw: Map<string, string>;
 }
 
 export interface DisplayOpts {
@@ -262,8 +263,9 @@ export interface DisplayOpts {
   visibility?: VisibilityOpts;
 }
 
-const emptyLatest = (): Latest => ({ music: null, musicRaw: null, lyrics: null, truck: null, truckRaw: null });
+const emptyLatest = (): Latest => ({ music: null, truck: null, raw: new Map() });
 const sameSet = (a: Set<Topic>, b: Set<Topic>) => a.size === b.size && [...a].every((x) => b.has(x));
+const sameProject = (a: ProjectSpec, b: ProjectSpec) => a.project === b.project && a.ci === b.ci;
 
 /** Turns a screen error into the old Game mode code for the /v1/gamemode aliases (app 1.2 knows only those). */
 export function legacyError(e: unknown): unknown {
@@ -290,7 +292,7 @@ export class ScreenDisplay {
   #paused = false;
   /** Scratch: the special workspace is shown once, when the page first connects after a start. */
   #shown = false;
-  #self: { sock: Sock; topics: Set<Topic> } | null = null;
+  #self: { sock: Sock; topics: Set<Topic>; project: ProjectSpec } | null = null;
   readonly #conns = new Map<string, Conn>();
   readonly #latest = new Map<string, Latest>();
   readonly #art = new Map<string, { type: string; bytes: Buffer }>();
@@ -329,7 +331,14 @@ export class ScreenDisplay {
   /** A new layout rebuilds the page's cards: they get the latest state again right after it. */
   #sendLayout(mode: ScreenMode) {
     this.#sendPages(this.#layoutMsg(mode));
-    for (const l of this.#latest.values()) for (const m of [l.musicRaw, l.lyrics, l.truckRaw]) if (m) this.#sendPages(m);
+    for (const l of this.#latest.values()) for (const m of l.raw.values()) this.#sendPages(m);
+  }
+
+  /** What the git (later city) topic watches: the Work mode's project and CI setting. */
+  #project(mode: ScreenMode): ProjectSpec {
+    if (mode !== "work") return { project: "auto", ci: false };
+    const w = this.#cfg.modes.work;
+    return { project: w.project === "auto" ? "auto" : w.project.path, ci: w.ci };
   }
 
   /** Source names the mode needs that aren't configured. */
@@ -725,15 +734,17 @@ export class ScreenDisplay {
   #resubscribe() {
     const st = this.#running;
     const need = st ? layoutTopics(st.mode, this.#cfg.modes[st.mode].layout, this.#settings(st.mode), this.#paused) : new Map<string, Set<Topic>>();
+    const project = this.#project(st?.mode ?? "work");
     const self = need.get("self");
     if (self && this.#feed) {
       if (!this.#self) {
         const sock: Sock = { readyState: 1, bufferedAmount: 0, send: (d) => this.#relay("self", d, this.#self?.topics ?? new Set()), close: () => {} };
-        this.#self = { sock, topics: self };
-        void this.#feed.add(sock, [...self]);
-      } else if (!sameSet(this.#self.topics, self)) {
+        this.#self = { sock, topics: self, project };
+        void this.#feed.add(sock, [...self], project);
+      } else if (!sameSet(this.#self.topics, self) || !sameProject(this.#self.project, project)) {
         this.#self.topics = self;
-        void this.#feed.setTopics(this.#self.sock, [...self]);
+        this.#self.project = project;
+        void this.#feed.setTopics(this.#self.sock, [...self], project);
       }
     } else if (this.#self) {
       void this.#feed?.remove(this.#self.sock);
@@ -745,11 +756,12 @@ export class ScreenDisplay {
       if (name === "self" || !(name in this.#cfg.sources)) continue;
       const c = this.#conns.get(name);
       if (!c) {
-        const conn: Conn = { name, topics, ws: null, state: "off", attempt: 0, timer: null, idle: null, legacy: false, opened: false };
+        const conn: Conn = { name, topics, project, ws: null, state: "off", attempt: 0, timer: null, idle: null, legacy: false, opened: false };
         this.#conns.set(name, conn);
         this.#connect(conn);
-      } else if (!sameSet(c.topics, topics)) {
+      } else if (!sameSet(c.topics, topics) || !sameProject(c.project, project)) {
         c.topics = topics;
+        c.project = project;
         this.#subscribe(c);
       }
     }
@@ -765,7 +777,8 @@ export class ScreenDisplay {
   #subscribe(c: Conn) {
     if (c.legacy || !c.ws || c.ws.readyState !== 1) return;
     try {
-      c.ws.send(JSON.stringify({ type: "subscribe", topics: [...c.topics] }));
+      const git = c.topics.has("git") ? { project: c.project.project, ci: c.project.ci } : {};
+      c.ws.send(JSON.stringify({ type: "subscribe", topics: [...c.topics], ...git }));
     } catch {}
   }
 
@@ -886,14 +899,9 @@ export class ScreenDisplay {
     const tagged = JSON.stringify({ src, ...msg });
     const l = this.#latest.get(src) ?? emptyLatest();
     this.#latest.set(src, l);
-    if (msg.type === "music") {
-      l.music = msg;
-      l.musicRaw = tagged;
-    } else if (msg.type === "lyrics") l.lyrics = tagged;
-    else if (msg.type === "truck") {
-      l.truck = msg;
-      l.truckRaw = tagged;
-    }
+    if (msg.type === "music") l.music = msg;
+    else if (msg.type === "truck") l.truck = msg;
+    if (STATE_TYPES.has(msg.type)) l.raw.set(msg.type, tagged);
     this.#sendPages(tagged, msg.type === "truck");
   }
 
@@ -912,7 +920,7 @@ export class ScreenDisplay {
     this.#pages.add(sock);
     sock.send(this.#layoutMsg(st.mode));
     for (const c of this.#conns.values()) sock.send(this.#sourceMsg(c));
-    for (const l of this.#latest.values()) for (const m of [l.musicRaw, l.lyrics, l.truckRaw]) if (m) sock.send(m);
+    for (const l of this.#latest.values()) for (const m of l.raw.values()) sock.send(m);
     if (this.#paused) sock.send(JSON.stringify({ type: "pause" }));
     void this.#showScratch().catch(() => {});
   }

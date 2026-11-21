@@ -220,14 +220,15 @@ const cards = (kinds: CardKind[], source = "self") => kinds.map((kind) => ({ kin
 /** Default layouts; every card reads this host (`self`) until the phone picks a source. */
 export function defaultLayout(mode: ScreenMode, source = "self"): Layout {
   if (mode === "game") return { template: "game", cards: cards(["map", "cockpit", "music", "lyrics"], source) };
-  if (mode === "work") return { template: "work", cards: cards(["city", "day", "system", "jobs", "git", "music"], source) };
+  if (mode === "work") return { template: "work", cards: cards(["city", "day", "system", "jobs", "git", "music", "servers"], source) };
   return { template: "focus", cards: cards(["focus", "task", "day", "music"], source) };
 }
 
 const motion = z.enum(["low", "normal", "high"]).default("normal");
 const brightness = z.number().int().min(5).max(100).nullable().default(null);
 export const workSettingsSchema = z.object({
-  project: z.union([z.literal("auto"), z.strictObject({ path: z.string().min(1).max(1024) })]).default("auto"),
+  /** Git (later city) project: "auto" = the last active Claude session's / focused terminal's repo; a path must be absolute. */
+  project: z.union([z.literal("auto"), z.strictObject({ path: z.string().min(1).max(1024).regex(/^\//) })]).default("auto"),
   city: z.enum(["3d", "2d"]).default("3d"),
   diff: z.boolean().default(true),
   ci: z.boolean().default(false),

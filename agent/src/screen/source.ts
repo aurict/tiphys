@@ -6,21 +6,34 @@
 //   It also runs for spectrum alone (the capture follows Velour's playing state).
 // - spectrum: pw-record on the default output's monitor → FFT → binary frames, only while Velour plays.
 // - truck: ETS2 shared memory, 20 Hz while driving and 1 Hz otherwise, plus derived events.
+// - system, jobs, servers: state producers (producers/*.ts), the latest message replayed to a new subscriber.
+// - git: per subscriber project (`project`, `ci` in the subscribe message), one watcher per git root (producers/git.ts).
 // WS /v1/gamemode/feed is the 0.5 feed for one release: every Game mode topic at once, nothing accepted.
 // GET /v1/screen/game/source and POST /v1/screen/game/plugin (+ the /v1/gamemode/… aliases) are for the phone.
 import { spawn } from "node:child_process";
+import { join } from "node:path";
 import type { Readable } from "node:stream";
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
+import { terminalSessions } from "../claude/terminal.ts";
+import { expandHome } from "../config.ts";
 import { whichIn } from "../detect.ts";
 import { AppError } from "../errors.ts";
 import { run } from "../exec.ts";
 import type { Exec } from "../control.ts";
-import { artId } from "../routes/media.ts";
+import { FocusWatcher, realConnect } from "../focus.ts";
 import { sessionBusEnv } from "../routes/desktop.ts";
+import { hyprEnv } from "../routes/hypr.ts";
+import { artId } from "../routes/media.ts";
 import { velourRequest, velourSocketPath, type VelourOp } from "../routes/velour.ts";
 import type { Ctx } from "../server.ts";
 import { findGameDir, installPlugin, parseTelemetry, pluginStatus, removePlugin, TelemetryReader, TruckEvents, type Sample } from "./ets2.ts";
+import type { StateProducer } from "./producers/common.ts";
+import { GitTopic, realGitIo, resolveProject, type GitTopicDeps } from "./producers/git.ts";
+import { JobsProducer } from "./producers/jobs.ts";
+import { parseProject, ProjectSelector, realSelectorIo, type ProjectSpec } from "./producers/project.ts";
+import { ServersProducer, type ServersState } from "./producers/servers.ts";
+import { SystemProducer } from "./producers/system.ts";
 import { parseSinkName, pwRecordArgs, SpectrumAnalyzer } from "./spectrum.ts";
 import { GAMEMODE_TOPICS, parseTopics, TOPICS, type Topic } from "./topics.ts";
 
@@ -71,6 +84,17 @@ export interface SourceOpts {
   killGraceMs?: number;
   /** Heartbeat to /v1/screen/feed subscribers: their idle watchdog must not fire on quiet topics. */
   heartbeatMs?: number;
+  /** Work mode producers (defaults: the real ones, see sourceRoutes). */
+  producers?: Producers;
+}
+
+/** Topics served by a state producer (one instance while subscribed). */
+export const STATE_TOPICS = ["system", "jobs", "servers"] as const;
+export type StateTopic = (typeof STATE_TOPICS)[number];
+
+export interface Producers {
+  make: Record<StateTopic, () => StateProducer>;
+  git: GitTopicDeps;
 }
 
 type Rec = Record<string, unknown>;
@@ -143,7 +167,12 @@ interface Loop {
 /** Shared producer: each loop runs only while a subscriber wants its topic. */
 export class FeedProducer {
   readonly #io: SourceIo;
-  readonly #o: Required<Omit<SourceOpts, "io" | "heartbeatMs">>;
+  readonly #o: Required<Omit<SourceOpts, "io" | "heartbeatMs" | "producers">>;
+  readonly #make: Producers["make"] | null;
+  /** Running state producers and their latest state message. */
+  readonly #state = new Map<StateTopic, { p: StateProducer; last: string | null }>();
+  readonly #git: GitTopic | null;
+  readonly #projects = new Map<Sock, ProjectSpec>();
   readonly #log: (msg: string, err?: unknown) => void;
   readonly #subs = new Map<Sock, Set<Topic>>();
   #music: Loop | null = null;
@@ -167,6 +196,8 @@ export class FeedProducer {
       idleMs: o.idleMs ?? 1000,
       killGraceMs: o.killGraceMs ?? 1000,
     };
+    this.#make = o.producers?.make ?? null;
+    this.#git = o.producers ? new GitTopic(o.producers.git) : null;
   }
 
   get subscribers() {
@@ -174,12 +205,28 @@ export class FeedProducer {
   }
 
   get running() {
-    return this.#music !== null || this.#truck !== null;
+    return this.#music !== null || this.#truck !== null || this.#state.size > 0 || this.#git?.active === true;
   }
 
   /** Topics with a running producer (tests). */
   get producing(): Topic[] {
-    return [...(this.#music ? ["music" as const] : []), ...(this.#spectrum ? ["spectrum" as const] : []), ...(this.#truck ? ["truck" as const] : [])];
+    return [
+      ...(this.#music ? ["music" as const] : []),
+      ...(this.#spectrum ? ["spectrum" as const] : []),
+      ...(this.#truck ? ["truck" as const] : []),
+      ...STATE_TOPICS.filter((t) => this.#state.has(t)),
+      ...(this.#git?.active ? ["git" as const] : []),
+    ];
+  }
+
+  /** A running state producer (tests). */
+  producer(t: StateTopic) {
+    return this.#state.get(t)?.p ?? null;
+  }
+
+  /** The git topic (tests). */
+  get git() {
+    return this.#git;
   }
 
   /** The spectrum capture child (tests). */
@@ -187,29 +234,39 @@ export class FeedProducer {
     return this.#spectrum?.child ?? null;
   }
 
-  add(sock: Sock, topics: readonly Topic[] = GAMEMODE_TOPICS) {
+  add(sock: Sock, topics: readonly Topic[] = GAMEMODE_TOPICS, project?: ProjectSpec) {
     this.#subs.set(sock, new Set());
-    return this.setTopics(sock, topics);
+    return this.setTopics(sock, topics, project);
   }
 
-  /** Replaces a subscriber's topics; the latest state of each added topic is sent at once. */
-  setTopics(sock: Sock, topics: readonly Topic[]) {
+  /** Replaces a subscriber's topics (and project); the latest state of each added topic is sent at once. */
+  setTopics(sock: Sock, topics: readonly Topic[], project: ProjectSpec = { project: "auto", ci: false }) {
     const old = this.#subs.get(sock);
     if (!old) return Promise.resolve();
     const next = new Set(topics);
     this.#subs.set(sock, next);
+    this.#projects.set(sock, project);
     if (next.has("music") && !old.has("music")) for (const m of [this.#musicMsg, this.#lyrics]) if (m) sock.send(m);
     if (next.has("truck") && !old.has("truck") && this.#truckMsg) sock.send(this.#truckMsg);
+    for (const t of STATE_TOPICS) {
+      const last = this.#state.get(t)?.last;
+      if (next.has(t) && !old.has(t) && last) sock.send(last);
+    }
+    this.#git?.set(sock, next.has("git") ? project : null);
     return this.#apply();
   }
 
   async remove(sock: Sock) {
     if (!this.#subs.delete(sock)) return;
+    this.#projects.delete(sock);
+    this.#git?.set(sock, null);
     await this.#apply();
   }
 
   async stop() {
     this.#subs.clear();
+    this.#projects.clear();
+    this.#git?.stop();
     await this.#apply();
   }
 
@@ -243,6 +300,22 @@ export class FeedProducer {
     }
     if (!w.has("spectrum") || !this.#playing) stops.push(this.#stopSpectrum());
     else void this.#startSpectrum();
+    for (const t of STATE_TOPICS) {
+      const cur = this.#state.get(t);
+      if (w.has(t) && !cur && this.#make) {
+        const entry = { p: this.#make[t](), last: null as string | null };
+        this.#state.set(t, entry);
+        // Only the topic's own type is its state; jobDone is an event.
+        entry.p.start((m) => {
+          if (this.#state.get(t) !== entry) return;
+          const s = this.#broadcast(m, t);
+          if (m.type === t) entry.last = s;
+        });
+      } else if (!w.has(t) && cur) {
+        this.#state.delete(t);
+        stops.push(cur.p.stop());
+      }
+    }
     await Promise.all(stops);
   }
 
@@ -404,9 +477,9 @@ export async function sourceStatus(io: SourceIo) {
 const HEARTBEAT = JSON.stringify({ type: "hb" });
 
 /** Source routes on a shared producer (the display side's `self` source uses the same one). */
-export function sourceRoutes(app: FastifyInstance, _ctx: Ctx, o: SourceOpts & { feed?: FeedProducer } = {}) {
+export function sourceRoutes(app: FastifyInstance, ctx: Ctx, o: SourceOpts & { feed?: FeedProducer } = {}) {
   const io = o.io ?? realSourceIo();
-  const feed = o.feed ?? new FeedProducer(io, o, (msg, err) => app.log.warn({ err }, msg));
+  const feed = o.feed ?? new FeedProducer(io, { ...o, producers: o.producers ?? realProducers(ctx) }, (msg, err) => app.log.warn({ err }, msg));
   app.addHook("onClose", async () => feed.closeAll());
 
   // Topics come with `{type:"subscribe", topics, project?}` (replaces the set). A token with only the older
@@ -425,14 +498,15 @@ export function sourceRoutes(app: FastifyInstance, _ctx: Ctx, o: SourceOpts & { 
     socket.on("error", gone);
     socket.on("message", (d: Buffer) => {
       if (d.length > 4096) return;
-      let m: { type?: unknown; topics?: unknown };
+      let m: { type?: unknown; topics?: unknown; project?: unknown; ci?: unknown };
       try {
         m = JSON.parse(d.toString()) as typeof m;
       } catch {
         return;
       }
       const topics = m?.type === "subscribe" ? parseTopics(m.topics, allowed) : null;
-      if (topics) void feed.setTopics(sock, topics);
+      const project = topics ? parseProject(m.project, m.ci) : null;
+      if (topics && project) void feed.setTopics(sock, topics, project);
     });
   });
 
@@ -459,4 +533,51 @@ export function sourceRoutes(app: FastifyInstance, _ctx: Ctx, o: SourceOpts & { 
   }
 
   return feed;
+}
+
+/** The uptime bridge's and the incident room's current state (both in memory). */
+export function serversState(ctx: Ctx): ServersState {
+  const b = ctx.uptime;
+  const inc = ctx.incidents;
+  return {
+    monitors: b ? b.list().map((m) => ({ name: m.name, status: m.status, since: b.important.get(m.id)?.[0]?.time ?? null })) : null,
+    connected: b ? b.state.connected && b.state.loggedIn : false,
+    incidents: inc ? inc.list("active", 1000).length : null,
+  };
+}
+
+/** Real Work mode producers of this host. Modules registered later (Claude, uptime, incidents) are read from ctx lazily. */
+export function realProducers(ctx: Ctx): Producers {
+  const claudeDir = expandHome("~/.claude");
+  return {
+    make: {
+      system: () => new SystemProducer(),
+      jobs: () => new JobsProducer(),
+      servers: () => new ServersProducer(() => serversState(ctx)),
+    },
+    git: {
+      io: realGitIo,
+      resolve: (path) => resolveProject(ctx.store.get(), path),
+      selector: (onChange) =>
+        new ProjectSelector(
+          realSelectorIo({
+            tiphys: () => [...(ctx.claude?.sessions.values() ?? [])].map((s) => ({ cwd: s.cwd, at: s.lastActivity })),
+            terminal: async () =>
+              (await terminalSessions(claudeDir)).filter((t) => t.cwd).map((t) => ({ cwd: t.cwd!, at: Date.parse(t.updatedAt ?? t.startedAt ?? "") || 0 })),
+            sessionsDir: join(claudeDir, "sessions"),
+            focus: process.platform === "linux" ? focusPids(ctx) : null,
+          }),
+          onChange,
+        ),
+    },
+  };
+}
+
+/** Focused window pid from the Hyprland event socket (one shared listener while subscribed). */
+function focusPids(ctx: Ctx) {
+  let watcher: FocusWatcher | null = null;
+  return (fn: (pid: number | null) => void) => {
+    watcher ??= new FocusWatcher({ exec: run, hyprEnv, connect: realConnect }, { apps: () => ctx.desktopApps?.() ?? Promise.resolve([]) });
+    return watcher.subscribe((f) => fn(f.pid));
+  };
 }

@@ -1,21 +1,27 @@
 // Screen feed topics (PLAN.md §20 "Konular ve üreticiler"): what a source agent produces, what each kiosk card needs
 // and which layouts are valid. The display agent sums the topics of the active layout's cards per source and sends
 // each source only those (`{type:"subscribe", topics}`); a producer runs only while a subscriber wants its topic.
-// W1 has the Game mode topics; W2+ add system, jobs, git, city, claude, diff and servers here.
+// W2 adds the Work mode state topics (system, jobs, git, servers); W3+ add city, claude and diff.
 import type { CardKind, GameSettings, Layout, ModeSettings, ScreenMode } from "../config.ts";
 import { AppError } from "../errors.ts";
 
-export const TOPICS = ["music", "spectrum", "truck"] as const;
+export const TOPICS = ["music", "spectrum", "truck", "system", "jobs", "git", "servers"] as const;
 export type Topic = (typeof TOPICS)[number];
 
 /** A token with only the older "gamemode" scope gets these (PLAN.md §20 A-1). */
 export const GAMEMODE_TOPICS: readonly Topic[] = ["music", "spectrum", "truck"];
 
-/** Dropped from the subscriptions while the kiosk is hidden: pure animation, no state is lost. */
-export const PAUSABLE: ReadonlySet<Topic> = new Set(["spectrum"]);
+/** Dropped from the subscriptions while the kiosk is hidden: pure animation or a live gauge, no state is lost. */
+export const PAUSABLE: ReadonlySet<Topic> = new Set(["spectrum", "system"]);
 
 /** JSON message type → topic (binary frames are always spectrum). Other types are never relayed. */
-export const MESSAGE_TOPIC: Readonly<Record<string, Topic>> = { music: "music", lyrics: "music", truck: "truck", event: "truck" };
+export const MESSAGE_TOPIC: Readonly<Record<string, Topic>> = {
+  music: "music", lyrics: "music", truck: "truck", event: "truck",
+  system: "system", jobs: "jobs", jobDone: "jobs", git: "git", servers: "servers",
+};
+
+/** Message types that are a topic's whole current state (replayed to a new page or layout); the rest are events. */
+export const STATE_TYPES: ReadonlySet<string> = new Set(["music", "lyrics", "truck", "system", "jobs", "git", "servers"]);
 
 /** Templates per mode and the card kinds each one can hold (anything else: 400 agent.screen.badLayout). */
 export const TEMPLATES: Readonly<Record<ScreenMode, Readonly<Record<string, readonly CardKind[]>>>> = {
@@ -26,12 +32,12 @@ export const TEMPLATES: Readonly<Record<ScreenMode, Readonly<Record<string, read
 
 /**
  * Card kinds the kiosk page of this version draws. Only these subscribe topics, so a card the page can't show yet
- * starts no producer (W2 adds the Work cards, W5 the Focus ones).
+ * starts no producer (W3 adds the city, W5 the Focus timer and task).
  */
 export const DRAWN: Readonly<Record<ScreenMode, readonly CardKind[]>> = {
   game: ["map", "cockpit", "music", "lyrics"],
-  work: ["day"],
-  focus: ["day"],
+  work: ["day", "system", "jobs", "git", "music", "servers"],
+  focus: ["day", "music", "servers"],
 };
 
 /** Topics one card needs. */
@@ -44,6 +50,11 @@ export function cardTopics(mode: ScreenMode, kind: CardKind, settings: ModeSetti
       return ["music"];
     case "music":
       return mode === "game" && (settings as GameSettings).spectrum ? ["music", "spectrum"] : ["music"];
+    case "system":
+    case "jobs":
+    case "git":
+    case "servers":
+      return [kind];
     default:
       return [];
   }

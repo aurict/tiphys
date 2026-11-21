@@ -12,7 +12,8 @@ import type { ExecResult } from "../src/exec.ts";
 import type { EventSocket } from "../src/focus.ts";
 import { displayRoutes, userJs, type DisplayIo, type Upstream } from "../src/screen/display.ts";
 import { bindOffArgs, bindOnArgs, bindTaken, kioskWindow, moveToSpecialArgs, parseBind, ruleOnArgs, toggleSpecialArgs } from "../src/screen/placement.ts";
-import { sourceRoutes, type FeedProducer, type SourceIo } from "../src/screen/source.ts";
+import type { StateProducer } from "../src/screen/producers/common.ts";
+import { sourceRoutes, type FeedProducer, type Producers, type SourceIo } from "../src/screen/source.ts";
 import { checkLayout, layoutTopics, parseTopics } from "../src/screen/topics.ts";
 import { relevantEvent, visibleIn } from "../src/screen/visibility.ts";
 import { createServiceToken } from "../src/service_tokens.ts";
@@ -108,9 +109,10 @@ describe("topics and layouts", () => {
     expect([...layoutTopics("game", off, gs).get("self")!]).toEqual(["music"]);
     const split = { ...gl, cards: gl.cards.map((x) => ({ ...x, source: x.kind === "map" ? "argo" : "self" })) };
     expect([...layoutTopics("game", split, gs).entries()].map(([k, v]) => [k, [...v]])).toEqual([["argo", ["truck"]], ["self", ["truck", "music", "spectrum"]]]);
-    // Work in W1 draws only the Day card: nothing is subscribed (its music card doesn't start Velour polling yet).
+    // Work (W2): the state topics of its cards; the city (W3) subscribes nothing yet; hidden → no system gauge.
     const { layout: wl, ...ws } = c.work;
-    expect(layoutTopics("work", wl, ws).size).toBe(0);
+    expect([...layoutTopics("work", wl, ws).get("self")!]).toEqual(["system", "jobs", "git", "music", "servers"]);
+    expect([...layoutTopics("work", wl, ws, true).get("self")!]).toEqual(["jobs", "git", "music", "servers"]);
   });
 
   it("checkLayout and parseTopics", () => {
@@ -202,6 +204,36 @@ class FakeUpstream implements Upstream {
   }
 }
 
+/** A state producer that sends one `{type: topic}` message on start (Work mode topics without /proc, git or Kuma). */
+class FakeState implements StateProducer {
+  active = false;
+  readonly topic: string;
+  constructor(topic: string) {
+    this.topic = topic;
+  }
+  start(emit: (m: Record<string, unknown>) => void) {
+    this.active = true;
+    emit({ type: this.topic, fake: true });
+  }
+  async stop() {
+    this.active = false;
+  }
+}
+
+function fakeProducers(): Producers {
+  return {
+    make: { system: () => new FakeState("system"), jobs: () => new FakeState("jobs"), servers: () => new FakeState("servers") },
+    git: {
+      io: { run: async () => ({ stdout: "", code: 128 }), watch: () => ({ close() {} }), read: async () => null, list: async () => [], has: () => false },
+      selector: (onChange) => {
+        const sel = { root: null, known: false, active: false, start: () => ((sel.active = sel.known = true), onChange(null)), stop: () => (sel.active = false) };
+        return sel;
+      },
+      resolve: async () => ({ none: "notRepo" }),
+    },
+  };
+}
+
 function velourIdle() {
   // State once, then wait until aborted (a quiet Velour).
   return async (op: { op: string }, signal?: AbortSignal) => {
@@ -263,7 +295,7 @@ async function screenApp(o: { lua?: boolean; placement?: "fullscreen" | "scratch
     },
     [
       async (a, ctx) => {
-        feed = sourceRoutes(a, ctx, { io: sio, idleMs: 30, heartbeatMs: 40 });
+        feed = sourceRoutes(a, ctx, { io: sio, idleMs: 30, heartbeatMs: 40, producers: fakeProducers() });
         await displayRoutes(a, ctx, { io, feed, displayDir: null, mapDir: runtime, backoff: [0.02], watchMs: 60_000, visibility: { debounceMs: 5 } });
       },
     ],
@@ -322,13 +354,16 @@ describe("screen display", () => {
     const feed = t.feed();
     const s = await t.req("POST", "/v1/screen/start", { mode: "work" });
     expect(s.statusCode).toBe(200);
-    expect(s.json()).toMatchObject({ running: true, mode: "work", placement: "fullscreen", sources: [{ name: "self", state: "off", topics: [] }] });
+    expect(s.json()).toMatchObject({ running: true, mode: "work", placement: "fullscreen", sources: [{ name: "self", state: "ok", topics: ["git", "jobs", "music", "servers", "system"] }] });
     expect(t.hypr()).toContain("keyword windowrule[tiphys-screen]:workspace name:is");
     expect(t.hypr()).toContain("dispatch workspace name:is");
-    expect(feed.running).toBe(false); // Work in W1: Day card only, no producer
+    await until(() => ["system", "jobs", "servers", "git"].every((x) => feed.producing.includes(x as never)));
     const p = await t.page();
     await until(() => p.msgs().some((m) => m.type === "layout"));
-    expect(p.msgs()[0]).toMatchObject({ type: "layout", mode: "work", template: "work", settings: { clock24: true } });
+    expect(p.msgs()[0]).toMatchObject({ type: "layout", mode: "work", template: "work", settings: { clock24: true, project: "auto" } });
+    // The producers' state, sent before the page connected, is replayed to it tagged "self"; no project → git says so.
+    await until(() => ["system", "jobs", "servers"].every((x) => p.msgs().some((m) => m.type === x && m.src === "self")));
+    await until(() => p.msgs().some((m) => m.type === "git" && m.none === "noProject"));
 
     const runs = t.calls.filter((c) => c.cmd === "systemd-run").length;
     const sw = await t.req("POST", "/v1/screen/mode", { mode: "game" });
@@ -340,11 +375,13 @@ describe("screen display", () => {
     expect(t.calls.filter((c) => c.cmd === "systemd-run").length).toBe(runs); // Firefox not restarted
     expect(t.store.get().screen.lastMode).toBe("game");
 
+    // Focus (W2): Day and Music cards; the timer is W5.
     await t.req("POST", "/v1/screen/mode", { mode: "focus" });
-    await until(() => !feed.running);
+    await until(() => feed.producing.join() === "music");
     expect((await t.req("POST", "/v1/screen/start", { mode: "focus" })).json().mode).toBe("focus"); // idempotent
     const stopped = await t.req("POST", "/v1/screen/stop");
     expect(stopped.json()).toMatchObject({ running: false, mode: null });
+    await until(() => !feed.running);
     expect(await stat(join(t.runtime, "tiphys-screen")).catch(() => null)).toBeNull();
     // Still on "is" (the start mode's workspace): the previous one comes back.
     expect(t.hypr()).toContain("dispatch workspace 3");
@@ -370,6 +407,22 @@ describe("screen display", () => {
     expect(t.ups[0]!.url).toBe("wss://argo.example.com:7443/v1/screen/feed");
     await t.req("PUT", "/v1/screen", { sources: { argo: null } });
     expect(t.ups[0]!.closed).toBe(true);
+    await t.req("POST", "/v1/screen/stop");
+  });
+
+  it("work: the git card's source gets the project and CI setting; a change resubscribes; relative paths refused", async () => {
+    const t = await screenApp({ sources: { argo: { url: "https://argo.example.com:7443", token: "tps_x" } } });
+    const cards = defaultLayout("work").cards.map((c) => ({ ...c, source: c.kind === "git" ? "argo" : "self" }));
+    const put = await t.req("PUT", "/v1/screen", { settings: { modes: { work: { layout: { template: "work", cards }, project: { path: "/home/u/p" } } } } });
+    expect(put.statusCode).toBe(200);
+    await t.req("POST", "/v1/screen/start", { mode: "work" });
+    t.ups[0]!.open();
+    expect(JSON.parse(t.ups[0]!.sent[0]!)).toEqual({ type: "subscribe", topics: ["git"], project: "/home/u/p", ci: false });
+    await t.req("PUT", "/v1/screen", { settings: { modes: { work: { ci: true } } } });
+    expect(JSON.parse(t.ups[0]!.sent.at(-1)!)).toEqual({ type: "subscribe", topics: ["git"], project: "/home/u/p", ci: true });
+    expect(t.feed().producing).not.toContain("git"); // this host's feed: no git subscriber
+    const bad = await t.req("PUT", "/v1/screen", { settings: { modes: { work: { project: { path: "relative/p" } } } } });
+    expect(bad.statusCode).toBe(400);
     await t.req("POST", "/v1/screen/stop");
   });
 

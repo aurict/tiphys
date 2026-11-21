@@ -51,6 +51,7 @@ export function incidentRoutes(svcIn?: IncidentService) {
       });
     }
     const s = svc;
+    ctx.incidents = s;
     const unobserve = ctx.notifier.observe(s.observe);
     const timer = setInterval(() => void s.tick().catch((err) => app.log.warn({ err }, "olay denetimi başarısız")), TICK_MS);
     timer.unref();

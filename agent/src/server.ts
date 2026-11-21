@@ -52,6 +52,12 @@ export interface Ctx {
    * mode; one queue per agent (tests supply their own).
    */
   analysis?: AnalysisQueue;
+  /** Claude sessions (set by claudeRoutes; the screen feed's project auto-selection reads their cwd). */
+  claude?: import("./claude/manager.ts").ClaudeManager;
+  /** Uptime Kuma bridge (set by uptimeRoutes; the screen feed's `servers` topic reads it). */
+  uptime?: import("./uptime/bridge.ts").UptimeBridge;
+  /** Incident room (set by incidentRoutes; the screen feed's `servers` topic counts the open ones). */
+  incidents?: import("./incidents/service.ts").IncidentService;
 }
 
 declare module "fastify" {
