@@ -178,6 +178,9 @@ Every error has the same envelope. The agent sends codes, never sentences; the a
 | `agent.screen.notRunning` | 409 | `POST /v1/screen/veil` while no screen mode runs |
 | `agent.screen.badLayout` | 400 | A layout whose template doesn't belong to the mode, or a card kind the template can't hold or twice (`params.mode`, `template`, `kind`) |
 | `agent.screen.noArt` | 404 | As `agent.gamemode.noArt`, on `/v1/screen/art` |
+| `agent.sleep.running` | 409 | `POST /v1/screen/start` or `/v1/screen/mode` while the sleep mode runs (stop it first) |
+| `agent.sleep.noGroup` | 409 | `POST /v1/sleep/start` with a session of more than one member (the group comes with S3) |
+| `agent.sleep.ddcUnavailable` | 409 | `POST /v1/sleep/preview` with the mode off on a host with nothing to dim (`params.reason`: `missing` = no backlight and no `ddcutil`, `failed` = no working DDC/CI display). Also `GET /v1/sleep` `warning` while the page dims alone |
 | `agent.gamemode.noSource` | 409 | Game mode start without a source agent configured |
 | `agent.gamemode.noDisplay` | 503 | Game mode start without a Hyprland session |
 | `agent.gamemode.startFailed` | 502 | `systemd-run` could not start the kiosk unit (`params.stderr`) |
@@ -1160,7 +1163,7 @@ Overview of the keys above, all sent by the monitoring server's agent (or whiche
 ### screen
 
 Feature `screen` (`screen/*.ts`; Linux only; was `gamemode`, PLAN.md §20). One kiosk framework for the screen modes
-`game`, `work` and `focus` (`sleep` is reserved). A **display host** shows a mode in a Firefox kiosk; a **source host**
+`game`, `work` and `focus`, plus `sleep` (its own routes, [below](#sleep-mode)). A **display host** shows a mode in a Firefox kiosk; a **source host**
 produces the data. One host can be both: its display reads its own producer in-process as the source `self` (no
 network, no token). Nothing runs until a mode is started (display) or a topic is subscribed (source).
 
@@ -1175,7 +1178,7 @@ network, no token). Nothing runs until a mode is started (display) or a topic is
 | POST | `/v1/screen/stop` | device | Idempotent → same as GET. |
 | POST | `/v1/screen/focus` | device | Strict `{action?: start\|pause\|resume\|skip\|reset, task?: string(≤ 80, one line)\|null}` (at least one) → `{focus}` (as in GET). Only while the Focus mode runs (`409 agent.screen.notFocus`). `start`: idle → focus round 1, in a break → the next round now, a paused round → resume; `pause`/`resume` keep the time left; `skip`: focus → short (or every `longEvery`-th round long) break, break → next round; `reset`: idle. A phase that ends starts the next one by itself. `task` alone sets the task line; `""`/`null` clears it. A phase change sends the page `focus` and records/pushes `screen.focus.phase {phase, from, round, cause: timer\|action}` (never the task); the push's `data` (sent, never recorded) has `agent` (this agent's name), `quiet` (`"1"` when `modes.focus.quietPhone`) and `endsAt` (ms, while ticking), for the phone's ongoing notification and its quiet filter. When the mode stops or switches away with a running timer, one more push `{phase: idle, from, round, cause: stop}`; its `data.summary` is `"1"` when a `screen.summary` push follows (the phone ends its quiet and leaves the held count to that one). |
 | POST | `/v1/screen/veil` | device | `{on}` → same as GET. Privacy veil: the page drops its view for a dim clock at once; until it is lifted the agent sends the page no layout or topic message (their state is kept and replayed when it lifts). Kept across an agent restart, gone with the mode. `409 agent.screen.notRunning` when no mode runs. |
-| WS | `/v1/screen/live?t=<display token>` | display token | Kiosk page socket. On connect: `layout`, every source's `source` state, the latest relayed messages, `focus` in Focus mode, `pause` if hidden (veiled: only `veil` and `pause`). Then relayed messages and binary spectrum frames. Page → agent: `{"type":"stop"}`. Closed with `4410` on stop, `1012` when the agent restarts (the page reconnects with the same token). |
+| WS | `/v1/screen/live?t=<display token>` | display token | Kiosk page socket. On connect: `layout`, every source's `source` state, the latest relayed messages, `focus` in Focus mode, `sleep` in sleep mode, `pause` if hidden (veiled: only `veil` and `pause`). Then relayed messages and binary spectrum frames. Page → agent: `{"type":"stop"}`, `{"type":"heartbeat"}` (sleep view, every 10 s). Closed with `4410` on stop, `1012` when the agent restarts (the page reconnects with the same token). |
 | GET | `/v1/screen/art?t=…&id=…` | display token | Cover proxy, as `/v1/gamemode/art` below. |
 | GET | `/screen/`, `/screen/<file>`, `/screen/map/<file>` | none (kiosk) | The kiosk page and map data, as `/gamemode/…` below. |
 
@@ -1294,6 +1297,54 @@ Work topics (`screen/producers/*.ts`; each starts with its first subscriber, sto
   or `{…, tool, summary}` (non-secret scalar input fields, redacted); `{type:"diffResolved", requestId, allow}` when
   the permission is answered or the session ends. The display host replays pending diffs to a new page. Approval
   stays on the phone; the kiosk page has no approval route.
+
+#### Sleep mode
+
+PLAN.md §21 (`screen/sleep.ts`, `screen/sleep_hw.ts`; S2: one host, no group, no alarm yet). A fourth run mode of
+the same kiosk: always `fullscreen` on the workspace `uyku` (whatever `screen.placement` says), a fixed view (no
+layout cards, no topic subscription: no producer runs while sleeping), settings in `screen.modes.sleep`
+(configuration.md).
+
+| Method | Path | Auth | Description |
+| --- | --- | --- | --- |
+| GET | `/v1/sleep` | device | `{running, session\|null, phase: settle\|fade\|night\|sunrise\|ring\|snoozed\|morning\|null, phaseStartedAt\|null, phaseEndsAt\|null (ms; null = open-ended), alarm: {next, ringing, snoozedUntil} (S4: always null/false), members: [{host, state}], brightness: {dimming: backlight\|ddc\|content, hardware (percent)\|null, content (0..1), preview\|null}\|null, warning: "agent.sleep.ddcUnavailable"\|null, page: {heartbeatAt\|null}\|null, scale, settings, now}`. |
+| PUT | `/v1/sleep` | device | Strict `{settings: <partial screen.modes.sleep>}` → same as GET. Nested blocks merge field by field; arrays and `group` are replaced whole; unknown keys and out-of-range values → 400. While running the page gets a new `sleep` message and a changed brightness curve applies at once; `times` apply at the next start. |
+| POST | `/v1/sleep/start` | device | Strict `{session?: {id ([A-Za-z0-9_-]{8,64}), seed (uint32), t0 (ms, within 12 h before / 10 min after the agent's clock), members: [host id] (1–4, distinct), leader (a member)}}` → same as GET. Without `session` the agent makes one (this host alone, `t0` = now). More than one member → `409 agent.sleep.noGroup` (S3). Already sleeping: the status (idempotent). A running Game/Work/Focus mode is stopped first (with its own events). Kiosk errors as `POST /v1/screen/start`. |
+| POST | `/v1/sleep/stop` | device | → same as GET. Stops the sleep mode only (a layout mode running instead is left alone); `POST /v1/screen/stop` also stops it. |
+| POST | `/v1/sleep/preview` | device | `{brightness: 0..100}` → same as GET (+ `preview: {dimming, until}` when not running). Running: hardware and page at that level for 5 s, then the curve. Not running: the hardware alone for 5 s (each call extends it), then the previous value; the value is kept in `$XDG_RUNTIME_DIR/tiphys-sleep-preview.json` (0600) until restored, also across a crash. Nothing to dim → `409 agent.sleep.ddcUnavailable {reason: missing\|failed}`. |
+
+While sleep runs, `POST /v1/screen/start {mode}` and `POST /v1/screen/mode` → `409 agent.sleep.running`. `GET
+/v1/screen` shows `mode: "sleep"`.
+
+- **Phases** (from `t0` and `modes.sleep.times`, not from ticks; one timeout to the next boundary): `settle`
+  (`settleMin`, default 3) → `fade` (`fadeMin`, 30) → `night` (open-ended until S4's alarm). `sunrise`, `ring`,
+  `snoozed` and `morning` are reserved for S4.
+- **Brightness:** a target level in percent: `brightness.start` in settle, eased out (`1−(1−k)²`) to
+  `brightness.night` over the fade, flat at night (S4: eased in to `brightness.morning` during sunrise). Hardware:
+  the backlight (`brightnessctl -m -c backlight` read once; `brightnessctl -q -d <device> set N%`, at most one call per
+  2 s, only on a change, never below 1 %) or, without a backlight, DDC/CI (`ddcutil getvcp 10 --bus B --terse` read
+  once; `ddcutil setvcp 10 N --bus B --noverify`, at most one step per 15 s, never below `ddc.min`; the bus from
+  `ddc.bus` or `ddcutil detect --terse` once, then stored in `ddc.bus`). The hardware step is the level rounded up; the
+  page's content multiplier (level ÷ hardware, 0..1) fills between the steps and does the darkest part. Without
+  hardware dimming (no backlight; no `ddcutil`; no working DDC display; a `setvcp` failing mid-run) the page dims
+  alone (level ÷ 100) and `warning` is `agent.sleep.ddcUnavailable`.
+- **Extras** (each off by default; previous value saved first, restored at stop): `quietPower` →
+  `powerprofilesctl set power-saver`; `holdVolume` → `wpctl set-volume @DEFAULT_AUDIO_SINK@ N/100` and unmute;
+  `leds` → lit LEDs under `/sys/class/leds` that are writable and have trigger `none` are switched off (an LED with a
+  trigger is skipped: writing it drops the trigger, and the trigger file is root's; keyboard lock LEDs are skipped).
+  Heavy jobs are never touched.
+- **State and traces:** `sleep.json` (0600) next to `state.json` in the tmpfs work dir holds the session, the plan and
+  every previous hardware value, written whole before each change. Stop restores them all and removes it; after a crash
+  the next agent adopts the run (Firefox still up: same session, no new reads, restored at its stop) or restores the
+  values from the file. Events: `sleep.started` / `sleep.stopped` only (no `screen.*` event, no session summary).
+- **Kiosk messages** (agent → page): `{type:"layout", mode:"sleep", template:"sleep", cards:[], settings:{}}`, then
+  `{type:"sleep", session:{id, seed, t0, leader, members, layout:[{id, side, distance}]}, me, offsetMs (0 until S3),
+  plan:{t0, settleMs, fadeMs, soundFadeMs, nightSound, sunriseAt|null, ringAt|null, rampMs, alarmSound}, phase,
+  phaseStartedAt, phaseEndsAt, brightness (content), settings:{volume, layers, nightSound}, scale}` (on connect and on
+  a settings change), `{type:"phase", phase, phaseStartedAt, phaseEndsAt}` and `{type:"brightness", content}` (while
+  the curve moves at most every 2 s; in a flat phase the exact value).
+- **Test-only time scale:** `TIPHYS_SLEEP_SCALE` (configuration.md) divides every phase length; the hardware rate
+  limits stay.
 
 **Compatibility (one release):** `/v1/gamemode`, `/v1/gamemode/{start,stop,live,art,feed,source,plugin}` and
 `/gamemode/*` keep the 0.5 shapes and `agent.gamemode.*` error codes; their "source" is `screen.sources.main`

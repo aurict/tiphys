@@ -121,6 +121,23 @@ With *Battery saver* on (default), a display host running on battery below 30 % 
 flat 2D city and shows a small *Battery saver* chip; on mains or at 35 % it returns to your settings. The battery is
 read from `/sys/class/power_supply` every 30 s (no process).
 
+## Sleep mode (in progress)
+
+A fourth mode, started with `POST /v1/sleep/start` (the app comes later): very dim fireplace embers and synthesized
+crackles on the bedroom screens, a slow fade to a night light. It always runs full screen on its own workspace
+(`uyku`). The agent dims the **hardware** along the curve, the laptop backlight with `brightnessctl` (at most every 2 s)
+or a desktop monitor over **DDC/CI** with `ddcutil` (at most every 15 s), and the page dims the **content** in
+between. Every previous value (brightness, and the optional power profile, system volume and LEDs) is saved before
+it is changed and put back exactly at stop or after a crash. The alarm, the two-screen group and the morning summary
+are not there yet. API: [api.md › Sleep mode](../agent/api.md#sleep-mode).
+
+**DDC/CI on a desktop monitor:** install `ddcutil` (its udev rule gives the logged-in user the I²C device) and turn
+DDC/CI on in the monitor's own menu. `tiphys-agent doctor` warns with `doctor.sleep.ddcUnavailable` when `ddcutil
+detect` finds no working display; the mode still runs and the page dims alone. With the NVIDIA proprietary driver the
+hardware I²C often fails ("DDC communication failed"); the usual fix is the driver's software I²C, set in
+`/etc/modprobe.d/nvidia-ddc.conf` as `options nvidia NVreg_RegistryDwords=RMUseSwI2c=0x01;RMI2cSpeed=100`, then
+`sudo update-initramfs -u` and a reboot.
+
 ## Stopping leaves nothing behind
 
 Stop from the phone (home card or screen), hold **Esc for 1 second** on the display host, or close Firefox. Every side
