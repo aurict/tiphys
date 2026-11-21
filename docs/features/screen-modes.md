@@ -128,7 +128,7 @@ crackles on the bedroom screens, a slow fade to a night light. It always runs fu
 (`uyku`). The agent dims the **hardware** along the curve, the laptop backlight with `brightnessctl` (at most every 2 s)
 or a desktop monitor over **DDC/CI** with `ddcutil` (at most every 15 s), and the page dims the **content** in
 between. Every previous value (brightness, and the optional power profile, system volume and LEDs) is saved before
-it is changed and put back exactly at stop or after a crash. The alarm and the morning summary API: [api.md › Sleep mode](../agent/api.md#sleep-mode).
+it is changed and put back exactly at stop or after a crash. API: [api.md › Sleep mode](../agent/api.md#sleep-mode).
 
 **Two screens, one scene:** the phone sends the same session (seed, start time, the members with their place in the
 room, the leader) to every machine. Each computes the same sparks and crackles by itself, so a spark leaving one
@@ -137,6 +137,17 @@ source connection (no new token): it measures the clock difference (lowest round
 20 ms) and passes stops both ways, so Esc held on either machine, or a stop from the phone, ends both. The laptop
 needs a source for the leader (named like it, or whose address starts with its name), else the start fails with
 `agent.sleep.noGroup`. If the link drops, each machine carries on alone and the phone sees `agent.sleep.memberDown`.
+
+**Alarm (sunrise):** with `alarm.enabled`, the screens brighten like a sunrise for `sunriseMin` (25) before the
+alarm time, from the night light up to the morning brightness, then the alarm rings: birds (or a soft chime) whose
+every chirp is a small point of light on the screen, its volume rising over `rampMin` (3). **Space** snoozes it
+(`snoozeMin`, 9: the screens stay bright and quiet), **Esc held 1 second** turns it off; the same from the phone
+(`POST /v1/sleep/alarm`). Either acts on both machines. Nobody answers: the sound stops after `autoStopMin` (20),
+the screens stay bright and the phone is told. After turning it off, an optional morning screen (clock and date) for
+10 minutes, then the mode ends by itself. With `sound: "velour"` the leader plays the chosen song on Velour (the
+other screen adds quiet birds). If Firefox crashed during the night, the agent plays a short alarm sound itself
+(`pw-play`) and starts the kiosk again. The alarm only exists while the sleep mode runs; the phone keeps its own
+backup alarm. The alarm time is the machine's local time; the leader's settings decide for the group.
 
 **DDC/CI on a desktop monitor:** install `ddcutil` (its udev rule gives the logged-in user the I²C device) and turn
 DDC/CI on in the monitor's own menu. `tiphys-agent doctor` warns with `doctor.sleep.ddcUnavailable` when `ddcutil
@@ -147,7 +158,8 @@ hardware I²C often fails ("DDC communication failed"); the usual fix is the dri
 
 ## Stopping leaves nothing behind
 
-Stop from the phone (home card or screen), hold **Esc for 1 second** on the display host, or close Firefox. Every side
+Stop from the phone (home card or screen), hold **Esc for 1 second** on the display host, or close Firefox (not in the
+sleep mode: there the alarm must still ring, so a closed or crashed kiosk is started again at sunrise). Every side
 effect is written to a state file in `$XDG_RUNTIME_DIR/tiphys-screen/` **before** it is made, and undone on stop:
 the Firefox unit and its temporary profile (tmpfs), window rules, the temporary keybind, the workspace and
 brightness, the source subscriptions (producers, file watches and the `nvidia-smi` child stop with their last
