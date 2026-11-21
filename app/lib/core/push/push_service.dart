@@ -20,6 +20,9 @@ import '../../features/databases/db_texts.dart' show restoreNotificationReason;
 import '../../features/incidents/incident_texts.dart';
 import '../../features/incidents/incidents_data.dart' show exactHostFor;
 import '../../features/screen/screen_summary.dart';
+import '../../features/screen/sleep/sleep_morning.dart';
+import '../../features/screen/sleep/sleep_sync.dart' show SleepPhoneAlarm;
+import '../../features/screen/sleep/sleep_texts.dart' show sleepEventText;
 import '../../features/screen/screen_texts.dart' show focusPhaseNotice, screenModeName;
 import '../../features/security/security_more_texts.dart' show securityUrgentKeys;
 import '../../features/security/security_texts.dart';
@@ -31,6 +34,7 @@ import '../security/app_lock.dart';
 import '../secrets/secret_store.dart';
 import 'clipboard.dart';
 import 'focus_notices.dart';
+import 'sleep_notices.dart';
 
 const pushInstance = 'tiphys';
 const _clipboardChannel = 'tiphys-clipboard';
@@ -100,6 +104,9 @@ const _endpointKey = 'app:pushEndpoint';
     'screen.started' => (l.smEventStarted(screenModeName(l, s('mode'))), s('device')),
     'screen.stopped' => (l.smEventStopped, s('device')),
     'screen.focus.phase' => focusPhaseNotice(l, p),
+    // Sleep mode (PLAN.md §21): started/stopped and the alarm only in the event stream; the morning summary is a push.
+    'sleep.started' || 'sleep.stopped' || 'sleep.alarm' => sleepEventText(l, key, p),
+    'sleep.morning' => sleepMorningNotice(l, SleepMorning.fromParams(p, at: DateTime.now())),
     'telegram.stateCorrupt' => (l.notifTgStateCorruptTitle, l.notifTgStateCorruptBody),
     // Telegram newsletters (atlas): approval request (Send / Cancel buttons), sent, failed, research PC unreachable.
     'telegram.approval' => (l.notifTgApprovalTitle(s('feed')), l.notifTgApprovalBody(n('items'), n('recipients'))),
@@ -344,6 +351,12 @@ String? routeForPayload(String? payload) {
           if (summary != null) 'summary=${Uri.encodeQueryComponent(jsonEncode(summary.toJson()))}',
         ];
         return q.isEmpty ? route : '$route?${q.join('&')}';
+      }
+      // Sleep mode: the alarm screen (with the ring time), the sleep screen with the morning summary (memory only).
+      if (route == '/screen/sleep/alarm') return sleepAlarmRoute(j['at']);
+      if (route == '/screen/sleep') {
+        final m = SleepMorning.fromJson(j['morning']);
+        return m == null ? route : '$route?morning=${Uri.encodeQueryComponent(jsonEncode(m.toJson()))}';
       }
       if (route == '/db/restore') {
         final test = j['test'];
@@ -695,10 +708,23 @@ Future<void> _showPcFailed(FlutterLocalNotificationsPlugin n, AppLocalizations l
 /// Entry point Android runs when a notification button is pressed while the app is closed (separate isolate).
 @pragma('vm:entry-point')
 Future<void> onNotificationActionBackground(NotificationResponse r) async {
-  const handled = {actionAllow, actionDeny, actionCopyClipboard, actionPcStop, actionPcExtend, actionTgApprove, actionTgReject, actionFocusPause, actionFocusResume};
+  const handled = {actionAllow, actionDeny, actionCopyClipboard, actionPcStop, actionPcExtend, actionTgApprove, actionTgReject, actionFocusPause, actionFocusResume, actionSleepSnooze, actionSleepDismiss};
   if (!handled.contains(r.actionId)) return;
   DartPluginRegistrant.ensureInitialized();
   final docs = await getApplicationDocumentsDirectory();
+  if (r.actionId == actionSleepSnooze || r.actionId == actionSleepDismiss) {
+    final n = FlutterLocalNotificationsPlugin();
+    await n.initialize(settings: const InitializationSettings(android: AndroidInitializationSettings('ic_notification')));
+    Profile profile;
+    try {
+      profile = Profile.fromJson(jsonDecode(await File('${docs.path}/profile.json').readAsString()) as Map<String, dynamic>);
+    } catch (_) {
+      profile = Profile.empty;
+    }
+    final l = lookupAppLocalizations(_localeOf(profile));
+    await handleSleepAlarmAction(r.actionId!, n, profile: profile, secrets: KeystoreSecretStore(), vault: const SecureVault(), l: l);
+    return;
+  }
   if (r.actionId == actionFocusPause || r.actionId == actionFocusResume) {
     final n = FlutterLocalNotificationsPlugin();
     await n.initialize(settings: const InitializationSettings(android: AndroidInitializationSettings('ic_notification')));
@@ -813,6 +839,8 @@ String? routeForLink(String? link) {
   if (rest == 'configfiles') return '/configfiles';
   if (rest == 'db/restore') return '/db/restore';
   if (rest == 'screen') return '/screen';
+  if (rest == 'sleep') return '/screen/sleep';
+  if (rest == 'sleep/alarm') return '/screen/sleep/alarm';
   if (rest == 'security') return '/security';
   final security = RegExp(r'^security/([a-z0-9][a-z0-9-]{0,62})$').firstMatch(rest);
   if (security != null) return '/security/${security.group(1)}';
@@ -840,6 +868,9 @@ class PushService {
   /// The agent reported that control of the PC session ended (clear the state if the app is open).
   void Function(String sessionId)? onPcEnded;
 
+  /// While the app is open, Ertele / Kapat of the sleep alarm go through the app's group state (true: handled).
+  Future<bool> Function(String action)? onSleepAction;
+
   /// Hosts the current endpoint was registered with in this run ([registerHost]).
   final _registered = <String>{};
 
@@ -857,6 +888,12 @@ class PushService {
         onDidReceiveNotificationResponse: (r) async {
           if (r.actionId == actionCopyClipboard) {
             await copyFromNotification(r.payload, seen: ClipboardSeen(() async => (await getApplicationDocumentsDirectory()).path));
+            return;
+          }
+          if (r.actionId == actionSleepSnooze || r.actionId == actionSleepDismiss) {
+            if (await onSleepAction?.call(r.actionId!) ?? false) return;
+            final profile = await loadProfile();
+            await handleSleepAlarmAction(r.actionId!, notifications, profile: profile, secrets: secrets, vault: vault, l: lookupAppLocalizations(_localeOf(profile)));
             return;
           }
           if (r.actionId == actionFocusPause || r.actionId == actionFocusResume) {
@@ -1026,6 +1063,8 @@ class PushService {
     final stale = await quiet.endIfStale(now);
     if (stale > 0) await showFocusSummary(notifications, l, stale);
     if (key == 'screen.summary') return _screenSummary(profile, l, params, data, now);
+    if (key == 'sleep.alarm') return _sleepAlarm(l, params, data, now);
+    if (key == 'sleep.morning') return _sleepMorning(profile, l, params, data, now);
     if (key == 'screen.focus.phase') {
       await _focusPhase(profile, l, params, data, now);
       // Only a phase that ended by itself is worth a notification (an action was the user's own).
@@ -1133,6 +1172,77 @@ class PushService {
     final (title, body) = screenSummaryNotice(l, s);
     await showScreenSummary(notifications, title, body, jsonEncode({'link': 'tiphys://screen', if (host != null) 'host': host.id, 'summary': s.toJson()}));
   }
+
+  /// The sleep alarm (PLAN.md §21 U3; `params.state`: ringing (default) | snoozed | dismissed | autoStopped, `params.at`
+  /// the ring time, `params.snoozedUntil`, `params.snoozeMin`): ringing shows the full-screen alarm, the others take it
+  /// away; the backup alarm moves with a snooze and goes with a dismiss.
+  Future<void> _sleepAlarm(AppLocalizations l, Map<String, dynamic> params, Map<String, dynamic>? data, DateTime now) async {
+    int? ms(Object? v) => v is num ? v.toInt() : int.tryParse('${v ?? ''}');
+    final store = SleepRunStore(vault);
+    final run = await store.read();
+    final snoozeMin = ms(params['snoozeMin']) ?? run?.snoozeMin ?? 9;
+    switch ('${params['state'] ?? 'ringing'}') {
+      case 'snoozed':
+        await notifications.cancel(id: sleepAlarmId);
+        final until = ms(params['snoozedUntil']);
+        final at = until == null ? now.add(Duration(minutes: snoozeMin)) : DateTime.fromMillisecondsSinceEpoch(until);
+        await sleepBackup(at.add(sleepBackupDelay), snoozeMin: snoozeMin);
+        if (run != null) await store.write(run.withRing(at));
+      case 'dismissed' || 'autoStopped' || 'stopped':
+        await notifications.cancel(id: sleepAlarmId);
+        await sleepBackup(null);
+        if (run != null) await store.write(run.withRing(null));
+      default:
+        final at = ms(params['at']);
+        await showSleepAlarm(notifications, l, at == null ? now : DateTime.fromMillisecondsSinceEpoch(at), snoozeMin: snoozeMin);
+    }
+  }
+
+  /// The morning summary (S5): one notification; the alarm is over, so the backup goes too.
+  Future<void> _sleepMorning(Profile profile, AppLocalizations l, Map<String, dynamic> params, Map<String, dynamic>? data, DateTime now) async {
+    await notifications.cancel(id: sleepAlarmId);
+    await sleepBackup(null);
+    final agents = profile.hosts.where((h) => h.agent != null).toList();
+    final host = exactHostFor(agents, data?['agent'] as String?);
+    final m = SleepMorning.fromParams(params, at: now, host: host?.id ?? '${data?['agent'] ?? ''}');
+    final (title, body) = sleepMorningNotice(l, m);
+    await showSleepMorning(notifications, title, body, jsonEncode({'link': 'tiphys://sleep', 'morning': m.toJson()}));
+  }
+
+  /// Schedules (or with null cancels) the phone's backup alarm.
+  Future<void> sleepBackup(DateTime? at, {int snoozeMin = 9}) async {
+    if (at == null) return notifications.cancel(id: sleepBackupId);
+    try {
+      final l = lookupAppLocalizations(_localeOf(await loadProfile()));
+      await scheduleSleepBackup(notifications, l, at, snoozeMin: snoozeMin);
+    } catch (e) {
+      // No notification permission, or the platform can't schedule: the settings explain it.
+      debugPrint('sleep backup alarm: $e');
+    }
+  }
+
+  /// The nightly reminder (null: off).
+  Future<void> sleepReminder(String? hm) async {
+    try {
+      final l = lookupAppLocalizations(_localeOf(await loadProfile()));
+      await scheduleSleepReminder(notifications, l, hm);
+    } catch (e) {
+      debugPrint('sleep reminder: $e');
+    }
+  }
+
+  /// Can the phone back the alarm up (Android) and is it exact?
+  Future<SleepPhoneAlarm> sleepPhoneAlarm() async {
+    if (defaultTargetPlatform != TargetPlatform.android) return const SleepPhoneAlarm();
+    final a = notifications.resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>();
+    return SleepPhoneAlarm(supported: true, exact: await a?.canScheduleExactNotifications() ?? false);
+  }
+
+  Future<void> requestExactAlarms() async =>
+      notifications.resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>()?.requestExactAlarmsPermission();
+
+  Future<void> requestFullScreenIntent() async =>
+      notifications.resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>()?.requestFullScreenIntentPermission();
 
   /// The summary of the notifications held during Focus (the app ended the mode itself).
   Future<void> showFocusSummaryNow(int held) async {

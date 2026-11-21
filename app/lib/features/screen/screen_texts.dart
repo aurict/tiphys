@@ -25,12 +25,14 @@ String screenModeName(AppLocalizations l, String? mode) => switch (mode) {
   'work' => l.smModeWork,
   'focus' => l.smModeFocus,
   'game' => l.smModeGame,
+  'sleep' => l.smModeSleep,
   _ => l.smTitle,
 };
 
 String screenModeHint(AppLocalizations l, String mode) => switch (mode) {
   'work' => l.smModeWorkHint,
   'focus' => l.smModeFocusHint,
+  'sleep' => l.smModeSleepHint,
   _ => l.smModeGameHint,
 };
 
@@ -38,6 +40,7 @@ IconData screenModeIcon(String? mode) => switch (mode) {
   'work' => LucideIcons.codeXml,
   'focus' => LucideIcons.target,
   'game' => LucideIcons.gamepad2,
+  'sleep' => LucideIcons.moonStar,
   _ => LucideIcons.monitor,
 };
 

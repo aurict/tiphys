@@ -35,12 +35,15 @@ import 'package:tiphys/core/integrations/dozzle_client.dart';
 import 'package:tiphys/features/terminal/sessions.dart';
 import 'package:tiphys/core/push/focus_notices.dart' show FocusQuiet;
 import 'package:tiphys/features/screen/screen_focus.dart';
+import 'package:tiphys/features/screen/sleep/sleep_sync.dart';
+import 'package:tiphys/core/push/sleep_notices.dart' show SleepRunStore;
 
 import 'png.dart';
 import 'agy_fixtures.dart';
 import 'config_fixtures.dart';
 import 'db_fixtures.dart';
 import 'screen_fixtures.dart';
+import 'sleep_fixtures.dart';
 import 'incident_fixtures.dart';
 import 'security_fixtures.dart';
 import 'security_more_fixtures.dart';
@@ -118,6 +121,10 @@ class Harness {
   final focusNotifications = FakeFocusNotifications();
   final quietVault = MemoryVault();
 
+  /// Fake of the sleep alarm surface (backup alarm, reminder); the run record lives in [sleepVault].
+  final sleepAlarms = FakeSleepAlarms();
+  final sleepVault = MemoryVault();
+
   late final repo = ProfileRepository(
     file: File('${Directory.systemTemp.createTempSync('tiphys-ui').path}/profile.json'),
     codec: codec,
@@ -147,6 +154,8 @@ class Harness {
         pcNotificationsProvider.overrideWithValue(pcNotifications),
         focusNotificationsProvider.overrideWithValue(focusNotifications),
         focusQuietProvider.overrideWithValue(FocusQuiet(quietVault)),
+        sleepAlarmsProvider.overrideWithValue(sleepAlarms),
+        sleepRunStoreProvider.overrideWithValue(SleepRunStore(sleepVault)),
         onboardingSeenInitialProvider.overrideWithValue(onboarded),
         onboardingVaultProvider.overrideWithValue(vault),
         ...extra,
@@ -319,6 +328,11 @@ class FakeAgent extends AgentClient {
 
   static void resetScreen() => screen = FakeScreenState();
 
+  /// Sleep mode (GET/PUT/POST /v1/sleep*) of every display host; tests change it, call [resetSleep] at the start.
+  static FakeSleepState sleep = FakeSleepState();
+
+  static void resetSleep() => sleep = FakeSleepState();
+
   /// Database console (GET/POST /v1/db/*).
   static FakeDbState db = FakeDbState();
 
@@ -465,6 +479,7 @@ class FakeAgent extends AgentClient {
     calls.add((method, path, method == 'GET' && query != null ? query : body));
     if (path.startsWith('/v1/agy/')) return agy.route(method, path, body, query);
     if (path.startsWith('/v1/screen') || path.startsWith('/v1/gamemode') || path.startsWith('/v1/service-tokens')) return screen.route(hostId, method, path, body);
+    if (path.startsWith('/v1/sleep')) return sleep.route(hostId, method, path, body);
     if (path == '/v1/fs/dirs') {
       return {
         'path': '/home/user',

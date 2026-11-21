@@ -11,6 +11,7 @@ import '../../l10n/gen/app_localizations.dart';
 import '../../state/providers.dart';
 import '../../theme/tokens.dart';
 import '../../widgets/surfaces.dart';
+import '../screen/sleep/sleep_alarm_screen.dart';
 
 final appLockProvider = Provider<AppLock>((ref) => AppLock(const SecureVault()));
 final biometricsProvider = Provider<Biometrics>((ref) => DeviceBiometrics());
@@ -66,6 +67,9 @@ class _LockGateState extends ConsumerState<LockGate> with WidgetsBindingObserver
     // An error (e.g. a desktop without a keyring service) fails closed to the lock screen instead of a blank screen.
     if (required.isLoading && !required.hasError) return ColoredBox(color: context.tokens.background);
     if (!mustLock || !_locked) return widget.child;
+    // The sleep alarm opened the app: its screen alone (it only snoozes or dismisses, like the notification's buttons).
+    final alarm = ref.watch(sleepAlarmRequestProvider);
+    if (alarm.at != null) return SleepAlarmScreen(at: alarm.at, standalone: true);
     return LockScreen(onUnlocked: () => setState(() => _locked = false));
   }
 }

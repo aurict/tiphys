@@ -13,6 +13,7 @@ import '../agy/agy_texts.dart';
 import '../configfiles/configfiles_texts.dart';
 import '../databases/db_texts.dart';
 import '../screen/screen_texts.dart';
+import '../screen/sleep/sleep_texts.dart' show sleepErrorText;
 import '../incidents/incident_texts.dart';
 import '../security/security_fix.dart' show fixErrorCodes, fixErrorText;
 import '../security/security_texts.dart';
@@ -186,6 +187,7 @@ String agentErrorText(AppLocalizations l, Object e) {
     final c when c.startsWith('agent.security.') || c.startsWith('agent.blackbox.') => securityErrorText(l, c, e.params),
     final c when c.startsWith('agent.agy.') => agyErrorText(l, c),
     // Screen modes (PLAN.md §20) and Game mode's older codes (§19).
+    final c when c.startsWith('agent.sleep.') => sleepErrorText(l, c, e.params),
     final c when c.startsWith('agent.screen.') || c.startsWith('agent.gamemode.') || c == 'app.screen.needsUpdate' => screenErrorText(l, c, e.params),
     final c when c.startsWith('agent.update.') => updateErrorText(l, c, e.params),
     final c when c.startsWith('agent.db.') => dbErrorText(l, c, e.params),

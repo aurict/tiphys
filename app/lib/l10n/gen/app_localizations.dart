@@ -21907,6 +21907,1134 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Screen modes: no CI dot on the Git card (gh is not logged in).'**
   String get doctorScreenCiLoggedOut;
+
+  /// No description provided for @smModeSleep.
+  ///
+  /// In en, this message translates to:
+  /// **'Sleep'**
+  String get smModeSleep;
+
+  /// No description provided for @smModeSleepHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Embers on every screen, spatial sound, sunrise alarm'**
+  String get smModeSleepHint;
+
+  /// No description provided for @slTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Sleep mode'**
+  String get slTitle;
+
+  /// No description provided for @slStart.
+  ///
+  /// In en, this message translates to:
+  /// **'Go to sleep'**
+  String get slStart;
+
+  /// No description provided for @slWake.
+  ///
+  /// In en, this message translates to:
+  /// **'Wake up'**
+  String get slWake;
+
+  /// No description provided for @slDismiss.
+  ///
+  /// In en, this message translates to:
+  /// **'Dismiss'**
+  String get slDismiss;
+
+  /// No description provided for @slSnoozeFor.
+  ///
+  /// In en, this message translates to:
+  /// **'Snooze · {n} min'**
+  String slSnoozeFor(int n);
+
+  /// No description provided for @slSettings.
+  ///
+  /// In en, this message translates to:
+  /// **'Sleep settings'**
+  String get slSettings;
+
+  /// No description provided for @slSetup.
+  ///
+  /// In en, this message translates to:
+  /// **'Set up the sleep group'**
+  String get slSetup;
+
+  /// No description provided for @slSetupNeeded.
+  ///
+  /// In en, this message translates to:
+  /// **'Not set up yet: pick the machines and the room layout first.'**
+  String get slSetupNeeded;
+
+  /// No description provided for @slBack.
+  ///
+  /// In en, this message translates to:
+  /// **'Back'**
+  String get slBack;
+
+  /// No description provided for @slAlarm.
+  ///
+  /// In en, this message translates to:
+  /// **'Alarm'**
+  String get slAlarm;
+
+  /// No description provided for @slAlarmAt.
+  ///
+  /// In en, this message translates to:
+  /// **'alarm {time}'**
+  String slAlarmAt(String time);
+
+  /// No description provided for @slNoAlarm.
+  ///
+  /// In en, this message translates to:
+  /// **'no alarm'**
+  String get slNoAlarm;
+
+  /// No description provided for @slMachines.
+  ///
+  /// In en, this message translates to:
+  /// **'{n, plural, =1{1 machine} other{{n} machines}}'**
+  String slMachines(int n);
+
+  /// No description provided for @slAlarmTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Alarm · {time}'**
+  String slAlarmTitle(String time);
+
+  /// No description provided for @slAlarmBody.
+  ///
+  /// In en, this message translates to:
+  /// **'The screens are brightening. Snooze or dismiss.'**
+  String get slAlarmBody;
+
+  /// No description provided for @slBackupBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Phone backup: the machines may not have rung.'**
+  String get slBackupBody;
+
+  /// No description provided for @slAlarmChannel.
+  ///
+  /// In en, this message translates to:
+  /// **'The sleep mode alarm and its backup on the phone'**
+  String get slAlarmChannel;
+
+  /// No description provided for @slAlarmMachines.
+  ///
+  /// In en, this message translates to:
+  /// **'{n, plural, =1{1 machine is ringing} other{{n} machines are ringing}}'**
+  String slAlarmMachines(int n);
+
+  /// No description provided for @slGoodMorning.
+  ///
+  /// In en, this message translates to:
+  /// **'Good morning'**
+  String get slGoodMorning;
+
+  /// No description provided for @slReminderTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Shall I start the sleep mode?'**
+  String get slReminderTitle;
+
+  /// No description provided for @slReminderBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Tap to open the sleep mode.'**
+  String get slReminderBody;
+
+  /// No description provided for @slReminderChannel.
+  ///
+  /// In en, this message translates to:
+  /// **'Nightly sleep mode reminder'**
+  String get slReminderChannel;
+
+  /// No description provided for @slNeedsUpdate.
+  ///
+  /// In en, this message translates to:
+  /// **'The agent needs an update for this (sleep mode, PLAN §21).'**
+  String get slNeedsUpdate;
+
+  /// No description provided for @slNeedsUpdateHost.
+  ///
+  /// In en, this message translates to:
+  /// **'{host}: the agent needs an update for the sleep mode.'**
+  String slNeedsUpdateHost(String host);
+
+  /// No description provided for @slNoMembers.
+  ///
+  /// In en, this message translates to:
+  /// **'No machine joins the group: turn one on under Machines.'**
+  String get slNoMembers;
+
+  /// No description provided for @slLeader.
+  ///
+  /// In en, this message translates to:
+  /// **'Leader'**
+  String get slLeader;
+
+  /// No description provided for @slMachineFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'failed'**
+  String get slMachineFailed;
+
+  /// No description provided for @slStartFailedAll.
+  ///
+  /// In en, this message translates to:
+  /// **'The sleep mode didn\'t start'**
+  String get slStartFailedAll;
+
+  /// No description provided for @slStartFailedSome.
+  ///
+  /// In en, this message translates to:
+  /// **'Not every machine started'**
+  String get slStartFailedSome;
+
+  /// No description provided for @slStartAlone.
+  ///
+  /// In en, this message translates to:
+  /// **'Go on with one machine'**
+  String get slStartAlone;
+
+  /// No description provided for @slDdcWarning.
+  ///
+  /// In en, this message translates to:
+  /// **'{host}: the monitor can\'t be dimmed over DDC/CI, the page dims alone. Turn DDC/CI on in the monitor\'s menu.'**
+  String slDdcWarning(String host);
+
+  /// No description provided for @slPhaseSettle.
+  ///
+  /// In en, this message translates to:
+  /// **'Settling'**
+  String get slPhaseSettle;
+
+  /// No description provided for @slPhaseFade.
+  ///
+  /// In en, this message translates to:
+  /// **'Fading'**
+  String get slPhaseFade;
+
+  /// No description provided for @slPhaseNight.
+  ///
+  /// In en, this message translates to:
+  /// **'Night light'**
+  String get slPhaseNight;
+
+  /// No description provided for @slPhaseSunrise.
+  ///
+  /// In en, this message translates to:
+  /// **'Sunrise'**
+  String get slPhaseSunrise;
+
+  /// No description provided for @slPhaseRing.
+  ///
+  /// In en, this message translates to:
+  /// **'The alarm is ringing'**
+  String get slPhaseRing;
+
+  /// No description provided for @slPhaseSnoozed.
+  ///
+  /// In en, this message translates to:
+  /// **'Snoozed'**
+  String get slPhaseSnoozed;
+
+  /// No description provided for @slPhaseMorning.
+  ///
+  /// In en, this message translates to:
+  /// **'Morning'**
+  String get slPhaseMorning;
+
+  /// No description provided for @slPhaseLeft.
+  ///
+  /// In en, this message translates to:
+  /// **'{phase} · {time}'**
+  String slPhaseLeft(String phase, String time);
+
+  /// No description provided for @slSnoozedUntil.
+  ///
+  /// In en, this message translates to:
+  /// **'Snoozed until {time}'**
+  String slSnoozedUntil(String time);
+
+  /// No description provided for @slSectionScene.
+  ///
+  /// In en, this message translates to:
+  /// **'Scene'**
+  String get slSectionScene;
+
+  /// No description provided for @slSceneEmbers.
+  ///
+  /// In en, this message translates to:
+  /// **'Fireplace embers'**
+  String get slSceneEmbers;
+
+  /// No description provided for @slSceneEmbersHint.
+  ///
+  /// In en, this message translates to:
+  /// **'One scene across every screen; more scenes later'**
+  String get slSceneEmbersHint;
+
+  /// No description provided for @slSettleMin.
+  ///
+  /// In en, this message translates to:
+  /// **'Settling'**
+  String get slSettleMin;
+
+  /// No description provided for @slFadeMin.
+  ///
+  /// In en, this message translates to:
+  /// **'Picture fades over'**
+  String get slFadeMin;
+
+  /// No description provided for @slTimesHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Durations apply from the next start.'**
+  String get slTimesHint;
+
+  /// No description provided for @slSectionSound.
+  ///
+  /// In en, this message translates to:
+  /// **'Sound'**
+  String get slSectionSound;
+
+  /// No description provided for @slLayerHum.
+  ///
+  /// In en, this message translates to:
+  /// **'Ember hum'**
+  String get slLayerHum;
+
+  /// No description provided for @slLayerCrackle.
+  ///
+  /// In en, this message translates to:
+  /// **'Crackles'**
+  String get slLayerCrackle;
+
+  /// No description provided for @slLayerLogs.
+  ///
+  /// In en, this message translates to:
+  /// **'Cracking logs'**
+  String get slLayerLogs;
+
+  /// No description provided for @slLayerWind.
+  ///
+  /// In en, this message translates to:
+  /// **'Wind'**
+  String get slLayerWind;
+
+  /// No description provided for @slLayerRain.
+  ///
+  /// In en, this message translates to:
+  /// **'Rain'**
+  String get slLayerRain;
+
+  /// No description provided for @slSoundFadeMin.
+  ///
+  /// In en, this message translates to:
+  /// **'Sound fades over'**
+  String get slSoundFadeMin;
+
+  /// No description provided for @slNightSound.
+  ///
+  /// In en, this message translates to:
+  /// **'Through the night'**
+  String get slNightSound;
+
+  /// No description provided for @slNightSoundHint.
+  ///
+  /// In en, this message translates to:
+  /// **'After the sound has faded'**
+  String get slNightSoundHint;
+
+  /// No description provided for @slNightSoundHum.
+  ///
+  /// In en, this message translates to:
+  /// **'Faint hum'**
+  String get slNightSoundHum;
+
+  /// No description provided for @slNightSoundOff.
+  ///
+  /// In en, this message translates to:
+  /// **'Silent'**
+  String get slNightSoundOff;
+
+  /// No description provided for @slVelourList.
+  ///
+  /// In en, this message translates to:
+  /// **'Velour sleep playlist'**
+  String get slVelourList;
+
+  /// No description provided for @slVelourNone.
+  ///
+  /// In en, this message translates to:
+  /// **'None'**
+  String get slVelourNone;
+
+  /// No description provided for @slVelourMissing.
+  ///
+  /// In en, this message translates to:
+  /// **'Velour doesn\'t run on the leader ({host})'**
+  String slVelourMissing(String host);
+
+  /// No description provided for @slVelourVolume.
+  ///
+  /// In en, this message translates to:
+  /// **'Playlist volume'**
+  String get slVelourVolume;
+
+  /// No description provided for @slVelourFadeMin.
+  ///
+  /// In en, this message translates to:
+  /// **'Music fades over'**
+  String get slVelourFadeMin;
+
+  /// No description provided for @slSoundHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Sound and picture come from one shared timeline: every crackle matches an ember on the screen, on every machine at once.'**
+  String get slSoundHint;
+
+  /// No description provided for @slSectionAlarm.
+  ///
+  /// In en, this message translates to:
+  /// **'Alarm'**
+  String get slSectionAlarm;
+
+  /// No description provided for @slAlarmTime.
+  ///
+  /// In en, this message translates to:
+  /// **'Time'**
+  String get slAlarmTime;
+
+  /// No description provided for @slAlarmDays.
+  ///
+  /// In en, this message translates to:
+  /// **'Days'**
+  String get slAlarmDays;
+
+  /// No description provided for @slDaysOnce.
+  ///
+  /// In en, this message translates to:
+  /// **'Once'**
+  String get slDaysOnce;
+
+  /// No description provided for @slDaysWeekdays.
+  ///
+  /// In en, this message translates to:
+  /// **'Weekdays'**
+  String get slDaysWeekdays;
+
+  /// No description provided for @slDaysDaily.
+  ///
+  /// In en, this message translates to:
+  /// **'Every day'**
+  String get slDaysDaily;
+
+  /// No description provided for @slDaySun.
+  ///
+  /// In en, this message translates to:
+  /// **'Sun'**
+  String get slDaySun;
+
+  /// No description provided for @slDayMon.
+  ///
+  /// In en, this message translates to:
+  /// **'Mon'**
+  String get slDayMon;
+
+  /// No description provided for @slDayTue.
+  ///
+  /// In en, this message translates to:
+  /// **'Tue'**
+  String get slDayTue;
+
+  /// No description provided for @slDayWed.
+  ///
+  /// In en, this message translates to:
+  /// **'Wed'**
+  String get slDayWed;
+
+  /// No description provided for @slDayThu.
+  ///
+  /// In en, this message translates to:
+  /// **'Thu'**
+  String get slDayThu;
+
+  /// No description provided for @slDayFri.
+  ///
+  /// In en, this message translates to:
+  /// **'Fri'**
+  String get slDayFri;
+
+  /// No description provided for @slDaySat.
+  ///
+  /// In en, this message translates to:
+  /// **'Sat'**
+  String get slDaySat;
+
+  /// No description provided for @slSunriseMin.
+  ///
+  /// In en, this message translates to:
+  /// **'Sunrise'**
+  String get slSunriseMin;
+
+  /// No description provided for @slAlarmSound.
+  ///
+  /// In en, this message translates to:
+  /// **'Alarm sound'**
+  String get slAlarmSound;
+
+  /// No description provided for @slAlarmSoundVelourHint.
+  ///
+  /// In en, this message translates to:
+  /// **'A song plays on the leader; the other machines play birds.'**
+  String get slAlarmSoundVelourHint;
+
+  /// No description provided for @slSoundBirds.
+  ///
+  /// In en, this message translates to:
+  /// **'Birds'**
+  String get slSoundBirds;
+
+  /// No description provided for @slSoundChime.
+  ///
+  /// In en, this message translates to:
+  /// **'Chime'**
+  String get slSoundChime;
+
+  /// No description provided for @slSoundVelour.
+  ///
+  /// In en, this message translates to:
+  /// **'Velour'**
+  String get slSoundVelour;
+
+  /// No description provided for @slRampMin.
+  ///
+  /// In en, this message translates to:
+  /// **'Volume rises over'**
+  String get slRampMin;
+
+  /// No description provided for @slSnoozeMin.
+  ///
+  /// In en, this message translates to:
+  /// **'Snooze'**
+  String get slSnoozeMin;
+
+  /// No description provided for @slAutoStopMin.
+  ///
+  /// In en, this message translates to:
+  /// **'Stops by itself after'**
+  String get slAutoStopMin;
+
+  /// No description provided for @slMorningScreen.
+  ///
+  /// In en, this message translates to:
+  /// **'Morning screen'**
+  String get slMorningScreen;
+
+  /// No description provided for @slMorningScreenHint.
+  ///
+  /// In en, this message translates to:
+  /// **'After dismissing: a big clock and the summary for 10 min'**
+  String get slMorningScreenHint;
+
+  /// No description provided for @slAlarmFooter.
+  ///
+  /// In en, this message translates to:
+  /// **'Each machine keeps its own alarm. The phone rings too, and backs it up 3 min later with its own alarm that is cancelled when you dismiss.'**
+  String get slAlarmFooter;
+
+  /// No description provided for @slPhoneBackup.
+  ///
+  /// In en, this message translates to:
+  /// **'Phone backup alarm'**
+  String get slPhoneBackup;
+
+  /// No description provided for @slPhoneBackupOk.
+  ///
+  /// In en, this message translates to:
+  /// **'Exact alarms are allowed: the backup rings on time, also on the lock screen.'**
+  String get slPhoneBackupOk;
+
+  /// No description provided for @slPhoneBackupNoExact.
+  ///
+  /// In en, this message translates to:
+  /// **'Exact alarms aren\'t allowed: Android may ring the backup late. Allow \"Alarms & reminders\" for Tiphys.'**
+  String get slPhoneBackupNoExact;
+
+  /// No description provided for @slPhoneBackupInApp.
+  ///
+  /// In en, this message translates to:
+  /// **'On this device the alarm shows in the app only (no backup alarm).'**
+  String get slPhoneBackupInApp;
+
+  /// No description provided for @slAllowExact.
+  ///
+  /// In en, this message translates to:
+  /// **'Allow exact alarms'**
+  String get slAllowExact;
+
+  /// No description provided for @slAllowFullScreen.
+  ///
+  /// In en, this message translates to:
+  /// **'Full-screen alarm'**
+  String get slAllowFullScreen;
+
+  /// No description provided for @slSectionMachines.
+  ///
+  /// In en, this message translates to:
+  /// **'Machines'**
+  String get slSectionMachines;
+
+  /// No description provided for @slMachinesHint.
+  ///
+  /// In en, this message translates to:
+  /// **'These settings are each machine\'s own; the others above apply to the whole group.'**
+  String get slMachinesHint;
+
+  /// No description provided for @slInGroup.
+  ///
+  /// In en, this message translates to:
+  /// **'In the group'**
+  String get slInGroup;
+
+  /// No description provided for @slNotInGroup.
+  ///
+  /// In en, this message translates to:
+  /// **'Not in the group'**
+  String get slNotInGroup;
+
+  /// No description provided for @slJoin.
+  ///
+  /// In en, this message translates to:
+  /// **'Join the group'**
+  String get slJoin;
+
+  /// No description provided for @slJoinHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Starts and stops with the others'**
+  String get slJoinHint;
+
+  /// No description provided for @slSide.
+  ///
+  /// In en, this message translates to:
+  /// **'Place by the bed'**
+  String get slSide;
+
+  /// No description provided for @slSideLeft.
+  ///
+  /// In en, this message translates to:
+  /// **'Left'**
+  String get slSideLeft;
+
+  /// No description provided for @slSideRight.
+  ///
+  /// In en, this message translates to:
+  /// **'Right'**
+  String get slSideRight;
+
+  /// No description provided for @slSideFoot.
+  ///
+  /// In en, this message translates to:
+  /// **'Foot'**
+  String get slSideFoot;
+
+  /// No description provided for @slSideHead.
+  ///
+  /// In en, this message translates to:
+  /// **'Head'**
+  String get slSideHead;
+
+  /// No description provided for @slDistance.
+  ///
+  /// In en, this message translates to:
+  /// **'Distance'**
+  String get slDistance;
+
+  /// No description provided for @slDistanceNear.
+  ///
+  /// In en, this message translates to:
+  /// **'Near'**
+  String get slDistanceNear;
+
+  /// No description provided for @slDistanceMid.
+  ///
+  /// In en, this message translates to:
+  /// **'Medium'**
+  String get slDistanceMid;
+
+  /// No description provided for @slDistanceFar.
+  ///
+  /// In en, this message translates to:
+  /// **'Far'**
+  String get slDistanceFar;
+
+  /// No description provided for @slVolume.
+  ///
+  /// In en, this message translates to:
+  /// **'Volume'**
+  String get slVolume;
+
+  /// No description provided for @slBrightnessStart.
+  ///
+  /// In en, this message translates to:
+  /// **'Brightness at the start'**
+  String get slBrightnessStart;
+
+  /// No description provided for @slBrightnessNight.
+  ///
+  /// In en, this message translates to:
+  /// **'Night light'**
+  String get slBrightnessNight;
+
+  /// No description provided for @slBrightnessNightHint.
+  ///
+  /// In en, this message translates to:
+  /// **'0: only a few embers glow'**
+  String get slBrightnessNightHint;
+
+  /// No description provided for @slBrightnessMorning.
+  ///
+  /// In en, this message translates to:
+  /// **'Morning brightness'**
+  String get slBrightnessMorning;
+
+  /// No description provided for @slDimming.
+  ///
+  /// In en, this message translates to:
+  /// **'Dimming'**
+  String get slDimming;
+
+  /// No description provided for @slDimBacklight.
+  ///
+  /// In en, this message translates to:
+  /// **'Backlight (hardware)'**
+  String get slDimBacklight;
+
+  /// No description provided for @slDimDdc.
+  ///
+  /// In en, this message translates to:
+  /// **'DDC/CI (hardware)'**
+  String get slDimDdc;
+
+  /// No description provided for @slDimContent.
+  ///
+  /// In en, this message translates to:
+  /// **'The page only (no hardware dimming)'**
+  String get slDimContent;
+
+  /// No description provided for @slDimUnknown.
+  ///
+  /// In en, this message translates to:
+  /// **'Shown after a preview or while sleeping'**
+  String get slDimUnknown;
+
+  /// No description provided for @slPreviewHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Dragging a brightness shows it on this machine for 5 s.'**
+  String get slPreviewHint;
+
+  /// No description provided for @slQuietPower.
+  ///
+  /// In en, this message translates to:
+  /// **'Quiet power profile'**
+  String get slQuietPower;
+
+  /// No description provided for @slQuietPowerHint.
+  ///
+  /// In en, this message translates to:
+  /// **'power-saver while sleeping; heavy jobs go on, slower'**
+  String get slQuietPowerHint;
+
+  /// No description provided for @slHoldVolume.
+  ///
+  /// In en, this message translates to:
+  /// **'Hold the system volume'**
+  String get slHoldVolume;
+
+  /// No description provided for @slHoldVolumeHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Set while sleeping, the old value comes back'**
+  String get slHoldVolumeHint;
+
+  /// No description provided for @slHoldVolumeLevel.
+  ///
+  /// In en, this message translates to:
+  /// **'System volume'**
+  String get slHoldVolumeLevel;
+
+  /// No description provided for @slLeds.
+  ///
+  /// In en, this message translates to:
+  /// **'Lit LEDs off'**
+  String get slLeds;
+
+  /// No description provided for @slLedsHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Only LEDs that can be written; they come back on'**
+  String get slLedsHint;
+
+  /// No description provided for @slMakeLeader.
+  ///
+  /// In en, this message translates to:
+  /// **'Make it the leader'**
+  String get slMakeLeader;
+
+  /// No description provided for @slMakeLeaderHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Velour and the alarm song play on the leader'**
+  String get slMakeLeaderHint;
+
+  /// No description provided for @slSectionNotify.
+  ///
+  /// In en, this message translates to:
+  /// **'Notifications'**
+  String get slSectionNotify;
+
+  /// No description provided for @slCriticalHostDown.
+  ///
+  /// In en, this message translates to:
+  /// **'A server is unreachable'**
+  String get slCriticalHostDown;
+
+  /// No description provided for @slCriticalSecurity.
+  ///
+  /// In en, this message translates to:
+  /// **'Security trap or alarm'**
+  String get slCriticalSecurity;
+
+  /// No description provided for @slCriticalIncident.
+  ///
+  /// In en, this message translates to:
+  /// **'New incident'**
+  String get slCriticalIncident;
+
+  /// No description provided for @slCriticalDisk.
+  ///
+  /// In en, this message translates to:
+  /// **'Disk 95 % full'**
+  String get slCriticalDisk;
+
+  /// No description provided for @slMorningSummary.
+  ///
+  /// In en, this message translates to:
+  /// **'Morning summary'**
+  String get slMorningSummary;
+
+  /// No description provided for @slMorningSummaryHint.
+  ///
+  /// In en, this message translates to:
+  /// **'One notification when you wake up'**
+  String get slMorningSummaryHint;
+
+  /// No description provided for @slNotifyHint.
+  ///
+  /// In en, this message translates to:
+  /// **'While sleeping only the kinds turned on here come at once; the others wait for the morning summary (in memory, not on disk).'**
+  String get slNotifyHint;
+
+  /// No description provided for @slSectionReminder.
+  ///
+  /// In en, this message translates to:
+  /// **'Reminder'**
+  String get slSectionReminder;
+
+  /// No description provided for @slReminder.
+  ///
+  /// In en, this message translates to:
+  /// **'Nightly reminder'**
+  String get slReminder;
+
+  /// No description provided for @slReminderTime.
+  ///
+  /// In en, this message translates to:
+  /// **'Time'**
+  String get slReminderTime;
+
+  /// No description provided for @slReminderHint.
+  ///
+  /// In en, this message translates to:
+  /// **'\"Shall I start the sleep mode?\" on this phone at that time.'**
+  String get slReminderHint;
+
+  /// No description provided for @slSectionSetup.
+  ///
+  /// In en, this message translates to:
+  /// **'Setup'**
+  String get slSectionSetup;
+
+  /// No description provided for @slWizardOpen.
+  ///
+  /// In en, this message translates to:
+  /// **'Set the group up again'**
+  String get slWizardOpen;
+
+  /// No description provided for @slWizardOpenHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Machines, leader, room layout, DDC test'**
+  String get slWizardOpenHint;
+
+  /// No description provided for @slWizardStep.
+  ///
+  /// In en, this message translates to:
+  /// **'Step {n} of {total}'**
+  String slWizardStep(int n, int total);
+
+  /// No description provided for @slWizardMachines.
+  ///
+  /// In en, this message translates to:
+  /// **'Which machines?'**
+  String get slWizardMachines;
+
+  /// No description provided for @slWizardMachinesHint.
+  ///
+  /// In en, this message translates to:
+  /// **'They start and stop together and show one scene across their screens.'**
+  String get slWizardMachinesHint;
+
+  /// No description provided for @slWizardHasVelour.
+  ///
+  /// In en, this message translates to:
+  /// **'Velour runs here'**
+  String get slWizardHasVelour;
+
+  /// No description provided for @slWizardLeader.
+  ///
+  /// In en, this message translates to:
+  /// **'The leader'**
+  String get slWizardLeader;
+
+  /// No description provided for @slWizardLeaderHint.
+  ///
+  /// In en, this message translates to:
+  /// **'The sleep playlist and the alarm song play on the leader; it keeps the group together.'**
+  String get slWizardLeaderHint;
+
+  /// No description provided for @slWizardLayout.
+  ///
+  /// In en, this message translates to:
+  /// **'Room layout'**
+  String get slWizardLayout;
+
+  /// No description provided for @slWizardLayoutHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Where each screen stands seen from the bed: the spatial sound and the scene spread across the screens follow it.'**
+  String get slWizardLayoutHint;
+
+  /// No description provided for @slWizardDdc.
+  ///
+  /// In en, this message translates to:
+  /// **'Dimming test'**
+  String get slWizardDdc;
+
+  /// No description provided for @slWizardDdcHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Each screen dims for 5 s and comes back. A monitor without DDC/CI is dimmed by the page alone.'**
+  String get slWizardDdcHint;
+
+  /// No description provided for @slWizardDdcIdle.
+  ///
+  /// In en, this message translates to:
+  /// **'Not tested'**
+  String get slWizardDdcIdle;
+
+  /// No description provided for @slWizardDdcTest.
+  ///
+  /// In en, this message translates to:
+  /// **'Test'**
+  String get slWizardDdcTest;
+
+  /// No description provided for @slWizardDdcOk.
+  ///
+  /// In en, this message translates to:
+  /// **'Dims: {how}'**
+  String slWizardDdcOk(String how);
+
+  /// No description provided for @slMorningTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Good morning · {time} of sleep'**
+  String slMorningTitle(String time);
+
+  /// No description provided for @slMorningQuiet.
+  ///
+  /// In en, this message translates to:
+  /// **'A quiet night: nothing waited.'**
+  String get slMorningQuiet;
+
+  /// No description provided for @slMorningJobs.
+  ///
+  /// In en, this message translates to:
+  /// **'{n, plural, =1{1 job finished} other{{n} jobs finished}}'**
+  String slMorningJobs(int n);
+
+  /// No description provided for @slMorningBackups.
+  ///
+  /// In en, this message translates to:
+  /// **'{n, plural, =1{1 backup} other{{n} backups}}'**
+  String slMorningBackups(int n);
+
+  /// No description provided for @slMorningIncidents.
+  ///
+  /// In en, this message translates to:
+  /// **'{n, plural, =1{1 incident} other{{n} incidents}}'**
+  String slMorningIncidents(int n);
+
+  /// No description provided for @slMorningHeld.
+  ///
+  /// In en, this message translates to:
+  /// **'{n, plural, =1{1 notification waited} other{{n} notifications waited}}'**
+  String slMorningHeld(int n);
+
+  /// No description provided for @slMorningCardTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Morning summary'**
+  String get slMorningCardTitle;
+
+  /// No description provided for @slMorningSlept.
+  ///
+  /// In en, this message translates to:
+  /// **'Slept'**
+  String get slMorningSlept;
+
+  /// No description provided for @slMorningBackupsLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Backups'**
+  String get slMorningBackupsLabel;
+
+  /// No description provided for @slMorningIncidentsLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Incidents'**
+  String get slMorningIncidentsLabel;
+
+  /// No description provided for @slMorningHeldLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Notifications waited'**
+  String get slMorningHeldLabel;
+
+  /// No description provided for @slMorningHeldFirst.
+  ///
+  /// In en, this message translates to:
+  /// **'First of them'**
+  String get slMorningHeldFirst;
+
+  /// No description provided for @slErrNoGroup.
+  ///
+  /// In en, this message translates to:
+  /// **'This agent can only sleep alone yet (group sleep needs an agent update).'**
+  String get slErrNoGroup;
+
+  /// No description provided for @slErrMemberDown.
+  ///
+  /// In en, this message translates to:
+  /// **'A machine of the group doesn\'t answer; the others go on with the same timeline.'**
+  String get slErrMemberDown;
+
+  /// No description provided for @slErrMemberDownHost.
+  ///
+  /// In en, this message translates to:
+  /// **'{host} doesn\'t answer; the others go on with the same timeline.'**
+  String slErrMemberDownHost(String host);
+
+  /// No description provided for @slErrDdcUnavailable.
+  ///
+  /// In en, this message translates to:
+  /// **'The monitor can\'t be dimmed over DDC/CI: turn DDC/CI on in the monitor\'s menu.'**
+  String get slErrDdcUnavailable;
+
+  /// No description provided for @slErrDdcMissing.
+  ///
+  /// In en, this message translates to:
+  /// **'Nothing to dim on this machine (no backlight and no ddcutil).'**
+  String get slErrDdcMissing;
+
+  /// No description provided for @slErrBadAlarm.
+  ///
+  /// In en, this message translates to:
+  /// **'The alarm settings aren\'t valid.'**
+  String get slErrBadAlarm;
+
+  /// No description provided for @slErrRunning.
+  ///
+  /// In en, this message translates to:
+  /// **'The sleep mode is on: stop it first.'**
+  String get slErrRunning;
+
+  /// No description provided for @slErrNotRunning.
+  ///
+  /// In en, this message translates to:
+  /// **'The sleep mode isn\'t running.'**
+  String get slErrNotRunning;
+
+  /// No description provided for @slErrNotRinging.
+  ///
+  /// In en, this message translates to:
+  /// **'The alarm isn\'t ringing.'**
+  String get slErrNotRinging;
+
+  /// No description provided for @slEventStarted.
+  ///
+  /// In en, this message translates to:
+  /// **'Sleep mode started'**
+  String get slEventStarted;
+
+  /// No description provided for @slEventStopped.
+  ///
+  /// In en, this message translates to:
+  /// **'Sleep mode stopped'**
+  String get slEventStopped;
+
+  /// No description provided for @slEventAlarmRang.
+  ///
+  /// In en, this message translates to:
+  /// **'Sleep alarm rang'**
+  String get slEventAlarmRang;
+
+  /// No description provided for @slEventAlarmSnoozed.
+  ///
+  /// In en, this message translates to:
+  /// **'Sleep alarm snoozed'**
+  String get slEventAlarmSnoozed;
+
+  /// No description provided for @slEventAlarmDismissed.
+  ///
+  /// In en, this message translates to:
+  /// **'Sleep alarm dismissed'**
+  String get slEventAlarmDismissed;
+
+  /// No description provided for @slEventAlarmAutoStopped.
+  ///
+  /// In en, this message translates to:
+  /// **'Sleep alarm stopped by itself'**
+  String get slEventAlarmAutoStopped;
+
+  /// No description provided for @slErrNotMember.
+  ///
+  /// In en, this message translates to:
+  /// **'This machine isn\'t in the session the phone sent: set the group up again.'**
+  String get slErrNotMember;
+
+  /// No description provided for @slErrNoLeaderSource.
+  ///
+  /// In en, this message translates to:
+  /// **'This machine can\'t reach the leader ({leader}): connect it to the leader under Screen modes › Connections on this machine.'**
+  String slErrNoLeaderSource(String leader);
 }
 
 class _AppLocalizationsDelegate

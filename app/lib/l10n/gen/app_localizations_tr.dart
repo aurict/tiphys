@@ -12935,4 +12935,632 @@ class AppLocalizationsTr extends AppLocalizations {
   @override
   String get doctorScreenCiLoggedOut =>
       'Ekran modları: Git kartında CI noktası yok (gh\'de oturum açılmamış).';
+
+  @override
+  String get smModeSleep => 'Uyku';
+
+  @override
+  String get smModeSleepHint =>
+      'Ekranlarda korlar, uzamsal ses, gün doğumu alarmı';
+
+  @override
+  String get slTitle => 'Uyku modu';
+
+  @override
+  String get slStart => 'Uykuya geç';
+
+  @override
+  String get slWake => 'Uyan';
+
+  @override
+  String get slDismiss => 'Kapat';
+
+  @override
+  String slSnoozeFor(int n) {
+    return 'Ertele · $n dk';
+  }
+
+  @override
+  String get slSettings => 'Uyku ayarları';
+
+  @override
+  String get slSetup => 'Uyku grubunu kur';
+
+  @override
+  String get slSetupNeeded =>
+      'Henüz kurulmadı: önce makineleri ve oda yerleşimini seç.';
+
+  @override
+  String get slBack => 'Geri';
+
+  @override
+  String get slAlarm => 'Alarm';
+
+  @override
+  String slAlarmAt(String time) {
+    return 'alarm $time';
+  }
+
+  @override
+  String get slNoAlarm => 'alarm yok';
+
+  @override
+  String slMachines(int n) {
+    return '$n makine';
+  }
+
+  @override
+  String slAlarmTitle(String time) {
+    return 'Alarm · $time';
+  }
+
+  @override
+  String get slAlarmBody => 'Ekranlar aydınlanıyor. Ertele ya da kapat.';
+
+  @override
+  String get slBackupBody => 'Telefon yedeği: makineler çalmamış olabilir.';
+
+  @override
+  String get slAlarmChannel => 'Uyku modu alarmı ve telefondaki yedeği';
+
+  @override
+  String slAlarmMachines(int n) {
+    return '$n makine çalıyor';
+  }
+
+  @override
+  String get slGoodMorning => 'Günaydın';
+
+  @override
+  String get slReminderTitle => 'Uyku modunu başlatayım mı?';
+
+  @override
+  String get slReminderBody => 'Uyku modunu açmak için dokun.';
+
+  @override
+  String get slReminderChannel => 'Her gece uyku modu hatırlatması';
+
+  @override
+  String get slNeedsUpdate =>
+      'Bunun için ajan güncellemesi gerekiyor (uyku modu).';
+
+  @override
+  String slNeedsUpdateHost(String host) {
+    return '$host: uyku modu için ajan güncellemesi gerekiyor.';
+  }
+
+  @override
+  String get slNoMembers =>
+      'Gruba katılan makine yok: Makineler bölümünden birini aç.';
+
+  @override
+  String get slLeader => 'Lider';
+
+  @override
+  String get slMachineFailed => 'başlamadı';
+
+  @override
+  String get slStartFailedAll => 'Uyku modu başlamadı';
+
+  @override
+  String get slStartFailedSome => 'Her makine başlamadı';
+
+  @override
+  String get slStartAlone => 'Tek makineyle sür';
+
+  @override
+  String slDdcWarning(String host) {
+    return '$host: monitör DDC/CI ile kısılamıyor, yalnız sayfa kısılıyor. Monitörün menüsünden DDC/CI\'ı açın.';
+  }
+
+  @override
+  String get slPhaseSettle => 'Yerleşiyor';
+
+  @override
+  String get slPhaseFade => 'Sönüyor';
+
+  @override
+  String get slPhaseNight => 'Gece ışığı';
+
+  @override
+  String get slPhaseSunrise => 'Gün doğumu';
+
+  @override
+  String get slPhaseRing => 'Alarm çalıyor';
+
+  @override
+  String get slPhaseSnoozed => 'Ertelendi';
+
+  @override
+  String get slPhaseMorning => 'Sabah';
+
+  @override
+  String slPhaseLeft(String phase, String time) {
+    return '$phase · $time';
+  }
+
+  @override
+  String slSnoozedUntil(String time) {
+    return '$time\'a kadar ertelendi';
+  }
+
+  @override
+  String get slSectionScene => 'Sahne';
+
+  @override
+  String get slSceneEmbers => 'Şömine korları';
+
+  @override
+  String get slSceneEmbersHint =>
+      'Tüm ekranlara yayılan tek sahne; başka sahneler ileride';
+
+  @override
+  String get slSettleMin => 'Yerleşme';
+
+  @override
+  String get slFadeMin => 'Görüntü sönüşü';
+
+  @override
+  String get slTimesHint => 'Süreler bir sonraki başlatmada geçerli olur.';
+
+  @override
+  String get slSectionSound => 'Ses';
+
+  @override
+  String get slLayerHum => 'Kor uğultusu';
+
+  @override
+  String get slLayerCrackle => 'Çıtırtılar';
+
+  @override
+  String get slLayerLogs => 'Odun çatlaması';
+
+  @override
+  String get slLayerWind => 'Rüzgâr';
+
+  @override
+  String get slLayerRain => 'Yağmur';
+
+  @override
+  String get slSoundFadeMin => 'Ses sönüşü';
+
+  @override
+  String get slNightSound => 'Gece boyunca';
+
+  @override
+  String get slNightSoundHint => 'Ses söndükten sonra';
+
+  @override
+  String get slNightSoundHum => 'Kısık uğultu';
+
+  @override
+  String get slNightSoundOff => 'Tamamen sessiz';
+
+  @override
+  String get slVelourList => 'Velour uyku listesi';
+
+  @override
+  String get slVelourNone => 'Yok';
+
+  @override
+  String slVelourMissing(String host) {
+    return 'Velour liderde ($host) çalışmıyor';
+  }
+
+  @override
+  String get slVelourVolume => 'Liste ses düzeyi';
+
+  @override
+  String get slVelourFadeMin => 'Müzik kısılması';
+
+  @override
+  String get slSoundHint =>
+      'Ses ve görüntü tek ortak zaman çizelgesinden gelir: her çıtırtı ekrandaki bir korla eşleşir, her makinede aynı anda.';
+
+  @override
+  String get slSectionAlarm => 'Alarm';
+
+  @override
+  String get slAlarmTime => 'Saat';
+
+  @override
+  String get slAlarmDays => 'Günler';
+
+  @override
+  String get slDaysOnce => 'Bir kez';
+
+  @override
+  String get slDaysWeekdays => 'Hafta içi';
+
+  @override
+  String get slDaysDaily => 'Her gün';
+
+  @override
+  String get slDaySun => 'Paz';
+
+  @override
+  String get slDayMon => 'Pzt';
+
+  @override
+  String get slDayTue => 'Sal';
+
+  @override
+  String get slDayWed => 'Çar';
+
+  @override
+  String get slDayThu => 'Per';
+
+  @override
+  String get slDayFri => 'Cum';
+
+  @override
+  String get slDaySat => 'Cmt';
+
+  @override
+  String get slSunriseMin => 'Gün doğumu';
+
+  @override
+  String get slAlarmSound => 'Alarm sesi';
+
+  @override
+  String get slAlarmSoundVelourHint =>
+      'Şarkı liderde çalar; diğer makineler kuş sesi çalar.';
+
+  @override
+  String get slSoundBirds => 'Kuşlar';
+
+  @override
+  String get slSoundChime => 'Çan';
+
+  @override
+  String get slSoundVelour => 'Velour';
+
+  @override
+  String get slRampMin => 'Ses yükselmesi';
+
+  @override
+  String get slSnoozeMin => 'Erteleme';
+
+  @override
+  String get slAutoStopMin => 'Kendiliğinden susma';
+
+  @override
+  String get slMorningScreen => 'Sabah ekranı';
+
+  @override
+  String get slMorningScreenHint => 'Kapatınca 10 dk büyük saat ve özet';
+
+  @override
+  String get slAlarmFooter =>
+      'Her makine alarmı kendisi tutar. Telefon da çalar ve 3 dk sonrası için kendi yedek alarmını kurar; kapatınca iptal edilir.';
+
+  @override
+  String get slPhoneBackup => 'Telefon yedek alarmı';
+
+  @override
+  String get slPhoneBackupOk =>
+      'Tam zamanlı alarm izni var: yedek zamanında, kilit ekranında da çalar.';
+
+  @override
+  String get slPhoneBackupNoExact =>
+      'Tam zamanlı alarm izni yok: Android yedeği geç çalabilir. Tiphys için \"Alarmlar ve hatırlatıcılar\" iznini ver.';
+
+  @override
+  String get slPhoneBackupInApp =>
+      'Bu cihazda alarm yalnız uygulamada görünür (yedek alarm yok).';
+
+  @override
+  String get slAllowExact => 'Tam zamanlı alarma izin ver';
+
+  @override
+  String get slAllowFullScreen => 'Tam ekran alarm';
+
+  @override
+  String get slSectionMachines => 'Makineler';
+
+  @override
+  String get slMachinesHint =>
+      'Bu ayarlar her makinenin kendisine ait; yukarıdakiler tüm grubundur.';
+
+  @override
+  String get slInGroup => 'Grupta';
+
+  @override
+  String get slNotInGroup => 'Grupta değil';
+
+  @override
+  String get slJoin => 'Gruba katıl';
+
+  @override
+  String get slJoinHint => 'Diğerleriyle birlikte açılır ve kapanır';
+
+  @override
+  String get slSide => 'Yatağa göre konum';
+
+  @override
+  String get slSideLeft => 'Sol';
+
+  @override
+  String get slSideRight => 'Sağ';
+
+  @override
+  String get slSideFoot => 'Ayak';
+
+  @override
+  String get slSideHead => 'Baş';
+
+  @override
+  String get slDistance => 'Uzaklık';
+
+  @override
+  String get slDistanceNear => 'Yakın';
+
+  @override
+  String get slDistanceMid => 'Orta';
+
+  @override
+  String get slDistanceFar => 'Uzak';
+
+  @override
+  String get slVolume => 'Ses düzeyi';
+
+  @override
+  String get slBrightnessStart => 'Başlangıç parlaklığı';
+
+  @override
+  String get slBrightnessNight => 'Gece ışığı';
+
+  @override
+  String get slBrightnessNightHint => '0: yalnız birkaç kor parlar';
+
+  @override
+  String get slBrightnessMorning => 'Sabah parlaklığı';
+
+  @override
+  String get slDimming => 'Kısma';
+
+  @override
+  String get slDimBacklight => 'Arka ışık (donanım)';
+
+  @override
+  String get slDimDdc => 'DDC/CI (donanım)';
+
+  @override
+  String get slDimContent => 'Yalnız sayfa (donanım kısması yok)';
+
+  @override
+  String get slDimUnknown => 'Önizlemede ya da uyku sırasında görünür';
+
+  @override
+  String get slPreviewHint =>
+      'Parlaklığı kaydırınca bu makinede 5 sn gösterilir.';
+
+  @override
+  String get slQuietPower => 'Sessiz güç profili';
+
+  @override
+  String get slQuietPowerHint =>
+      'Uykuda power-saver; ağır işler yavaşlar ama sürer';
+
+  @override
+  String get slHoldVolume => 'Sistem sesini sabitle';
+
+  @override
+  String get slHoldVolumeHint =>
+      'Uyku boyunca ayarlanır, eski değer geri gelir';
+
+  @override
+  String get slHoldVolumeLevel => 'Sistem ses düzeyi';
+
+  @override
+  String get slLeds => 'Yanan LED\'leri söndür';
+
+  @override
+  String get slLedsHint => 'Yalnız yazılabilen LED\'ler; sonra geri yanar';
+
+  @override
+  String get slMakeLeader => 'Lider yap';
+
+  @override
+  String get slMakeLeaderHint => 'Velour ve alarm şarkısı liderde çalar';
+
+  @override
+  String get slSectionNotify => 'Bildirimler';
+
+  @override
+  String get slCriticalHostDown => 'Sunucu erişilemez';
+
+  @override
+  String get slCriticalSecurity => 'Güvenlik tuzağı / alarmı';
+
+  @override
+  String get slCriticalIncident => 'Yeni olay (incident)';
+
+  @override
+  String get slCriticalDisk => 'Disk %95 dolu';
+
+  @override
+  String get slMorningSummary => 'Sabah özeti';
+
+  @override
+  String get slMorningSummaryHint => 'Uyanınca tek bildirim';
+
+  @override
+  String get slNotifyHint =>
+      'Uykuda yalnız burada açık türler hemen gelir; gerisi sabah özetini bekler (bellekte, diske yazılmaz).';
+
+  @override
+  String get slSectionReminder => 'Hatırlatma';
+
+  @override
+  String get slReminder => 'Her gece hatırlat';
+
+  @override
+  String get slReminderTime => 'Saat';
+
+  @override
+  String get slReminderHint =>
+      'Bu telefonda o saatte \"Uyku modunu başlatayım mı?\" bildirimi.';
+
+  @override
+  String get slSectionSetup => 'Kurulum';
+
+  @override
+  String get slWizardOpen => 'Grubu yeniden kur';
+
+  @override
+  String get slWizardOpenHint => 'Makineler, lider, oda yerleşimi, DDC testi';
+
+  @override
+  String slWizardStep(int n, int total) {
+    return 'Adım $n/$total';
+  }
+
+  @override
+  String get slWizardMachines => 'Hangi makineler?';
+
+  @override
+  String get slWizardMachinesHint =>
+      'Birlikte açılıp kapanır, ekranlarında tek sahne gösterir.';
+
+  @override
+  String get slWizardHasVelour => 'Velour burada çalışıyor';
+
+  @override
+  String get slWizardLeader => 'Lider';
+
+  @override
+  String get slWizardLeaderHint =>
+      'Uyku listesi ve alarm şarkısı liderde çalar; grubu o bir arada tutar.';
+
+  @override
+  String get slWizardLayout => 'Oda yerleşimi';
+
+  @override
+  String get slWizardLayoutHint =>
+      'Yataktan bakınca her ekranın yeri: uzamsal ses ve ekranlara yayılan sahne buna göre hesaplanır.';
+
+  @override
+  String get slWizardDdc => 'Kısma testi';
+
+  @override
+  String get slWizardDdcHint =>
+      'Her ekran 5 sn kısılır, sonra geri gelir. DDC/CI olmayan monitörü yalnız sayfa kısar.';
+
+  @override
+  String get slWizardDdcIdle => 'Denenmedi';
+
+  @override
+  String get slWizardDdcTest => 'Dene';
+
+  @override
+  String slWizardDdcOk(String how) {
+    return 'Kısılıyor: $how';
+  }
+
+  @override
+  String slMorningTitle(String time) {
+    return 'Günaydın · $time uyku';
+  }
+
+  @override
+  String get slMorningQuiet => 'Sakin bir gece: bekleyen bir şey yok.';
+
+  @override
+  String slMorningJobs(int n) {
+    return '$n iş bitti';
+  }
+
+  @override
+  String slMorningBackups(int n) {
+    return '$n yedek';
+  }
+
+  @override
+  String slMorningIncidents(int n) {
+    return '$n olay';
+  }
+
+  @override
+  String slMorningHeld(int n) {
+    return '$n bildirim bekledi';
+  }
+
+  @override
+  String get slMorningCardTitle => 'Sabah özeti';
+
+  @override
+  String get slMorningSlept => 'Uyku';
+
+  @override
+  String get slMorningBackupsLabel => 'Yedekler';
+
+  @override
+  String get slMorningIncidentsLabel => 'Olaylar';
+
+  @override
+  String get slMorningHeldLabel => 'Bekleyen bildirim';
+
+  @override
+  String get slMorningHeldFirst => 'İlkleri';
+
+  @override
+  String get slErrNoGroup =>
+      'Bu ajan henüz yalnız tek başına uyuyabiliyor (grup için ajan güncellemesi gerekiyor).';
+
+  @override
+  String get slErrMemberDown =>
+      'Grubun bir makinesi yanıt vermiyor; diğerleri aynı zaman çizelgesiyle sürüyor.';
+
+  @override
+  String slErrMemberDownHost(String host) {
+    return '$host yanıt vermiyor; diğerleri aynı zaman çizelgesiyle sürüyor.';
+  }
+
+  @override
+  String get slErrDdcUnavailable =>
+      'Monitör DDC/CI ile kısılamıyor: monitörün menüsünden DDC/CI\'ı açın.';
+
+  @override
+  String get slErrDdcMissing =>
+      'Bu makinede kısılacak bir şey yok (arka ışık da ddcutil de yok).';
+
+  @override
+  String get slErrBadAlarm => 'Alarm ayarları geçersiz.';
+
+  @override
+  String get slErrRunning => 'Uyku modu açık: önce onu durdur.';
+
+  @override
+  String get slErrNotRunning => 'Uyku modu açık değil.';
+
+  @override
+  String get slErrNotRinging => 'Alarm çalmıyor.';
+
+  @override
+  String get slEventStarted => 'Uyku modu başladı';
+
+  @override
+  String get slEventStopped => 'Uyku modu kapandı';
+
+  @override
+  String get slEventAlarmRang => 'Uyku alarmı çaldı';
+
+  @override
+  String get slEventAlarmSnoozed => 'Uyku alarmı ertelendi';
+
+  @override
+  String get slEventAlarmDismissed => 'Uyku alarmı kapatıldı';
+
+  @override
+  String get slEventAlarmAutoStopped => 'Uyku alarmı kendiliğinden sustu';
+
+  @override
+  String get slErrNotMember =>
+      'Bu makine telefonun gönderdiği oturumda yok: grubu yeniden kur.';
+
+  @override
+  String slErrNoLeaderSource(String leader) {
+    return 'Bu makine lidere ($leader) ulaşamıyor: bu makinede Ekran modları › Bağlantılar\'dan lideri kaynak olarak ekle.';
+  }
 }

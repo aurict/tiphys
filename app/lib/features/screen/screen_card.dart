@@ -2,6 +2,8 @@
 // display/draft/app-card.html). Closed: "Kapalı" + the last mode; running: the mode, the display host and one live line
 // (Work: Claude sessions and jobs, Focus: the countdown and the task, Game: the §19 line). The big button stops
 // everything in one tap; closed it opens the mode chooser. Hidden while no host has the feature.
+// While the sleep mode runs (§21) the card is the sleep group's: "Uyku · alarm 07:30 · 2 makine", the phase and a big
+// Uyan (stop all); while the alarm rings, Kapat. For 12 h after a night the morning summary sits under it.
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
@@ -21,6 +23,11 @@ import 'screen_data.dart';
 import 'screen_sheet.dart';
 import 'screen_texts.dart';
 import 'screen_widgets.dart';
+import 'sleep/sleep_data.dart';
+import 'sleep/sleep_morning.dart';
+import 'sleep/sleep_screen.dart' show sleepPhaseLine;
+import 'sleep/sleep_texts.dart';
+import 'sleep/sleep_widgets.dart' show sleepSunColor;
 
 /// "1 sa 42 dk" since [from].
 String elapsedText(AppLocalizations l, DateTime? from, DateTime now) {
@@ -95,12 +102,116 @@ class _ScreenModeHomeCardState extends ConsumerState<ScreenModeHomeCard> {
     }
   }
 
+  Future<void> _sleep(Future<void> Function(SleepGroupNotifier n) f) async {
+    final l = AppLocalizations.of(context);
+    setState(() => _busy = true);
+    try {
+      await f(ref.read(sleepGroupProvider.notifier));
+    } catch (e) {
+      if (mounted) toast(context, sleepActionError(l, ref.read(sleepGroupProvider).value, e));
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
-    final l = AppLocalizations.of(context);
-    final t = context.tokens;
     final target = ref.watch(screenTargetProvider).value;
     if (target == null) return const SizedBox.shrink();
+    final sleep = ref.watch(sleepGroupProvider).value;
+    final morning = ref.watch(sleepMorningProvider).value;
+    final card = sleep != null && sleep.running ? _sleepCard(sleep) : _screenCard(target);
+    if (morning == null) return card;
+    return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [card, const SizedBox(height: 12), SleepMorningCard(summary: morning, compact: true)]);
+  }
+
+  Widget _sleepCard(SleepGroup g) {
+    final l = AppLocalizations.of(context);
+    final t = context.tokens;
+    final src = g.phaseSource;
+    final ringing = g.ringing;
+    final textStyle = TextStyle(fontSize: 19, fontWeight: FontWeight.w800, letterSpacing: -0.3, color: t.claudeTileText);
+    final subStyle = TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: t.claudeTileSubtext);
+    final sun = sleepSunColor(t);
+    return TCard(
+      height: MediaQuery.textScalerOf(context).scale(112),
+      color: t.claudeTile,
+      borderColor: t.claudeTileBorder,
+      padding: const EdgeInsets.fromLTRB(16, 14, 14, 14),
+      onTap: () => context.push(ringing ? '/screen/sleep/alarm' : '/screen/sleep'),
+      semanticLabel: l.smModeSleep,
+      child: TickBuilder(
+        active: src?.phaseEndsAt != null,
+        builder: (context) {
+          final now = DateTime.now();
+          return Row(
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Row(
+                      children: [
+                        Icon(ringing ? LucideIcons.alarmClock : screenModeIcon('sleep'), size: 16, color: ringing ? sun : t.claudeTileSubtext),
+                        const SizedBox(width: 6),
+                        Flexible(
+                          child: Text(
+                            l.smModeSleep,
+                            style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: t.claudeTileText),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                        const SizedBox(width: 7),
+                        Container(
+                          width: 7,
+                          height: 7,
+                          decoration: BoxDecoration(
+                            color: ringing ? sun : t.success,
+                            shape: BoxShape.circle,
+                            boxShadow: [BoxShadow(color: (ringing ? sun : t.success).withValues(alpha: 0.6), blurRadius: 8)],
+                          ),
+                        ),
+                      ],
+                    ),
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          ringing ? l.slAlarmTitle(g.settings.alarmTime) : (src == null ? l.gmOn : sleepPhaseLine(l, src, now)),
+                          style: textStyle,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        Text(ringing ? l.slAlarmMachines(g.runningMachines.length) : sleepAlarmLine(l, g), style: subStyle, maxLines: 1, overflow: TextOverflow.ellipsis),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 12),
+              _BigButton(
+                running: true,
+                busy: _busy,
+                round: false,
+                progress: null,
+                label: ringing ? l.slDismiss : l.slWake,
+                icon: ringing ? LucideIcons.alarmClockOff : LucideIcons.sun,
+                color: sun,
+                iconColor: const Color(0xFF2A1405),
+                onTap: () => _sleep((n) => ringing ? n.alarm('dismiss') : n.stop()),
+              ),
+            ],
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _screenCard(ScreenTarget target) {
+    final l = AppLocalizations.of(context);
+    final t = context.tokens;
     final host = target.host;
     final status = target.ready ? ref.watch(screenProvider(host.id)).value : null;
     final route = '/screen?host=${Uri.encodeQueryComponent(host.id)}';
@@ -229,8 +340,13 @@ class _ScreenModeHomeCardState extends ConsumerState<ScreenModeHomeCard> {
 
 /// 64×64: white Play when closed, red Stop when running (round with a progress ring while a Focus phase runs).
 class _BigButton extends StatelessWidget {
-  const _BigButton({required this.running, required this.busy, required this.round, required this.progress, required this.label, required this.onTap});
+  const _BigButton({required this.running, required this.busy, required this.round, required this.progress, required this.label, required this.onTap, this.icon, this.color, this.iconColor});
   final bool running;
+
+  /// Another icon and colors (the sleep mode's Uyan / Kapat).
+  final IconData? icon;
+  final Color? color;
+  final Color? iconColor;
   final bool busy;
   final bool round;
   final double? progress;
@@ -241,7 +357,7 @@ class _BigButton extends StatelessWidget {
     final t = context.tokens;
     final radius = round ? BorderRadius.circular(32) : BorderRadius.circular(18);
     final button = Material(
-      color: running ? t.danger : Colors.white,
+      color: color ?? (running ? t.danger : Colors.white),
       borderRadius: radius,
       child: InkWell(
         borderRadius: radius,
@@ -250,8 +366,8 @@ class _BigButton extends StatelessWidget {
           width: 64,
           height: 64,
           child: busy
-              ? Padding(padding: const EdgeInsets.all(22), child: CircularProgressIndicator(strokeWidth: 2.4, color: running ? Colors.white : null))
-              : Icon(running ? LucideIcons.square : LucideIcons.play, size: running ? 24 : 26, color: running ? Colors.white : const Color(0xFF1E1B4B)),
+              ? Padding(padding: const EdgeInsets.all(22), child: CircularProgressIndicator(strokeWidth: 2.4, color: iconColor ?? (running ? Colors.white : null)))
+              : Icon(icon ?? (running ? LucideIcons.square : LucideIcons.play), size: icon != null ? 26 : (running ? 24 : 26), color: iconColor ?? (running ? Colors.white : const Color(0xFF1E1B4B))),
         ),
       ),
     );

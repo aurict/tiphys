@@ -13236,4 +13236,669 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get doctorScreenCiLoggedOut =>
       'Screen modes: no CI dot on the Git card (gh is not logged in).';
+
+  @override
+  String get smModeSleep => 'Sleep';
+
+  @override
+  String get smModeSleepHint =>
+      'Embers on every screen, spatial sound, sunrise alarm';
+
+  @override
+  String get slTitle => 'Sleep mode';
+
+  @override
+  String get slStart => 'Go to sleep';
+
+  @override
+  String get slWake => 'Wake up';
+
+  @override
+  String get slDismiss => 'Dismiss';
+
+  @override
+  String slSnoozeFor(int n) {
+    return 'Snooze · $n min';
+  }
+
+  @override
+  String get slSettings => 'Sleep settings';
+
+  @override
+  String get slSetup => 'Set up the sleep group';
+
+  @override
+  String get slSetupNeeded =>
+      'Not set up yet: pick the machines and the room layout first.';
+
+  @override
+  String get slBack => 'Back';
+
+  @override
+  String get slAlarm => 'Alarm';
+
+  @override
+  String slAlarmAt(String time) {
+    return 'alarm $time';
+  }
+
+  @override
+  String get slNoAlarm => 'no alarm';
+
+  @override
+  String slMachines(int n) {
+    String _temp0 = intl.Intl.pluralLogic(
+      n,
+      locale: localeName,
+      other: '$n machines',
+      one: '1 machine',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String slAlarmTitle(String time) {
+    return 'Alarm · $time';
+  }
+
+  @override
+  String get slAlarmBody => 'The screens are brightening. Snooze or dismiss.';
+
+  @override
+  String get slBackupBody => 'Phone backup: the machines may not have rung.';
+
+  @override
+  String get slAlarmChannel =>
+      'The sleep mode alarm and its backup on the phone';
+
+  @override
+  String slAlarmMachines(int n) {
+    String _temp0 = intl.Intl.pluralLogic(
+      n,
+      locale: localeName,
+      other: '$n machines are ringing',
+      one: '1 machine is ringing',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get slGoodMorning => 'Good morning';
+
+  @override
+  String get slReminderTitle => 'Shall I start the sleep mode?';
+
+  @override
+  String get slReminderBody => 'Tap to open the sleep mode.';
+
+  @override
+  String get slReminderChannel => 'Nightly sleep mode reminder';
+
+  @override
+  String get slNeedsUpdate =>
+      'The agent needs an update for this (sleep mode, PLAN §21).';
+
+  @override
+  String slNeedsUpdateHost(String host) {
+    return '$host: the agent needs an update for the sleep mode.';
+  }
+
+  @override
+  String get slNoMembers =>
+      'No machine joins the group: turn one on under Machines.';
+
+  @override
+  String get slLeader => 'Leader';
+
+  @override
+  String get slMachineFailed => 'failed';
+
+  @override
+  String get slStartFailedAll => 'The sleep mode didn\'t start';
+
+  @override
+  String get slStartFailedSome => 'Not every machine started';
+
+  @override
+  String get slStartAlone => 'Go on with one machine';
+
+  @override
+  String slDdcWarning(String host) {
+    return '$host: the monitor can\'t be dimmed over DDC/CI, the page dims alone. Turn DDC/CI on in the monitor\'s menu.';
+  }
+
+  @override
+  String get slPhaseSettle => 'Settling';
+
+  @override
+  String get slPhaseFade => 'Fading';
+
+  @override
+  String get slPhaseNight => 'Night light';
+
+  @override
+  String get slPhaseSunrise => 'Sunrise';
+
+  @override
+  String get slPhaseRing => 'The alarm is ringing';
+
+  @override
+  String get slPhaseSnoozed => 'Snoozed';
+
+  @override
+  String get slPhaseMorning => 'Morning';
+
+  @override
+  String slPhaseLeft(String phase, String time) {
+    return '$phase · $time';
+  }
+
+  @override
+  String slSnoozedUntil(String time) {
+    return 'Snoozed until $time';
+  }
+
+  @override
+  String get slSectionScene => 'Scene';
+
+  @override
+  String get slSceneEmbers => 'Fireplace embers';
+
+  @override
+  String get slSceneEmbersHint =>
+      'One scene across every screen; more scenes later';
+
+  @override
+  String get slSettleMin => 'Settling';
+
+  @override
+  String get slFadeMin => 'Picture fades over';
+
+  @override
+  String get slTimesHint => 'Durations apply from the next start.';
+
+  @override
+  String get slSectionSound => 'Sound';
+
+  @override
+  String get slLayerHum => 'Ember hum';
+
+  @override
+  String get slLayerCrackle => 'Crackles';
+
+  @override
+  String get slLayerLogs => 'Cracking logs';
+
+  @override
+  String get slLayerWind => 'Wind';
+
+  @override
+  String get slLayerRain => 'Rain';
+
+  @override
+  String get slSoundFadeMin => 'Sound fades over';
+
+  @override
+  String get slNightSound => 'Through the night';
+
+  @override
+  String get slNightSoundHint => 'After the sound has faded';
+
+  @override
+  String get slNightSoundHum => 'Faint hum';
+
+  @override
+  String get slNightSoundOff => 'Silent';
+
+  @override
+  String get slVelourList => 'Velour sleep playlist';
+
+  @override
+  String get slVelourNone => 'None';
+
+  @override
+  String slVelourMissing(String host) {
+    return 'Velour doesn\'t run on the leader ($host)';
+  }
+
+  @override
+  String get slVelourVolume => 'Playlist volume';
+
+  @override
+  String get slVelourFadeMin => 'Music fades over';
+
+  @override
+  String get slSoundHint =>
+      'Sound and picture come from one shared timeline: every crackle matches an ember on the screen, on every machine at once.';
+
+  @override
+  String get slSectionAlarm => 'Alarm';
+
+  @override
+  String get slAlarmTime => 'Time';
+
+  @override
+  String get slAlarmDays => 'Days';
+
+  @override
+  String get slDaysOnce => 'Once';
+
+  @override
+  String get slDaysWeekdays => 'Weekdays';
+
+  @override
+  String get slDaysDaily => 'Every day';
+
+  @override
+  String get slDaySun => 'Sun';
+
+  @override
+  String get slDayMon => 'Mon';
+
+  @override
+  String get slDayTue => 'Tue';
+
+  @override
+  String get slDayWed => 'Wed';
+
+  @override
+  String get slDayThu => 'Thu';
+
+  @override
+  String get slDayFri => 'Fri';
+
+  @override
+  String get slDaySat => 'Sat';
+
+  @override
+  String get slSunriseMin => 'Sunrise';
+
+  @override
+  String get slAlarmSound => 'Alarm sound';
+
+  @override
+  String get slAlarmSoundVelourHint =>
+      'A song plays on the leader; the other machines play birds.';
+
+  @override
+  String get slSoundBirds => 'Birds';
+
+  @override
+  String get slSoundChime => 'Chime';
+
+  @override
+  String get slSoundVelour => 'Velour';
+
+  @override
+  String get slRampMin => 'Volume rises over';
+
+  @override
+  String get slSnoozeMin => 'Snooze';
+
+  @override
+  String get slAutoStopMin => 'Stops by itself after';
+
+  @override
+  String get slMorningScreen => 'Morning screen';
+
+  @override
+  String get slMorningScreenHint =>
+      'After dismissing: a big clock and the summary for 10 min';
+
+  @override
+  String get slAlarmFooter =>
+      'Each machine keeps its own alarm. The phone rings too, and backs it up 3 min later with its own alarm that is cancelled when you dismiss.';
+
+  @override
+  String get slPhoneBackup => 'Phone backup alarm';
+
+  @override
+  String get slPhoneBackupOk =>
+      'Exact alarms are allowed: the backup rings on time, also on the lock screen.';
+
+  @override
+  String get slPhoneBackupNoExact =>
+      'Exact alarms aren\'t allowed: Android may ring the backup late. Allow \"Alarms & reminders\" for Tiphys.';
+
+  @override
+  String get slPhoneBackupInApp =>
+      'On this device the alarm shows in the app only (no backup alarm).';
+
+  @override
+  String get slAllowExact => 'Allow exact alarms';
+
+  @override
+  String get slAllowFullScreen => 'Full-screen alarm';
+
+  @override
+  String get slSectionMachines => 'Machines';
+
+  @override
+  String get slMachinesHint =>
+      'These settings are each machine\'s own; the others above apply to the whole group.';
+
+  @override
+  String get slInGroup => 'In the group';
+
+  @override
+  String get slNotInGroup => 'Not in the group';
+
+  @override
+  String get slJoin => 'Join the group';
+
+  @override
+  String get slJoinHint => 'Starts and stops with the others';
+
+  @override
+  String get slSide => 'Place by the bed';
+
+  @override
+  String get slSideLeft => 'Left';
+
+  @override
+  String get slSideRight => 'Right';
+
+  @override
+  String get slSideFoot => 'Foot';
+
+  @override
+  String get slSideHead => 'Head';
+
+  @override
+  String get slDistance => 'Distance';
+
+  @override
+  String get slDistanceNear => 'Near';
+
+  @override
+  String get slDistanceMid => 'Medium';
+
+  @override
+  String get slDistanceFar => 'Far';
+
+  @override
+  String get slVolume => 'Volume';
+
+  @override
+  String get slBrightnessStart => 'Brightness at the start';
+
+  @override
+  String get slBrightnessNight => 'Night light';
+
+  @override
+  String get slBrightnessNightHint => '0: only a few embers glow';
+
+  @override
+  String get slBrightnessMorning => 'Morning brightness';
+
+  @override
+  String get slDimming => 'Dimming';
+
+  @override
+  String get slDimBacklight => 'Backlight (hardware)';
+
+  @override
+  String get slDimDdc => 'DDC/CI (hardware)';
+
+  @override
+  String get slDimContent => 'The page only (no hardware dimming)';
+
+  @override
+  String get slDimUnknown => 'Shown after a preview or while sleeping';
+
+  @override
+  String get slPreviewHint =>
+      'Dragging a brightness shows it on this machine for 5 s.';
+
+  @override
+  String get slQuietPower => 'Quiet power profile';
+
+  @override
+  String get slQuietPowerHint =>
+      'power-saver while sleeping; heavy jobs go on, slower';
+
+  @override
+  String get slHoldVolume => 'Hold the system volume';
+
+  @override
+  String get slHoldVolumeHint => 'Set while sleeping, the old value comes back';
+
+  @override
+  String get slHoldVolumeLevel => 'System volume';
+
+  @override
+  String get slLeds => 'Lit LEDs off';
+
+  @override
+  String get slLedsHint => 'Only LEDs that can be written; they come back on';
+
+  @override
+  String get slMakeLeader => 'Make it the leader';
+
+  @override
+  String get slMakeLeaderHint => 'Velour and the alarm song play on the leader';
+
+  @override
+  String get slSectionNotify => 'Notifications';
+
+  @override
+  String get slCriticalHostDown => 'A server is unreachable';
+
+  @override
+  String get slCriticalSecurity => 'Security trap or alarm';
+
+  @override
+  String get slCriticalIncident => 'New incident';
+
+  @override
+  String get slCriticalDisk => 'Disk 95 % full';
+
+  @override
+  String get slMorningSummary => 'Morning summary';
+
+  @override
+  String get slMorningSummaryHint => 'One notification when you wake up';
+
+  @override
+  String get slNotifyHint =>
+      'While sleeping only the kinds turned on here come at once; the others wait for the morning summary (in memory, not on disk).';
+
+  @override
+  String get slSectionReminder => 'Reminder';
+
+  @override
+  String get slReminder => 'Nightly reminder';
+
+  @override
+  String get slReminderTime => 'Time';
+
+  @override
+  String get slReminderHint =>
+      '\"Shall I start the sleep mode?\" on this phone at that time.';
+
+  @override
+  String get slSectionSetup => 'Setup';
+
+  @override
+  String get slWizardOpen => 'Set the group up again';
+
+  @override
+  String get slWizardOpenHint => 'Machines, leader, room layout, DDC test';
+
+  @override
+  String slWizardStep(int n, int total) {
+    return 'Step $n of $total';
+  }
+
+  @override
+  String get slWizardMachines => 'Which machines?';
+
+  @override
+  String get slWizardMachinesHint =>
+      'They start and stop together and show one scene across their screens.';
+
+  @override
+  String get slWizardHasVelour => 'Velour runs here';
+
+  @override
+  String get slWizardLeader => 'The leader';
+
+  @override
+  String get slWizardLeaderHint =>
+      'The sleep playlist and the alarm song play on the leader; it keeps the group together.';
+
+  @override
+  String get slWizardLayout => 'Room layout';
+
+  @override
+  String get slWizardLayoutHint =>
+      'Where each screen stands seen from the bed: the spatial sound and the scene spread across the screens follow it.';
+
+  @override
+  String get slWizardDdc => 'Dimming test';
+
+  @override
+  String get slWizardDdcHint =>
+      'Each screen dims for 5 s and comes back. A monitor without DDC/CI is dimmed by the page alone.';
+
+  @override
+  String get slWizardDdcIdle => 'Not tested';
+
+  @override
+  String get slWizardDdcTest => 'Test';
+
+  @override
+  String slWizardDdcOk(String how) {
+    return 'Dims: $how';
+  }
+
+  @override
+  String slMorningTitle(String time) {
+    return 'Good morning · $time of sleep';
+  }
+
+  @override
+  String get slMorningQuiet => 'A quiet night: nothing waited.';
+
+  @override
+  String slMorningJobs(int n) {
+    String _temp0 = intl.Intl.pluralLogic(
+      n,
+      locale: localeName,
+      other: '$n jobs finished',
+      one: '1 job finished',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String slMorningBackups(int n) {
+    String _temp0 = intl.Intl.pluralLogic(
+      n,
+      locale: localeName,
+      other: '$n backups',
+      one: '1 backup',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String slMorningIncidents(int n) {
+    String _temp0 = intl.Intl.pluralLogic(
+      n,
+      locale: localeName,
+      other: '$n incidents',
+      one: '1 incident',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String slMorningHeld(int n) {
+    String _temp0 = intl.Intl.pluralLogic(
+      n,
+      locale: localeName,
+      other: '$n notifications waited',
+      one: '1 notification waited',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get slMorningCardTitle => 'Morning summary';
+
+  @override
+  String get slMorningSlept => 'Slept';
+
+  @override
+  String get slMorningBackupsLabel => 'Backups';
+
+  @override
+  String get slMorningIncidentsLabel => 'Incidents';
+
+  @override
+  String get slMorningHeldLabel => 'Notifications waited';
+
+  @override
+  String get slMorningHeldFirst => 'First of them';
+
+  @override
+  String get slErrNoGroup =>
+      'This agent can only sleep alone yet (group sleep needs an agent update).';
+
+  @override
+  String get slErrMemberDown =>
+      'A machine of the group doesn\'t answer; the others go on with the same timeline.';
+
+  @override
+  String slErrMemberDownHost(String host) {
+    return '$host doesn\'t answer; the others go on with the same timeline.';
+  }
+
+  @override
+  String get slErrDdcUnavailable =>
+      'The monitor can\'t be dimmed over DDC/CI: turn DDC/CI on in the monitor\'s menu.';
+
+  @override
+  String get slErrDdcMissing =>
+      'Nothing to dim on this machine (no backlight and no ddcutil).';
+
+  @override
+  String get slErrBadAlarm => 'The alarm settings aren\'t valid.';
+
+  @override
+  String get slErrRunning => 'The sleep mode is on: stop it first.';
+
+  @override
+  String get slErrNotRunning => 'The sleep mode isn\'t running.';
+
+  @override
+  String get slErrNotRinging => 'The alarm isn\'t ringing.';
+
+  @override
+  String get slEventStarted => 'Sleep mode started';
+
+  @override
+  String get slEventStopped => 'Sleep mode stopped';
+
+  @override
+  String get slEventAlarmRang => 'Sleep alarm rang';
+
+  @override
+  String get slEventAlarmSnoozed => 'Sleep alarm snoozed';
+
+  @override
+  String get slEventAlarmDismissed => 'Sleep alarm dismissed';
+
+  @override
+  String get slEventAlarmAutoStopped => 'Sleep alarm stopped by itself';
+
+  @override
+  String get slErrNotMember =>
+      'This machine isn\'t in the session the phone sent: set the group up again.';
+
+  @override
+  String slErrNoLeaderSource(String leader) {
+    return 'This machine can\'t reach the leader ($leader): connect it to the leader under Screen modes › Connections on this machine.';
+  }
 }

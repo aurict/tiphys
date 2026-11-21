@@ -52,6 +52,8 @@ dependencies:
   fl_chart: ^1.3.1
   unifiedpush: ^6.2.0
   flutter_local_notifications: 23.0.2
+  # The sleep backup alarm is scheduled with flutter_local_notifications' zonedSchedule (its own dependency; UTC only).
+  timezone: ^0.11.0
   record: ^7.2.0
   receive_sharing_intent: 1.8.1 # 1.9 relies on built-in Kotlin (android.builtInKotlin); migrate before upgrading
   flutter_markdown_plus: ^1.0.12

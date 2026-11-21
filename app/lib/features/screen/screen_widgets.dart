@@ -14,6 +14,7 @@ import 'screen_texts.dart';
 Color screenModeColor(TiphysTokens t, String? mode) => switch (mode) {
   'focus' => t.hostColor(const Color(0xFF6CCB9F)),
   'game' => t.hostColor(const Color(0xFFF2A985)),
+  'sleep' => t.hostColor(const Color(0xFFA48BF0)),
   _ => t.accent,
 };
 

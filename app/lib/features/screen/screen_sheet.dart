@@ -2,8 +2,10 @@
 // · Game), the display host (when there are several) and where the data comes from (mirror a source host / this
 // machine itself / custom), then Start. While a mode runs the same sheet switches modes without restarting the display.
 // A preset rewrites the chosen mode's card sources (PUT /v1/screen) before the start; "custom" keeps the layout.
+// The fourth option, Sleep (§21), starts the whole sleep group instead (every display host; sleep/sleep_data.dart).
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../../l10n/gen/app_localizations.dart';
@@ -14,6 +16,9 @@ import '../system/agent_providers.dart';
 import 'screen_data.dart';
 import 'screen_texts.dart';
 import 'screen_widgets.dart';
+import 'sleep/sleep_data.dart';
+import 'sleep/sleep_screen.dart' show startSleepGroup;
+import 'sleep/sleep_texts.dart' show sleepAlarmLine;
 
 /// Opens the chooser for [hostId] (the display host; the sheet can change it).
 Future<void> showScreenSheet(BuildContext context, {required String hostId, String? mode}) => showModalBottomSheet<void>(
@@ -68,12 +73,30 @@ class _ScreenSheetState extends ConsumerState<ScreenSheet> {
     }
   }
 
+  /// Sleep: the group starts (leader first); not set up yet, or a machine failed: the sleep screen opens.
+  Future<void> _sleep(SleepGroup g) async {
+    final nav = Navigator.of(context);
+    final router = GoRouter.of(context);
+    if (g.running || !g.configured) {
+      nav.pop();
+      await router.push('/screen/sleep');
+      return;
+    }
+    setState(() => _busy = true);
+    final ok = await startSleepGroup(context, ref);
+    if (!mounted) return;
+    setState(() => _busy = false);
+    nav.pop();
+    if (!ok) await router.push('/screen/sleep');
+  }
+
   @override
   Widget build(BuildContext context) {
     final l = AppLocalizations.of(context);
     final t = context.tokens;
     final tt = Theme.of(context).textTheme;
     final profile = ref.watch(profileProvider);
+    final sleep = ref.watch(sleepGroupProvider).value;
     final hosts = ref.watch(screenHostsProvider).value ?? [?profile.host(_hostId)];
     final display = profile.host(_hostId);
     final async = ref.watch(screenProvider(_hostId));
@@ -100,8 +123,9 @@ class _ScreenSheetState extends ConsumerState<ScreenSheet> {
             : const ScreenLoading(),
       );
     } else {
-      final mode = _mode ?? s.shownMode;
-      final layout = s.settings.mode(mode).layout;
+      final mode = _mode ?? (sleep?.running == true ? 'sleep' : s.shownMode);
+      final isSleep = mode == 'sleep';
+      final layout = s.settings.mode(isSleep ? s.shownMode : mode).layout;
       final preset = _preset ?? layout.commonSource ?? customPreset;
       final running = s.running;
       body.addAll([
@@ -110,14 +134,14 @@ class _ScreenSheetState extends ConsumerState<ScreenSheet> {
           label: l.smModeLabel,
           child: Column(
             children: [
-              for (final m in screenModes)
+              for (final m in [...screenModes, 'sleep'])
                 Padding(
                   padding: const EdgeInsets.only(bottom: 9),
                   child: _ModeOption(
                     mode: m,
                     selected: m == mode,
-                    running: running && s.mode == m,
-                    disabled: s.legacy && m != 'game',
+                    running: m == 'sleep' ? sleep?.running == true : running && s.mode == m,
+                    disabled: m == 'sleep' ? sleep == null || !sleep.anySupported : s.legacy && m != 'game',
                     onTap: () => setState(() {
                       _mode = m;
                       _preset = null;
@@ -128,7 +152,23 @@ class _ScreenSheetState extends ConsumerState<ScreenSheet> {
           ),
         ),
         if (s.legacy) Text(l.smLegacyHint, style: tt.bodySmall),
-        if (hosts.length > 1) ...[
+        if (sleep != null && sleep.allUnsupported) Text(l.slNeedsUpdate, style: tt.bodySmall),
+        if (isSleep && sleep != null) ...[
+          const SizedBox(height: 6),
+          Row(
+            children: [
+              Icon(LucideIcons.moonStar, size: 16, color: t.textSecondary),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  sleep.configured ? sleepAlarmLine(l, sleep) : l.slSetupNeeded,
+                  style: tt.bodyMedium?.copyWith(color: t.textSecondary, fontWeight: FontWeight.w600),
+                ),
+              ),
+            ],
+          ),
+        ],
+        if (!isSleep && hosts.length > 1) ...[
           label(l.smDisplayLabel),
           SizedBox(
             width: double.infinity,
@@ -153,7 +193,7 @@ class _ScreenSheetState extends ConsumerState<ScreenSheet> {
             ),
           ),
         ],
-        if (!s.legacy) ...[
+        if (!s.legacy && !isSleep) ...[
           label(l.smFromLabel),
           Wrap(
             spacing: 8,
@@ -182,13 +222,19 @@ class _ScreenSheetState extends ConsumerState<ScreenSheet> {
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
               textStyle: tt.titleMedium?.copyWith(fontSize: 16, fontWeight: FontWeight.w700),
             ),
-            onPressed: _busy || (s.legacy && mode != 'game') || (running && s.mode == mode && (preset == customPreset || preset == layout.commonSource))
+            onPressed: isSleep
+                ? (_busy || sleep == null || !sleep.anySupported ? null : () => _sleep(sleep))
+                : _busy || (s.legacy && mode != 'game') || (running && s.mode == mode && (preset == customPreset || preset == layout.commonSource))
                 ? null
                 : () => _go(s, mode, preset),
             icon: _busy
                 ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2))
-                : Icon(running ? LucideIcons.arrowLeftRight : LucideIcons.play, size: 18),
-            label: Text(running ? (s.mode == mode ? l.smApply : l.smSwitchTo(screenModeName(l, mode))) : l.gmStart),
+                : Icon(isSleep ? (sleep?.running == true || sleep?.configured != true ? LucideIcons.settings2 : LucideIcons.moon) : (running ? LucideIcons.arrowLeftRight : LucideIcons.play), size: 18),
+            label: Text(
+              isSleep
+                  ? (sleep?.running == true ? l.slSettings : (sleep?.configured == true ? l.slStart : l.slSetup))
+                  : (running ? (s.mode == mode ? l.smApply : l.smSwitchTo(screenModeName(l, mode))) : l.gmStart),
+            ),
           ),
         ),
       ]);
