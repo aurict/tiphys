@@ -9,6 +9,7 @@ import { createPill, createProblem, setupEscHold, eventCopy } from './notify.js'
 import { createScheduler } from './sched.js';
 import * as game from './cards/game.js';
 import * as day from './cards/day.js';
+import * as city from './cards/city.js';
 import * as system from './cards/system.js';
 import * as jobs from './cards/jobs.js';
 import * as git from './cards/git.js';
@@ -32,7 +33,8 @@ let agg = { state: 'ok' };   // the current view's sources, worst first
 let linkUp = false, everConnected = false, failures = 0, pageRetryAt = 0;
 let agentPaused = false, paused = false;
 
-// Cards that draw frames (W2+: system rings, the city) get them from one scheduler: nothing runs between changes.
+// Cards that draw frames get them from one scheduler: nothing runs between changes (the city has its own, with its
+// effect frame rate and pause).
 const sched = createScheduler((now, dt) => { for (const c of view?.cards ?? []) c.frame?.(now, dt); });
 const ctx = { pill: (item) => pill.push(item), debug: DEBUG, frames: sched, title: setTitle };
 
@@ -60,10 +62,13 @@ const mountCard = (out, layout, kind, mod, el, opts = {}) => {
 const TEMPLATES = {
   game: (root) => [game.mount(root, ctx)],
   work(root, layout) {
-    // The left area is the code city's (W3); until then a quiet placeholder.
-    root.innerHTML = shell('tpl-work', 'ÇALIŞMA MODU', 'Çalışma', `<section class="work-grid"><div class="card hero work-main"><div class="city-soon">${icon('code', 40)}<div class="t1">Kod şehri</div><div class="t2">Projenin dosyaları ve Claude oturumları burada canlanacak.</div></div></div><div class="side-col"></div></section>`);
+    // The left area is the code city's; with the city card off, a quiet note.
+    root.innerHTML = shell('tpl-work', 'ÇALIŞMA MODU', 'Çalışma', `<section class="work-grid"><div class="card hero work-main"><div class="city-soon">${icon('code', 40)}<div class="t1">Kod şehri kapalı</div><div class="t2">Telefondan Ekran modu › Çalışma › Düzen’de açılabilir.</div></div></div><div class="side-col"></div></section>`);
     const side = root.querySelector('.side-col');
     const out = [];
+    const main = root.querySelector('.work-main');
+    if (layout.cards.some((c) => c.kind === 'city' && c.enabled)) main.replaceChildren();
+    mountCard(out, layout, 'city', city, main);
     mountCard(out, layout, 'day', day, side, { size: 'compact' });
     mountCard(out, layout, 'system', system, side);
     mountCard(out, layout, 'jobs', jobs, side);
