@@ -11,7 +11,8 @@
 // For W4 (Claude orbs and beams): `layer` (a THREE.Group drawn with the city), `topOf(path)` (world position of a
 // building's roof), `setAnchor(id, Vector3|null)` + `beam(id, path, 'read'|'edit')` (a light beam from the anchor to the
 // building; without an anchor only the building lights up), `focus(path)`, `addEffect(fn(now) → alive)`, `animate(ms)`,
-// `setBreath(on)` (≤ 1 fps idle frames for slow pulses), `screenOf(path)` (CSS px in the canvas), `blurredSnapshot()`.
+// `setBreath(on, ms = 1000)` (one idle frame per ms ≥ 1 s, for slow pulses), `screenOf(path)` (CSS px in the canvas), `pointOnScreen(v)`,
+// `blurredSnapshot()`.
 import * as THREE from '../vendor/three/three.module.js';
 import { layoutCity, heightOf } from './treemap.js';
 import { createScheduler } from '../sched.js';
@@ -400,10 +401,40 @@ export function createCity3d(canvas, { motion = 'normal', onFrame } = {}) {
 
   // ---- W4: anchors (orb positions) and beams
   const anchors = new Map();
+  const reads = new Map(); // building → {timer, parts}: static read beams
+  /**
+   * A read: the beam and a faint roof light appear, hold 1.8 s and vanish — two frames, no animation (Claude reads
+   * far more often than it edits; an animated read beam kept the laptop at ~45 % of a core during a read burst).
+   */
+  function readBeam(b, from) {
+    const old = reads.get(b);
+    if (old) { clearTimeout(old.timer); for (const pp of old.parts) { layer.remove(pp); pp.geometry.dispose(); pp.material.dispose(); } }
+    const o = b.i * 4;
+    if (!lit.has(b)) { glow[o] = READ_GLOW.r; glow[o + 1] = READ_GLOW.g; glow[o + 2] = READ_GLOW.b; glow[o + 3] = 0.35; dirty.g = true; }
+    const parts = from ? [beamPart(from, roof(b), 0.1, 0.8, '#A5B4FC', 0.4), beamPart(from, roof(b), 0.45, 0.8, '#A5B4FC', 0.1)] : [];
+    const timer = setTimeout(() => {
+      reads.delete(b);
+      for (const pp of parts) { layer.remove(pp); pp.geometry.dispose(); pp.material.dispose(); }
+      if (b.i >= 0 && !lit.has(b)) { glow[b.i * 4 + 3] = 0; dirty.g = true; }
+      sched.invalidate();
+    }, 1800);
+    reads.set(b, { timer, parts });
+    sched.invalidate();
+  }
+  function beamPart(from, to, r, taper, color, opacity) {
+    const len = from.distanceTo(to);
+    const mm = new THREE.Mesh(new THREE.CylinderGeometry(r, r * taper, len, 10, 1, true),
+      new THREE.MeshBasicMaterial({ color, transparent: true, opacity, blending: THREE.AdditiveBlending, depthWrite: false, fog: false }));
+    mm.position.copy(from).add(to).multiplyScalar(0.5);
+    mm.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), to.clone().sub(from).normalize());
+    layer.add(mm);
+    return mm;
+  }
   function beam(id, path, kind) {
     const b = byPath.get(path);
     if (!b || b.i < 0) return;
     const strong = kind === 'edit';
+    if (!strong) return readBeam(b, anchors.get(id));
     if (strong) { lightUp(b, EDIT_GLOW, 8000); afterglow(roof(b), '#C7D2FE', 14, 8000); } else lightUp(b, READ_GLOW, 2200, 0.35);
     const from = anchors.get(id);
     if (!from) return;
@@ -430,7 +461,7 @@ export function createCity3d(canvas, { motion = 'normal', onFrame } = {}) {
   }
 
   // ---- camera: fixed oblique view; motion "high" orbits slowly; events pull the view a little toward them
-  let fit = 1, orbit = false, breathOn = false, mot = motion;
+  let fit = 1, orbit = false, breathOn = false, breathMs = 1000, mot = motion;
   const target = T0.clone();
   let pull = null; // {from, to, t0} — eases to `to` (1.6 s), holds, eases back (2.5 s)
   const ORBIT = (Math.PI * 2) / 360_000; // one turn in 6 min
@@ -464,7 +495,7 @@ export function createCity3d(canvas, { motion = 'normal', onFrame } = {}) {
   function applyBreath() {
     if (mot === 'low') return sched.setBreath(false);
     if (orbit) return sched.setBreath(true, 1000 / 15);
-    sched.setBreath(breathOn, 1000);
+    sched.setBreath(breathOn, breathMs);
   }
 
   // ---- frame
@@ -496,6 +527,11 @@ export function createCity3d(canvas, { motion = 'normal', onFrame } = {}) {
   resize();
   setMotion(motion);
 
+  /** CSS px within the canvas of a world point (W4: orb labels). */
+  function pointOnScreen(p) {
+    v3.copy(p).project(camera);
+    return { x: (v3.x * 0.5 + 0.5) * size.w, y: (-v3.y * 0.5 + 0.5) * size.h };
+  }
   function screenOf(path) {
     const b = byPath.get(path);
     if (!b || b.i < 0) return null;
@@ -516,6 +552,8 @@ export function createCity3d(canvas, { motion = 'normal', onFrame } = {}) {
 
   function destroy() {
     sched.pause();
+    for (const x of reads.values()) clearTimeout(x.timer);
+    reads.clear();
     ro.disconnect();
     clearTimeout(relayoutTimer);
     scene.traverse((o) => { o.geometry?.dispose?.(); if (o.material) [].concat(o.material).forEach((m) => m.dispose()); });
@@ -526,12 +564,12 @@ export function createCity3d(canvas, { motion = 'normal', onFrame } = {}) {
 
   return {
     kind: '3d', sched, layer, THREE,
-    setFiles, patch, touch, commit, alarm, focus, beam, setMotion, screenOf, blurredSnapshot,
+    setFiles, patch, touch, commit, alarm, focus, beam, setMotion, screenOf, pointOnScreen, blurredSnapshot,
     setAnchor(id, pos) { if (pos) anchors.set(id, pos.clone()); else anchors.delete(id); },
     topOf: (path) => { const b = byPath.get(path); return b && b.i >= 0 ? roof(b) : null; },
     addEffect(fn) { effects.push(fn); },
     animate: (ms) => sched.animate(ms),
-    setBreath(on) { breathOn = on; applyBreath(); },
+    setBreath(on, ms = 1000) { breathOn = on; breathMs = Math.max(1000, ms); applyBreath(); },
     get count() { return list.length; },
     pause: () => sched.pause(),
     resume: () => sched.resume(),

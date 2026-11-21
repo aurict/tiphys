@@ -29,6 +29,9 @@ export function eventCopy(ev, truck) {
     case 'commit': return { icon: 'commit', tone: 'accent', html: `<b>Commit</b>${sub(ev.detail)}` };
     case 'serverDown': return { icon: 'server', tone: 'danger', html: `<b>Sunucu düştü</b>${sub(ev.detail)}` };
     case 'serverUp': return { icon: 'server', tone: 'success', html: `<b>Sunucu geri geldi</b>${sub(ev.detail)}` };
+    // W4: Claude sessions.
+    case 'claudeWaiting': return { icon: 'hourglass', tone: 'warning', html: `<b>Claude onay bekliyor</b>${sub(ev.detail)}` };
+    case 'claudeDone': return { icon: 'sparkle', tone: 'success', html: `<b>Claude bitirdi</b>${sub(ev.detail)}` };
     default: return null;
   }
 }
