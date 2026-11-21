@@ -1,7 +1,8 @@
 // Screen feed topics (PLAN.md §20 "Konular ve üreticiler"): what a source agent produces, what each kiosk card needs
 // and which layouts are valid. The display agent sums the topics of the active layout's cards per source and sends
 // each source only those (`{type:"subscribe", topics}`); a producer runs only while a subscriber wants its topic.
-// W2 adds the Work mode state topics (system, jobs, git, servers), W3 the city, W4 claude and diff (with the city card).
+// W2 adds the Work mode state topics (system, jobs, git, servers), W3 the city, W4 claude and diff (with the city card),
+// W5 the Focus card (claude and servers, for its critical pills only).
 import type { CardKind, GameSettings, Layout, ModeSettings, ScreenMode, WorkSettings } from "../config.ts";
 import { AppError } from "../errors.ts";
 
@@ -38,12 +39,12 @@ export const TEMPLATES: Readonly<Record<ScreenMode, Readonly<Record<string, read
 
 /**
  * Card kinds the kiosk page of this version draws. Only these subscribe topics, so a card the page can't show yet
- * starts no producer (W5 adds the Focus timer and task).
+ * starts no producer.
  */
 export const DRAWN: Readonly<Record<ScreenMode, readonly CardKind[]>> = {
   game: ["map", "cockpit", "music", "lyrics"],
   work: ["city", "day", "system", "jobs", "git", "music", "servers"],
-  focus: ["day", "music", "servers"],
+  focus: ["focus", "task", "day", "music", "servers"],
 };
 
 /** Topics one card needs. */
@@ -61,6 +62,10 @@ export function cardTopics(mode: ScreenMode, kind: CardKind, settings: ModeSetti
     case "git":
     case "servers":
       return [kind];
+    case "focus":
+      // The timer itself is the display agent's; the card only needs the critical pills of PLAN.md §20 E-3: a
+      // Claude session waiting for approval and a server going down (a failed job has no exit code yet, W2).
+      return ["claude", "servers"];
     case "city":
       // The brain lives on the city; the diff card replaces it while a permission waits (work.diff, default on).
       return mode === "work" && (settings as WorkSettings).diff === false ? ["city", "claude"] : ["city", "claude", "diff"];

@@ -3,14 +3,15 @@
 // classic and Lua Hyprland (keybind, rule, special workspace), visibility → pause/resume, crash recovery and the
 // fallback to a 0.5 source. Fake exec, fake sockets; no real Hyprland, Firefox or Velour.
 import { EventEmitter } from "node:events";
-import { mkdir, mkdtemp, readFile, stat, writeFile } from "node:fs/promises";
+import { existsSync } from "node:fs";
+import { mkdir, mkdtemp, readdir, readFile, stat, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import { agentConfigSchema, ConfigStore, defaultConfig, defaultLayout, migrateConfig } from "../src/config.ts";
 import type { ExecResult } from "../src/exec.ts";
 import type { EventSocket } from "../src/focus.ts";
-import { displayRoutes, userJs, type DisplayIo, type Upstream } from "../src/screen/display.ts";
+import { displayRoutes, ownUnit, restartJob, userJs, type DisplayIo, type Upstream } from "../src/screen/display.ts";
 import { bindOffArgs, bindOnArgs, bindTaken, kioskWindow, moveToSpecialArgs, parseBind, ruleOnArgs, toggleSpecialArgs } from "../src/screen/placement.ts";
 import type { StateProducer } from "../src/screen/producers/common.ts";
 import { sourceRoutes, type FeedProducer, type Producers, type SourceIo } from "../src/screen/source.ts";
@@ -159,8 +160,19 @@ describe("topics and layouts", () => {
     expect(relevantEvent("openwindow>>abc,1,kitty,x")).toBe(false);
   });
 
+  it("restart detection: own unit from the cgroup, a restart job in list-jobs", () => {
+    expect(ownUnit("0::/user.slice/user-1000.slice/user@1000.service/app.slice/tiphys-agent.service\n")).toEqual({ unit: "tiphys-agent.service", user: true });
+    expect(ownUnit("0::/system.slice/tiphys-agent.service")).toEqual({ unit: "tiphys-agent.service", user: false });
+    expect(ownUnit("0::/user.slice/user-1000.slice/session-2.scope")).toBeNull();
+    expect(restartJob("2675 tiphys-agent.service restart running\n", "tiphys-agent.service")).toBe(true);
+    expect(restartJob("2675 tiphys-agent.service try-restart running\n", "tiphys-agent.service")).toBe(true);
+    expect(restartJob("2702 tiphys-agent.service stop running\n2703 other.service restart waiting", "tiphys-agent.service")).toBe(false);
+    expect(restartJob("", "tiphys-agent.service")).toBe(false);
+  });
+
   it("light Firefox profile prefs", () => {
     const js = userJs();
+    for (const p of ['"media.autoplay.default", 0', '"media.autoplay.blocking_policy", 0']) expect(js).toContain(`user_pref(${p});`);
     for (const p of ['"dom.ipc.processCount", 1', '"fission.autostart", false', '"dom.ipc.processPrelaunch.enabled", false', '"browser.cache.disk.enable", false', '"browser.cache.memory.capacity", 32768', '"network.prefetch-next", false', '"app.update.auto", false']) {
       expect(js).toContain(`user_pref(${p});`);
     }
@@ -252,8 +264,8 @@ function velourIdle() {
   };
 }
 
-async function screenApp(o: { lua?: boolean; placement?: "fullscreen" | "scratch"; bindsTaken?: boolean; sources?: Record<string, { url: string; token: string }> } = {}) {
-  const runtime = await mkdtemp(join(tmpdir(), "tiphys-screen-run-"));
+async function screenApp(o: { lua?: boolean; placement?: "fullscreen" | "scratch"; bindsTaken?: boolean; sources?: Record<string, { url: string; token: string }>; runtime?: string; restarting?: () => boolean } = {}) {
+  const runtime = o.runtime ?? (await mkdtemp(join(tmpdir(), "tiphys-screen-run-")));
   const calls: Call[] = [];
   let special = ""; // shown special workspace
   let active = "3";
@@ -286,6 +298,7 @@ async function screenApp(o: { lua?: boolean; placement?: "fullscreen" | "scratch
     connect: (url) => (ups.push(new FakeUpstream(url)), ups.at(-1)!),
     fetch,
     hyprEvents: () => (events.push(new FakeEvents()), events.at(-1)!),
+    ...(o.restarting ? { restarting: async () => o.restarting!() } : {}),
   };
   const sio: SourceIo = {
     velour: velourIdle() as SourceIo["velour"],
@@ -309,7 +322,8 @@ async function screenApp(o: { lua?: boolean; placement?: "fullscreen" | "scratch
       },
     ],
   );
-  cleanups.push(() => t.app.close());
+  const closed = { done: false };
+  cleanups.push(() => (closed.done ? undefined : t.app.close()));
   await t.app.ready();
   const req = (method: "GET" | "PUT" | "POST", url: string, payload?: object) => t.app.inject({ method, url, headers: t.auth, ...(payload ? { payload } : {}) });
   const hypr = () => calls.filter((c) => c.cmd === "hyprctl").map((c) => c.args.join(" "));
@@ -320,7 +334,11 @@ async function screenApp(o: { lua?: boolean; placement?: "fullscreen" | "scratch
     const ws = await t.app.injectWS(`/v1/screen/live?t=${token}`, {}, { onInit: (w) => w.on("message", (d: Buffer, bin: boolean) => got.push(bin ? `bin:${d.length}` : d.toString())) });
     return { ws, got, msgs: () => got.filter((g) => !g.startsWith("bin:")).map((g) => JSON.parse(g) as Record<string, unknown>) };
   };
-  return { ...t, runtime, calls, hypr, ups, events, req, page, feed: () => feed, setActive: (w: string) => (active = w), setSpecial: (s: string) => (special = s) };
+  const close = async () => {
+    closed.done = true;
+    await t.app.close();
+  };
+  return { ...t, runtime, calls, hypr, ups, events, req, page, close, feed: () => feed, setActive: (w: string) => (active = w), setSpecial: (s: string) => (special = s) };
 }
 
 // ---------------------------------------------------------------- feed
@@ -388,9 +406,9 @@ describe("screen display", () => {
     expect(t.calls.filter((c) => c.cmd === "systemd-run").length).toBe(runs); // Firefox not restarted
     expect(t.store.get().screen.lastMode).toBe("game");
 
-    // Focus (W2): Day and Music cards; the timer is W5.
+    // Focus: Day and Music cards, the Focus card's critical pills (claude, servers).
     await t.req("POST", "/v1/screen/mode", { mode: "focus" });
-    await until(() => feed.producing.join() === "music");
+    await until(() => feed.producing.slice().sort().join() === "claude,music,servers");
     expect((await t.req("POST", "/v1/screen/start", { mode: "focus" })).json().mode).toBe("focus"); // idempotent
     const stopped = await t.req("POST", "/v1/screen/stop");
     expect(stopped.json()).toMatchObject({ running: false, mode: null });
@@ -581,5 +599,134 @@ describe("screen display", () => {
     const t2 = await testApp((c) => c, [async (a, ctx) => void (await displayRoutes(a, ctx, { io, displayDir: null, mapDir: runtime }))]);
     cleanups.push(() => t2.app.close());
     await until(() => calls.includes("hyprctl keyword unbind SUPER,grave"));
+  });
+});
+
+// ---------------------------------------------------------------- Focus timer and veil (W5)
+
+describe("screen focus timer and privacy veil", () => {
+  const TASK = "Gizli görev satırı W5";
+  const focusFile = (rt: string) => join(rt, "tiphys-screen", "focus.json");
+
+  it("timer only in Focus; actions, task (memory only), invalid input; the file and the timer go with the mode", async () => {
+    const t = await screenApp();
+    expect((await t.req("POST", "/v1/screen/focus", { action: "start" })).json().error.code).toBe("agent.screen.notFocus");
+    await t.req("POST", "/v1/screen/start", { mode: "work" });
+    const nf = await t.req("POST", "/v1/screen/focus", { action: "start" });
+    expect([nf.statusCode, nf.json().error.code]).toEqual([409, "agent.screen.notFocus"]);
+    await t.req("POST", "/v1/screen/mode", { mode: "focus" });
+    const p = await t.page();
+    await until(() => p.msgs().some((m) => m.type === "focus"));
+    expect(p.msgs().find((m) => m.type === "focus")).toMatchObject({ phase: "idle", round: 0, task: null, longEvery: 4 });
+
+    for (const bad of [{}, { action: "nap" }, { task: "x".repeat(81) }, { task: "a\nb" }, { action: "start", extra: 1 }]) {
+      expect((await t.req("POST", "/v1/screen/focus", bad)).statusCode).toBe(400);
+    }
+    const before = Date.now();
+    const s = (await t.req("POST", "/v1/screen/focus", { action: "start", task: TASK })).json().focus;
+    expect(s).toMatchObject({ phase: "focus", round: 1, pausedLeft: null, total: 25 * 60_000, task: TASK });
+    expect(s.endsAt).toBeGreaterThanOrEqual(before + 25 * 60_000);
+    await until(() => p.msgs().some((m) => m.type === "focus" && m.phase === "focus" && m.cause === "action" && m.task === TASK));
+    const paused = (await t.req("POST", "/v1/screen/focus", { action: "pause" })).json().focus;
+    expect(paused).toMatchObject({ endsAt: null });
+    expect(paused.pausedLeft).toBeGreaterThan(24 * 60_000);
+    await until(() => existsSync(focusFile(t.runtime)));
+    for (let i = 0; i < 100 && JSON.parse(await readFile(focusFile(t.runtime), "utf8")).pausedLeft !== paused.pausedLeft; i++) await sleep(10);
+    expect(JSON.parse(await readFile(focusFile(t.runtime), "utf8"))).toEqual({ phase: "focus", endsAt: null, pausedLeft: paused.pausedLeft, total: 25 * 60_000, round: 1 });
+    const skip = (await t.req("POST", "/v1/screen/focus", { action: "skip" })).json().focus;
+    expect(skip).toMatchObject({ phase: "short", round: 1, total: 5 * 60_000 });
+    expect((await t.req("GET", "/v1/screen")).json().focus).toMatchObject({ phase: "short", task: TASK });
+    // Task only (no action); "" clears it.
+    expect((await t.req("POST", "/v1/screen/focus", { task: "" })).json().focus.task).toBeNull();
+    await t.req("POST", "/v1/screen/focus", { task: TASK });
+    // Durations: 5–120 min, longEvery 2–8.
+    for (const bad of [{ focusMin: 4 }, { shortMin: 121 }, { longEvery: 1 }, { longEvery: 9 }, { focusMin: 2.5 }]) {
+      expect((await t.req("PUT", "/v1/screen", { settings: { modes: { focus: bad } } })).statusCode).toBe(400);
+    }
+    // Phase events are pushed without the task.
+    const notices = t.sent as Array<{ key: string; params: Record<string, unknown> }>;
+    expect(notices.filter((n) => n.key === "screen.focus.phase").map((n) => [n.params.phase, n.params.from, n.params.cause])).toEqual([["focus", "idle", "action"], ["short", "focus", "action"]]);
+    expect(JSON.stringify(notices)).not.toContain(TASK);
+
+    // Leaving Focus: the timer and its file are gone; back in Focus it starts idle.
+    await t.req("POST", "/v1/screen/mode", { mode: "work" });
+    await until(() => !existsSync(focusFile(t.runtime)));
+    expect((await t.req("GET", "/v1/screen")).json().focus).toMatchObject({ phase: "idle", task: null });
+    await t.req("POST", "/v1/screen/mode", { mode: "focus" });
+    await t.req("POST", "/v1/screen/focus", { action: "start", task: TASK });
+    await until(() => existsSync(focusFile(t.runtime)));
+    await t.req("POST", "/v1/screen/stop");
+    expect(await stat(join(t.runtime, "tiphys-screen")).catch(() => null)).toBeNull();
+    // The task is nowhere on disk: config, events, audit, runtime dir.
+    for (const dir of [t.dir, t.runtime]) {
+      for (const f of await readdir(dir, { recursive: true })) {
+        const full = join(dir, String(f));
+        if ((await stat(full)).isFile()) expect(await readFile(full, "utf8")).not.toContain(TASK);
+      }
+    }
+  });
+
+  it("veil: the page gets a clock only, no topic message reaches it; lifting it replays the layout and state", async () => {
+    const t = await screenApp();
+    expect((await t.req("POST", "/v1/screen/veil", { on: true })).json().error.code).toBe("agent.screen.notRunning");
+    await t.req("POST", "/v1/screen/start", { mode: "work" });
+    const p = await t.page();
+    await until(() => p.msgs().some((m) => m.type === "system" && m.src === "self"));
+    const v = await t.req("POST", "/v1/screen/veil", { on: true });
+    expect(v.json()).toMatchObject({ veil: true });
+    await until(() => p.msgs().some((m) => m.type === "veil" && m.on === true));
+    const n = p.got.length;
+    // Switching modes while veiled restarts producers whose fresh state is relayed: none of it reaches the page.
+    await t.req("POST", "/v1/screen/mode", { mode: "focus" });
+    await t.req("POST", "/v1/screen/mode", { mode: "work" });
+    await sleep(80);
+    const during = p.msgs().slice(n);
+    expect(during.filter((m) => !["source", "settings", "pause", "resume"].includes(String(m.type)))).toEqual([]);
+    // A new page while veiled: only the veil.
+    const p2 = await t.page();
+    await until(() => p2.msgs().length > 0);
+    await sleep(30);
+    expect(p2.msgs().map((m) => m.type)).toEqual(["veil"]);
+    expect(JSON.parse(await readFile(join(t.runtime, "tiphys-screen", "state.json"), "utf8")).veil).toBe(true);
+    await t.req("POST", "/v1/screen/veil", { on: false });
+    await until(() => p.msgs().slice(n).some((m) => m.type === "layout"));
+    const after = p.msgs().slice(n).map((m) => m.type);
+    expect(after.indexOf("veil")).toBeLessThan(after.indexOf("layout"));
+    await until(() => p.msgs().slice(n).some((m) => m.type === "system" && m.src === "self"));
+    await t.req("POST", "/v1/screen/stop");
+    expect((await t.req("GET", "/v1/screen")).json().veil).toBe(false);
+  });
+
+  it("agent restart: the mode is left running and adopted; the timer keeps its time; a plain stop still stops", async () => {
+    const t = await screenApp({ restarting: () => true });
+    await t.req("POST", "/v1/screen/start", { mode: "focus" });
+    await t.req("POST", "/v1/screen/focus", { action: "start", task: TASK });
+    const paused = (await t.req("POST", "/v1/screen/focus", { action: "pause" })).json().focus;
+    await t.req("POST", "/v1/screen/veil", { on: true });
+    await until(() => existsSync(focusFile(t.runtime)));
+    await t.close();
+    expect(t.calls.some((c) => c.cmd === "systemctl" && c.args[1] === "stop")).toBe(true); // only the pre-start cleanup
+    const stops = t.calls.filter((c) => c.cmd === "systemctl" && c.args[1] === "stop").length;
+    expect(stops).toBe(1);
+    expect(existsSync(focusFile(t.runtime))).toBe(true);
+    expect(await readFile(focusFile(t.runtime), "utf8")).not.toContain(TASK);
+
+    const t2 = await screenApp({ runtime: t.runtime });
+    let s: Record<string, unknown> = {};
+    for (let i = 0; i < 100 && !(s as { running?: boolean }).running; i++) {
+      s = (await t2.req("GET", "/v1/screen")).json();
+      await sleep(10);
+    }
+    expect(s).toMatchObject({ running: true, mode: "focus", veil: true, focus: { phase: "focus", round: 1, pausedLeft: paused.pausedLeft, endsAt: null, task: null } });
+    expect(t2.calls.some((c) => c.cmd === "systemd-run" || (c.cmd === "systemctl" && c.args[1] === "stop"))).toBe(false);
+    // The page reconnects with the same token (start.html is still there).
+    const p = await t2.page();
+    await until(() => p.msgs().some((m) => m.type === "veil"));
+    await t2.req("POST", "/v1/screen/veil", { on: false });
+    await until(() => p.msgs().some((m) => m.type === "focus" && m.pausedLeft === paused.pausedLeft));
+    expect((await t2.req("POST", "/v1/screen/focus", { action: "resume" })).json().focus.endsAt).toBeGreaterThan(Date.now());
+    // Not a restart (the default): stopping the agent stops the mode.
+    await t2.close();
+    expect(await stat(join(t.runtime, "tiphys-screen")).catch(() => null)).toBeNull();
   });
 });

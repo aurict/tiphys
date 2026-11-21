@@ -15,10 +15,17 @@
 // for a 0.5 Game mode left in $XDG_RUNTIME_DIR/tiphys-gamemode/).
 // Mode switch (POST /v1/screen/mode): the page gets a `layout` message and the subscriptions follow; Firefox stays.
 // Visibility (visibility.ts): not on screen → `pause` to the page (it stops drawing) and the pausable topics are
-// dropped; `resume` when shown. Events: only screen.started {mode} / screen.stopped. Fixed commands only.
+// dropped; `resume` when shown. Events: screen.started {mode} / screen.stopped, and screen.focus.phase {phase, round,
+// cause} (also pushed; never the task). Fixed commands only.
+// Focus timer (W5, focus_timer.ts): exists only while the Focus mode runs; its times sit in focus.json in the work dir
+// (the task line is memory only). Privacy veil (W5): `veil` to the page, which tears its view down to a dim clock;
+// meanwhile the agent forwards no topic message at all (state is still kept and replayed when the veil lifts).
+// Agent restart (a systemd restart job of the agent's own unit): the mode is left running (Firefox, work dir, rules)
+// and the next agent adopts it from the state file (token included, 0600 on tmpfs) while the unit is still active;
+// the page reconnects with the same token. Any other stop of the agent stops the mode as before.
 import { randomBytes, timingSafeEqual } from "node:crypto";
 import { createReadStream, existsSync } from "node:fs";
-import { mkdir, readFile, realpath, rm, stat, writeFile } from "node:fs/promises";
+import { mkdir, readFile, realpath, rename, rm, stat, writeFile } from "node:fs/promises";
 import { homedir } from "node:os";
 import { extname, join, sep } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -39,6 +46,7 @@ import type { FeedProducer, Sock } from "./source.ts";
 import type { ProjectSpec } from "./producers/project.ts";
 import { checkLayout, layoutTopics, MESSAGE_TOPIC, STATE_TYPES, type Topic } from "./topics.ts";
 import { VisibilityWatcher, type VisibilityOpts } from "./visibility.ts";
+import { FOCUS_ACTIONS, FocusClock, IDLE, parseTimes, TASK_MAX, type FocusAction, type FocusPhase, type FocusTimes } from "./focus_timer.ts";
 
 export const UNIT = "tiphys-screen";
 export { APP_ID } from "./placement.ts";
@@ -73,6 +81,23 @@ export interface DisplayIo {
   fetch: typeof fetch;
   /** Hyprland event socket (visibility); without it the page is never paused. */
   hyprEvents?(path: string): EventSocket;
+  /** Is the agent's own service being restarted (not stopped)? Then a running mode is left for the next agent. */
+  restarting?(): Promise<boolean>;
+}
+
+/** `systemctl list-jobs --plain --no-legend` → is a restart job of `unit` running? */
+export function restartJob(out: string, unit: string): boolean {
+  return out.split("\n").some((l) => {
+    const f = l.trim().split(/\s+/);
+    return f[1] === unit && /restart$/.test(f[2] ?? "");
+  });
+}
+
+/** /proc/self/cgroup → the systemd service this process runs in, and whether it's a user unit. */
+export function ownUnit(cgroup: string): { unit: string; user: boolean } | null {
+  const path = cgroup.split("\n").find((l) => l.startsWith("0::"))?.slice(3) ?? "";
+  const unit = path.split("/").pop() ?? "";
+  return /^[A-Za-z0-9@_.-]{1,200}\.service$/.test(unit) ? { unit, user: path.includes("/user@") } : null;
 }
 
 export async function realDisplayIo(): Promise<DisplayIo> {
@@ -88,6 +113,12 @@ export async function realDisplayIo(): Promise<DisplayIo> {
     connect: (url, token) => new (WebSocket as unknown as new (u: string, init: object) => Upstream)(url, { headers: { authorization: `Bearer ${token}` } }),
     fetch,
     hyprEvents: realConnect,
+    restarting: async () => {
+      const own = ownUnit(await readFile("/proc/self/cgroup", "utf8").catch(() => ""));
+      if (!own) return false;
+      const r = await run("systemctl", [...(own.user ? ["--user"] : []), "list-jobs", "--plain", "--no-legend"], { timeoutMs: 3000, allowFail: true });
+      return r.code === 0 && restartJob(r.stdout, own.unit);
+    },
   };
 }
 
@@ -157,6 +188,10 @@ export function userJs(): string {
     "gfx.webrender.all": true,
     "layers.acceleration.force-enabled": true,
     "media.hardware-video-decoding.enabled": true,
+    // Focus mode ambient sound and chime (WebAudio, synthesized in the page): no click ever reaches the kiosk.
+    "media.autoplay.default": 0,
+    "media.autoplay.blocking_policy": 0,
+    "media.autoplay.block-webaudio": false,
   };
   return Object.entries(prefs).map(([k, v]) => `user_pref(${JSON.stringify(k)}, ${JSON.stringify(v)});`).join("\n") + "\n";
 }
@@ -219,6 +254,10 @@ interface SavedState {
   bind: string | null;
   workspace: string | null;
   brightness: string | null;
+  /** The page's display token (also in start.html): lets the next agent adopt the mode after a restart. */
+  token: string | null;
+  /** Privacy veil on (W5): kept across an agent restart, gone with the mode. */
+  veil: boolean;
 }
 
 export type SourceState = "off" | "connecting" | "ok" | "down";
@@ -297,6 +336,9 @@ export class ScreenDisplay {
   /** Scratch: the special workspace is shown once, when the page first connects after a start. */
   #shown = false;
   #self: { sock: Sock; topics: Set<Topic>; project: ProjectSpec } | null = null;
+  /** Focus timer: only while the Focus mode runs. */
+  #focus: FocusClock | null = null;
+  #focusSave: Promise<unknown> = Promise.resolve();
   readonly #conns = new Map<string, Conn>();
   readonly #latest = new Map<string, Latest>();
   readonly #art = new Map<string, { type: string; bytes: Buffer }>();
@@ -334,8 +376,10 @@ export class ScreenDisplay {
 
   /** A new layout rebuilds the page's cards: they get the latest state again right after it. */
   #sendLayout(mode: ScreenMode) {
+    if (this.#running?.veil) return; // sent when the veil lifts
     this.#sendPages(this.#layoutMsg(mode));
     for (const m of this.#replay()) this.#sendPages(m);
+    if (mode === "focus") this.#sendPages(this.#focusMsg(null));
   }
 
   /** The latest state messages of every source (a city with its patches folded in). */
@@ -396,8 +440,8 @@ export class ScreenDisplay {
           return { name, url: s.url, state: conn?.state ?? "off", topics: topics(conn?.topics) };
         }),
       ],
-      // Focus timer: W5.
-      focus: { phase: "idle", endsAt: null, pausedLeft: null, round: 0, task: null },
+      veil: r?.veil ?? false,
+      focus: this.#focusState(),
       // The map files live on this (display) host, next to the page that draws them.
       map: { present: existsSync(this.#mapFile) },
       live: this.#live(),
@@ -462,7 +506,7 @@ export class ScreenDisplay {
       const placement = this.#cfg.placement;
       const state: SavedState = {
         startedAt: new Date().toISOString(), mode: m, hypr: null, placement, ws: placement === "scratch" ? SPECIAL : WORKSPACES[m],
-        rules: false, bind: null, workspace: null, brightness: null,
+        rules: false, bind: null, workspace: null, brightness: null, token, veil: false,
       };
       await this.#save(state);
       try {
@@ -495,13 +539,8 @@ export class ScreenDisplay {
         throw e;
       }
       this.#token = Buffer.from(token, "utf8");
-      this.#running = state;
-      this.#paused = false;
       this.#shown = false;
-      this.#watchVisibility(state);
-      this.#resubscribe();
-      this.#watch = setInterval(() => void this.#checkUnit(), this.#o.watchMs);
-      this.#watch.unref?.();
+      this.#began(state, null);
       this.#event("screen.started", device, { mode: m });
       await this.#rememberMode(m);
       return this.status();
@@ -519,6 +558,17 @@ export class ScreenDisplay {
     });
   }
 
+  /** A started (or adopted) mode: visibility, subscriptions, the unit watch and, in Focus, the timer. */
+  #began(state: SavedState, focus: FocusTimes | null) {
+    this.#running = state;
+    this.#paused = false;
+    this.#watchVisibility(state);
+    this.#resubscribe();
+    this.#watch = setInterval(() => void this.#checkUnit(), this.#o.watchMs);
+    this.#watch.unref?.();
+    this.#focusFor(state.mode, focus);
+  }
+
   async #switch(mode: ScreenMode) {
     const st = this.#running!;
     if (st.mode === mode) return this.status();
@@ -526,6 +576,7 @@ export class ScreenDisplay {
     if (missing.length) throw new AppError("agent.screen.noSource", 409, { sources: missing });
     st.mode = mode;
     await this.#save(st).catch(() => {});
+    this.#focusFor(mode, null);
     await this.#applyBrightness(this.#settings(mode).brightness);
     this.#sendLayout(mode);
     this.#resubscribe();
@@ -549,6 +600,14 @@ export class ScreenDisplay {
   }
 
   async #stopNow(state: SavedState) {
+    this.#let(4410, "stopped");
+    await this.#focusSave;
+    const env = await this.#env();
+    await this.#cleanup(state, env);
+  }
+
+  /** Drops everything this agent holds for the mode (timers, watchers, pages, subscriptions); nothing outside. */
+  #let(code: number, reason: string) {
     this.#running = null;
     this.#token = null;
     if (this.#watch) clearInterval(this.#watch);
@@ -556,11 +615,11 @@ export class ScreenDisplay {
     this.#vis?.stop();
     this.#vis = null;
     this.#paused = false;
-    for (const p of [...this.#pages]) if (p.readyState === 0 || p.readyState === 1) p.close(4410, "stopped");
+    this.#focus?.stop();
+    this.#focus = null;
+    for (const p of [...this.#pages]) if (p.readyState === 0 || p.readyState === 1) p.close(code, reason);
     this.#pages.clear();
     this.#unsubscribeAll();
-    const env = await this.#env();
-    await this.#cleanup(state, env);
   }
 
   async #env(): Promise<NodeJS.ProcessEnv> {
@@ -624,6 +683,7 @@ export class ScreenDisplay {
         let state: SavedState;
         try {
           state = sanitizeState(JSON.parse(await readFile(this.#stateFile(dir), "utf8")) as Rec);
+          if (names === CURRENT && (await this.#adopt(state))) continue;
         } catch {
           // No state file: a stray work dir or unit from an older run is still removed.
           if (await stat(dir).then(() => true, () => false)) await this.#cleanup(sanitizeState({}), await this.#env(), names);
@@ -637,6 +697,23 @@ export class ScreenDisplay {
     });
   }
 
+  /** The previous agent left a running mode (restart or crash) and its Firefox still runs: carry on with it. */
+  async #adopt(state: SavedState): Promise<boolean> {
+    if (!state.token || this.#running) return false;
+    const r = await this.#io.exec("systemctl", ["--user", "is-active", `${UNIT}.service`], { env: await this.#env(), timeoutMs: 5000, allowFail: true }).catch(() => null);
+    if (r?.stdout.trim() !== "active") return false;
+    let focus: FocusTimes | null = null;
+    if (state.mode === "focus") {
+      try {
+        focus = parseTimes(JSON.parse(await readFile(this.#focusFile(), "utf8")));
+      } catch {} // no timer running, or an unreadable file: idle
+    }
+    this.#token = Buffer.from(state.token, "utf8");
+    this.#shown = true; // the scratch workspace was shown by the previous agent
+    this.#began(state, focus);
+    return true;
+  }
+
   async #checkUnit() {
     if (!this.#running) return;
     const r = await this.#io.exec("systemctl", ["--user", "is-active", `${UNIT}.service`], { env: await this.#env(), timeoutMs: 5000, allowFail: true }).catch(() => null);
@@ -644,8 +721,15 @@ export class ScreenDisplay {
     if (r && r.stdout.trim() !== "active" && r.stdout.trim() !== "activating") void this.stop();
   }
 
+  /** Agent exit: a restart leaves the mode for the next agent (adopted in recover()); any other exit stops it. */
   async shutdown() {
-    await this.stop();
+    const restarting = this.#running !== null && (await this.#io.restarting?.().catch(() => false)) === true;
+    if (!restarting) return void (await this.stop());
+    await this.#serial(async () => {
+      if (!this.#running) return;
+      this.#let(1012, "restart");
+      await this.#focusSave;
+    });
   }
 
   #event(key: string, device?: string, params?: Record<string, string>) {
@@ -656,6 +740,88 @@ export class ScreenDisplay {
     const { host, port } = this.#ctx.store.get().listen;
     const h = host === "0.0.0.0" || host === "::" || host === "localhost" ? "127.0.0.1" : host.includes(":") ? `[${host}]` : host;
     return `http://${h}:${port}/screen/`;
+  }
+
+  // ---- focus timer (W5) ----
+
+  #focusFile = () => join(this.workDir, "focus.json");
+
+  /** The timer follows the mode: created when Focus starts (or is adopted with saved times), gone when it ends. */
+  #focusFor(mode: ScreenMode, restored: FocusTimes | null) {
+    if (mode !== "focus") {
+      if (!this.#focus) return;
+      this.#focus.stop();
+      this.#focus = null;
+      this.#saveFocus(null);
+      return;
+    }
+    if (this.#focus) return;
+    this.#focus = new FocusClock(
+      {
+        durations: () => this.#cfg.modes.focus,
+        save: async (t) => this.#saveFocus(t),
+        onChange: (t, cause, from) => this.#focusChanged(t, cause, from),
+      },
+      restored,
+    );
+  }
+
+  /** Writes (or removes) focus.json in order; never the task. */
+  #saveFocus(t: FocusTimes | null) {
+    const st = this.#running;
+    this.#focusSave = this.#focusSave
+      .then(async () => {
+        if (t && st && this.#running === st) {
+          // Whole or nothing: the next agent may read it at any moment.
+          await writeFile(`${this.#focusFile()}.new`, JSON.stringify(t) + "\n", { mode: 0o600 });
+          await rename(`${this.#focusFile()}.new`, this.#focusFile());
+        }
+        else if (!t) await rm(this.#focusFile(), { force: true });
+      })
+      .catch((e) => this.#log("odak sayacı durumu yazılamadı", e));
+  }
+
+  #focusState() {
+    const t = this.#focus?.times ?? IDLE;
+    return { phase: t.phase, endsAt: t.endsAt, pausedLeft: t.pausedLeft, total: t.total, round: t.round, longEvery: this.#cfg.modes.focus.longEvery, task: this.#focus?.task ?? null, now: Date.now() };
+  }
+
+  /** The page's `focus` message; `cause` set when the phase just changed ("timer": it ended by itself → chime). */
+  #focusMsg(cause: "timer" | "action" | null) {
+    return JSON.stringify({ type: "focus", ...this.#focusState(), cause });
+  }
+
+  #focusChanged(t: FocusTimes, cause: "timer" | "action" | null, from: FocusPhase) {
+    if (!this.#running?.veil) this.#sendPages(this.#focusMsg(cause));
+    if (!cause) return;
+    // No task text: the phone shows the phase (W6); the record says which phase began and why.
+    const params = { phase: t.phase, from, round: t.round, cause };
+    void this.#ctx.notifier.send({ key: "screen.focus.phase", params }).catch((e) => this.#log("odak bildirimi gönderilemedi", e));
+  }
+
+  /** POST /v1/screen/focus. Only while the Focus mode runs (409 agent.screen.notFocus otherwise). */
+  focusAction(action: FocusAction | undefined, task?: string | null) {
+    return this.#serial(async () => {
+      if (!this.#focus) throw new AppError("agent.screen.notFocus", 409);
+      this.#focus.act(action, task);
+      return this.#focusState();
+    });
+  }
+
+  // ---- privacy veil (W5) ----
+
+  /** POST /v1/screen/veil: on → the page drops its view for a dim clock and gets no topic message until off. */
+  setVeil(on: boolean) {
+    return this.#serial(async () => {
+      const st = this.#running;
+      if (!st) throw new AppError("agent.screen.notRunning", 409);
+      if (st.veil === on) return this.status();
+      st.veil = on;
+      await this.#save(st).catch((e) => this.#log("ekran modu durumu yazılamadı", e));
+      this.#sendPages(JSON.stringify({ type: "veil", on }));
+      if (!on) this.#sendLayout(st.mode);
+      return this.status();
+    });
   }
 
   // ---- visibility ----
@@ -937,6 +1103,8 @@ export class ScreenDisplay {
       for (const x of Array.isArray(msg.sessions) ? msg.sessions : []) for (const r of Array.isArray((x as Rec)?.pending) ? ((x as Rec).pending as unknown[]) : []) open.add(String(r));
       for (const k of [...l.raw.keys()]) if (k.startsWith("diff:") && !open.has(k.slice(5))) l.raw.delete(k);
     }
+    // Veiled: nothing of a topic reaches the page (code, diffs, names, titles); the state above is replayed later.
+    if (this.#running.veil) return;
     this.#sendPages(tagged, msg.type === "truck");
   }
 
@@ -953,9 +1121,13 @@ export class ScreenDisplay {
     const st = this.#running;
     if (!st) return;
     this.#pages.add(sock);
-    sock.send(this.#layoutMsg(st.mode));
-    for (const c of this.#conns.values()) sock.send(this.#sourceMsg(c));
-    for (const m of this.#replay()) sock.send(m);
+    if (st.veil) sock.send(JSON.stringify({ type: "veil", on: true }));
+    else {
+      sock.send(this.#layoutMsg(st.mode));
+      for (const c of this.#conns.values()) sock.send(this.#sourceMsg(c));
+      for (const m of this.#replay()) sock.send(m);
+      if (st.mode === "focus") sock.send(this.#focusMsg(null));
+    }
     if (this.#paused) sock.send(JSON.stringify({ type: "pause" }));
     void this.#showScratch().catch(() => {});
   }
@@ -1009,6 +1181,8 @@ function sanitizeState(s: Rec): SavedState {
     bind: typeof s.bind === "string" && screenSchema.shape.scratchBind.safeParse(s.bind).success ? s.bind : null,
     workspace: typeof s.workspace === "string" && WS_TARGET.test(s.workspace) ? s.workspace : null,
     brightness: typeof s.brightness === "string" && /^\d{1,9}$/.test(s.brightness) ? s.brightness : null,
+    token: typeof s.token === "string" && /^[a-f0-9]{64}$/.test(s.token) ? s.token : null,
+    veil: s.veil === true,
   };
 }
 
@@ -1153,6 +1327,10 @@ export const putSchema = z.strictObject({
 });
 const legacyPutSchema = z.strictObject({ settings: patchOf(gameSettingsSchema).optional(), source: sourceSchema.nullable().optional() });
 const modeBody = z.strictObject({ mode: z.enum(SCREEN_MODES) });
+/** The task: one line, no control characters; "" or null clears it. Without `action` only the task changes. */
+const focusBody = z
+  .strictObject({ action: z.enum(FOCUS_ACTIONS).optional(), task: z.string().max(TASK_MAX).regex(/^[^\p{Cc}\u2028\u2029]*$/u).nullable().optional() })
+  .refine((b) => b.action !== undefined || b.task !== undefined, { message: "action or task" });
 
 export async function displayRoutes(app: FastifyInstance, ctx: Ctx, o: DisplayOpts = {}) {
   const io = o.io ?? (await realDisplayIo());
@@ -1167,6 +1345,11 @@ export async function displayRoutes(app: FastifyInstance, ctx: Ctx, o: DisplayOp
   app.post("/v1/screen/start", async (req) => display.start(z.strictObject({ mode: z.enum(SCREEN_MODES).optional() }).parse(req.body ?? {}).mode, req.device?.id));
   app.post("/v1/screen/mode", async (req) => display.switchMode(modeBody.parse(req.body).mode));
   app.post("/v1/screen/stop", async (req) => display.stop(req.device?.id));
+  app.post("/v1/screen/focus", async (req) => {
+    const b = focusBody.parse(req.body);
+    return { focus: await display.focusAction(b.action, b.task) };
+  });
+  app.post("/v1/screen/veil", async (req) => display.setVeil(z.strictObject({ on: z.boolean() }).parse(req.body).on));
 
   // /v1/gamemode: the 0.5 routes for app 1.2, one release; the old error codes and shapes.
   const legacy = <T>(p: () => Promise<T>) => p().catch((e) => Promise.reject(legacyError(e)));

@@ -241,7 +241,8 @@ export const focusSettingsSchema = z.object({
   focusMin: z.number().int().min(5).max(120).default(25),
   shortMin: z.number().int().min(5).max(120).default(5),
   longMin: z.number().int().min(5).max(120).default(15),
-  longEvery: z.number().int().min(1).max(12).default(4),
+  /** A long break after every this many focus rounds. */
+  longEvery: z.number().int().min(2).max(8).default(4),
   ambient: z.enum(["off", "brown", "pink", "rain"]).default("off"),
   ambientVolume: z.number().int().min(0).max(100).default(30),
   chime: z.boolean().default(true),
