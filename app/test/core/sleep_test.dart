@@ -59,7 +59,7 @@ void main() {
       const empty = SleepSettings();
       expect((empty.join, empty.side, empty.distance, empty.volume), (true, 'left', 'mid', 35));
       expect((empty.brightnessStart, empty.brightnessNight, empty.brightnessMorning), (25, 3, 70));
-      expect((empty.fadeMin, empty.soundFadeMin, empty.nightSound), (30, 45, 'hum'));
+      expect((empty.fadeMin, empty.soundFadeMin, empty.nightSound), (30, 45, 'off'));
       expect(empty.layer('wind'), isFalse);
       expect(empty.layer('crackle'), isTrue);
       expect(empty.hasAlarm, isFalse, reason: 'alarm bloğu yok: ajan güncellemesi gerekiyor');

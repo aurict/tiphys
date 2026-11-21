@@ -77,7 +77,7 @@ class SleepSettings {
   int get soundFadeMin => _i(_m('times'), 'soundFadeMin', 45);
 
   /// hum | off
-  String get nightSound => _s(_m('times'), 'nightSound', 'hum') == 'off' ? 'off' : 'hum';
+  String get nightSound => _s(_m('times'), 'nightSound', 'off') == 'hum' ? 'hum' : 'off';
   bool layer(String k) => _b(_m('layers'), k, k == 'hum' || k == 'crackle' || k == 'logs');
 
   bool get hasVelour => raw['velour'] is Map;

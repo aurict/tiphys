@@ -295,7 +295,7 @@ export const sleepSettingsSchema = z.object({
     .nullable()
     .default(null),
   times: z
-    .object({ settleMin: pct(1, 30, 3), fadeMin: pct(10, 120, 30), soundFadeMin: pct(10, 180, 45), nightSound: z.enum(["hum", "off"]).default("hum") })
+    .object({ settleMin: pct(1, 30, 3), fadeMin: pct(10, 120, 30), soundFadeMin: pct(10, 180, 45), nightSound: z.enum(["hum", "off"]).default("off") })
     .prefault({}),
   layers: z
     .object({ hum: z.boolean().default(true), crackle: z.boolean().default(true), logs: z.boolean().default(true), wind: z.boolean().default(false), rain: z.boolean().default(false) })

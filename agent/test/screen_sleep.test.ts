@@ -125,7 +125,7 @@ describe("sleep phases and curve", () => {
 
   it("settle 3 → fade 30 → night (open); the alarm's sunrise and ring when a plan has one; the scale divides lengths", () => {
     const p = planOf(t0, s);
-    expect(p).toMatchObject({ t0, settleMs: 3 * MIN, fadeMs: 30 * MIN, soundFadeMs: 45 * MIN, sunriseAt: null, ringAt: null, rampMs: 3 * MIN, nightSound: "hum", alarmSound: "birds" });
+    expect(p).toMatchObject({ t0, settleMs: 3 * MIN, fadeMs: 30 * MIN, soundFadeMs: 45 * MIN, sunriseAt: null, ringAt: null, rampMs: 3 * MIN, nightSound: "off", alarmSound: "birds" });
     expect(phasesOf(p)).toEqual([
       { phase: "settle", startedAt: t0, endsAt: t0 + 3 * MIN },
       { phase: "fade", startedAt: t0 + 3 * MIN, endsAt: t0 + 33 * MIN },
