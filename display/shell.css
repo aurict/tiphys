@@ -31,3 +31,9 @@ body.has-problem .stage { opacity: .12; }
 .day-card.big .overline { font-size: 26px; letter-spacing: .07em; }
 .day-card.big .day-clock { font-size: 236px; }
 .day-card.big .day-suffix { font-size: 44px; margin-left: 18px; }
+
+/* Battery saver chip (main.js, agent `power` message): small, top centre, under the pill. */
+.power-chip { position: fixed; z-index: 40; top: 16px; left: 50%; translate: -50% 0; height: 34px; padding: 0 14px; gap: 8px;
+  font-size: 15px; color: var(--warning); background: rgba(30, 24, 14, .82); border-color: rgba(255, 179, 64, .35); pointer-events: none; }
+.power-chip[hidden] { display: none; }
+body.veiled .power-chip { visibility: hidden; }

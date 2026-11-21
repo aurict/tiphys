@@ -2,14 +2,16 @@
 // constellation (thin lines between neighbours), with an HTML name label. Colour by status: running = pale indigo
 // with a slow pulse, waiting = orange blinking, idle = dim grey, still. Tool uses from the `claude` topic: a read
 // sends a dim beam to the building, an edit a bright one (and the camera leans toward it). Frames: the renderer's
-// scheduler only — the blink runs on a 1 fps breath while a session waits, the pulse on a 0.5 fps one while one runs,
-// beams are short effects; nothing is drawn when every session is idle; pause stops everything with the city.
+// scheduler only — the pulse on a 0.5 fps breath while one runs, beams are short effects; nothing is drawn when every
+// session is idle; pause stops everything with the city. The waiting blink is NOT a 3D frame (W7: a 1 fps breath
+// cost ~6.5 % of a laptop core): the orb stays lit and the HTML label blinks (a class toggled once a second, stopped
+// on pause, with motion "low" and when nothing waits).
 // With the flat (2D) city there are no orbs: the labels sit in a row at the top and beams light the building.
 const COLORS = { running: '#C7D2FE', idle: '#8E8E93', waiting: '#FFB340' };
 const STATUS_TEXT = { running: 'çalışıyor', idle: 'boşta', waiting: 'onay bekliyor' };
 
 export function createBrain(labelsEl) {
-  let r = null, haloTex = null, constel = null, motion = 'normal';
+  let r = null, haloTex = null, constel = null, motion = 'normal', paused = false, blinkTimer = 0;
   const orbs = new Map(); // id → {id, name, status, group, core, halo, label, phase, seen}
   const seen = new Map(); // id → latest tool-use time already shown (beams only for newer ones)
   let first = true;
@@ -81,22 +83,28 @@ export function createBrain(labelsEl) {
    */
   function breath() {
     const list = [...orbs.values()];
-    const waiting = list.some((o) => o.status === 'waiting');
-    r?.setBreath?.(motion !== 'low' && (waiting || list.some((o) => o.status === 'running')), waiting ? 1000 : 2000);
+    r?.setBreath?.(motion !== 'low' && list.some((o) => o.status === 'running'), 2000);
+    blink(!paused && motion !== 'low' && list.some((o) => o.status === 'waiting'));
   }
 
-  /** Per frame (city effect): halo pulse/blink from the clock; frames come from the breath or other effects. */
+  /** The waiting labels blink (1 s on, 1 s dim) without drawing the 3D scene. */
+  function blink(on) {
+    if (on === !!blinkTimer) return;
+    clearInterval(blinkTimer);
+    blinkTimer = on ? setInterval(() => labelsEl.classList.toggle('blink-off'), 1000) : 0;
+    if (!on) labelsEl.classList.remove('blink-off');
+  }
+
+  /** Per frame (city effect): halo pulse from the clock; frames come from the breath or other effects. */
   function tick(now) {
-    const sec = Math.floor(now / 1000);
     for (const o of orbs.values()) {
       if (!o.halo) continue;
       if (o.status === 'running') {
         o.halo.scale.setScalar(11 * (1 + 0.08 * Math.sin(now / 2600 + o.phase)));
         o.halo.material.opacity = 0.85;
       } else if (o.status === 'waiting') {
-        const on = motion === 'low' || sec % 2 === 0;
-        o.halo.material.opacity = on ? 1 : 0.35;
-        o.halo.scale.setScalar(on ? 14 : 10);
+        o.halo.material.opacity = 1;
+        o.halo.scale.setScalar(14);
       } else {
         o.halo.scale.setScalar(7.5);
         o.halo.material.opacity = 0.4;
@@ -137,6 +145,8 @@ export function createBrain(labelsEl) {
       constel = null; haloTex?.dispose(); haloTex = null; r = null;
     },
     setMotion(m) { motion = m; breath(); },
+    pause() { paused = true; breath(); },
+    resume() { paused = false; breath(); },
     /** `claude` message → orbs; returns the sessions whose status changed ([{s, from}]) for the pills. */
     update(sessions) {
       const changes = [];
@@ -185,6 +195,7 @@ export function createBrain(labelsEl) {
     frame: place,
     get count() { return orbs.size; },
     destroy() {
+      blink(false);
       for (const o of orbs.values()) { dropOrb(o); o.label.remove(); }
       orbs.clear();
       if (constel && r?.layer) { r.layer.remove(constel); constel.geometry.dispose(); constel.material.dispose(); }

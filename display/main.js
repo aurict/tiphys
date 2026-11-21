@@ -7,6 +7,8 @@
 // go to the mounted cards. The socket, the Esc-hold stop, the notification pill and the problem card live here.
 // Focus mode shows only critical pills (danger/warning tones and the timer's own). The privacy veil (`veil` {on})
 // destroys the view at once and shows a dim clock; the agent sends nothing else until it lifts, then a fresh layout.
+// Battery saver (`power` {saver}): while on, the cards get motion "low" and the flat city whatever the settings say,
+// and a small chip says so; off again → the settings as they are.
 import { createPill, createProblem, setupEscHold, eventCopy } from './notify.js';
 import { createScheduler } from './sched.js';
 import * as game from './cards/game.js';
@@ -38,6 +40,9 @@ const sources = new Map();   // source name → { state, retryInSec }
 let agg = { state: 'ok' };   // the current view's sources, worst first
 let linkUp = false, everConnected = false, failures = 0, pageRetryAt = 0;
 let agentPaused = false, paused = false;
+let saver = false, lastSettings = {}; // battery saver; the mode's settings as the agent sent them
+/** The settings the cards get: the saver forces low motion and the flat city. */
+const effective = (s) => (saver ? { ...s, motion: 'low', city: '2d' } : s);
 
 // Cards that draw frames get them from one scheduler: nothing runs between changes (the city has its own, with its
 // effect frame rate and pause).
@@ -110,7 +115,9 @@ const TEMPLATES = {
 
 function applyLayout(m) {
   const key = JSON.stringify([m.mode, m.template, m.cards]);
-  if (view?.key === key) { broadcast({ type: 'settings', ...m.settings }); return; }
+  lastSettings = m.settings ?? {};
+  const settings = effective(lastSettings);
+  if (view?.key === key) { broadcast({ type: 'settings', ...settings }); return; }
   const build = TEMPLATES[m.template];
   const old = view;
   // The old cards stop first (the Game card resets page-wide state it set); their DOM fades out below.
@@ -118,14 +125,14 @@ function applyLayout(m) {
   const root = document.createElement('div');
   root.className = 'view entering';
   // Same template again (its cards changed): the old DOM goes at once, the new one must not find the old elements.
-  if (old && (old.template === m.template || m.settings?.motion === 'low')) old.root.remove();
+  if (old && (old.template === m.template || settings.motion === 'low')) old.root.remove();
   viewsEl.append(root);
   document.body.dataset.mode = m.mode;
-  document.body.dataset.motion = m.settings?.motion ?? 'normal';
+  document.body.dataset.motion = settings.motion ?? 'normal';
   const names = new Set(m.cards.filter((c) => c.enabled && c.source !== 'self').map((c) => c.source));
   view = { key, mode: m.mode, template: m.template, root, cards: [], sources: names };
-  view.cards = build ? build(root, m) : [];
-  broadcast({ type: 'settings', ...m.settings });
+  view.cards = build ? build(root, { ...m, settings }) : [];
+  broadcast({ type: 'settings', ...settings });
   for (const [name, s] of sources) broadcast({ type: 'srcstate', name, state: s.state });
   updateAgg(false);
   broadcast({ type: 'source', ...agg });
@@ -136,6 +143,18 @@ function applyLayout(m) {
     setTimeout(() => old.root.remove(), 600);
   }
   showProblem();
+}
+
+function setSaver(on) {
+  if (on === saver) return;
+  saver = on;
+  const chip = $('#power');
+  chip.innerHTML = `${icon('battery', 16)}<span>Pil tasarrufu</span>`;
+  chip.hidden = !on;
+  if (!view) return; // veiled: the next layout gets it
+  const s = effective(lastSettings);
+  document.body.dataset.motion = s.motion ?? 'normal';
+  broadcast({ type: 'settings', ...s });
 }
 
 function broadcast(m) {
@@ -253,6 +272,7 @@ function onMessage(m) {
   if (typeof m.clock24 === 'boolean') clock24 = m.clock24;
   else if (typeof m.settings?.clock24 === 'boolean') clock24 = m.settings.clock24;
   if (m.type === 'veil') return setVeil(m.on === true);
+  if (m.type === 'power') return setSaver(m.saver === true);
   // While veiled the agent sends no layout or topic; anything else (settings, sources) has no view to go to.
   if (veiled && m.type !== 'pause' && m.type !== 'resume' && m.type !== 'source') return;
   switch (m.type) {
@@ -260,7 +280,8 @@ function onMessage(m) {
     case 'source': applySource(m); break;
     case 'pause': agentPaused = true; setPaused(); break;
     case 'resume': agentPaused = false; setPaused(); break;
-    default: broadcast(m); break; // settings and topic messages
+    case 'settings': { const { type, ...s } = m; void type; lastSettings = s; broadcast({ type, ...effective(s) }); break; }
+    default: broadcast(m); break; // topic messages
   }
 }
 

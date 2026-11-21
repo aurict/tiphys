@@ -253,8 +253,8 @@ export function mount(el, ctx, { src = 'self' } = {}) {
         default: return;
       }
     },
-    pause() { paused = true; r?.pause(); approval.pause(); },
-    resume() { paused = false; if (!frozen) r?.resume(); approval.resume(); },
+    pause() { paused = true; r?.pause(); approval.pause(); brain.pause(); },
+    resume() { paused = false; if (!frozen) r?.resume(); approval.resume(); brain.resume(); },
     destroy() {
       rGen++;
       brain.destroy();

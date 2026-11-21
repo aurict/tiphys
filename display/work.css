@@ -75,6 +75,9 @@ body[data-motion="low"] .file-tag { transition: none; }
 .orb-label[data-status="waiting"] { border-color: rgba(255, 179, 64, .55); }
 .orb-label[data-status="waiting"] .dot { background: var(--warning); box-shadow: 0 0 10px rgba(255, 179, 64, .7); }
 .orb-label[data-status="waiting"] .st { color: var(--warning); }
+/* Waiting blink (city/brain.js toggles .blink-off once a second; no 3D frame). */
+.orb-labels.blink-off .orb-label[data-status="waiting"] { border-color: rgba(255, 179, 64, .18); }
+.orb-labels.blink-off .orb-label[data-status="waiting"] .dot { opacity: .3; box-shadow: none; }
 .orb-label[data-status="idle"] { opacity: .7; }
 /* Flat (2D) city: no orbs, the labels sit in a row under the info strip. */
 .orb-labels.flat { display: flex; flex-wrap: wrap; align-content: flex-start; gap: 8px; padding: 124px 16px 0; }
